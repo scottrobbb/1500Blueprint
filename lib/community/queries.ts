@@ -32,7 +32,9 @@ type PostRow = {
   image_url: string | null;
   view_count: number;
   created_at: string;
-  pinned: boolean;
+  // Absent on rows fetched via POST_SELECT_FALLBACK (pre-migration DB) or
+  // POST_BASE alone (createPost) — mapPost treats that as false.
+  pinned?: boolean;
   community_comments?: { count: number }[] | null;
   community_likes?: { count: number }[] | null;
   // Each post's own newest-first slice (referencedTable order/limit in listPosts),
@@ -55,13 +57,18 @@ type CommentRow = {
 };
 
 const POST_BASE =
-  "id,author_email,author_name,author_initials,author_handle,author_level,category,body,image_url,view_count,created_at,pinned";
+  "id,author_email,author_name,author_initials,author_handle,author_level,category,body,image_url,view_count,created_at";
 // recent_comments is an aliased second embed of the same comments table so
 // PostgREST returns each post's own newest-first slice (referencedTable
 // order/limit in listPosts) — no separate query needed for the avatar stack.
 const POST_SELECT =
-  `${POST_BASE},community_comments(count),community_likes(count),` +
+  `${POST_BASE},pinned,community_comments(count),community_likes(count),` +
   `recent_comments:community_comments(author_email,author_initials,created_at)`;
+// Pre-redesign select shape (no pinned, no recent_comments embed). listPosts/
+// getPost fall back to this if the enhanced select errors — e.g. the pinned
+// column or the aliased embed isn't actually live on this DB yet — so a lagging
+// migration can never take the whole feed down to "no posts".
+const POST_SELECT_FALLBACK = `${POST_BASE},community_comments(count),community_likes(count)`;
 
 // Comments select "*" (not an explicit column list) so the same code works
 // before AND after the reply migration adds parent_id — a listed-but-missing
@@ -124,7 +131,7 @@ function mapPost(row: PostRow, liked: Set<string>, avatars: Map<string, string |
     liked: liked.has(row.id),
     commentCount: row.community_comments?.[0]?.count ?? 0,
     views: row.view_count,
-    pinned: row.pinned,
+    pinned: row.pinned ?? false,
     recentCommenters: dedupeCommenters(recent, avatars),
     lastCommentAt: recent[0] ? relativeTime(recent[0].created_at) : null,
   };
@@ -181,7 +188,8 @@ export async function listPosts(
   viewerEmail: string,
   category?: CommunityCategory,
 ): Promise<CommunityPost[]> {
-  let query = supabaseAdmin()
+  const db = supabaseAdmin();
+  let query = db
     .from("community_posts")
     .select(POST_SELECT)
     .order("pinned", { ascending: false })
@@ -191,8 +199,22 @@ export async function listPosts(
     .limit(100);
   if (category) query = query.eq("category", category);
 
-  const { data } = await query;
-  const rows = (data as PostRow[] | null) ?? [];
+  const primary = await query.returns<PostRow[]>();
+  let rows: PostRow[];
+  if (primary.error) {
+    console.error("listPosts: enhanced select failed, falling back:", primary.error.message);
+    let fallback = db
+      .from("community_posts")
+      .select(POST_SELECT_FALLBACK)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (category) fallback = fallback.eq("category", category);
+    const backup = await fallback.returns<PostRow[]>();
+    if (backup.error) throw new Error(`listPosts failed: ${backup.error.message}`);
+    rows = backup.data ?? [];
+  } else {
+    rows = primary.data ?? [];
+  }
   const emails = new Set<string>();
   for (const r of rows) {
     emails.add(r.author_email);
@@ -207,8 +229,21 @@ export async function listPosts(
 
 export async function getPost(id: string, viewerEmail: string): Promise<CommunityPost | null> {
   const db = supabaseAdmin();
-  const { data } = await db.from("community_posts").select(POST_SELECT).eq("id", id).maybeSingle();
-  const row = data as PostRow | null;
+  const primary = await db.from("community_posts").select(POST_SELECT).eq("id", id).maybeSingle().returns<PostRow>();
+  let row: PostRow | null;
+  if (primary.error) {
+    console.error("getPost: enhanced select failed, falling back:", primary.error.message);
+    const backup = await db
+      .from("community_posts")
+      .select(POST_SELECT_FALLBACK)
+      .eq("id", id)
+      .maybeSingle()
+      .returns<PostRow>();
+    if (backup.error) throw new Error(`getPost failed: ${backup.error.message}`);
+    row = backup.data;
+  } else {
+    row = primary.data;
+  }
   if (!row) return null;
 
   // Load likes + the thread and bump the view counter in parallel. The increment
