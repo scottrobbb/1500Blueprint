@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PracticeTest } from "@/lib/sat/types";
+import type { TimeMultiplier } from "@/lib/sat/testState";
 import { Logo } from "@/components/Logo";
 import { CloseIcon } from "./icons";
 
 export type ResumeInfo = { sectionLabel: string; timeLabel: string | null };
+
+const TIME_MULTIPLIERS: TimeMultiplier[] = [1, 1.5, 2];
 
 export function IntroScreen({
   test,
@@ -21,11 +24,11 @@ export function IntroScreen({
   resume?: ResumeInfo | null;
   onResume?: () => void;
   onStartOver?: () => void;
-  extendedTime: boolean;
-  onExtendedTimeChange: (enabled: boolean) => void;
+  extendedTime: TimeMultiplier;
+  onExtendedTimeChange: (multiplier: TimeMultiplier) => void;
 }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [draftExtendedTime, setDraftExtendedTime] = useState(extendedTime);
+  const [draftExtendedTime, setDraftExtendedTime] = useState<TimeMultiplier>(extendedTime);
   const settingsDialogRef = useRef<HTMLElement>(null);
   const settingsCloseRef = useRef<HTMLButtonElement>(null);
 
@@ -90,7 +93,9 @@ export function IntroScreen({
           >
             <SettingsIcon className="h-4 w-4" />
             Test settings
-            {extendedTime ? <span className="rounded-full bg-exam-blue px-2 py-0.5 text-[11px] text-white">1.5x</span> : null}
+            {extendedTime !== 1 ? (
+              <span className="rounded-full bg-exam-blue px-2 py-0.5 text-[11px] text-white">{extendedTime}x</span>
+            ) : null}
           </button>
         )}
 
@@ -132,7 +137,7 @@ export function IntroScreen({
                 Section {i + 1}: {s.name}
               </dt>
               <dd className="text-sm text-exam-muted">
-                2 modules · {Math.round(s.minutesPerModule * (extendedTime ? 1.5 : 1))} min each
+                2 modules · {Math.round(s.minutesPerModule * extendedTime)} min each
               </dd>
             </div>
           ))}
@@ -142,7 +147,7 @@ export function IntroScreen({
               {test.breakMinutes} min between sections
             </dd>
           </div>
-          {extendedTime ? (
+          {extendedTime !== 1 ? (
             <div className="flex items-center justify-between rounded-xl border border-exam-blue/25 bg-exam-tint px-4 py-3">
               <dt className="text-sm font-semibold text-exam-ink">Module breaks</dt>
               <dd className="text-sm text-exam-muted">5 min between modules</dd>
@@ -197,24 +202,46 @@ export function IntroScreen({
 
             <div className="px-6 py-6 text-left">
               <h3 className="text-base font-bold text-ink">Test Accommodations</h3>
-              <label className="mt-4 flex cursor-pointer gap-4 rounded-xl border border-slate-200 bg-slate-50 p-5 transition-colors hover:border-exam-blue/40">
-                <input
-                  type="checkbox"
-                  checked={draftExtendedTime}
-                  onChange={(event) => setDraftExtendedTime(event.target.checked)}
-                  className="mt-0.5 h-6 w-6 shrink-0 accent-exam-blue"
-                />
-                <span>
-                  <span className="block text-base font-bold text-ink">Enable Extended Time (1.5x)</span>
-                  <span className="mt-1 block text-sm leading-6 text-slate-600">When enabled, you will receive:</span>
-                  <span className="mt-1 block text-sm leading-6 text-slate-600">
-                    • 1.5x time on all test modules<br />
-                    • A 5-minute break between Reading &amp; Writing modules<br />
-                    • The standard {test.breakMinutes}-minute break between sections<br />
-                    • A 5-minute break between Math modules
-                  </span>
-                </span>
-              </label>
+              <div className="mt-4 space-y-3">
+                {TIME_MULTIPLIERS.map((mult) => (
+                  <label
+                    key={mult}
+                    className={`flex cursor-pointer gap-4 rounded-xl border p-5 transition-colors ${
+                      draftExtendedTime === mult
+                        ? "border-exam-blue bg-exam-tint"
+                        : "border-slate-200 bg-slate-50 hover:border-exam-blue/40"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="time-multiplier"
+                      checked={draftExtendedTime === mult}
+                      onChange={() => setDraftExtendedTime(mult)}
+                      className="mt-0.5 h-6 w-6 shrink-0 accent-exam-blue"
+                    />
+                    <span>
+                      <span className="block text-base font-bold text-ink">
+                        {mult === 1 ? "Standard time" : `Extended time (${mult}x)`}
+                      </span>
+                      {mult === 1 ? (
+                        <span className="mt-1 block text-sm leading-6 text-slate-600">
+                          Standard module timing, with no extra breaks between modules.
+                        </span>
+                      ) : (
+                        <>
+                          <span className="mt-1 block text-sm leading-6 text-slate-600">You will receive:</span>
+                          <span className="mt-1 block text-sm leading-6 text-slate-600">
+                            • {mult}x time on all test modules<br />
+                            • A 5-minute break between Reading &amp; Writing modules<br />
+                            • The standard {test.breakMinutes}-minute break between sections<br />
+                            • A 5-minute break between Math modules
+                          </span>
+                        </>
+                      )}
+                    </span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             <footer className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">

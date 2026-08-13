@@ -6,10 +6,12 @@ import type { PracticeTest } from "@/lib/sat/types";
 import {
   activeModule,
   activeSection,
+  coerceTimeMultiplier,
   formatTime,
   initialState,
   makeReducer,
   type TestState,
+  type TimeMultiplier,
 } from "@/lib/sat/testState";
 import { scoreTest } from "@/lib/sat/scoring";
 import type { SavedSession } from "@/lib/sat/testSession";
@@ -47,7 +49,7 @@ function sanitizeResumeState(s: TestState, test: PracticeTest): TestState | null
   return {
     ...s,
     qIndex,
-    extendedTime: Boolean(s.extendedTime),
+    extendedTime: coerceTimeMultiplier(s.extendedTime),
     breakTarget: s.breakTarget === "module2" ? "module2" : s.phase === "break" ? "nextSection" : undefined,
   } satisfies TestState;
 }
@@ -76,7 +78,7 @@ export function TestRunner({
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [savedAttemptId, setSavedAttemptId] = useState<string | null>(null);
   const [attemptSaveStatus, setAttemptSaveStatus] = useState<AttemptSaveStatus>("idle");
-  const [extendedTime, setExtendedTime] = useState(false);
+  const [extendedTime, setExtendedTime] = useState<TimeMultiplier>(1);
 
   // Latest values for the unload/interval savers, which must not re-bind per change.
   const stateRef = useRef(state);
@@ -252,7 +254,7 @@ export function TestRunner({
     if (!resumeState) return;
     const currentResume = sanitizeResumeState(resumeState.state, test);
     if (!currentResume) return;
-    setExtendedTime(Boolean(currentResume.extendedTime));
+    setExtendedTime(currentResume.extendedTime);
     setHighlights(resumeState?.highlights ?? {});
     dispatch({ type: "RESUME", state: currentResume });
   }

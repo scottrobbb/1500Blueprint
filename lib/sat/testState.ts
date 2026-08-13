@@ -25,6 +25,21 @@ export type Phase =
 
 export type BreakTarget = "module2" | "nextSection";
 
+// The per-module time multiplier a student tests under: 1 = standard timing,
+// 1.5/2 = extended-time accommodations. Extended time (either level) also
+// grants a 5-minute break between a section's two modules (see submitModule).
+export type TimeMultiplier = 1 | 1.5 | 2;
+
+// Coerces possibly-stale persisted data into a valid multiplier. Handles a
+// legacy boolean `extendedTime` from sessions saved before this was a number
+// (that flag only ever meant 1.5x) so an old in-progress session can still
+// resume correctly.
+export function coerceTimeMultiplier(value: unknown): TimeMultiplier {
+  if (value === 1.5 || value === 2) return value;
+  if (value === true) return 1.5;
+  return 1;
+}
+
 export type TestState = {
   phase: Phase;
   sectionIndex: number;
@@ -38,7 +53,7 @@ export type TestState = {
   timeLeft: number;
   timerHidden: boolean;
   perQuestionTime: Record<string, number>;
-  extendedTime: boolean;
+  extendedTime: TimeMultiplier;
   breakTarget?: BreakTarget;
   // Set only when the student reaches results by finishing the test (not via the
   // dev jump), so the runner saves + awards exactly one genuine attempt.
@@ -46,7 +61,7 @@ export type TestState = {
 };
 
 export type TestAction =
-  | { type: "START"; extendedTime?: boolean }
+  | { type: "START"; extendedTime?: TimeMultiplier }
   | { type: "TICK" }
   | { type: "SELECT"; questionId: string; value: AnswerValue }
   | { type: "TOGGLE_MARK"; questionId: string }
@@ -79,7 +94,7 @@ export function initialState(): TestState {
     timeLeft: 0,
     timerHidden: false,
     perQuestionTime: {},
-    extendedTime: false,
+    extendedTime: 1,
   };
 }
 
@@ -115,7 +130,7 @@ export function makeReducer(test: PracticeTest) {
       moduleOrder: 1,
       qIndex: 0,
       eliminatorOn: false,
-      timeLeft: Math.round(section.minutesPerModule * 60 * (state.extendedTime ? 1.5 : 1)),
+      timeLeft: Math.round(section.minutesPerModule * 60 * state.extendedTime),
       breakTarget: undefined,
       phase: "module",
     };
@@ -125,7 +140,7 @@ export function makeReducer(test: PracticeTest) {
     const section = test.sections[state.sectionIndex];
     if (state.moduleOrder === 1) {
       const variant = routeVariant(test, section, state.answers);
-      if (state.extendedTime) {
+      if (state.extendedTime !== 1) {
         return {
           ...state,
           routed: { ...state.routed, [section.id]: variant },
@@ -166,7 +181,7 @@ export function makeReducer(test: PracticeTest) {
         ...state,
         phase: "module",
         qIndex: 0,
-        timeLeft: Math.round(section.minutesPerModule * 60 * 1.5),
+        timeLeft: Math.round(section.minutesPerModule * 60 * state.extendedTime),
         breakTarget: undefined,
       };
     }
@@ -176,7 +191,7 @@ export function makeReducer(test: PracticeTest) {
   return function reducer(state: TestState, action: TestAction): TestState {
     switch (action.type) {
       case "START":
-        return startSection({ ...initialState(), extendedTime: Boolean(action.extendedTime) }, 0);
+        return startSection({ ...initialState(), extendedTime: action.extendedTime ?? 1 }, 0);
       case "TICK": {
         if (state.phase === "module") {
           if (state.timeLeft <= 1) return { ...state, timeLeft: 0, phase: "moduleOver" };
@@ -253,7 +268,7 @@ export function makeReducer(test: PracticeTest) {
           routed,
           qIndex: 0,
           eliminatorOn: false,
-          timeLeft: Math.round(section.minutesPerModule * 60 * (state.extendedTime ? 1.5 : 1)),
+          timeLeft: Math.round(section.minutesPerModule * 60 * state.extendedTime),
           breakTarget: undefined,
         };
       }

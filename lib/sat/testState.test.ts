@@ -1,36 +1,47 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { sampleTest } from "./sampleTest";
-import { initialState, makeReducer, type TestState } from "./testState";
+import { coerceTimeMultiplier, initialState, makeReducer, type TestState, type TimeMultiplier } from "./testState";
 
-test("extended time adds 50% and a five-minute break between modules", () => {
-  const reduce = makeReducer(sampleTest);
-  let state = reduce(initialState(), { type: "START", extendedTime: true });
+for (const multiplier of [1.5, 2] as TimeMultiplier[]) {
+  test(`${multiplier}x extended time scales module time and adds a five-minute break between modules`, () => {
+    const reduce = makeReducer(sampleTest);
+    let state = reduce(initialState(), { type: "START", extendedTime: multiplier });
 
-  assert.equal(state.extendedTime, true);
-  assert.equal(state.timeLeft, sampleTest.sections[0].minutesPerModule * 90);
+    assert.equal(state.extendedTime, multiplier);
+    assert.equal(state.timeLeft, Math.round(sampleTest.sections[0].minutesPerModule * 60 * multiplier));
 
-  state = reduce(state, { type: "SUBMIT_MODULE" });
-  state = reduce(state, { type: "ADVANCE" });
-  assert.equal(state.phase, "break");
-  assert.equal(state.breakTarget, "module2");
-  assert.equal(state.timeLeft, 5 * 60);
+    state = reduce(state, { type: "SUBMIT_MODULE" });
+    state = reduce(state, { type: "ADVANCE" });
+    assert.equal(state.phase, "break");
+    assert.equal(state.breakTarget, "module2");
+    assert.equal(state.timeLeft, 5 * 60);
 
-  state = reduce(state, { type: "END_BREAK" });
-  assert.equal(state.phase, "module");
-  assert.equal(state.moduleOrder, 2);
-  assert.equal(state.timeLeft, sampleTest.sections[0].minutesPerModule * 90);
+    state = reduce(state, { type: "END_BREAK" });
+    assert.equal(state.phase, "module");
+    assert.equal(state.moduleOrder, 2);
+    assert.equal(state.timeLeft, Math.round(sampleTest.sections[0].minutesPerModule * 60 * multiplier));
 
-  state = reduce(state, { type: "SUBMIT_MODULE" });
-  state = reduce(state, { type: "ADVANCE" });
-  assert.equal(state.phase, "break");
-  assert.equal(state.breakTarget, "nextSection");
-  assert.equal(state.timeLeft, sampleTest.breakMinutes * 60);
+    state = reduce(state, { type: "SUBMIT_MODULE" });
+    state = reduce(state, { type: "ADVANCE" });
+    assert.equal(state.phase, "break");
+    assert.equal(state.breakTarget, "nextSection");
+    assert.equal(state.timeLeft, sampleTest.breakMinutes * 60);
 
-  state = reduce(state, { type: "END_BREAK" });
-  assert.equal(state.sectionIndex, 1);
-  assert.equal(state.moduleOrder, 1);
-  assert.equal(state.timeLeft, sampleTest.sections[1].minutesPerModule * 90);
+    state = reduce(state, { type: "END_BREAK" });
+    assert.equal(state.sectionIndex, 1);
+    assert.equal(state.moduleOrder, 1);
+    assert.equal(state.timeLeft, Math.round(sampleTest.sections[1].minutesPerModule * 60 * multiplier));
+  });
+}
+
+test("coerceTimeMultiplier maps a legacy boolean extendedTime to 1.5x, and anything else to standard", () => {
+  assert.equal(coerceTimeMultiplier(true), 1.5);
+  assert.equal(coerceTimeMultiplier(false), 1);
+  assert.equal(coerceTimeMultiplier(undefined), 1);
+  assert.equal(coerceTimeMultiplier(1.5), 1.5);
+  assert.equal(coerceTimeMultiplier(2), 2);
+  assert.equal(coerceTimeMultiplier(1), 1);
 });
 
 test("standard timing continues directly into module two", () => {
