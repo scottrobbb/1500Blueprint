@@ -109,8 +109,12 @@ const EXPECTED_COUNTS: Record<string, number> = {
 
 const QUESTION_RE = /^(\d+)\)(?:\s*(.*))?$/;
 const CHOICE_RE = /^([A-Da-d])[.)]\s*(.*)$/;
+const TRAILING_CHOICE_ANSWER_RE = /\s+X\s*$/;
 const IMAGE_RE = /\[\[IMG:([^\]]+)\]\]/g;
 const RW_META_RE = /\s+(EASY|MEDIUM|HARD),\s*[A-Z][A-Z &/\-]*\s*$/i;
+const RW_DIFFICULTY_ONLY_RE = /\s+(EASY|MEDIUM|HARD)\s*$/;
+const RW_REVERSED_META_RE = /\s+[A-Z][A-Z &/\-]*,\s*(EASY|MEDIUM|HARD)\s*$/;
+const RW_PLACEHOLDER_META_RE = /\s+DIFFICULTY,\s*TOPIC\s*$/;
 const SOURCE_URL_RE = /^https?:\/\/\S+$/i;
 const UNESCAPED_DOLLAR_RE = /(?<!\\)\$/g;
 const MATH_SEGMENT_RE = /(?<!\\)\$([^$]+?)(?<!\\)\$/g;
@@ -162,7 +166,12 @@ function moduleFromHeading(
   line: string,
 ): Omit<Test6Module, "section" | "label" | "questions"> | null {
   const normalized = line.toLowerCase().replace(/[,]+/g, " ").replace(/\s+/g, " ").trim();
-  if (normalized === "baseline" || normalized === "baseline module" || normalized === "module 1") {
+  if (
+    normalized === "baseline" ||
+    normalized === "baseline module" ||
+    normalized === "module 1" ||
+    normalized === "module 1 baseline"
+  ) {
     return { order: 1, variant: null };
   }
   if (normalized === "easy" || normalized === "easy module" || normalized === "module 2 easy") {
@@ -185,22 +194,37 @@ function extractImages(lines: string[]): { lines: string[]; figures: string[] } 
   return { lines: cleaned, figures };
 }
 
-function parseChoices(lines: string[]): { choices: Omit<Test6Choice, "explanation">[]; firstIndex: number } {
+function parseChoices(lines: string[]): {
+  choices: Omit<Test6Choice, "explanation">[];
+  firstIndex: number;
+  markedAnswers: string[];
+} {
   const choices: Omit<Test6Choice, "explanation">[] = [];
+  const markedAnswers: string[] = [];
   let firstIndex = -1;
   let current: { letter: string; parts: string[] } | null = null;
+  const pushCurrent = () => {
+    if (!current) return;
+    const rawText = current.parts.join(" ").trim();
+    const marked = TRAILING_CHOICE_ANSWER_RE.test(rawText);
+    choices.push({
+      letter: current.letter,
+      text: marked ? rawText.replace(TRAILING_CHOICE_ANSWER_RE, "").trim() : rawText,
+    });
+    if (marked) markedAnswers.push(current.letter);
+  };
   for (let index = 0; index < lines.length; index++) {
     const match = lines[index].match(CHOICE_RE);
     if (match) {
-      if (current) choices.push({ letter: current.letter, text: current.parts.join(" ").trim() });
+      pushCurrent();
       current = { letter: match[1].toUpperCase(), parts: match[2] ? [match[2]] : [] };
       if (firstIndex < 0) firstIndex = index;
     } else if (current) {
       current.parts.push(lines[index]);
     }
   }
-  if (current) choices.push({ letter: current.letter, text: current.parts.join(" ").trim() });
-  return { choices, firstIndex };
+  pushCurrent();
+  return { choices, firstIndex, markedAnswers };
 }
 
 function extractExplicitAnswer(lines: string[]): { lines: string[]; answer: string | null } {
@@ -321,10 +345,18 @@ function parseQuestionBlock(block: string[], module: Test6Module, position: numb
 
   if (module.section === "rw") {
     for (let index = content.length - 1; index >= 0; index--) {
-      const match = content[index].match(RW_META_RE);
+      const placeholder = content[index].match(RW_PLACEHOLDER_META_RE);
+      if (placeholder) {
+        content[index] = content[index].slice(0, placeholder.index).trim();
+        break;
+      }
+      const match =
+        content[index].match(RW_META_RE) ??
+        content[index].match(RW_REVERSED_META_RE) ??
+        content[index].match(RW_DIFFICULTY_ONLY_RE);
       if (!match) continue;
       difficulty = normalizeDifficulty(match[1]);
-      content[index] = content[index].replace(RW_META_RE, "").trim();
+      content[index] = content[index].slice(0, match.index).trim();
       break;
     }
   }
@@ -341,7 +373,17 @@ function parseQuestionBlock(block: string[], module: Test6Module, position: numb
     const stemLines = content.slice(0, parsedChoices.firstIndex);
     prompt = stemLines.pop()?.trim() ?? "";
     passage = stemLines.join("\n\n").trim() || null;
-    correct = explicitAnswer.answer?.match(/^[A-D]/i)?.[0]?.toUpperCase() ?? inferCorrectChoice(explanation);
+    const suppliedCorrect =
+      explicitAnswer.answer?.match(/^[A-D]/i)?.[0]?.toUpperCase() ?? inferCorrectChoice(explanation);
+    if (parsedChoices.markedAnswers.length > 1) {
+      notes.push(`multiple choices marked correct: ${parsedChoices.markedAnswers.join(", ")}`);
+    }
+    const markedCorrect =
+      parsedChoices.markedAnswers.length === 1 ? parsedChoices.markedAnswers[0] : null;
+    correct = markedCorrect ?? suppliedCorrect;
+    if (markedCorrect && suppliedCorrect && markedCorrect !== suppliedCorrect) {
+      notes.push(`choice marker ${markedCorrect} conflicts with supplied answer ${suppliedCorrect}`);
+    }
     if (!correct) notes.push("could not infer correct MC answer from explanation");
   } else {
     const stemLines = [...content];

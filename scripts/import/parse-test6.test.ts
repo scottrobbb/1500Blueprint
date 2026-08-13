@@ -32,6 +32,55 @@ test("parses Test 6 choices, supplied explanations, tables, and figures", () => 
   assert.match(question.choices[2].explanation ?? "", /^Choice C is the best answer/);
 });
 
+test("uses and removes trailing X choice markers in the Test 2 format", () => {
+  const modules = parseTest6Lines([
+    "Reading/Writing",
+    "Module 1, Baseline",
+    "1) WORD IN CONTEXT",
+    "A short passage.",
+    "Which choice completes the text? MEDIUM",
+    "A) speculative X",
+    "B) nonexistent",
+    "C) repudiated",
+    "D) preliminary",
+    "EXPLANATION",
+    "The marked choice best completes the text.",
+    "2) RHETORICAL SYNTHESIS",
+    "Another short passage.",
+    "Which choice is most logical? SOCIAL STUDIES, HARD",
+    "A) First",
+    "B) Second",
+    "C) Third",
+    "D) Fourth",
+    "EXPLANATION",
+    "Choice C is the best answer because it is logical.",
+    "3) TRANSITIONS",
+    "A final short passage.",
+    "Which choice is most logical? DIFFICULTY, TOPIC",
+    "A) However,",
+    "B) Likewise,",
+    "C) For example,",
+    "D) Therefore, X",
+    "EXPLANATION",
+    "Choice D is the best answer because it shows the result.",
+  ]);
+
+  assert.equal(modules.length, 1);
+  assert.equal(modules[0].order, 1);
+  const [marked, reversedMetadata, placeholderMetadata] = modules[0].questions;
+  assert.equal(marked.correct, "A");
+  assert.equal(marked.choices[0].text, "speculative");
+  assert.equal(marked.difficulty, "medium");
+  assert.equal(marked.needsReview, false);
+  assert.ok(marked.choices.every((choice) => !/\sX$/.test(choice.text)));
+  assert.equal(reversedMetadata.correct, "C");
+  assert.equal(reversedMetadata.difficulty, "hard");
+  assert.equal(placeholderMetadata.correct, "D");
+  assert.equal(placeholderMetadata.prompt, "Which choice is most logical?");
+  assert.equal(placeholderMetadata.difficulty, null);
+  assert.deepEqual(placeholderMetadata.notes, ["missing difficulty"]);
+});
+
 test("handles the source's one missing EXPLANATION heading", () => {
   const modules = parseTest6Lines([
     "Math",
