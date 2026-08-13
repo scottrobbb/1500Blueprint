@@ -5,9 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Author, CommunityPost, PostComment } from "@/lib/community/types";
 import { CATEGORY } from "@/lib/community/types";
-import { BackIcon, CommentIcon, EyeIcon, HeartIcon, KebabIcon, ShareIcon, TrashIcon } from "./icons";
+import { BackIcon, CommentIcon, EyeIcon, HeartIcon, PinIcon, ShareIcon, TrashIcon } from "./icons";
 import { Avatar } from "./Avatar";
 import { Attachment } from "./Attachment";
+import { PostMenu } from "./PostMenu";
 import { RichText } from "./RichText";
 
 // Who a reply composer is aimed at: always threads under a ROOT comment (one
@@ -140,7 +141,7 @@ export function PostDetail({
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [pinned, setPinned] = useState(post.pinned);
   const cat = CATEGORY[post.category];
   const canModeratePost = isAdmin || post.authorHandle === user.handle;
 
@@ -201,7 +202,6 @@ export function PostDetail({
   }
 
   async function deletePost() {
-    setMenuOpen(false);
     try {
       const res = await fetch(`/api/community/posts/${post.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
@@ -209,6 +209,17 @@ export function PostDetail({
       router.refresh();
     } catch {
       // no-op; the post stays on screen
+    }
+  }
+
+  async function togglePin() {
+    try {
+      const res = await fetch(`/api/community/posts/${post.id}/pin`, { method: "POST" });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { pinned: boolean };
+      setPinned(data.pinned);
+    } catch {
+      // no-op; badge keeps showing the prior pinned state
     }
   }
 
@@ -222,60 +233,50 @@ export function PostDetail({
         Back to community
       </Link>
 
-      <article className="rounded-xl border border-navy/10 bg-white p-4 sm:p-5">
-        <div className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-navy/45">
-          <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />
-          {cat.label}
-        </div>
-
-        <header className="flex items-center gap-2.5">
-          <Avatar src={post.author.avatarUrl} initials={post.author.initials} alt={post.author.name} size={42} />
-          <div className="min-w-0 flex-1 leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="truncate text-[15px] font-bold text-ink">{post.author.name}</span>
-              <span className="inline-flex flex-none items-center rounded-md bg-navy/[0.06] px-1.5 py-[1px] text-[10px] font-bold text-navy/55">
-                Lv {post.author.level}
-              </span>
-            </div>
-            <div className="truncate text-[12px] text-navy/45">
-              @{post.author.handle} · {post.timeAgo}
+      <article
+        className={`rounded-2xl border bg-white p-4 shadow-[0_2px_10px_rgba(11,42,91,0.06)] sm:p-5 ${
+          pinned ? "border-navy/15 border-t-2 border-t-gold" : "border-navy/10"
+        }`}
+      >
+        <header className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <Avatar
+              src={post.author.avatarUrl}
+              initials={post.author.initials}
+              alt={post.author.name}
+              size={42}
+              level={post.author.level}
+            />
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="truncate text-[15px] font-bold text-ink">{post.author.name}</div>
+              <div className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] text-navy/45">
+                {post.timeAgo}
+                <span className="h-1 w-1 flex-none rounded-full bg-navy/25" />
+                <span className={`h-1.5 w-1.5 flex-none rounded-full ${cat.dot}`} />
+                {cat.label}
+              </div>
             </div>
           </div>
 
-          {canModeratePost && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMenuOpen((o) => !o)}
-                aria-label="Post options"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-navy/40 transition-colors hover:bg-navy/[0.06] hover:text-navy"
-              >
-                <KebabIcon className="h-[18px] w-[18px]" />
-              </button>
-              {menuOpen && (
-                <>
-                  <button type="button" aria-hidden tabIndex={-1} onClick={() => setMenuOpen(false)} className="fixed inset-0 z-40 cursor-default" />
-                  <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl border border-navy/12 bg-white shadow-xl">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={deletePost}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold text-danger transition-colors hover:bg-danger-bg"
-                    >
-                      <TrashIcon className="h-[17px] w-[17px]" />
-                      Delete post
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          <div className="flex flex-none items-center gap-2.5">
+            {pinned && (
+              <span className="inline-flex items-center gap-1 text-[12px] font-bold text-gold-600">
+                <PinIcon className="h-3.5 w-3.5" />
+                Pinned
+              </span>
+            )}
+            <PostMenu
+              canDelete={canModeratePost}
+              onDelete={deletePost}
+              isAdmin={isAdmin}
+              pinned={pinned}
+              onTogglePin={togglePin}
+            />
+          </div>
         </header>
 
         <RichText text={post.body} className="mt-3 text-[15px] leading-[1.65] text-ink/90" />
-        {post.shot && <Attachment shot={post.shot} />}
+        {post.shot && <Attachment shot={post.shot} variant="full" />}
 
         <div className="mt-4 flex items-center gap-2 border-t border-navy/[0.07] pt-3">
           <button
@@ -308,7 +309,7 @@ export function PostDetail({
         </div>
       </article>
 
-      <div className="rounded-xl border border-navy/10 bg-white p-4">
+      <div className="rounded-2xl border border-navy/10 bg-white p-4 shadow-[0_2px_10px_rgba(11,42,91,0.06)]">
         <div className="flex items-center justify-between border-b border-navy/[0.07] pb-3">
           <h2 className="font-display text-[15px] font-bold text-navy">
             {comments.length} {comments.length === 1 ? "comment" : "comments"}

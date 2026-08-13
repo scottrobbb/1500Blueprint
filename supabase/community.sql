@@ -32,6 +32,10 @@ create index if not exists community_posts_created_idx  on public.community_post
 create index if not exists community_posts_category_idx on public.community_posts(category);
 create index if not exists community_posts_author_idx   on public.community_posts(author_email);
 
+-- Pinning: see supabase/migrations/20260812143000_add_community_posts_pinned.sql
+-- (adds `pinned boolean not null default false`). Admin-only; pinned posts
+-- float to the top of the feed regardless of category filter.
+
 -- ---------------------------------------------------------------------------
 -- 2. community_comments — one row per comment (flat; replies deleted-cascade).
 -- ---------------------------------------------------------------------------

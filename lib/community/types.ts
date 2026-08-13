@@ -33,6 +33,10 @@ export type PostComment = {
   parentId: string | null;
 };
 
+// A commenter's face for the list-card "recent commenters" avatar stack — just
+// enough to render an <Avatar>, not a full Author (no name/handle/level needed).
+export type CommenterAvatar = { initials: string; avatarUrl?: string | null };
+
 export type CommunityPost = {
   id: string;
   author: Author;
@@ -46,6 +50,10 @@ export type CommunityPost = {
   commentCount: number;
   views: number;
   comments?: PostComment[];
+  pinned: boolean;
+  // Populated by listPosts only (for the feed footer); absent/empty elsewhere.
+  recentCommenters?: CommenterAvatar[];
+  lastCommentAt?: string | null;
 };
 
 // A homepage notification: someone @mentioned you, or replied to your comment.

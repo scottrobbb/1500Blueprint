@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isAdminEmail } from "@/lib/auth/admin";
 import type {
   Author,
+  CommenterAvatar,
   CommunityCategory,
   CommunityPost,
   PostComment,
@@ -31,8 +32,13 @@ type PostRow = {
   image_url: string | null;
   view_count: number;
   created_at: string;
+  pinned: boolean;
   community_comments?: { count: number }[] | null;
   community_likes?: { count: number }[] | null;
+  // Each post's own newest-first slice (referencedTable order/limit in listPosts),
+  // used for the feed footer's "recent commenters" avatar stack. Absent on rows
+  // fetched via POST_BASE alone (createPost) — mapPost treats that as [].
+  recent_comments?: { author_email: string; author_initials: string; created_at: string }[] | null;
 };
 
 type CommentRow = {
@@ -49,8 +55,13 @@ type CommentRow = {
 };
 
 const POST_BASE =
-  "id,author_email,author_name,author_initials,author_handle,author_level,category,body,image_url,view_count,created_at";
-const POST_SELECT = `${POST_BASE},community_comments(count),community_likes(count)`;
+  "id,author_email,author_name,author_initials,author_handle,author_level,category,body,image_url,view_count,created_at,pinned";
+// recent_comments is an aliased second embed of the same comments table so
+// PostgREST returns each post's own newest-first slice (referencedTable
+// order/limit in listPosts) — no separate query needed for the avatar stack.
+const POST_SELECT =
+  `${POST_BASE},community_comments(count),community_likes(count),` +
+  `recent_comments:community_comments(author_email,author_initials,created_at)`;
 
 // Comments select "*" (not an explicit column list) so the same code works
 // before AND after the reply migration adds parent_id — a listed-but-missing
@@ -73,7 +84,26 @@ export function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-function mapPost(row: PostRow, liked: Set<string>, avatarUrl: string | null = null): CommunityPost {
+// First 3 DISTINCT commenters from a newest-first slice, resolving each one's
+// avatar from the same batch lookup used for the post author.
+function dedupeCommenters(
+  rows: { author_email: string; author_initials: string }[],
+  avatars: Map<string, string | null>,
+  limit = 3,
+): CommenterAvatar[] {
+  const seen = new Set<string>();
+  const out: CommenterAvatar[] = [];
+  for (const r of rows) {
+    if (seen.has(r.author_email)) continue;
+    seen.add(r.author_email);
+    out.push({ initials: r.author_initials, avatarUrl: avatars.get(r.author_email) ?? null });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function mapPost(row: PostRow, liked: Set<string>, avatars: Map<string, string | null>): CommunityPost {
+  const recent = row.recent_comments ?? [];
   return {
     id: row.id,
     author: {
@@ -81,7 +111,7 @@ function mapPost(row: PostRow, liked: Set<string>, avatarUrl: string | null = nu
       handle: row.author_handle,
       initials: row.author_initials,
       level: row.author_level,
-      avatarUrl,
+      avatarUrl: avatars.get(row.author_email) ?? null,
     },
     authorHandle: row.author_handle,
     category: row.category as CommunityCategory,
@@ -94,6 +124,9 @@ function mapPost(row: PostRow, liked: Set<string>, avatarUrl: string | null = nu
     liked: liked.has(row.id),
     commentCount: row.community_comments?.[0]?.count ?? 0,
     views: row.view_count,
+    pinned: row.pinned,
+    recentCommenters: dedupeCommenters(recent, avatars),
+    lastCommentAt: recent[0] ? relativeTime(recent[0].created_at) : null,
   };
 }
 
@@ -151,17 +184,25 @@ export async function listPosts(
   let query = supabaseAdmin()
     .from("community_posts")
     .select(POST_SELECT)
+    .order("pinned", { ascending: false })
     .order("created_at", { ascending: false })
+    .order("created_at", { ascending: false, referencedTable: "recent_comments" })
+    .limit(6, { referencedTable: "recent_comments" })
     .limit(100);
   if (category) query = query.eq("category", category);
 
   const { data } = await query;
   const rows = (data as PostRow[] | null) ?? [];
+  const emails = new Set<string>();
+  for (const r of rows) {
+    emails.add(r.author_email);
+    for (const c of r.recent_comments ?? []) emails.add(c.author_email);
+  }
   const [liked, avatars] = await Promise.all([
     likedIdsFor(viewerEmail, rows.map((r) => r.id)),
-    avatarsByEmail(rows.map((r) => r.author_email)),
+    avatarsByEmail([...emails]),
   ]);
-  return rows.map((r) => mapPost(r, liked, avatars.get(r.author_email) ?? null));
+  return rows.map((r) => mapPost(r, liked, avatars));
 }
 
 export async function getPost(id: string, viewerEmail: string): Promise<CommunityPost | null> {
@@ -185,7 +226,7 @@ export async function getPost(id: string, viewerEmail: string): Promise<Communit
 
   // One avatar lookup covers the post author and every commenter.
   const avatars = await avatarsByEmail([row.author_email, ...commentRows.map((c) => c.author_email)]);
-  const post = mapPost(row, liked, avatars.get(row.author_email) ?? null);
+  const post = mapPost(row, liked, avatars);
   post.comments = commentRows.map((c) => mapComment(c, avatars.get(c.author_email) ?? null));
 
   return post;
@@ -253,7 +294,7 @@ export async function createPost(
     .select(POST_BASE)
     .single();
   if (error || !data) return null;
-  const post = mapPost(data as PostRow, new Set(), author.avatarUrl ?? null);
+  const post = mapPost(data as PostRow, new Set(), new Map([[author.email, author.avatarUrl ?? null]]));
   post.comments = [];
   return post;
 }
@@ -337,4 +378,14 @@ export async function toggleLike(
     .select("*", { count: "exact", head: true })
     .eq("post_id", postId);
   return { liked, likes: count ?? 0 };
+}
+
+// Admin-only pin toggle — the role check lives in the route
+// (app/api/community/posts/[id]/pin/route.ts), not here.
+export async function togglePinned(id: string): Promise<{ pinned: boolean }> {
+  const db = supabaseAdmin();
+  const { data } = await db.from("community_posts").select("pinned").eq("id", id).maybeSingle();
+  const next = !(data as { pinned: boolean } | null)?.pinned;
+  await db.from("community_posts").update({ pinned: next }).eq("id", id);
+  return { pinned: next };
 }

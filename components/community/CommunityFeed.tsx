@@ -9,6 +9,11 @@ import { PostCard } from "./PostCard";
 
 type Filter = CommunityCategory | "all";
 
+// Pinned posts float to the top; filter preserves relative order otherwise.
+function withPinnedFirst(posts: CommunityPost[]): CommunityPost[] {
+  return [...posts.filter((p) => p.pinned), ...posts.filter((p) => !p.pinned)];
+}
+
 // Pull the first image out of a paste or drop (clipboard screenshots arrive as
 // image/png). Index-based loop — DataTransferItemList isn't iterable.
 function imageFromTransfer(data: DataTransfer | null): File | null {
@@ -263,7 +268,7 @@ export function CommunityFeed({
 
   return (
     <div className="flex flex-col gap-3">
-      <Composer user={user} onCreated={(p) => setPosts((prev) => [p, ...prev])} />
+      <Composer user={user} onCreated={(p) => setPosts((prev) => withPinnedFirst([p, ...prev]))} />
       <div className="py-0.5">
         <FilterChips value={filter} onChange={setFilter} />
       </div>
@@ -288,6 +293,9 @@ export function CommunityFeed({
               currentUser={user}
               isAdmin={isAdmin}
               onDelete={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
+              onPinChange={(id, pinned) =>
+                setPosts((prev) => withPinnedFirst(prev.map((p) => (p.id === id ? { ...p, pinned } : p))))
+              }
             />
           ))}
         </div>

@@ -88,6 +88,20 @@ export function TrashIcon({ className }: IconProps) {
   );
 }
 
+export function PinIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">
+      <path
+        d="M14.5 3.5 20.5 9.5l-3 3-1-1-4 4 .5 4-1.4 1.4-3.4-3.4-4 4-1.4-1.4 4-4-3.4-3.4L4.9 11l4 .5 4-4-1-1Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function BackIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">

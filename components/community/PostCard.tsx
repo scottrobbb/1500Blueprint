@@ -5,43 +5,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Author, CommunityPost } from "@/lib/community/types";
 import { CATEGORY } from "@/lib/community/types";
-import {
-  CommentIcon,
-  EyeIcon,
-  HeartIcon,
-  KebabIcon,
-  ShareIcon,
-  TrashIcon,
-} from "./icons";
+import { CommentIcon, HeartIcon, PinIcon } from "./icons";
 import { Avatar } from "./Avatar";
+import { AvatarStack } from "./AvatarStack";
 import { Attachment } from "./Attachment";
+import { PostMenu } from "./PostMenu";
 import { RichText } from "./RichText";
-
-// Small level chip shown next to the author name (Whop puts a creator/verified
-// badge here; our app is level-based, so surface the level).
-function LevelBadge({ level }: { level: number }) {
-  return (
-    <span className="inline-flex flex-none items-center rounded-md bg-navy/[0.06] px-1.5 py-[1px] text-[10px] font-bold text-navy/55">
-      Lv {level}
-    </span>
-  );
-}
 
 export function PostCard({
   post,
   currentUser,
   isAdmin = false,
   onDelete,
+  onPinChange,
 }: {
   post: CommunityPost;
   currentUser: Author;
   isAdmin?: boolean;
   onDelete?: (id: string) => void;
+  onPinChange?: (id: string, pinned: boolean) => void;
 }) {
   const router = useRouter();
   const [liked, setLiked] = useState(post.liked);
   const [likes, setLikes] = useState(post.likes);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [pinned, setPinned] = useState(post.pinned);
   const [busy, setBusy] = useState(false);
   const cat = CATEGORY[post.category];
   const canDelete = isAdmin || post.authorHandle === currentUser.handle;
@@ -62,8 +49,19 @@ export function PostCard({
     }
   }
 
+  async function togglePin() {
+    try {
+      const res = await fetch(`/api/community/posts/${post.id}/pin`, { method: "POST" });
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as { pinned: boolean };
+      setPinned(data.pinned);
+      onPinChange?.(post.id, data.pinned);
+    } catch {
+      // no-op; card keeps showing its prior pinned state
+    }
+  }
+
   async function remove() {
-    setMenuOpen(false);
     setBusy(true);
     try {
       const res = await fetch(`/api/community/posts/${post.id}`, { method: "DELETE" });
@@ -76,82 +74,54 @@ export function PostCard({
 
   return (
     <article
-      className={`rounded-xl border border-navy/10 bg-white transition-colors hover:border-navy/[0.16] ${
-        busy ? "pointer-events-none opacity-50" : ""
-      }`}
+      className={`rounded-2xl border bg-white shadow-[0_2px_10px_rgba(11,42,91,0.06)] transition-colors ${
+        pinned ? "border-navy/15 border-t-2 border-t-gold hover:border-gold/50" : "border-navy/10 hover:border-navy/[0.16]"
+      } ${busy ? "pointer-events-none opacity-50" : ""}`}
     >
       <div className="px-4 pt-3.5">
-        <div className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-navy/45">
-          <span className={`h-1.5 w-1.5 rounded-full ${cat.dot}`} />
-          {cat.label}
-        </div>
-
-        <div className="flex items-center gap-2.5">
-          <Avatar src={post.author.avatarUrl} initials={post.author.initials} alt={post.author.name} size={38} />
-          <div className="min-w-0 flex-1 leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="truncate text-[14px] font-bold text-ink">{post.author.name}</span>
-              <LevelBadge level={post.author.level} />
-            </div>
-            <div className="truncate text-[12px] text-navy/45">
-              @{post.author.handle} · {post.timeAgo}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <Avatar
+              src={post.author.avatarUrl}
+              initials={post.author.initials}
+              alt={post.author.name}
+              size={38}
+              level={post.author.level}
+            />
+            <div className="min-w-0 flex-1 leading-tight">
+              <div className="truncate text-[14px] font-bold text-ink">{post.author.name}</div>
+              <div className="mt-0.5 flex items-center gap-1.5 truncate text-[12px] text-navy/45">
+                {post.timeAgo}
+                <span className="h-1 w-1 flex-none rounded-full bg-navy/25" />
+                <span className={`h-1.5 w-1.5 flex-none rounded-full ${cat.dot}`} />
+                {cat.label}
+              </div>
             </div>
           </div>
 
-          {canDelete && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setMenuOpen((o) => !o)}
-                aria-label="Post options"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                className="-mr-1 inline-flex h-8 w-8 items-center justify-center rounded-full text-navy/40 transition-colors hover:bg-navy/[0.06] hover:text-navy"
-              >
-                <KebabIcon className="h-[18px] w-[18px]" />
-              </button>
-              {menuOpen && (
-                <>
-                  <button
-                    type="button"
-                    aria-hidden
-                    tabIndex={-1}
-                    onClick={() => setMenuOpen(false)}
-                    className="fixed inset-0 z-40 cursor-default"
-                  />
-                  <div
-                    role="menu"
-                    className="absolute right-0 top-full z-50 mt-1 w-44 overflow-hidden rounded-xl border border-navy/12 bg-white shadow-xl"
-                  >
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={remove}
-                      className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm font-semibold text-danger transition-colors hover:bg-danger-bg"
-                    >
-                      <TrashIcon className="h-[17px] w-[17px]" />
-                      Delete post
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+          <div className="flex flex-none items-center gap-2.5">
+            {pinned && (
+              <span className="inline-flex items-center gap-1 text-[12px] font-bold text-gold-600">
+                <PinIcon className="h-3.5 w-3.5" />
+                Pinned
+              </span>
+            )}
+            <PostMenu canDelete={canDelete} onDelete={remove} isAdmin={isAdmin} pinned={pinned} onTogglePin={togglePin} />
+          </div>
         </div>
 
-        {/* Body navigates to the thread on click; inner links stopPropagation,
-            so a URL in a post opens the URL, not the thread. (A nested <Link>
-            here would render invalid <a>-in-<a> around RichText links.) */}
+        {/* Clicking navigates to the thread; inner links stopPropagation, so a
+            URL in a post opens the URL, not the thread. */}
         <div
           onClick={() => router.push(`/community/${post.id}`)}
-          className="mt-2.5 block cursor-pointer"
+          className="mt-2.5 flex cursor-pointer items-start gap-3"
         >
-          <RichText text={post.body} className="text-[14px] leading-[1.6] text-ink/85" />
-          {post.shot && <Attachment shot={post.shot} />}
+          <RichText text={post.body} className="line-clamp-2 min-w-0 flex-1 text-[14px] leading-[1.6] text-ink/85" />
+          {post.shot && <Attachment shot={post.shot} variant="thumb" />}
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 px-4 pb-3">
+      <div className="mt-3 flex items-center gap-2 px-4 pb-3.5">
         <button
           type="button"
           onClick={toggleLike}
@@ -173,31 +143,16 @@ export function PostCard({
           {post.commentCount}
         </Link>
 
-        <div className="ml-auto flex items-center gap-3 text-navy/40">
-          <span className="inline-flex items-center gap-1 text-[12.5px] font-medium">
-            <EyeIcon className="h-4 w-4" />
-            {post.views}
-          </span>
-          <button
-            type="button"
-            aria-label="Share"
-            className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[13px] font-semibold text-navy/55 transition-colors hover:bg-navy/[0.04] hover:text-navy"
+        {post.commentCount > 0 && (
+          <Link
+            href={`/community/${post.id}`}
+            className="ml-auto flex items-center gap-2 text-[12.5px] font-semibold text-brand-600 transition-colors hover:text-brand"
           >
-            <ShareIcon className="h-[17px] w-[17px]" />
-            <span className="hidden sm:inline">Share</span>
-          </button>
-        </div>
+            <AvatarStack items={post.recentCommenters ?? []} size={22} />
+            New comment {post.lastCommentAt} ago
+          </Link>
+        )}
       </div>
-
-      <Link
-        href={`/community/${post.id}`}
-        className="flex items-center gap-2.5 border-t border-navy/[0.07] px-4 py-2.5"
-      >
-        <Avatar src={currentUser.avatarUrl} initials={currentUser.initials} size={28} />
-        <span className="flex-1 rounded-full bg-haze px-3.5 py-1.5 text-[13px] text-navy/45">
-          Write a comment…
-        </span>
-      </Link>
     </article>
   );
 }
