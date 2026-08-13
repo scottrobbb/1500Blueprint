@@ -97,44 +97,6 @@ export function currentQuestion(test: PracticeTest, s: TestState): Question | un
   return activeModule(test, s).questions[s.qIndex];
 }
 
-export function reconcileElapsedTimer(
-  test: PracticeTest,
-  state: TestState,
-  savedAt: string | undefined,
-  now: number,
-): TestState {
-  if (state.phase !== "module" && state.phase !== "review" && state.phase !== "break") {
-    return state;
-  }
-  const savedAtMs = savedAt ? Date.parse(savedAt) : Number.NaN;
-  if (!Number.isFinite(savedAtMs) || now <= savedAtMs) return state;
-
-  const elapsedSeconds = Math.floor((now - savedAtMs) / 1000);
-  if (elapsedSeconds <= 0) return state;
-  const consumedSeconds = Math.min(elapsedSeconds, Math.max(0, state.timeLeft));
-  const timeLeft = Math.max(0, state.timeLeft - elapsedSeconds);
-
-  if (state.phase === "module") {
-    const question = currentQuestion(test, state);
-    const perQuestionTime = question
-      ? {
-          ...state.perQuestionTime,
-          [question.id]: (state.perQuestionTime[question.id] ?? 0) + consumedSeconds,
-        }
-      : state.perQuestionTime;
-    return {
-      ...state,
-      timeLeft,
-      perQuestionTime,
-      phase: timeLeft === 0 ? "moduleOver" : "module",
-    };
-  }
-  if (state.phase === "review") {
-    return { ...state, timeLeft, phase: timeLeft === 0 ? "moduleOver" : "review" };
-  }
-  return { ...state, timeLeft };
-}
-
 export function makeReducer(test: PracticeTest) {
   const gridQuestionIds = new Set(
     test.sections.flatMap((section) =>

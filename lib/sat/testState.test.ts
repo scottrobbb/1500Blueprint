@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { sampleTest } from "./sampleTest";
-import { initialState, makeReducer, reconcileElapsedTimer, type TestState } from "./testState";
+import { initialState, makeReducer, type TestState } from "./testState";
 
 test("extended time adds 50% and a five-minute break between modules", () => {
   const reduce = makeReducer(sampleTest);
@@ -69,34 +69,15 @@ test("the reducer stores five grid-in characters plus an optional minus sign", (
   assert.equal(state.answers[gridQuestion.id], "-12.34");
 });
 
-test("a resumed module timer subtracts wall-clock time spent away", () => {
+test("resuming a saved module is a true pause — timeLeft carries over exactly", () => {
   const reduce = makeReducer(sampleTest);
   const started = reduce(initialState(), { type: "START" });
-  const question = sampleTest.sections[0].module1.questions[0];
-  const restored = reconcileElapsedTimer(
-    sampleTest,
-    started,
-    "2026-08-11T00:00:00.000Z",
-    Date.parse("2026-08-11T00:00:25.000Z"),
-  );
+  const saved: TestState = { ...started, timeLeft: 217 };
 
-  assert.equal(restored.timeLeft, started.timeLeft - 25);
-  assert.equal(restored.perQuestionTime[question.id], 25);
-});
+  // Save-and-exit must not drain the clock in the background: however long the
+  // student was away, RESUME installs the saved state verbatim.
+  const resumed = reduce(saved, { type: "RESUME", state: saved });
 
-test("a module that expires while away resumes at module over", () => {
-  const state: TestState = {
-    ...initialState(),
-    phase: "review",
-    timeLeft: 10,
-  };
-  const restored = reconcileElapsedTimer(
-    sampleTest,
-    state,
-    "2026-08-11T00:00:00.000Z",
-    Date.parse("2026-08-11T00:00:30.000Z"),
-  );
-
-  assert.equal(restored.timeLeft, 0);
-  assert.equal(restored.phase, "moduleOver");
+  assert.equal(resumed.timeLeft, 217);
+  assert.equal(resumed.phase, saved.phase);
 });

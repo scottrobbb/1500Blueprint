@@ -9,7 +9,6 @@ import {
   formatTime,
   initialState,
   makeReducer,
-  reconcileElapsedTimer,
   type TestState,
 } from "@/lib/sat/testState";
 import { scoreTest } from "@/lib/sat/scoring";
@@ -33,36 +32,24 @@ import { DevJumpMenu } from "./DevJumpMenu";
 
 const STUDENT_NAME = "Shouqi Han";
 
-function parseTimestamp(value?: string): number | undefined {
-  if (!value) return undefined;
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : undefined;
-}
-
 // Clamp a saved (possibly stale) state against the live test so a shrunk or
 // re-imported form can never strand the runner on an out-of-bounds question.
 // Returns null when the saved section/module no longer exists at all.
-function sanitizeResumeState(
-  s: TestState,
-  test: PracticeTest,
-  savedAt?: string,
-  now?: number,
-): TestState | null {
+// Save-and-exit is a true pause: timeLeft is restored exactly as saved,
+// regardless of how long the student was away.
+function sanitizeResumeState(s: TestState, test: PracticeTest): TestState | null {
   if (s.sectionIndex < 0 || s.sectionIndex >= test.sections.length) return null;
   const section = test.sections[s.sectionIndex];
   const variant = s.routed[section.id] ?? "easy";
   const mod = s.moduleOrder === 1 ? section.module1 : section.module2[variant];
   if (!mod || mod.questions.length === 0) return null;
   const qIndex = Math.min(Math.max(0, s.qIndex), mod.questions.length - 1);
-  const sanitized = {
+  return {
     ...s,
     qIndex,
     extendedTime: Boolean(s.extendedTime),
     breakTarget: s.breakTarget === "module2" ? "module2" : s.phase === "break" ? "nextSection" : undefined,
   } satisfies TestState;
-  return savedAt && now !== undefined
-    ? reconcileElapsedTimer(test, sanitized, savedAt, now)
-    : sanitized;
 }
 
 export function TestRunner({
@@ -94,13 +81,6 @@ export function TestRunner({
   // Latest values for the unload/interval savers, which must not re-bind per change.
   const stateRef = useRef(state);
   const highlightsRef = useRef(highlights);
-  const resumeClockRef = useRef<{ serverNow: number; clientStartedAt: number } | null>(null);
-  useEffect(() => {
-    const serverNow = parseTimestamp(resumeState?.loadedAt);
-    resumeClockRef.current = serverNow !== undefined
-      ? { serverNow, clientStartedAt: Date.now() }
-      : null;
-  }, [resumeState?.loadedAt]);
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
@@ -111,11 +91,7 @@ export function TestRunner({
   // The saved state, clamped to the live test once. Drives both the resume offer
   // and the actual RESUME dispatch so neither can use an out-of-range index.
   const safeResume = useMemo(
-    () => {
-      if (!resumeState) return null;
-      const loadedAt = parseTimestamp(resumeState.loadedAt);
-      return sanitizeResumeState(resumeState.state, test, resumeState.savedAt, loadedAt);
-    },
+    () => (resumeState ? sanitizeResumeState(resumeState.state, test) : null),
     [resumeState, test],
   );
 
@@ -274,16 +250,7 @@ export function TestRunner({
 
   function handleResume() {
     if (!resumeState) return;
-    const clock = resumeClockRef.current;
-    const currentNow = clock
-      ? clock.serverNow + (Date.now() - clock.clientStartedAt)
-      : Date.now();
-    const currentResume = sanitizeResumeState(
-      resumeState.state,
-      test,
-      resumeState.savedAt,
-      currentNow,
-    );
+    const currentResume = sanitizeResumeState(resumeState.state, test);
     if (!currentResume) return;
     setExtendedTime(Boolean(currentResume.extendedTime));
     setHighlights(resumeState?.highlights ?? {});
