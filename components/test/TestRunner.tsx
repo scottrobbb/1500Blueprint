@@ -34,6 +34,17 @@ import { DevJumpMenu } from "./DevJumpMenu";
 
 const STUDENT_NAME = "Shouqi Han";
 
+// True for an actual browser reload or back/forward navigation (not a fresh
+// visit to the URL). The server has no way to know this — it's only knowable
+// once the page has mounted in a real browser — so this must only be read
+// from an effect, never during the initial render, or the server and client's
+// first render would diverge and React would throw a hydration mismatch.
+function isReloadNavigation(): boolean {
+  if (typeof performance === "undefined") return false;
+  const [entry] = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
+  return entry?.type === "reload" || entry?.type === "back_forward";
+}
+
 // Clamp a saved (possibly stale) state against the live test so a shrunk or
 // re-imported form can never strand the runner on an out-of-bounds question.
 // Returns null when the saved section/module no longer exists at all.
@@ -258,6 +269,31 @@ export function TestRunner({
     setHighlights(resumeState?.highlights ?? {});
     dispatch({ type: "RESUME", state: currentResume });
   }
+
+  // A refresh (or back/forward) mid-module must be invisible: silently resume
+  // into the exact question/review/break, timer included, instead of showing
+  // the "Resume where you left off?" prompt a deliberate return (e.g. from the
+  // tests list after Save and Exit) still shows. This has to live in an effect
+  // — isReloadNavigation() is only knowable client-side post-mount, so
+  // deciding it during render would make the server and client's first render
+  // diverge (a hydration mismatch). Runs once; the ref guards against Strict
+  // Mode's dev double-invoke re-dispatching.
+  const autoResumedRef = useRef(false);
+  useEffect(() => {
+    if (autoResumedRef.current) return;
+    if (state.phase !== "intro") return;
+    if (!resumeState || !safeResume) return;
+    if (safeResume.phase !== "module" && safeResume.phase !== "review" && safeResume.phase !== "break") return;
+    if (!isReloadNavigation()) return;
+    autoResumedRef.current = true;
+    const currentResume = sanitizeResumeState(resumeState.state, test);
+    if (!currentResume) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see comment above
+    setExtendedTime(currentResume.extendedTime);
+    setHighlights(resumeState.highlights ?? {});
+    dispatch({ type: "RESUME", state: currentResume });
+  }, [resumeState, safeResume, state.phase, test]);
+
   function handleStartOver() {
     setResumeDismissed(true);
     void fetch(`/api/tests/session?testSlug=${encodeURIComponent(slug)}`, {
