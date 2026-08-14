@@ -97,8 +97,8 @@ export default async function PracticeTestsPage() {
       <main className="mx-auto w-full max-w-[980px] px-6 pb-12 pt-7">
         <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-[13px] font-semibold text-navy/70">
           {isAdmin
-            ? "I am updating tests 2-5 for the fall SATs. It will take 1-2 weeks to update all of them. Tests 1, 6, and 7 are published. You can access every test as an admin."
-            : "I am updating tests 2-5 for the fall SATs. It will take 1-2 weeks to update all of them. Tests 1, 6, and 7 are published."}
+            ? "I am updating tests 3-5 for the fall SATs. It will take 1-2 weeks to update all of them. Tests 1, 2, 6, and 7 are published. You can access every test as an admin."
+            : "I am updating tests 3-5 for the fall SATs. It will take 1-2 weeks to update all of them. Tests 1, 2, 6, and 7 are published."}
         </div>
         <div className="mb-4 flex items-center gap-3">
           <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-navy/55">Choose a test</h2>

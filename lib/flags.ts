@@ -1,7 +1,6 @@
-// Practice Tests 2-5 remain student-locked while Tests 1, 6, and 7 are public. Admins keep
-// access to every test for QA. Pure + edge-safe for proxy and server routes.
+// Practice Tests 3-5 remain student-locked while Tests 1, 2, 6, and 7 are public. Admins
+// keep access to every test for QA. Pure + edge-safe for proxy and server routes.
 export const LOCKED_PRACTICE_TEST_SLUGS = [
-  "practice-test-2",
   "practice-test-3",
   "practice-test-4",
   "practice-test-5",
