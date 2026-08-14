@@ -34,15 +34,35 @@ import { DevJumpMenu } from "./DevJumpMenu";
 
 const STUDENT_NAME = "Shouqi Han";
 
-// True for an actual browser reload or back/forward navigation (not a fresh
-// visit to the URL). The server has no way to know this — it's only knowable
-// once the page has mounted in a real browser — so this must only be read
-// from an effect, never during the initial render, or the server and client's
-// first render would diverge and React would throw a hydration mismatch.
-function isReloadNavigation(): boolean {
-  if (typeof performance === "undefined") return false;
-  const [entry] = performance.getEntriesByType("navigation") as PerformanceNavigationTiming[];
-  return entry?.type === "reload" || entry?.type === "back_forward";
+// sessionStorage key marking "this tab was actively mid-module/review/break on
+// this test slug, and hasn't explicitly exited since." Deliberately NOT based
+// on the Performance Navigation Timing API (`performance.getEntriesByType
+// ("navigation")`) — that reflects the tab's ORIGINAL document load for its
+// entire lifetime and never resets on a Next.js client-side route change, so
+// it can't distinguish "refreshed this test page" from "clicked a link back
+// into a test after the tab was reloaded at some earlier, unrelated point" —
+// which incorrectly auto-resumed on an ordinary click once the tab had ever
+// been reloaded. sessionStorage set/cleared explicitly below has no such gap.
+function armedKey(slug: string): string {
+  return `test-active:${slug}`;
+}
+function isArmed(slug: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.sessionStorage.getItem(armedKey(slug)) === "1";
+  } catch {
+    return false;
+  }
+}
+function setArmed(slug: string, armed: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (armed) window.sessionStorage.setItem(armedKey(slug), "1");
+    else window.sessionStorage.removeItem(armedKey(slug));
+  } catch {
+    // Private-browsing/storage-disabled: fall back to always showing the
+    // manual "Resume where you left off?" prompt instead of auto-resuming.
+  }
 }
 
 // Clamp a saved (possibly stale) state against the live test so a shrunk or
@@ -270,21 +290,32 @@ export function TestRunner({
     dispatch({ type: "RESUME", state: currentResume });
   }
 
+  // Keep the "armed" flag in sync with whether this tab is actively mid-test,
+  // so a later mount (e.g. after a refresh) can tell that apart from a
+  // deliberate return. Only module/review/break count as "active" — arming
+  // during "moduleOver" would incorrectly survive a Save and Exit that
+  // happens to land in that instant, and results/intro never need it.
+  useEffect(() => {
+    if (state.phase === "module" || state.phase === "review" || state.phase === "break") {
+      setArmed(slug, true);
+    }
+  }, [state.phase, slug]);
+
   // A refresh (or back/forward) mid-module must be invisible: silently resume
   // into the exact question/review/break, timer included, instead of showing
   // the "Resume where you left off?" prompt a deliberate return (e.g. from the
   // tests list after Save and Exit) still shows. This has to live in an effect
-  // — isReloadNavigation() is only knowable client-side post-mount, so
-  // deciding it during render would make the server and client's first render
-  // diverge (a hydration mismatch). Runs once; the ref guards against Strict
-  // Mode's dev double-invoke re-dispatching.
+  // — sessionStorage is only knowable client-side post-mount, so deciding it
+  // during render would make the server and client's first render diverge (a
+  // hydration mismatch). Runs once; the ref guards against Strict Mode's dev
+  // double-invoke re-dispatching.
   const autoResumedRef = useRef(false);
   useEffect(() => {
     if (autoResumedRef.current) return;
     if (state.phase !== "intro") return;
     if (!resumeState || !safeResume) return;
     if (safeResume.phase !== "module" && safeResume.phase !== "review" && safeResume.phase !== "break") return;
-    if (!isReloadNavigation()) return;
+    if (!isArmed(slug)) return;
     autoResumedRef.current = true;
     const currentResume = sanitizeResumeState(resumeState.state, test);
     if (!currentResume) return;
@@ -292,10 +323,11 @@ export function TestRunner({
     setExtendedTime(currentResume.extendedTime);
     setHighlights(resumeState.highlights ?? {});
     dispatch({ type: "RESUME", state: currentResume });
-  }, [resumeState, safeResume, state.phase, test]);
+  }, [resumeState, safeResume, state.phase, test, slug]);
 
   function handleStartOver() {
     setResumeDismissed(true);
+    setArmed(slug, false);
     void fetch(`/api/tests/session?testSlug=${encodeURIComponent(slug)}`, {
       method: "DELETE",
       keepalive: true,
@@ -407,6 +439,7 @@ export function TestRunner({
       onOpenLineReader={() => setLineReaderOn(true)}
       onExit={() => {
         persist();
+        setArmed(slug, false);
         router.push("/practice-test");
       }}
     />
