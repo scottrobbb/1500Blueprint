@@ -264,7 +264,7 @@ export function QuestionScreen(props: Props) {
           ) : (
             <QuestionContent
               text={question.passage ?? ""}
-              pClassName="mt-5 text-center font-serif text-xl text-exam-ink"
+              pClassName="mt-5 text-left font-serif text-xl text-exam-ink"
             />
           ))}
         <div className="mt-5">{!(isRW && hasPassage) && figure}{prompt}</div>
