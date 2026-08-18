@@ -16,12 +16,14 @@ export function PostCard({
   post,
   currentUser,
   isAdmin = false,
+  threadHrefBase = "/community",
   onDelete,
   onPinChange,
 }: {
   post: CommunityPost;
   currentUser: Author;
   isAdmin?: boolean;
+  threadHrefBase?: string;
   onDelete?: (id: string) => void;
   onPinChange?: (id: string, pinned: boolean) => void;
 }) {
@@ -113,7 +115,7 @@ export function PostCard({
         {/* Clicking navigates to the thread; inner links stopPropagation, so a
             URL in a post opens the URL, not the thread. */}
         <div
-          onClick={() => router.push(`/community/${post.id}`)}
+          onClick={() => router.push(`${threadHrefBase}/${post.id}`)}
           className="mt-2.5 flex cursor-pointer items-start gap-3"
         >
           <RichText text={post.body} className="line-clamp-2 min-w-0 flex-1 text-[14px] leading-[1.6] text-ink/85" />
@@ -136,7 +138,7 @@ export function PostCard({
           {likes}
         </button>
         <Link
-          href={`/community/${post.id}`}
+          href={`${threadHrefBase}/${post.id}`}
           className="inline-flex items-center gap-1.5 rounded-full border border-navy/12 px-3 py-1.5 text-[13px] font-semibold text-navy/60 transition-colors hover:bg-navy/[0.04]"
         >
           <CommentIcon className="h-[17px] w-[17px]" />
@@ -145,7 +147,7 @@ export function PostCard({
 
         {post.commentCount > 0 && (
           <Link
-            href={`/community/${post.id}`}
+            href={`${threadHrefBase}/${post.id}`}
             className="ml-auto flex items-center gap-2 text-[12.5px] font-semibold text-brand-600 transition-colors hover:text-brand"
           >
             <AvatarStack items={post.recentCommenters ?? []} size={22} />

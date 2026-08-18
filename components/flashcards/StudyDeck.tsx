@@ -26,10 +26,12 @@ export function StudyDeck({
   title,
   cards,
   backHref,
+  variant = "default",
 }: {
   title: string;
   cards: FlashcardCard[];
   backHref: string;
+  variant?: "default" | "ultimate";
 }) {
   const [order, setOrder] = useState<number[]>(() => cards.map((_, i) => i));
   const [pos, setPos] = useState(0);
@@ -93,14 +95,14 @@ export function StudyDeck({
 
   if (cards.length === 0) {
     return (
-      <DrillShell title={title} eyebrow="Studying" exitHref={backHref} exitLabel="Set">
+      <StudyFrame title={title} backHref={backHref} variant={variant}>
         <div className="mx-auto mt-10 max-w-md rounded-card border border-navy/15 bg-white px-6 py-10 text-center">
           <p className="text-sm text-navy/55">This set has no cards to study yet.</p>
           <Link href={backHref} className={`${secondaryBtn} mt-5`}>
             Back to set
           </Link>
         </div>
-      </DrillShell>
+      </StudyFrame>
     );
   }
 
@@ -113,7 +115,7 @@ export function StudyDeck({
       .map(({ i }) => i);
 
     return (
-      <DrillShell title={title} eyebrow="Studying" exitHref={backHref} exitLabel="Set">
+      <StudyFrame title={title} backHref={backHref} variant={variant}>
         <div className="mx-auto mt-6 max-w-md animate-pop-in rounded-card border border-navy/15 bg-white p-7 text-center shadow-pop">
           <div className={`${label} text-success-600`}>Round complete</div>
           <h2 className="mt-1 font-display text-3xl font-extrabold text-navy">
@@ -146,7 +148,7 @@ export function StudyDeck({
             </Link>
           </div>
         </div>
-      </DrillShell>
+      </StudyFrame>
     );
   }
 
@@ -174,11 +176,10 @@ export function StudyDeck({
   );
 
   return (
-    <DrillShell
+    <StudyFrame
       title={title}
-      eyebrow="Studying"
-      exitHref={backHref}
-      exitLabel="Set"
+      backHref={backHref}
+      variant={variant}
       center={center}
       right={shuffleButton}
     >
@@ -277,6 +278,45 @@ export function StudyDeck({
           Space to flip · 1 Still learning · 2 Got it
         </p>
       </div>
+    </StudyFrame>
+  );
+}
+
+function StudyFrame({
+  title,
+  backHref,
+  variant,
+  center,
+  right,
+  children,
+}: {
+  title: string;
+  backHref: string;
+  variant: "default" | "ultimate";
+  center?: ReactNode;
+  right?: ReactNode;
+  children: ReactNode;
+}) {
+  if (variant === "ultimate") {
+    return (
+      <div className="mx-auto w-full max-w-[980px] px-4 py-8 sm:px-7">
+        <header className="mb-6 flex flex-wrap items-center gap-4 rounded-[18px] border border-navy/10 bg-white p-4 shadow-pop sm:p-5">
+          <Link href={backHref} className="inline-flex min-h-11 items-center text-sm font-bold text-navy/55 hover:text-navy">← Set</Link>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600">Studying</p>
+            <h1 className="truncate font-display text-xl font-extrabold text-navy">{title}</h1>
+          </div>
+          {center}
+          {right}
+        </header>
+        {children}
+      </div>
+    );
+  }
+
+  return (
+    <DrillShell title={title} eyebrow="Studying" exitHref={backHref} exitLabel="Set" center={center} right={right}>
+      {children}
     </DrillShell>
   );
 }

@@ -11,7 +11,7 @@ import { label, secondaryBtn } from "@/components/drills/shared/ui";
 // questions (linking to the question editor) and can append a new blank one.
 // Deleting a question lives in the editor itself, mirroring the drill CMS.
 
-export function TestOutline({ test }: { test: AdminTest }) {
+export function TestOutline({ test, basePath = "/admin/tests" }: { test: AdminTest; basePath?: string }) {
   const router = useRouter();
   const [creatingIn, setCreatingIn] = useState<string | null>(null);
 
@@ -26,7 +26,7 @@ export function TestOutline({ test }: { test: AdminTest }) {
       });
       if (!res.ok) return;
       const q: AdminQuestion = await res.json();
-      router.push(`/admin/tests/${test.slug}/questions/${q.id}`);
+      router.push(`${basePath}/${test.slug}/questions/${q.id}`);
     } finally {
       setCreatingIn(null);
     }
@@ -40,6 +40,7 @@ export function TestOutline({ test }: { test: AdminTest }) {
         <ModuleCard
           key={mod.id}
           slug={test.slug}
+          basePath={basePath}
           mod={mod}
           creating={creatingIn === mod.id}
           onAdd={() => addQuestion(mod.id)}
@@ -51,11 +52,13 @@ export function TestOutline({ test }: { test: AdminTest }) {
 
 function ModuleCard({
   slug,
+  basePath,
   mod,
   creating,
   onAdd,
 }: {
   slug: string;
+  basePath: string;
   mod: AdminModule;
   creating: boolean;
   onAdd: () => void;
@@ -91,7 +94,7 @@ function ModuleCard({
           {mod.questions.map((q) => (
             <li key={q.id}>
               <Link
-                href={`/admin/tests/${slug}/questions/${q.id}`}
+                href={`${basePath}/${slug}/questions/${q.id}`}
                 className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-brand/5"
               >
                 <span className="mt-0.5 inline-flex h-7 w-7 flex-none items-center justify-center rounded-md bg-navy/[0.06] font-mono text-[13px] font-bold text-navy/60">

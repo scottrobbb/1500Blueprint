@@ -77,12 +77,14 @@ function toDraft(q: AdminQuestion): Draft {
 export function TestQuestionEditor({
   question,
   nextQuestionHref,
+  testsBasePath = "/admin/tests",
 }: {
   question: AdminQuestion;
   nextQuestionHref: string | null;
+  testsBasePath?: string;
 }) {
   const router = useRouter();
-  const backHref = question.context ? `/admin/tests/${question.context.testSlug}` : "/admin/tests";
+  const backHref = question.context ? `${testsBasePath}/${question.context.testSlug}` : testsBasePath;
 
   const [draft, setDraft] = useState<Draft>(() => toDraft(question));
   const [dirty, setDirty] = useState(false);

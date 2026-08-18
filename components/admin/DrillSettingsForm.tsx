@@ -16,7 +16,7 @@ const ACCENTS: Accent[] = ["brand", "navy", "gold", "sky"];
 
 type Saving = "idle" | "saving";
 
-export function DrillSettingsForm({ drill }: { drill: DrillConfig }) {
+export function DrillSettingsForm({ drill, backHref = "/admin/drills" }: { drill: DrillConfig; backHref?: string }) {
   const router = useRouter();
   const [title, setTitle] = useState(drill.title);
   const [category, setCategory] = useState<DrillCategory>(drill.category);
@@ -209,7 +209,7 @@ export function DrillSettingsForm({ drill }: { drill: DrillConfig }) {
         <div className="ml-auto flex items-center gap-2">
           <button
             type="button"
-            onClick={() => router.push("/admin/drills")}
+            onClick={() => router.push(backHref)}
             disabled={busy}
             className={secondaryBtn}
           >

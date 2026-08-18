@@ -8,10 +8,10 @@ const ABOUT = [
   "Be helpful, hype each other, keep it about the SAT.",
 ];
 
-export function RightRail({ topMembers }: { topMembers: TopMember[] }) {
+export function RightRail({ topMembers, variant = "default" }: { topMembers: TopMember[]; variant?: "default" | "ultimate" }) {
   return (
     <aside className="hidden w-full flex-col gap-3 lg:flex">
-      <div className="rounded-xl border border-navy/10 bg-white p-4">
+      <div className={`${variant === "ultimate" ? "rounded-2xl shadow-pop" : "rounded-xl"} border border-navy/10 bg-white p-4`}>
         <h3 className="font-display text-[14px] font-bold text-navy">1500 Community</h3>
         <div className="mt-2 flex flex-col gap-1.5">
           {ABOUT.map((line) => (
@@ -22,7 +22,7 @@ export function RightRail({ topMembers }: { topMembers: TopMember[] }) {
         </div>
       </div>
 
-      <div className="rounded-xl border border-navy/10 bg-white">
+      <div className={`${variant === "ultimate" ? "rounded-2xl shadow-pop" : "rounded-xl"} border border-navy/10 bg-white`}>
         <div className="flex items-center justify-between px-4 pb-2 pt-3.5">
           <h3 className="font-display text-[14px] font-bold text-navy">Top members</h3>
           <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-navy/40">This week</span>

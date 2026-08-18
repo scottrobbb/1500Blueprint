@@ -21,11 +21,13 @@ export function SetCard({
   href,
   layout = "grid",
   featured = false,
+  variant = "default",
 }: {
   set: FlashcardSet;
   href: string;
   layout?: "grid" | "row";
   featured?: boolean;
+  variant?: "default" | "ultimate";
 }) {
   const shared = set.visibility === "shared";
 
@@ -33,7 +35,7 @@ export function SetCard({
     return (
       <Link
         href={href}
-        className={`group flex items-center gap-4 rounded-card border bg-white px-4 py-3 transition-colors ${
+        className={`group flex items-center gap-4 border bg-white px-4 py-3 transition-colors ${variant === "ultimate" ? "min-h-16 rounded-xl" : "rounded-card"} ${
           featured
             ? "border-navy/15 border-l-2 border-l-gold hover:bg-gold/[0.06]"
             : "border-navy/15 hover:border-brand/40 hover:bg-ice/40"
@@ -61,7 +63,7 @@ export function SetCard({
   return (
     <Link
       href={href}
-      className={`group flex flex-col rounded-card border bg-white p-5 shadow-pop transition-all duration-200 hover:-translate-y-0.5 ${
+      className={`group flex flex-col border bg-white p-5 shadow-pop transition-all duration-200 hover:-translate-y-0.5 ${variant === "ultimate" ? "min-h-[210px] rounded-2xl" : "rounded-card"} ${
         featured
           ? "border-navy/15 border-t-2 border-t-gold hover:border-gold/50"
           : "border-navy/15 hover:border-brand/40"
@@ -69,7 +71,7 @@ export function SetCard({
     >
       <div className="flex items-start justify-between gap-3">
         <span
-          className={`grid h-11 w-11 place-items-center rounded-card transition-colors ${
+          className={`grid h-11 w-11 place-items-center transition-colors ${variant === "ultimate" ? "rounded-xl" : "rounded-card"} ${
             featured
               ? "bg-gold/15 text-gold-600 group-hover:bg-gold group-hover:text-white"
               : "bg-ice text-brand group-hover:bg-brand group-hover:text-white"

@@ -31,7 +31,7 @@ function imageFromTransfer(data: DataTransfer | null): File | null {
 // The resting + expanded composer. Uploads the screenshot first (if any), then
 // creates the post; the created row (with its real id + counts) is handed back
 // to the feed to prepend.
-function Composer({ user, onCreated }: { user: Author; onCreated: (post: CommunityPost) => void }) {
+function Composer({ user, onCreated, variant = "default" }: { user: Author; onCreated: (post: CommunityPost) => void; variant?: "default" | "ultimate" }) {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [category, setCategory] = useState<CommunityCategory>("general");
@@ -102,7 +102,7 @@ function Composer({ user, onCreated }: { user: Author; onCreated: (post: Communi
 
   if (!open) {
     return (
-      <div className="flex items-center gap-2.5 rounded-xl border border-navy/10 bg-white p-2.5">
+      <div className={`flex items-center gap-2.5 border border-navy/10 bg-white p-3 ${variant === "ultimate" ? "rounded-2xl shadow-pop" : "rounded-xl"}`}>
         <Avatar src={user.avatarUrl} initials={user.initials} size={38} />
         <button
           type="button"
@@ -125,7 +125,7 @@ function Composer({ user, onCreated }: { user: Author; onCreated: (post: Communi
 
   return (
     <div
-      className="rounded-xl border border-navy/10 bg-white p-3.5"
+      className={`${variant === "ultimate" ? "rounded-2xl shadow-pop" : "rounded-xl"} border border-navy/10 bg-white p-3.5`}
       onDrop={(e) => {
         if (takeImageFrom(e.dataTransfer)) e.preventDefault();
       }}
@@ -253,10 +253,14 @@ export function CommunityFeed({
   initialPosts,
   user,
   isAdmin,
+  threadHrefBase = "/community",
+  variant = "default",
 }: {
   initialPosts: CommunityPost[];
   user: Author;
   isAdmin: boolean;
+  threadHrefBase?: string;
+  variant?: "default" | "ultimate";
 }) {
   const [posts, setPosts] = useState(initialPosts);
   const [filter, setFilter] = useState<Filter>("all");
@@ -268,8 +272,8 @@ export function CommunityFeed({
 
   return (
     <div className="flex flex-col gap-3">
-      <Composer user={user} onCreated={(p) => setPosts((prev) => withPinnedFirst([p, ...prev]))} />
-      <div className="py-0.5">
+      <Composer user={user} variant={variant} onCreated={(p) => setPosts((prev) => withPinnedFirst([p, ...prev]))} />
+      <div className={variant === "ultimate" ? "rounded-2xl border border-navy/10 bg-white p-3 shadow-pop" : "py-0.5"}>
         <FilterChips value={filter} onChange={setFilter} />
       </div>
 
@@ -292,6 +296,7 @@ export function CommunityFeed({
               post={post}
               currentUser={user}
               isAdmin={isAdmin}
+              threadHrefBase={threadHrefBase}
               onDelete={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
               onPinChange={(id, pinned) =>
                 setPosts((prev) => withPinnedFirst(prev.map((p) => (p.id === id ? { ...p, pinned } : p))))

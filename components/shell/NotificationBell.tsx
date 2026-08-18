@@ -9,7 +9,13 @@ import { BellIcon } from "./icons";
 // unread mentions/replies, and a small dropdown (same anatomy as AccountMenu).
 // Fetches client-side so it adds nothing to any page's server render; opening it
 // clears the badge. Fails quiet — if the endpoint errors the bell just stays empty.
-export function NotificationBell() {
+export function NotificationBell({
+  tone = "light",
+  communityHrefBase = "/community",
+}: {
+  tone?: "light" | "dark";
+  communityHrefBase?: string;
+} = {}) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CommunityNotification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -64,11 +70,15 @@ export function NotificationBell() {
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
-        className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg text-navy/55 transition-colors hover:bg-navy/[0.06] hover:text-navy"
+        className={`relative inline-flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+          tone === "dark"
+            ? "text-white/55 hover:bg-white/10 hover:text-white"
+            : "text-navy/55 hover:bg-navy/[0.06] hover:text-navy"
+        }`}
       >
         <BellIcon className="h-[19px] w-[19px]" />
         {unread > 0 && (
-          <span className="absolute right-0.5 top-0.5 inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-flag px-[3px] text-[9px] font-bold leading-none text-white ring-2 ring-white">
+          <span className={`absolute right-0.5 top-0.5 inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-flag px-[3px] text-[9px] font-bold leading-none text-white ring-2 ${tone === "dark" ? "ring-[#0c2348]" : "ring-white"}`}>
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -127,7 +137,7 @@ export function NotificationBell() {
                   return (
                     <li key={n.id}>
                       {n.postId ? (
-                        <Link href={`/community/${n.postId}`} onClick={() => setOpen(false)} className="block">
+                        <Link href={`${communityHrefBase}/${n.postId}`} onClick={() => setOpen(false)} className="block">
                           {row}
                         </Link>
                       ) : (

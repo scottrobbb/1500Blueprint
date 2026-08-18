@@ -30,6 +30,9 @@ type Props = {
   attemptDate?: string;
   savedHref?: string;
   attemptsHref?: string;
+  completedHref?: string;
+  testsHref?: string;
+  backLabel?: string;
   saveStatus?: AttemptSaveStatus;
   onRetrySave?: () => void;
 };
@@ -47,6 +50,9 @@ export function ResultsScreen({
   attemptDate,
   savedHref,
   attemptsHref,
+  completedHref = "/practice-test/completed",
+  testsHref = "/practice-test",
+  backLabel = "Back to your attempts",
   saveStatus,
   onRetrySave,
 }: Props) {
@@ -82,7 +88,7 @@ export function ResultsScreen({
           <Logo />
           <div className="ml-auto flex items-center gap-2">
             <Link
-              href="/practice-test/completed"
+              href={completedHref}
               className="hidden min-h-11 items-center rounded-lg px-4 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-100 hover:text-ink sm:inline-flex"
             >
               Completed tests
@@ -166,8 +172,8 @@ export function ResultsScreen({
           ) : null}
           {savedHref ? <ActionLink href={savedHref}>View saved report</ActionLink> : null}
           {attemptsHref ? <ActionLink href={attemptsHref}>View past attempts</ActionLink> : null}
-          {backHref ? <ActionLink href={backHref}>Back to your attempts</ActionLink> : null}
-          <ActionLink href="/practice-test">All practice tests</ActionLink>
+          {backHref ? <ActionLink href={backHref}>{backLabel}</ActionLink> : null}
+          <ActionLink href={testsHref}>All practice tests</ActionLink>
         </div>
       </div>
 

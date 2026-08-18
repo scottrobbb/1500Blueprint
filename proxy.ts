@@ -2,12 +2,14 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify, type JWTPayload } from "jose";
 import { SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { isDrillUnderConstruction, isPracticeTestUnderConstruction } from "@/lib/flags";
 
 // Paths reachable without a session.
-const PUBLIC_PATHS = ["/login"];
+const PUBLIC_PATHS = ["/login", "/pricing"];
 // The admin CMS is gated to allowlisted admin emails (ADMIN_EMAILS).
 const ADMIN_PREFIX = "/admin";
+const ULTIMATE_PREFIX = "/ultimate";
 
 function isPublic(pathname: string): boolean {
   if (pathname.startsWith("/api/auth")) return true;
@@ -16,6 +18,10 @@ function isPublic(pathname: string): boolean {
 
 function isAdminPath(pathname: string): boolean {
   return pathname === ADMIN_PREFIX || pathname.startsWith(`${ADMIN_PREFIX}/`);
+}
+
+function isUltimatePath(pathname: string): boolean {
+  return pathname === ULTIMATE_PREFIX || pathname.startsWith(`${ULTIMATE_PREFIX}/`);
 }
 
 // Verify the session JWT and return its payload, or null if absent/invalid.
@@ -34,8 +40,8 @@ async function sessionPayload(request: NextRequest): Promise<JWTPayload | null> 
 }
 
 // Next 16: this file replaces the old `middleware.ts` (Middleware → Proxy).
-// Gates the whole drill site behind a session; only /login and the auth
-// endpoints are reachable logged out. The /admin area additionally requires an
+// Gates the drill site behind a session; only public marketing/auth pages and
+// auth endpoints are reachable logged out. The /admin area additionally requires an
 // admin email (defense-in-depth; pages/routes re-check via getAdminSession).
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -51,6 +57,13 @@ export async function proxy(request: NextRequest) {
 
   const email = typeof payload.sub === "string" ? payload.sub : null;
   const isAdmin = isAdminEmail(email);
+
+  if (isUltimatePath(pathname) && !isUltimatePreviewEmail(email)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/drills";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
 
   if (isAdminPath(pathname)) {
     if (!isAdmin) {

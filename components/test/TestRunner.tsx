@@ -90,13 +90,18 @@ export function TestRunner({
   slug,
   devMode = false,
   resumeState = null,
+  returnToUltimate = false,
 }: {
   test: PracticeTest;
   slug: string;
   devMode?: boolean;
   resumeState?: SavedSession | null;
+  returnToUltimate?: boolean;
 }) {
   const router = useRouter();
+  const testsHref = returnToUltimate ? "/ultimate/tests" : "/practice-test";
+  const completedHref = returnToUltimate ? "/ultimate/tests/completed" : "/practice-test/completed";
+  const workspaceQuery = returnToUltimate ? "?workspace=ultimate" : "";
   const reducer = useMemo(() => makeReducer(test), [test]);
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
 
@@ -409,8 +414,10 @@ export function TestRunner({
           }}
           saveStatus={state.completedViaFlow ? attemptSaveStatus : undefined}
           onRetrySave={saveCompletedAttempt}
-          savedHref={savedAttemptId ? `/practice-test/${slug}/results/${savedAttemptId}` : undefined}
-          attemptsHref={`/practice-test/${slug}/attempts`}
+          savedHref={savedAttemptId ? `/practice-test/${slug}/results/${savedAttemptId}${workspaceQuery}` : undefined}
+          attemptsHref={returnToUltimate ? completedHref : `/practice-test/${slug}/attempts`}
+          completedHref={completedHref}
+          testsHref={testsHref}
         />
       </>
     );
@@ -440,7 +447,7 @@ export function TestRunner({
       onExit={() => {
         persist();
         setArmed(slug, false);
-        router.push("/practice-test");
+        router.push(testsHref);
       }}
     />
   );

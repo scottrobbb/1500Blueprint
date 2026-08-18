@@ -30,6 +30,7 @@ type SetEditorProps = {
   backHref: string;
   // Where to navigate after a successful save: `${viewBase}/${id}`.
   viewBase?: string;
+  variant?: "default" | "ultimate";
 };
 
 function newKey(): string {
@@ -54,6 +55,7 @@ export function SetEditor({
   allowSharing,
   backHref,
   viewBase = "/flashcards",
+  variant = "default",
 }: SetEditorProps) {
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -148,14 +150,7 @@ export function SetEditor({
     </div>
   );
 
-  return (
-    <DrillShell
-      title={mode === "create" ? "Create set" : "Edit set"}
-      eyebrow="Flashcards"
-      exitHref={backHref}
-      exitLabel="Cancel"
-      right={saveButton}
-    >
+  const content = (
       <div className="mx-auto max-w-3xl">
         {/* Set meta */}
         <div className="rounded-card border border-navy/15 bg-white p-5 shadow-pop sm:p-6">
@@ -303,6 +298,33 @@ export function SetEditor({
           </button>
         </div>
       </div>
+  );
+
+  if (variant === "ultimate") {
+    return (
+      <div className="mx-auto w-full max-w-[980px] px-4 py-8 sm:px-7">
+        <header className="mb-5 flex flex-wrap items-center gap-4 rounded-[18px] border border-navy/10 bg-white p-4 shadow-pop sm:p-5">
+          <Link href={backHref} className="inline-flex min-h-11 items-center text-sm font-bold text-navy/55 hover:text-navy">← Back</Link>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600">Flashcards</p>
+            <h1 className="font-display text-2xl font-extrabold text-navy">{mode === "create" ? "Create set" : "Edit set"}</h1>
+          </div>
+          {saveButton}
+        </header>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <DrillShell
+      title={mode === "create" ? "Create set" : "Edit set"}
+      eyebrow="Flashcards"
+      exitHref={backHref}
+      exitLabel="Cancel"
+      right={saveButton}
+    >
+      {content}
     </DrillShell>
   );
 }

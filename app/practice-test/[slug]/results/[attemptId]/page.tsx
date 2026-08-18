@@ -4,6 +4,7 @@ import { loadTest } from "@/lib/sat/loadTest";
 import { scoreTest } from "@/lib/sat/scoring";
 import { getSession } from "@/lib/auth/session";
 import { getTestAttempt } from "@/lib/gamification/state";
+import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 
 export const metadata = {
   title: "Your results · 1500 SAT Blueprint",
@@ -21,12 +22,16 @@ function formatTaken(iso: string): string {
 // recomputes the report from stored data and never awards anything.
 export default async function AttemptResultsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string; attemptId: string }>;
+  searchParams: Promise<{ workspace?: string }>;
 }) {
   const { slug, attemptId } = await params;
+  const { workspace } = await searchParams;
   const session = await getSession();
   if (!session) redirect("/login");
+  const returnToUltimate = workspace === "ultimate" && isUltimatePreviewEmail(session.email);
 
   // getTestAttempt filters by email, so a student can only open their own attempts.
   const attempt = await getTestAttempt(session.email, attemptId);
@@ -48,7 +53,10 @@ export default async function AttemptResultsPage({
       routed={attempt.routed}
       answers={attempt.answers}
       perQuestionTime={attempt.perQuestionTime}
-      backHref={`/practice-test/${slug}/attempts`}
+      backHref={returnToUltimate ? "/ultimate/tests/completed" : `/practice-test/${slug}/attempts`}
+      backLabel={returnToUltimate ? "Back to completed tests" : undefined}
+      completedHref={returnToUltimate ? "/ultimate/tests/completed" : undefined}
+      testsHref={returnToUltimate ? "/ultimate/tests" : undefined}
       attemptDate={formatTaken(attempt.createdAt)}
     />
   );

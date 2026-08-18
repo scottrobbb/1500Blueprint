@@ -7,7 +7,7 @@ import { CATEGORY } from "@/lib/community/types";
 
 // Admin moderation table for community posts: view + delete. Deleting cascades
 // to the post's comments and likes (FK on delete cascade in community.sql).
-export function CommunityModeration({ initialPosts }: { initialPosts: CommunityPost[] }) {
+export function CommunityModeration({ initialPosts, communityBase = "/community" }: { initialPosts: CommunityPost[]; communityBase?: string }) {
   const [posts, setPosts] = useState(initialPosts);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -71,7 +71,7 @@ export function CommunityModeration({ initialPosts }: { initialPosts: CommunityP
                     </span>
                   </td>
                   <td className="max-w-[340px] px-4 py-3">
-                    <Link href={`/community/${p.id}`} className="line-clamp-2 text-navy/80 hover:text-brand-600">
+                    <Link href={`${communityBase}/${p.id}`} className="line-clamp-2 text-navy/80 hover:text-brand-600">
                       {p.body || (p.shot ? "(screenshot)" : "(empty)")}
                     </Link>
                   </td>

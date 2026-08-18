@@ -46,18 +46,31 @@ function preview(e: HistoryEntry): string {
   return text || drillTitle(e.drillSlug);
 }
 
-export function HistoryView({ entries }: { entries: HistoryEntry[] }) {
+export function HistoryView({
+  entries,
+  variant = "default",
+  drillsHref = "/drills",
+}: {
+  entries: HistoryEntry[];
+  variant?: "default" | "ultimate";
+  drillsHref?: string;
+}) {
   const [filter, setFilter] = useState<string>(ALL);
   const [open, setOpen] = useState<HistoryEntry | null>(null);
 
   if (entries.length === 0) {
     return (
-      <main className="mx-auto w-full max-w-[1120px] px-6 py-16 text-center">
-        <h1 className="font-display text-2xl font-extrabold text-navy">No history yet</h1>
+      <main className={`mx-auto w-full max-w-[1120px] px-6 py-16 text-center ${variant === "ultimate" ? "min-h-[70dvh]" : ""}`}>
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-ice text-brand">
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+            <path d="M5 8V4m0 0h4M5 4l3 3a7 7 0 1 1-2 5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+        <h1 className="mt-4 font-display text-2xl font-extrabold text-navy">No history yet</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-navy/60">
           Questions you work on in the drills show up here so you can revisit them anytime.
         </p>
-        <Link href="/drills" className={`${secondaryBtn} mt-6`}>
+        <Link href={drillsHref} className={`${secondaryBtn} mt-6 ${variant === "ultimate" ? "min-h-11 rounded-xl" : ""}`}>
           Go to drills
         </Link>
       </main>
@@ -68,17 +81,28 @@ export function HistoryView({ entries }: { entries: HistoryEntry[] }) {
   const order: DrillSlug[] = ["grammar", "reading", "targeted-math", "vocab"];
   const present = order.filter((slug) => entries.some((e) => e.drillSlug === slug));
   const shown = filter === ALL ? entries : entries.filter((e) => e.drillSlug === filter);
+  const mastered = entries.filter((entry) => entry.mastered).length;
+  const masteryRate = Math.round((mastered / entries.length) * 100);
 
   return (
-    <main className="mx-auto w-full max-w-[1120px] px-6 py-8">
-      <header className="mb-5">
-        <h1 className="font-display text-2xl font-extrabold text-navy">Your history</h1>
+    <main className="mx-auto w-full max-w-[1120px] px-4 py-8 sm:px-7">
+      <header className="mb-6">
+        {variant === "ultimate" && <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-brand-600">Practice analytics</p>}
+        <h1 className={`font-display font-extrabold tracking-tight text-navy ${variant === "ultimate" ? "mt-1 text-[32px]" : "text-2xl"}`}>Your history</h1>
         <p className="mt-1 text-sm text-navy/60">
           {entries.length} question{entries.length === 1 ? "" : "s"} practiced. Tap any to review it.
         </p>
       </header>
 
-      <div className="mb-5 flex flex-wrap gap-2">
+      {variant === "ultimate" && (
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <HistoryMetric label="Questions attempted" value={entries.length} />
+          <HistoryMetric label="Skills mastered" value={mastered} />
+          <HistoryMetric label="Mastery rate" value={`${masteryRate}%`} wide />
+        </div>
+      )}
+
+      <div className={`mb-5 flex flex-wrap gap-2 ${variant === "ultimate" ? "rounded-2xl border border-navy/10 bg-white p-3 shadow-pop" : ""}`}>
         <FilterChip active={filter === ALL} text={`All (${entries.length})`} onClick={() => setFilter(ALL)} />
         {present.map((slug) => (
           <FilterChip
@@ -96,7 +120,7 @@ export function HistoryView({ entries }: { entries: HistoryEntry[] }) {
             <button
               type="button"
               onClick={() => setOpen(e)}
-              className={`${surface} flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-navy/[0.02]`}
+              className={`${variant === "ultimate" ? "rounded-2xl border border-navy/10 bg-white shadow-pop" : surface} flex min-h-16 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-all hover:border-brand/30 hover:bg-ice/20`}
             >
               <span className={`${chip} shrink-0 bg-brand/10 text-brand-600`}>{drillTitle(e.drillSlug)}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-navy/80">{preview(e)}</span>
@@ -109,6 +133,15 @@ export function HistoryView({ entries }: { entries: HistoryEntry[] }) {
 
       {open ? <DetailModal entry={open} onClose={() => setOpen(null)} /> : null}
     </main>
+  );
+}
+
+function HistoryMetric({ label: text, value, wide = false }: { label: string; value: string | number; wide?: boolean }) {
+  return (
+    <div className={`rounded-2xl border border-navy/10 bg-white p-4 shadow-pop ${wide ? "col-span-2 sm:col-span-1" : ""}`}>
+      <strong className="font-display text-2xl font-extrabold text-navy">{value}</strong>
+      <span className="mt-1 block text-xs text-navy/45">{text}</span>
+    </div>
   );
 }
 

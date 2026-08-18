@@ -65,10 +65,12 @@ export function QuestionEditor({
   initialQuestion,
   drill,
   skills,
+  backHref = "/admin",
 }: {
   initialQuestion: DrillQuestion;
   drill: DrillConfig;
   skills: SatSkill[];
+  backHref?: string;
 }) {
   const router = useRouter();
   const [question, setQuestion] = useState<DrillQuestion>(initialQuestion);
@@ -133,7 +135,7 @@ export function QuestionEditor({
     try {
       const res = await fetch(`/admin/api/questions/${question.id}`, { method: "DELETE" });
       if (res.ok) {
-        router.push("/admin");
+        router.push(backHref);
         return;
       }
     } finally {

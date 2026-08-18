@@ -6,15 +6,18 @@ First, run the development server:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Ultimate private workspace
+
+The integrated Ultimate workspace lives at `/ultimate` in this same application. It uses the existing authentication, Supabase data, feature APIs, student ownership, and admin tools.
+
+- Emails in `ADMIN_EMAILS` can access it automatically.
+- Additional private reviewers can be added with the comma-separated `ULTIMATE_PREVIEW_EMAILS` environment variable.
+- Signed-in users outside both allowlists are redirected to `/drills`.
+- No separate database or content migration is required.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

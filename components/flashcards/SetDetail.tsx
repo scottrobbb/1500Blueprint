@@ -13,9 +13,15 @@ import { GlobeIcon, LockIcon, PencilIcon, TrashIcon } from "./icons";
 export function SetDetail({
   set,
   editable,
+  variant = "default",
+  backHref = "/flashcards",
+  actionBase = "/flashcards",
 }: {
   set: FlashcardSetWithCards;
   editable: boolean;
+  variant?: "default" | "ultimate";
+  backHref?: string;
+  actionBase?: string;
 }) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
@@ -27,18 +33,17 @@ export function SetDetail({
     setDeleting(true);
     const res = await fetch(`/api/flashcards/sets/${set.id}`, { method: "DELETE" });
     if (res.ok) {
-      router.push("/flashcards");
+      router.push(backHref);
       router.refresh();
     } else {
       setDeleting(false);
     }
   }
 
-  return (
-    <DrillShell title={set.title} eyebrow="Flashcard set" exitHref="/flashcards" exitLabel="Library">
+  const content = (
       <div className="mx-auto max-w-3xl">
         {/* Header */}
-        <div className="animate-rise-in rounded-card border border-navy/15 bg-white p-6 shadow-pop sm:p-8">
+        <div className={`animate-rise-in border border-navy/15 bg-white p-6 shadow-pop sm:p-8 ${variant === "ultimate" ? "rounded-[18px]" : "rounded-card"}`}>
           <div className="flex items-center gap-2">
             <span
               className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] ${
@@ -65,7 +70,7 @@ export function SetDetail({
           {/* Actions */}
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {hasCards ? (
-              <Link href={`/flashcards/${set.id}/study`} className={accentBtn}>
+              <Link href={`${actionBase}/${set.id}/study`} className={`${accentBtn} ${variant === "ultimate" ? "min-h-11 rounded-xl px-5" : ""}`}>
                 <PlayIcon className="h-4 w-4" />
                 Study
               </Link>
@@ -76,7 +81,7 @@ export function SetDetail({
               </span>
             )}
             {editable ? (
-              <Link href={`/flashcards/${set.id}/edit`} className={secondaryBtn}>
+              <Link href={`${actionBase}/${set.id}/edit`} className={`${secondaryBtn} ${variant === "ultimate" ? "min-h-11 rounded-xl" : ""}`}>
                 <PencilIcon className="h-4 w-4" />
                 Edit
               </Link>
@@ -86,7 +91,7 @@ export function SetDetail({
                 type="button"
                 onClick={onDelete}
                 disabled={deleting}
-                className="ml-auto inline-flex items-center gap-1.5 rounded-card px-3 py-2 text-sm font-semibold text-navy/50 transition-colors hover:bg-danger-bg hover:text-danger-600 disabled:opacity-40"
+                className={`ml-auto inline-flex min-h-11 items-center gap-1.5 px-3 py-2 text-sm font-semibold text-navy/50 transition-colors hover:bg-danger-bg hover:text-danger-600 disabled:opacity-40 ${variant === "ultimate" ? "rounded-xl" : "rounded-card"}`}
               >
                 <TrashIcon className="h-4 w-4" />
                 {deleting ? "Deleting…" : "Delete"}
@@ -99,7 +104,7 @@ export function SetDetail({
         <div className="mt-6">
           <h2 className={`${label} mb-3 text-navy/55`}>Terms in this set</h2>
           {hasCards ? (
-            <ul className="divide-y divide-navy/10 overflow-hidden rounded-card border border-navy/15 bg-white">
+            <ul className={`divide-y divide-navy/10 overflow-hidden border border-navy/15 bg-white ${variant === "ultimate" ? "rounded-2xl shadow-pop" : "rounded-card"}`}>
               {set.cards.map((c, i) => (
                 <li
                   key={c.id}
@@ -141,7 +146,7 @@ export function SetDetail({
               {editable ? (
                 <>
                   {" "}
-                  <Link href={`/flashcards/${set.id}/edit`} className="font-semibold text-brand hover:underline">
+                  <Link href={`${actionBase}/${set.id}/edit`} className="font-semibold text-brand hover:underline">
                     Add some
                   </Link>
                   .
@@ -151,6 +156,22 @@ export function SetDetail({
           )}
         </div>
       </div>
+  );
+
+  if (variant === "ultimate") {
+    return (
+      <div className="mx-auto w-full max-w-[980px] px-4 py-8 sm:px-7">
+        <Link href={backHref} className="mb-5 inline-flex min-h-11 items-center text-sm font-bold text-navy/55 hover:text-navy">
+          ← Back to flashcards
+        </Link>
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <DrillShell title={set.title} eyebrow="Flashcard set" exitHref={backHref} exitLabel="Library">
+      {content}
     </DrillShell>
   );
 }

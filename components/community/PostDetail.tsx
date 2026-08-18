@@ -129,10 +129,12 @@ export function PostDetail({
   post,
   user,
   isAdmin,
+  backHref = "/community",
 }: {
   post: CommunityPost;
   user: Author;
   isAdmin: boolean;
+  backHref?: string;
 }) {
   const router = useRouter();
   const [liked, setLiked] = useState(post.liked);
@@ -205,7 +207,7 @@ export function PostDetail({
     try {
       const res = await fetch(`/api/community/posts/${post.id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      router.push("/community");
+      router.push(backHref);
       router.refresh();
     } catch {
       // no-op; the post stays on screen
@@ -226,7 +228,7 @@ export function PostDetail({
   return (
     <div className="flex flex-col gap-3">
       <Link
-        href="/community"
+        href={backHref}
         className="inline-flex w-fit items-center gap-1.5 text-[13px] font-semibold text-navy/60 transition-colors hover:text-navy"
       >
         <BackIcon className="h-4 w-4" />

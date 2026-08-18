@@ -9,6 +9,7 @@ import { ScoreShareModal } from "./ScoreShareModal";
 type Props = {
   attempts: CompletedTestAttempt[];
   testTitles: Record<string, string>;
+  variant?: "default" | "ultimate";
 };
 
 const dateFormatter = new Intl.DateTimeFormat("en-US", {
@@ -23,7 +24,10 @@ function scoreChange(value: number | null): string {
   return `${value >= 0 ? "+" : ""}${value}`;
 }
 
-export function CompletedTestsDashboard({ attempts, testTitles }: Props) {
+export function CompletedTestsDashboard({ attempts, testTitles, variant = "default" }: Props) {
+  const isUltimate = variant === "ultimate";
+  const testsHref = isUltimate ? "/ultimate/tests" : "/practice-test";
+  const reportQuery = isUltimate ? "?workspace=ultimate" : "";
   const scored = attempts.filter(
     (attempt): attempt is CompletedTestAttempt & { totalScore: number } => typeof attempt.totalScore === "number",
   );
@@ -39,15 +43,15 @@ export function CompletedTestsDashboard({ attempts, testTitles }: Props) {
 
   return (
     <>
-      <section className="border-b border-blue-200 bg-gradient-to-br from-[#eaf3ff] via-[#f6f9ff] to-white">
-        <div className="mx-auto max-w-[1100px] px-5 py-9 sm:px-6 sm:py-11">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-brand-600">Performance history</p>
+      <section className={isUltimate ? "overflow-hidden rounded-[18px] border border-navy/10 bg-gradient-to-br from-navy via-navy-700 to-[#2454ad] shadow-pop" : "border-b border-blue-200 bg-gradient-to-br from-[#eaf3ff] via-[#f6f9ff] to-white"}>
+        <div className={isUltimate ? "px-6 py-8 sm:px-8 sm:py-9" : "mx-auto max-w-[1100px] px-5 py-9 sm:px-6 sm:py-11"}>
+          <p className={`text-xs font-extrabold uppercase tracking-[0.16em] ${isUltimate ? "text-sky" : "text-brand-600"}`}>Performance history</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h1 className="font-display text-3xl font-black tracking-tight text-navy sm:text-4xl">Completed Tests</h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">Track your score trajectory, revisit detailed reports, and share your progress.</p>
+              <h1 className={`font-display text-3xl font-black tracking-tight sm:text-4xl ${isUltimate ? "text-white" : "text-navy"}`}>Completed Tests</h1>
+              <p className={`mt-2 max-w-xl text-sm leading-6 ${isUltimate ? "text-white/70" : "text-slate-600"}`}>Track your score trajectory, revisit detailed reports, and share your progress.</p>
             </div>
-            <Link href="/practice-test" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-600 px-5 text-sm font-bold text-white transition-colors hover:bg-navy">
+            <Link href={testsHref} className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-5 text-sm font-bold transition-colors ${isUltimate ? "bg-white text-navy hover:bg-sky" : "bg-brand-600 text-white hover:bg-navy"}`}>
               Take another test
               <ArrowRightIcon className="h-4 w-4" />
             </Link>
@@ -55,7 +59,7 @@ export function CompletedTestsDashboard({ attempts, testTitles }: Props) {
         </div>
       </section>
 
-      <main className="mx-auto max-w-[1100px] px-5 py-7 sm:px-6 sm:py-10">
+      <div className={isUltimate ? "py-6" : "mx-auto max-w-[1100px] px-5 py-7 sm:px-6 sm:py-10"}>
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4" aria-label="Testing highlights">
           <KpiCard label="Latest score" value={latest?.totalScore ?? null} detail={latest ? dateFormatter.format(new Date(latest.createdAt)) : "Complete a test to begin"} />
           <KpiCard label="Highest score" value={highest} detail={highest == null ? "No score yet" : "Your personal best"} />
@@ -87,7 +91,7 @@ export function CompletedTestsDashboard({ attempts, testTitles }: Props) {
             <div className="mt-4 rounded-2xl border border-dashed border-blue-300 bg-blue-50/60 p-10 text-center">
               <h3 className="font-display text-xl font-extrabold text-navy">Your first score will appear here.</h3>
               <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-600">Complete a full-length practice test to unlock score trends and detailed module analytics.</p>
-              <Link href="/practice-test" className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-5 text-sm font-bold text-white hover:bg-navy">Choose a practice test</Link>
+              <Link href={testsHref} className="mt-5 inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-5 text-sm font-bold text-white hover:bg-navy">Choose a practice test</Link>
             </div>
           ) : (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -122,7 +126,7 @@ export function CompletedTestsDashboard({ attempts, testTitles }: Props) {
                         </div>
                       </div>
                       <div className="mt-5 grid grid-cols-2 gap-2">
-                        <Link href={`/practice-test/${attempt.testSlug}/results/${attempt.id}`} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 text-sm font-bold text-white transition-colors hover:bg-navy">
+                        <Link href={`/practice-test/${attempt.testSlug}/results/${attempt.id}${reportQuery}`} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 text-sm font-bold text-white transition-colors hover:bg-navy">
                           View report
                           <ArrowRightIcon className="h-4 w-4" />
                         </Link>
@@ -135,7 +139,7 @@ export function CompletedTestsDashboard({ attempts, testTitles }: Props) {
             </div>
           )}
         </section>
-      </main>
+      </div>
 
       <ScoreShareModal
         open={Boolean(shareAttempt)}

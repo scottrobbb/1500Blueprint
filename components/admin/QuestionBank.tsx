@@ -62,11 +62,13 @@ export function QuestionBank({
   total: initialTotal,
   drills,
   skills,
+  basePath = "/admin",
 }: {
   initialQuestions: DrillQuestion[];
   total: number;
   drills: DrillConfig[];
   skills: SatSkill[];
+  basePath?: string;
 }) {
   const router = useRouter();
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -145,7 +147,7 @@ export function QuestionBank({
       });
       if (!res.ok) return;
       const question: DrillQuestion = await res.json();
-      router.push(`/admin/questions/${question.id}`);
+      router.push(`${basePath}/questions/${question.id}`);
     } finally {
       setCreating(false);
     }
@@ -201,7 +203,7 @@ export function QuestionBank({
         questions={questions}
         loading={loading}
         drillTitleBySlug={drillTitleBySlug}
-        onRowClick={(id) => router.push(`/admin/questions/${id}`)}
+        onRowClick={(id) => router.push(`${basePath}/questions/${id}`)}
       />
 
       <Pagination

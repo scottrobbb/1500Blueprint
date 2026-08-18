@@ -6,7 +6,7 @@ import type { FlashcardSet } from "@/lib/flashcards/types";
 import { accentBtn } from "@/components/drills/shared/ui";
 import { GlobeIcon, LayersIcon, LockIcon, PlusIcon, SearchIcon } from "@/components/flashcards/icons";
 
-export function AdminSetsList({ sets }: { sets: FlashcardSet[] }) {
+export function AdminSetsList({ sets, basePath = "/admin/sets" }: { sets: FlashcardSet[]; basePath?: string }) {
   const [query, setQuery] = useState("");
   const norm = query.trim().toLowerCase();
   const filtered = useMemo(
@@ -32,7 +32,7 @@ export function AdminSetsList({ sets }: { sets: FlashcardSet[] }) {
             {sets.length} {sets.length === 1 ? "set" : "sets"} · {sharedCount} shared with students
           </p>
         </div>
-        <Link href="/admin/sets/new" className={accentBtn}>
+        <Link href={`${basePath}/new`} className={accentBtn}>
           <PlusIcon className="h-4 w-4" />
           New set
         </Link>
@@ -57,7 +57,7 @@ export function AdminSetsList({ sets }: { sets: FlashcardSet[] }) {
           filtered.map((s) => (
             <Link
               key={s.id}
-              href={`/admin/sets/${s.id}`}
+              href={`${basePath}/${s.id}`}
               className="flex items-center gap-3 border-b border-navy/8 px-4 py-3 transition-colors last:border-0 hover:bg-navy/[0.03]"
             >
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-card bg-ice text-brand">
