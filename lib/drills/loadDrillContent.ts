@@ -5,8 +5,8 @@
 // Note: this intentionally does NOT read drills.grading_prompt — grading runs
 // server-side, and Scott's prompts should not ship to the browser.
 
-import { createClient } from "@supabase/supabase-js";
 import type { Difficulty } from "@/lib/sat/types";
+import { supabasePublishable } from "@/utils/supabase/publishable";
 import type {
   AnswerType,
   DrillContent,
@@ -17,11 +17,6 @@ import type {
   WalkthroughKind,
   WalkthroughStep,
 } from "./types";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 
 type QuestionRow = {
   id: string;
@@ -77,7 +72,7 @@ export async function loadDrillQuestions(drillSlug: DrillSlug): Promise<DrillQue
   const rows: QuestionRow[] = [];
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabase
+    const { data, error } = await supabasePublishable()
       .from("drill_questions")
       .select(
         "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_at,updated_at," +

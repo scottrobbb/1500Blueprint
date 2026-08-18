@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js";
+import { supabasePublishable } from "@/utils/supabase/publishable";
 import type {
   ChoiceId,
   Difficulty,
@@ -12,11 +12,6 @@ import type {
   SectionId,
   TestModule,
 } from "./types";
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-);
 
 // Shapes returned by the nested PostgREST select (snake_case columns).
 type ChoiceRow = { letter: string; text: string; explanation: string | null };
@@ -94,7 +89,7 @@ function buildModule(m: ModuleRow): TestModule {
 
 /** Load a test by slug from Supabase and assemble it into the runner's PracticeTest shape. */
 export async function loadTest(slug: string): Promise<PracticeTest | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabasePublishable()
     .from("tests")
     .select(
       "id,title,break_minutes,rw_threshold,math_threshold," +
@@ -135,7 +130,7 @@ export async function loadTest(slug: string): Promise<PracticeTest | null> {
 
 /** Lightweight list of all tests for the picker (slug + title only, no questions). */
 export async function listTests(): Promise<{ slug: string; title: string }[]> {
-  const { data, error } = await supabase
+  const { data, error } = await supabasePublishable()
     .from("tests")
     .select("slug,title")
     .order("slug");
