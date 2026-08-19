@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "./config";
+import { COMPLIMENTARY_ACCESS_PLAN, hasComplimentaryAccess } from "./users";
 
 export type Session = { email: string; plan: string | null };
 
@@ -38,7 +39,11 @@ export async function getSession(): Promise<Session | null> {
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
     if (typeof payload.sub !== "string") return null;
-    return { email: payload.sub, plan: (payload.plan as string | null) ?? null };
+    const plan = (payload.plan as string | null) ?? null;
+    if (plan === COMPLIMENTARY_ACCESS_PLAN && !(await hasComplimentaryAccess(payload.sub))) {
+      return null;
+    }
+    return { email: payload.sub, plan };
   } catch {
     return null;
   }

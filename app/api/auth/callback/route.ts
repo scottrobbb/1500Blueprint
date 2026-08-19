@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { SESSION_COOKIE, appBaseUrl } from "@/lib/auth/config";
 import { consumeLoginToken } from "@/lib/auth/tokens";
 import { signSession, sessionCookieOptions } from "@/lib/auth/session";
-import { recordLogin } from "@/lib/auth/users";
+import {
+  COMPLIMENTARY_ACCESS_PLAN,
+  hasComplimentaryAccess,
+  recordLogin,
+} from "@/lib/auth/users";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -13,6 +17,12 @@ export async function GET(request: Request) {
 
   const result = await consumeLoginToken(raw);
   if (!result) return NextResponse.redirect(new URL("/login?error=expired", base));
+  if (
+    result.plan === COMPLIMENTARY_ACCESS_PLAN &&
+    !(await hasComplimentaryAccess(result.email))
+  ) {
+    return NextResponse.redirect(new URL("/login?error=expired", base));
+  }
 
   await recordLogin(result.email, result.plan);
   const token = await signSession({ email: result.email, plan: result.plan });
