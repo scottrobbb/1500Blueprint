@@ -296,56 +296,199 @@ const foundationWeeks: FoundationWeek[] = [
 const math: SourceModule[] = [
   {
     title: "Start Here",
-    description: "Choose the right priorities for your score range and learn how to move through the course.",
+    description: "Set your Math pacing, choose the right score-band priorities, and learn how to use the course before studying individual domains.",
     lessons: [
-      { title: "How to Use This Course", video: "1HwJfe0VscmFHCoNMowdD5AHVk4SBD_S1" },
-      { title: "Pacing on Math", video: "1QRanVLjOYQC_8R_qMGUjRn1KUQJHEoC4" },
-      { title: "Priorities Below a 1000 SAT Score", video: "1ydI2R9_3J_lDsxjSx1St2TmlmdmA8UlT", notes: "1bj4VnmzwKBuDJ2PIbfxIjf7EFDlHLNRY8VC6_p-NANw" },
-      { title: "Priorities for a 1000–1290 SAT Score", video: "1RYJAExoRjHf0VrwjXr33Lkh1_YwoU7_m", notes: "1L0bIAIaeqUrgKfB4Cb__TI-xKtFxp54zdQ-17R-9RGA" },
-      { title: "Priorities for a 1300+ SAT Score", video: "12EvmZhR5FPDM3qxaCE3G40iez6Bmi_RN", notes: "141KFJuj3oyq3c4tdD70QtCCGyy_5ih0nCOH1L9C6Ans" },
+      {
+        title: "How to Use This Course",
+        intro: "Start with this walkthrough before opening a domain. For each subtopic, learn Scott's process in the video, review the guided notes, and immediately apply the process in focused practice.",
+        video: "1HwJfe0VscmFHCoNMowdD5AHVk4SBD_S1",
+      },
+      {
+        title: "Pacing on Math",
+        intro: "Build a deliberate pacing plan before you practice. Protect time for the hardest questions, choose the fastest reliable method, and leave room to verify flagged answers.",
+        video: "1QRanVLjOYQC_8R_qMGUjRn1KUQJHEoC4",
+      },
+      {
+        title: "Priorities Below a 1000 SAT Score",
+        intro: "Make Desmos and core algebra your first priorities. Learn the fundamentals before complex problems, stop memorizing low-value formulas and hacks, and set a realistic score target while you build consistency.",
+        video: "1ydI2R9_3J_lDsxjSx1St2TmlmdmA8UlT",
+        notes: "1bj4VnmzwKBuDJ2PIbfxIjf7EFDlHLNRY8VC6_p-NANw",
+      },
+      {
+        title: "Priorities for a 1000–1290 SAT Score",
+        intro: "Pair Desmos with real mathematical understanding. Prioritize accuracy, master core algebra and functions, recognize repeated SAT patterns, translate word problems carefully, and track the mistakes that keep recurring.",
+        video: "1RYJAExoRjHf0VrwjXr33Lkh1_YwoU7_m",
+        notes: "1L0bIAIaeqUrgKfB4Cb__TI-xKtFxp54zdQ-17R-9RGA",
+      },
+      {
+        title: "Priorities for a 1300+ SAT Score",
+        intro: "Use Desmos for speed, precision, and verification. At this level, improvement comes from efficient method selection, advanced graph behavior, pattern recognition, and eliminating execution errors under time pressure.",
+        video: "12EvmZhR5FPDM3qxaCE3G40iez6Bmi_RN",
+        notes: "141KFJuj3oyq3c4tdD70QtCCGyy_5ih0nCOH1L9C6Ans",
+      },
     ],
   },
   {
     title: "Algebra",
-    description: "Linear equations, functions, systems, and inequalities.",
+    description: "Master the linear relationships that drive the largest share of SAT Math questions.",
     lessons: [
-      { title: "Linear Equations in One Variable", video: "110mn8CpbSh6yncK8SsJIX2jWoobWv0k0", notes: "1zYynzU1abCBjCxRY5u3UAnhszg1PQtQUrYTi4oQWJo0" },
-      { title: "Linear Functions", video: "1dWXcTLNaoRMQZWei07yALC5956cGUMj1", notes: "1oagZ--sVPdpZ18fhfmAaGRqnuW-zPL_DurMMIKuZiTE" },
-      { title: "Linear Equations in Two Variables", video: "1J8KZYeI3zf_vrhk2BG65DuGjaYGgo8EK", notes: "1bx9YMnKDKvGOljQ-xtMIwW6IpfQruAufddJGYPLLEdk" },
-      { title: "Systems of Two Linear Equations", video: "1zGjad_5seabC-nUMP93lJyv2EB3SzHVX", notes: "1WDkZ4AHZ9-vT3Nn1gZzHeb73sarmbMcy3zvnsyI_RVQ" },
-      { title: "Linear Inequalities in One or Two Variables", video: "1uQyRbzFxMe_YOkxkVwc5oXRtMMNhdeOw", notes: "1o98x1SsNYW4vLiq1F7s-eO0Fbzt2eCNTbHzW6fyQaNs" },
+      {
+        title: "Linear Equations in One Variable",
+        intro: "Treat these as high-confidence points. Use Desmos for solution counts and direct solving, graph equations separately when needed, and use Scott's point method to test word-problem relationships and answer choices.",
+        video: "110mn8CpbSh6yncK8SsJIX2jWoobWv0k0",
+        notes: "1zYynzU1abCBjCxRY5u3UAnhszg1PQtQUrYTi4oQWJo0",
+        practiceSkills: ["Linear equations in one variable"],
+      },
+      {
+        title: "Linear Functions",
+        intro: "Use graphs, tables, equations, and points interchangeably. Recognize x- and y-intercepts, translate function notation, and use pairs of points to expose rate of change and context.",
+        video: "1dWXcTLNaoRMQZWei07yALC5956cGUMj1",
+        notes: "1oagZ--sVPdpZ18fhfmAaGRqnuW-zPL_DurMMIKuZiTE",
+        practiceSkills: ["Linear functions"],
+      },
+      {
+        title: "Linear Equations in Two Variables",
+        intro: "Focus on setting up and interpreting equations, intercepts, parallel and perpendicular lines, and percent-solution questions. Scott's notes emphasize writing the equation before solving and using points to verify the model.",
+        video: "1J8KZYeI3zf_vrhk2BG65DuGjaYGgo8EK",
+        notes: "1bx9YMnKDKvGOljQ-xtMIwW6IpfQruAufddJGYPLLEdk",
+        practiceSkills: ["Linear equations in two variables"],
+      },
+      {
+        key: "Systems of Two Linear Equations",
+        title: "Systems of Two Linear Equations in Two Variables",
+        intro: "Make systems automatic: graph both equations, read the intersection, use sliders for constants, and fall back on Scott's point method when a relationship is described in words.",
+        video: "1zGjad_5seabC-nUMP93lJyv2EB3SzHVX",
+        notes: "1WDkZ4AHZ9-vT3Nn1gZzHeb73sarmbMcy3zvnsyI_RVQ",
+        practiceSkills: ["Systems of two linear equations in two variables"],
+      },
+      {
+        title: "Linear Inequalities in One or Two Variables",
+        intro: "Approach inequalities like systems while respecting the inequality sign and every defined variable. Translate phrases such as “at most,” graph the feasible region, and test points against the original constraints.",
+        video: "1uQyRbzFxMe_YOkxkVwc5oXRtMMNhdeOw",
+        notes: "1o98x1SsNYW4vLiq1F7s-eO0Fbzt2eCNTbHzW6fyQaNs",
+        practiceSkills: ["Linear inequalities in one or two variables"],
+      },
     ],
   },
   {
     title: "Advanced Math",
-    description: "Equivalent expressions, nonlinear equations, and nonlinear functions.",
+    description: "Extend the algebra foundation into equivalent expressions, nonlinear equations, and nonlinear models.",
     lessons: [
-      { title: "Equivalent Expressions", video: "1TeB-pFmm_lkYWsRfEaH2Yaf8npLZ50C3", notes: "1m7OCQuQ-QJLm7Gz7U_WpZKcVwMTwzaQd_3kVmfnk3dI" },
-      { title: "Nonlinear Equations and Systems", video: "1DSEM56spSi-8QQeXOSnMzGbKh_t3Bqbe", notes: "170wc4KG-5cgXM9GoEW6eEgb31zHT-6eUjIK13Kq9wi8" },
-      { title: "Nonlinear Functions", video: "1ykWm6jiPiSPgOLFpeI_9tET_i5iYsVOn", notes: "1DiJUW0ba-t_kjgiWoVyEtywpEEAcTObCfQ0VS1Lic74" },
+      {
+        title: "Equivalent Expressions",
+        intro: "Match the method to the expression: graph when two forms can be compared visually, use a tilde to solve for constants, and substitute safe values when direct comparison is faster.",
+        video: "1TeB-pFmm_lkYWsRfEaH2Yaf8npLZ50C3",
+        notes: "1m7OCQuQ-QJLm7Gz7U_WpZKcVwMTwzaQd_3kVmfnk3dI",
+        practiceSkills: ["Equivalent expressions"],
+      },
+      {
+        key: "Nonlinear Equations and Systems",
+        title: "Nonlinear Equations in One Variable and Systems of Equations in Two Variables",
+        intro: "Combine the algebra and Desmos fundamentals you already learned. Graph nonlinear relationships, use sliders for unknown constants, and keep the problem's integer and domain constraints visible while solving.",
+        video: "1DSEM56spSi-8QQeXOSnMzGbKh_t3Bqbe",
+        notes: "170wc4KG-5cgXM9GoEW6eEgb31zHT-6eUjIK13Kq9wi8",
+        practiceSkills: ["Nonlinear equations in one variable and systems of equations in two variables"],
+      },
+      {
+        title: "Nonlinear Functions",
+        intro: "Recognize quadratic, cubic, quartic, and exponential behavior. Use points and graph features to interpret models, then use lists and custom regressions when the relationship is not immediately obvious.",
+        video: "1ykWm6jiPiSPgOLFpeI_9tET_i5iYsVOn",
+        notes: "1DiJUW0ba-t_kjgiWoVyEtywpEEAcTObCfQ0VS1Lic74",
+        practiceSkills: ["Nonlinear functions"],
+      },
     ],
   },
   {
     title: "Problem-Solving and Data Analysis",
-    description: "Rates, percentages, data, probability, inference, and statistical claims.",
+    description: "Translate real-world relationships, analyze data, and make statistically defensible conclusions.",
     lessons: [
-      { title: "Ratios, Rates, Proportional Relationships, and Units", video: "1xQf969ZulXGxgF15OdnLoQwZ7sbikbQt", notes: "1-cUP0chgO2Jpzv7wSao7mJriUlsMVcvZtoSk2U4eKVg" },
-      { title: "Percentages", video: "1chSGVB4kqXEyRdPcq7tSRrqDkDXEO77m", notes: "1evPDPbGh4KjBtpIUKLGrUzTtcFnjjm1eKuY10QbqawQ" },
-      { title: "One-Variable Data", video: "1AsbNkJ0OZ3uDBHeLiFTETg5cuarmBjuz", notes: "1ul8BVkGdTASRdlcveKQveH_SinZLRW6DZJkJlU6x72g" },
-      { title: "Two-Variable Data", video: "13mch_pF4eJK3fHoXp2HrCSDGhhFP-ZZS", notes: "1LHagOf6s9J-4J8PV0eeUbrEvZYnhrVwgwUaSs_bRXBc" },
-      { title: "Probability and Conditional Probability", video: "1_LB7YGuuYPbwmQLzS4UOCQYmp4jCK4VH", notes: "1odXlrOGTvjjkr8ET2niSq3c_KyCfDd1mHCafEKMFQBQ" },
-      { title: "Inference and Margin of Error", video: "1OLim8_1SbkTc6j-HOIlBQ3ikNRvbosuT", notes: "1W3kNJA793JdmPRUBsE8l7oOxiaEN7WBzC1mRXOx425g" },
-      { title: "Evaluating Statistical Claims", video: "1oCJ99KXonslyCoICOXQWuP9PQ72oXGwq", notes: "1_xmVq9NlxVuHHUvn1iytohmcnxl2N3Yatcfq2GLLQzY" },
+      {
+        title: "Ratios, Rates, Proportional Relationships, and Units",
+        intro: "Set ratios up directly in Desmos, use simple dummy values for difficult proportions, translate “per” and “on average” as division, and move through unit conversions one step at a time.",
+        video: "1xQf969ZulXGxgF15OdnLoQwZ7sbikbQt",
+        notes: "1-cUP0chgO2Jpzv7wSao7mJriUlsMVcvZtoSk2U4eKVg",
+        practiceSkills: ["Ratios, rates, proportional relationships, and units"],
+      },
+      {
+        title: "Percentages",
+        intro: "Translate percent language before calculating: “of” becomes a decimal multiplier, “less” becomes 1 − p, and “more” becomes 1 + p. Use a Desmos list when several percentage relationships interact.",
+        video: "1chSGVB4kqXEyRdPcq7tSRrqDkDXEO77m",
+        notes: "1evPDPbGh4KjBtpIUKLGrUzTtcFnjjm1eKuY10QbqawQ",
+        practiceSkills: ["Percentages"],
+      },
+      {
+        key: "One-Variable Data",
+        title: "One-Variable Data: Distributions and Measures of Center and Spread",
+        intro: "Use Desmos for mean, median, and standard deviation; identify mode by frequency; connect total to mean × quantity; and use distribution shape to reason about center and spread.",
+        video: "1AsbNkJ0OZ3uDBHeLiFTETg5cuarmBjuz",
+        notes: "1ul8BVkGdTASRdlcveKQveH_SinZLRW6DZJkJlU6x72g",
+        practiceSkills: ["One-variable data: distributions and measures of center and spread"],
+      },
+      {
+        key: "Two-Variable Data",
+        title: "Two-Variable Data: Models and Scatterplots",
+        intro: "Read scatterplots and lines of best fit, connect slope to average rate of change, and decide when a visual estimate is enough versus when a point should be substituted into the model.",
+        video: "13mch_pF4eJK3fHoXp2HrCSDGhhFP-ZZS",
+        notes: "1LHagOf6s9J-4J8PV0eeUbrEvZYnhrVwgwUaSs_bRXBc",
+        practiceSkills: ["Two-variable data: models and scatterplots"],
+      },
+      {
+        title: "Probability and Conditional Probability",
+        intro: "For conditional probability, put the “given” group in the denominator and count only outcomes inside that condition. Use a tilde when the remaining work becomes an awkward percent equation.",
+        video: "1_LB7YGuuYPbwmQLzS4UOCQYmp4jCK4VH",
+        notes: "1odXlrOGTvjjkr8ET2niSq3c_KyCfDd1mHCafEKMFQBQ",
+        practiceSkills: ["Probability and conditional probability"],
+      },
+      {
+        key: "Inference and Margin of Error",
+        title: "Inference from Sample Statistics and Margin of Error",
+        intro: "Treat margin of error as a plausible range, not a guarantee. Reject claims using “exactly,” “never,” or “impossible,” and keep the sample and target population aligned before scaling a result.",
+        video: "1OLim8_1SbkTc6j-HOIlBQ3ikNRvbosuT",
+        notes: "1W3kNJA793JdmPRUBsE8l7oOxiaEN7WBzC1mRXOx425g",
+        practiceSkills: ["Inference from sample statistics and margin of error"],
+      },
+      {
+        key: "Evaluating Statistical Claims",
+        title: "Evaluating Statistical Claims: Observational Studies and Experiments",
+        intro: "Generalize only to the population from which a representative random sample was selected. Distinguish association from causation, respect sampling uncertainty, and prefer the most limited defensible conclusion.",
+        video: "1oCJ99KXonslyCoICOXQWuP9PQ72oXGwq",
+        notes: "1_xmVq9NlxVuHHUvn1iytohmcnxl2N3Yatcfq2GLLQzY",
+        practiceSkills: ["Evaluating statistical claims: observational studies and experiments"],
+      },
     ],
   },
   {
     title: "Geometry and Trigonometry",
-    description: "Area, volume, triangles, trigonometry, and circles.",
+    description: "Build reliable diagrams, choose the right formulas, and connect geometry to algebra and Desmos.",
     lessons: [
-      { title: "Area and Volume", video: "1VkAAquoO5ihUfPshJbyvJdIoRte9T8Gn", notes: "1dVkIy4kuZf5ckVc6EfTm2H7RDSPMm6DWct5Pd_FOOWY" },
-      { title: "Lines, Angles, and Triangles", video: "1SOSNkDmaS6wZoa3SLtssFBSlbGqSZQp7", notes: "1XbqXmEncH5prh2UkDYFLmr_fPEJpzc01k3uu7bucMNE" },
-      { title: "Right Triangles and Trigonometry", video: "1gIStzgxDKMKGk1sZvxfHygC3YpRsAo7-", notes: "1X4uMnrMI9ZkmTW0-DWyvcS6YkgoMRANcHS6O_NpxuNU" },
-      { title: "Circles", video: "1qArDoYGdrKPUATS92Wiv3Bxb9fJosbB1", notes: "1eh1QCg6p45ejoHuBODb9TEBNr-Poe0rzPbMb4emfrHg" },
+      {
+        title: "Area and Volume",
+        intro: "Start from the provided SAT formula sheet, add the few surface-area and angle formulas Scott identifies, draw and label the figure, and use a tilde to simplify the algebra in ratio problems.",
+        video: "1VkAAquoO5ihUfPshJbyvJdIoRte9T8Gn",
+        notes: "1dVkIy4kuZf5ckVc6EfTm2H7RDSPMm6DWct5Pd_FOOWY",
+        practiceSkills: ["Area and volume"],
+      },
+      {
+        title: "Lines, Angles, and Triangles",
+        intro: "Know vertical, supplementary, and complementary angle relationships; recognize isosceles triangles; use the 180° triangle sum; and draw directly on the figure before doing algebra.",
+        video: "1SOSNkDmaS6wZoa3SLtssFBSlbGqSZQp7",
+        notes: "1XbqXmEncH5prh2UkDYFLmr_fPEJpzc01k3uu7bucMNE",
+        practiceSkills: ["Lines, angles, and triangles"],
+      },
+      {
+        title: "Right Triangles and Trigonometry",
+        intro: "Combine SOHCAHTOA, the Pythagorean theorem, ratios, similarity, perimeter, and special right triangles. Scott's core rule is that a correct labeled setup makes the rest of the problem manageable.",
+        video: "1gIStzgxDKMKGk1sZvxfHygC3YpRsAo7-",
+        notes: "1X4uMnrMI9ZkmTW0-DWyvcS6YkgoMRANcHS6O_NpxuNU",
+        practiceSkills: ["Right triangles and trigonometry"],
+      },
+      {
+        title: "Circles",
+        intro: "Master standard form, radius and diameter, circumference, radians, arc length, and central versus inscribed angles. Use Desmos to verify the geometry whenever the graph makes the relationship clearer.",
+        video: "1qArDoYGdrKPUATS92Wiv3Bxb9fJosbB1",
+        notes: "1eh1QCg6p45ejoHuBODb9TEBNr-Poe0rzPbMb4emfrHg",
+        practiceSkills: ["Circles"],
+      },
     ],
   },
 ];
@@ -423,7 +566,7 @@ const readingWriting: SourceModule[] = [
   },
 ];
 
-function lessonBlocks(lesson: SourceLesson): LessonBlock[] {
+function lessonBlocks(lesson: SourceLesson, subject: "math" | "reading-writing"): LessonBlock[] {
   const blocks: Omit<LessonBlock, "id" | "position">[] = [];
   let step = 1;
   if (lesson.intro) blocks.push({ kind: "text", content: { body: lesson.intro } });
@@ -434,7 +577,11 @@ function lessonBlocks(lesson: SourceLesson): LessonBlock[] {
     const url = resource.url ?? (resource.kind === "spreadsheet" ? driveSpreadsheet(resource.id ?? "") : driveDocument(resource.id ?? ""));
     blocks.push({ kind: "file", content: { url, title: resource.title, description: resource.description, eyebrow: "Reference", step: String(step++), actionLabel: resource.actionLabel ?? "Open resource", display: "card" } });
   }
-  if (lesson.practiceSkills?.length) blocks.push({ kind: "file", content: { url: readingPractice(...lesson.practiceSkills), title: `Practice: ${lesson.title}`, description: "Apply the lesson immediately using questions from Scott's imported Reading and Writing bank.", eyebrow: "Targeted practice", step: String(step++), actionLabel: "Start focused practice", display: "card" } });
+  if (lesson.practiceSkills?.length) {
+    const practiceUrl = subject === "math" ? mathPractice(...lesson.practiceSkills) : readingPractice(...lesson.practiceSkills);
+    const subjectLabel = subject === "math" ? "Math" : "Reading and Writing";
+    blocks.push({ kind: "file", content: { url: practiceUrl, title: `Practice: ${lesson.title}`, description: `Apply Scott's process immediately using matching questions from the imported ${subjectLabel} bank.`, eyebrow: "Targeted practice", step: String(step++), actionLabel: "Start focused practice", display: "card" } });
+  }
   return blocks.map((block, index) => ({ ...block, id: stableId(lesson.title, block.kind, block.content.title ?? "intro", String(index + 1)), position: index + 1 }));
 }
 
@@ -545,12 +692,13 @@ function course(slug: string, title: string, description: string, eyebrow: strin
     status: "published",
     lessons: module.lessons.map((lesson, lessonIndex) => {
       const lessonKey = lesson.key ?? lesson.title;
-      const blocks = lessonBlocks(lesson).map((block) => ({ ...block, id: stableId(slug, module.title, lessonKey, block.kind, String(block.position)) }));
+      const subject = slug === "math-subtopic-course" ? "math" : "reading-writing";
+      const blocks = lessonBlocks(lesson, subject).map((block) => ({ ...block, id: stableId(slug, module.title, lessonKey, block.kind, String(block.position)) }));
       return {
         id: stableId(slug, module.title, lessonKey),
         slug: slugify(lessonKey),
         title: lesson.title,
-        summary: lesson.video && lesson.notes ? "Video lesson with Scott's guided notes." : lesson.video ? "Video lesson." : "Scott's guided notes.",
+        summary: lesson.intro?.split(/(?<=[.!?])\s+/)[0] ?? (lesson.video && lesson.notes ? "Video lesson with Scott's guided notes." : lesson.video ? "Video lesson." : "Scott's guided notes."),
         position: lessonIndex + 1,
         estimatedMinutes: lesson.video ? 15 : 8,
         status: "published" as const,
@@ -565,7 +713,7 @@ function course(slug: string, title: string, description: string, eyebrow: strin
 
 const courses = [
   foundationCourse(),
-  course("math-subtopic-course", "Math Subtopic Course", "Master every Digital SAT math domain with Scott's strategy videos and guided notes.", "Math curriculum", 2, math),
+  course("math-subtopic-course", "Math Subtopic Course", "Master every Digital SAT math domain with Scott's strategy videos, guided notes, and focused practice.", "Math curriculum", 2, math),
   course("reading-writing-subtopic-course", "Reading and Writing Subtopic Course", "Learn Scott's Reading and Writing process across every tested Digital SAT domain.", "Reading and Writing curriculum", 3, readingWriting),
 ];
 
