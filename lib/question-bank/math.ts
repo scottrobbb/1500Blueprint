@@ -11,6 +11,7 @@ export type MathDomain = (typeof MATH_DOMAINS)[number];
 export type MathDifficultyFilter = Difficulty | "all";
 export type MathCompletionFilter = "all" | "unanswered" | "attempted";
 export type MathAnswerType = "mc_single" | "grid_in";
+export type QuestionBankLevel = Difficulty | "challenge";
 
 export type MathChoice = {
   id: ChoiceId;
@@ -39,11 +40,24 @@ export type MathRunnerQuestion = {
   domain: MathDomain;
   skill: string;
   difficulty: Difficulty;
+  level: QuestionBankLevel;
   answerType: MathAnswerType;
   prompt: string;
   passage: string | null;
   figureUrl: string | null;
   choices: MathChoice[];
+};
+
+export type QuestionBankAttemptState = {
+  correct: boolean;
+  response: string;
+  hadIncorrectAttempt: boolean;
+  incorrectResponses: string[];
+};
+
+export type QuestionBankRunnerState = {
+  attempts: Record<string, QuestionBankAttemptState>;
+  savedQuestionIds: string[];
 };
 
 export type MathAttemptResult = {
@@ -78,6 +92,41 @@ export function calculateAccuracy(correct: number, attempts: number): number | n
   return Math.round((correct / attempts) * 100);
 }
 
+export function nextQuestionBankAttemptState(
+  previous: QuestionBankAttemptState | undefined,
+  correct: boolean,
+  response: string,
+): QuestionBankAttemptState {
+  const incorrectResponses = previous?.incorrectResponses ?? [];
+  return {
+    correct,
+    response,
+    hadIncorrectAttempt: previous?.hadIncorrectAttempt === true || !correct,
+    incorrectResponses: !correct && !incorrectResponses.includes(response)
+      ? [...incorrectResponses, response]
+      : incorrectResponses,
+  };
+}
+
 export function formatDifficulty(difficulty: Difficulty): string {
   return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+}
+
+export function questionBankLevel(
+  difficulty: Difficulty,
+  content: Record<string, unknown> | null,
+): QuestionBankLevel {
+  const source = isRecord(content?.source) ? content.source : null;
+  const sourceLabel = source
+    ? `${stringValue(source.archivePath)} ${stringValue(source.document)}`
+    : "";
+  return /challenge/i.test(sourceLabel) ? "challenge" : difficulty;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function stringValue(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }

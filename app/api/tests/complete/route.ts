@@ -105,5 +105,13 @@ export async function POST(req: NextRequest) {
     nav = undefined;
   }
 
-  return NextResponse.json({ attemptId, xpAwarded, total: result.total, ...(nav ?? {}) });
+  // The planner migration may be deployed separately from this route, so a
+  // missing profile/table must never block a completed test from being saved.
+  const { data: plannerProfile } = await supabaseAdmin()
+    .from("study_planner_profiles")
+    .select("email")
+    .eq("email", session.email)
+    .maybeSingle<{ email: string }>();
+
+  return NextResponse.json({ attemptId, xpAwarded, total: result.total, hasStudyPlanner: Boolean(plannerProfile), ...(nav ?? {}) });
 }

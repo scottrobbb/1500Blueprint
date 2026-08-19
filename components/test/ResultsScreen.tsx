@@ -16,6 +16,7 @@ import type { AnswerMap, ModuleVariant, PracticeTest, SectionId } from "@/lib/sa
 import { AnswerReviewDashboard } from "./AnswerReviewDashboard";
 import { ArrowRightIcon, CheckIcon } from "./icons";
 import { ScoreShareModal } from "./ScoreShareModal";
+import { PlannerScorePrompt } from "./PlannerScorePrompt";
 
 export type AttemptSaveStatus = "idle" | "saving" | "saved" | "error";
 
@@ -35,6 +36,8 @@ type Props = {
   backLabel?: string;
   saveStatus?: AttemptSaveStatus;
   onRetrySave?: () => void;
+  scorePromptAttemptId?: string;
+  shouldPromptForScore?: boolean;
 };
 
 const OVERVIEW = "overview";
@@ -55,6 +58,8 @@ export function ResultsScreen({
   backLabel = "Back to your attempts",
   saveStatus,
   onRetrySave,
+  scorePromptAttemptId,
+  shouldPromptForScore = false,
 }: Props) {
   const modules = useMemo(() => administeredModules(test, routed), [test, routed]);
   const summary = useMemo(
@@ -140,6 +145,7 @@ export function ResultsScreen({
         {saveStatus && saveStatus !== "idle" ? (
           <AttemptSaveNotice status={saveStatus} attemptsHref={attemptsHref} onRetry={onRetrySave} />
         ) : null}
+        {scorePromptAttemptId && shouldPromptForScore ? <PlannerScorePrompt attemptId={scorePromptAttemptId} score={result.total} /> : null}
 
         {activeModule ? (
           <ModuleReport

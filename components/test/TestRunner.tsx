@@ -113,6 +113,7 @@ export function TestRunner({
   const [highlights, setHighlights] = useState<Record<string, Highlight[]>>({});
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [savedAttemptId, setSavedAttemptId] = useState<string | null>(null);
+  const [showPlannerScorePrompt, setShowPlannerScorePrompt] = useState(false);
   const [attemptSaveStatus, setAttemptSaveStatus] = useState<AttemptSaveStatus>("idle");
   const [extendedTime, setExtendedTime] = useState<TimeMultiplier>(1);
 
@@ -253,9 +254,10 @@ export function TestRunner({
       });
       if (!response.ok) throw new Error("Attempt save failed");
 
-      const data = (await response.json()) as { attemptId?: string };
+      const data = (await response.json()) as { attemptId?: string; hasStudyPlanner?: boolean };
       if (!data.attemptId) throw new Error("Attempt id missing");
       setSavedAttemptId(data.attemptId);
+      setShowPlannerScorePrompt(Boolean(data.hasStudyPlanner));
       setAttemptSaveStatus("saved");
     } catch {
       setAttemptSaveStatus("error");
@@ -408,6 +410,7 @@ export function TestRunner({
           perQuestionTime={state.perQuestionTime}
           onRestart={() => {
             setSavedAttemptId(null);
+            setShowPlannerScorePrompt(false);
             setAttemptSaveStatus("idle");
             completionTokenRef.current = null;
             dispatch({ type: "RESTART" });
@@ -418,6 +421,8 @@ export function TestRunner({
           attemptsHref={returnToUltimate ? completedHref : `/practice-test/${slug}/attempts`}
           completedHref={completedHref}
           testsHref={testsHref}
+          scorePromptAttemptId={savedAttemptId ?? undefined}
+          shouldPromptForScore={showPlannerScorePrompt}
         />
       </>
     );

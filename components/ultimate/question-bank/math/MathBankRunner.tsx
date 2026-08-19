@@ -7,7 +7,14 @@ import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import { ReferenceModal } from "@/components/test/ReferenceModal";
 import { normalizeGridInInput } from "@/lib/sat/gridIn";
-import { type MathAttemptResult, type MathRunnerQuestion } from "@/lib/question-bank/math";
+import {
+  nextQuestionBankAttemptState,
+  type MathAttemptResult,
+  type MathRunnerQuestion,
+  type QuestionBankAttemptState,
+  type QuestionBankLevel,
+  type QuestionBankRunnerState,
+} from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 
 type RunnerResult = MathAttemptResult & { response: string };
@@ -17,28 +24,34 @@ type BankRunnerQuestion = Omit<MathRunnerQuestion, "domain"> & { domain: string 
 type BankRunnerProps = {
   questions: BankRunnerQuestion[];
   filters: MathSessionFilters;
+  initialState: QuestionBankRunnerState;
 };
 
 export function MathBankRunner({
   questions,
   filters,
+  initialState,
 }: BankRunnerProps) {
-  return <ObjectiveBankRunner questions={questions} filters={filters} subject="math" />;
+  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} subject="math" />;
 }
 
-export function ReadingWritingBankRunner({ questions, filters }: BankRunnerProps) {
-  return <ObjectiveBankRunner questions={questions} filters={filters} subject="reading-writing" />;
+export function ReadingWritingBankRunner({ questions, filters, initialState }: BankRunnerProps) {
+  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} subject="reading-writing" />;
 }
 
 function ObjectiveBankRunner({
   questions,
   filters,
+  initialState,
   subject,
 }: BankRunnerProps & { subject: BankSubject }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers(initialState.attempts));
+  const [attempts, setAttempts] = useState<Record<string, QuestionBankAttemptState>>(initialState.attempts);
   const [results, setResults] = useState<Record<string, RunnerResult>>({});
-  const [marked, setMarked] = useState<Set<string>>(() => new Set());
+  const [marked, setMarked] = useState<Set<string>>(() => new Set(initialState.savedQuestionIds));
+  const [savingQuestion, setSavingQuestion] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [toolPanel, setToolPanel] = useState<ToolPanel>(null);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [highlightOn, setHighlightOn] = useState(false);
@@ -69,23 +82,49 @@ function ObjectiveBankRunner({
   }, [currentIndex]);
 
   function setAnswer(value: string) {
-    if (!question || result) return;
+    if (!question || result?.correct) return;
     setAnswers((current) => ({ ...current, [question.id]: value }));
+    setSubmitError(null);
+    setExplanationOpen(false);
   }
 
-  function toggleMarked() {
-    if (!question) return;
+  async function toggleMarked() {
+    if (!question || savingQuestion) return;
+    const wasSaved = marked.has(question.id);
+    const shouldSave = !wasSaved;
+    setSaveError(null);
+    setSavingQuestion(true);
     setMarked((current) => {
       const next = new Set(current);
-      if (next.has(question.id)) next.delete(question.id);
-      else next.add(question.id);
+      if (shouldSave) next.add(question.id);
+      else next.delete(question.id);
       return next;
     });
+
+    try {
+      const response = await fetch("/api/question-bank/saves", {
+        method: shouldSave ? "POST" : "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ questionId: question.id }),
+      });
+      if (!response.ok) throw new Error("Could not save this question.");
+    } catch (error) {
+      setMarked((current) => {
+        const next = new Set(current);
+        if (wasSaved) next.add(question.id);
+        else next.delete(question.id);
+        return next;
+      });
+      setSaveError(error instanceof Error ? error.message : "Could not save this question.");
+    } finally {
+      setSavingQuestion(false);
+    }
   }
 
   function goTo(index: number) {
     enteredQuestionAt.current = Date.now();
     setSubmitError(null);
+    setSaveError(null);
     setCurrentIndex(Math.max(0, Math.min(index, questions.length - 1)));
     setNavigatorOpen(false);
     setFinished(false);
@@ -98,7 +137,7 @@ function ObjectiveBankRunner({
   }
 
   async function checkAnswer() {
-    if (!question || !answer.trim() || result || submitting) return;
+    if (!question || !answer.trim() || result?.correct || result?.response === answer || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
     sessionId.current ??= createToken();
@@ -129,6 +168,10 @@ function ObjectiveBankRunner({
           response: answer,
         },
       }));
+      setAttempts((current) => ({
+        ...current,
+        [question.id]: nextQuestionBankAttemptState(current[question.id], correct, answer),
+      }));
       setExplanationOpen(false);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "We could not check that answer.");
@@ -146,8 +189,10 @@ function ObjectiveBankRunner({
     <QuestionStrip
       index={currentIndex}
       marked={marked.has(question.id)}
+      saving={savingQuestion}
+      saveError={saveError}
       eliminatorOn={eliminatorOn}
-      onToggleMarked={toggleMarked}
+      onToggleMarked={() => void toggleMarked()}
       onToggleEliminator={() => setEliminatorOn((value) => !value)}
       onOpenNote={() => setToolPanel((current) => current === "note" ? null : "note")}
       onOpenReport={() => setToolPanel((current) => current === "report" ? null : "report")}
@@ -158,6 +203,7 @@ function ObjectiveBankRunner({
       question={question}
       answer={answer}
       result={result}
+      attempt={attempts[question.id]}
       submitting={submitting}
       submitError={submitError}
       explanationOpen={explanationOpen}
@@ -279,8 +325,7 @@ function ObjectiveBankRunner({
         <RunnerNavigator
           questions={questions}
           currentIndex={currentIndex}
-          answers={answers}
-          results={results}
+          attempts={attempts}
           marked={marked}
           onGoTo={goTo}
           onClose={() => setNavigatorOpen(false)}
@@ -387,16 +432,17 @@ function ToolButton({ label, active, onClick, children }: { label: string; activ
   );
 }
 
-function QuestionStrip({ index, marked, eliminatorOn, onToggleMarked, onToggleEliminator, onOpenNote, onOpenReport }: { index: number; marked: boolean; eliminatorOn: boolean; onToggleMarked: () => void; onToggleEliminator: () => void; onOpenNote: () => void; onOpenReport: () => void }) {
+function QuestionStrip({ index, marked, saving, saveError, eliminatorOn, onToggleMarked, onToggleEliminator, onOpenNote, onOpenReport }: { index: number; marked: boolean; saving: boolean; saveError: string | null; eliminatorOn: boolean; onToggleMarked: () => void; onToggleEliminator: () => void; onOpenNote: () => void; onOpenReport: () => void }) {
   return (
     <div className="flex min-h-[52px] overflow-hidden rounded-[9px] bg-[#f3f3f3]">
       <span className="grid w-[52px] flex-none place-items-center bg-black text-xl font-semibold text-white">{index + 1}</span>
       <div className="flex min-w-0 flex-1 items-center justify-between gap-3 px-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <button type="button" onClick={onToggleMarked} aria-pressed={marked} className={`inline-flex min-h-11 min-w-0 items-center gap-2 rounded-md px-1 text-left text-sm font-semibold sm:text-base ${marked ? "text-black" : "text-[#222] hover:text-black"}`}>
+        <div className="min-w-0">
+          <button type="button" onClick={onToggleMarked} disabled={saving} aria-pressed={marked} className={`inline-flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-md px-1 text-left text-sm font-semibold disabled:cursor-wait disabled:opacity-60 sm:text-base ${marked ? "text-[#d97706]" : "text-[#222] hover:text-black"}`}>
             <BookmarkIcon filled={marked} className="h-5 w-5 flex-none" />
-            <span className="truncate">{marked ? "Marked for Review" : "Mark for Review"}</span>
+            <span className="truncate">{saving ? "Saving…" : marked ? "Saved for Review" : "Save for Review"}</span>
           </button>
+          {saveError && <p role="alert" className="-mt-1 text-[11px] font-semibold text-[#dc2626]">{saveError}</p>}
         </div>
         <div className="flex items-center gap-1 text-[#777]">
           <button type="button" onClick={onOpenNote} aria-label="Question notes" title="Question notes" className="hidden h-10 w-10 place-items-center rounded-md hover:bg-black/5 hover:text-black sm:grid"><NoteIcon className="h-5 w-5" /></button>
@@ -408,8 +454,9 @@ function QuestionStrip({ index, marked, eliminatorOn, onToggleMarked, onToggleEl
   );
 }
 
-function AnswerArea({ question, answer, result, submitting, submitError, explanationOpen, eliminatorOn, eliminatedChoices, onAnswer, onCheck, onToggleExplanation, onToggleEliminated }: { question: BankRunnerQuestion; answer: string; result: RunnerResult | undefined; submitting: boolean; submitError: string | null; explanationOpen: boolean; eliminatorOn: boolean; eliminatedChoices: string[]; onAnswer: (value: string) => void; onCheck: () => void; onToggleExplanation: () => void; onToggleEliminated: (choiceId: string) => void }) {
+function AnswerArea({ question, answer, result, attempt, submitting, submitError, explanationOpen, eliminatorOn, eliminatedChoices, onAnswer, onCheck, onToggleExplanation, onToggleEliminated }: { question: BankRunnerQuestion; answer: string; result: RunnerResult | undefined; attempt: QuestionBankAttemptState | undefined; submitting: boolean; submitError: string | null; explanationOpen: boolean; eliminatorOn: boolean; eliminatedChoices: string[]; onAnswer: (value: string) => void; onCheck: () => void; onToggleExplanation: () => void; onToggleEliminated: (choiceId: string) => void }) {
   const isMultipleChoice = question.answerType === "mc_single";
+  const resultForAnswer = result?.response === answer ? result : undefined;
 
   return (
     <div className="mt-6">
@@ -417,22 +464,23 @@ function AnswerArea({ question, answer, result, submitting, submitError, explana
         <ul className="space-y-3.5">
           {question.choices.map((choice) => {
             const selected = answer === choice.id;
-            const correctSelected = selected && result?.correct;
-            const incorrectSelected = selected && result && !result.correct;
+            const correctSelected = selected && resultForAnswer?.correct;
+            const incorrectSelected = attempt?.incorrectResponses.includes(choice.id) === true;
+            const choiceResult = result?.response === choice.id ? result : undefined;
             const eliminated = eliminatedChoices.includes(choice.id);
             return (
               <li key={choice.id} className="flex items-center gap-3">
                 <div className={`flex min-h-[54px] min-w-0 flex-1 items-center rounded-[10px] border px-1.5 transition-colors ${correctSelected ? "border-2 border-[#138a50] bg-[#e8f7ef]" : incorrectSelected ? "border-2 border-[#dc2626] bg-[#fee2e2]" : selected ? "border-2 border-[#139ee9] bg-white" : "border-[#2e2e2e] bg-white hover:bg-[#fafafa]"} ${eliminated ? "opacity-45" : ""}`}>
-                  <button type="button" disabled={Boolean(result) || eliminated} onClick={() => onAnswer(choice.id)} aria-pressed={selected} className="flex min-h-[50px] min-w-0 flex-1 items-center gap-3 px-2 py-2 text-left">
+                  <button type="button" disabled={result?.correct || incorrectSelected || eliminated || submitting} onClick={() => onAnswer(choice.id)} aria-pressed={selected} className="flex min-h-[50px] min-w-0 flex-1 cursor-pointer items-center gap-3 px-2 py-2 text-left disabled:cursor-not-allowed">
                     <span className={`grid h-8 w-8 flex-none place-items-center rounded-full border text-sm font-semibold ${correctSelected ? "border-[#138a50] bg-[#138a50] text-white" : incorrectSelected ? "border-[#dc2626] bg-[#dc2626] text-white" : selected ? "border-[#139ee9] bg-[#139ee9] text-white" : "border-[#2e2e2e] text-[#111]"}`}>
                       {incorrectSelected ? <CloseIcon className="h-4 w-4" /> : correctSelected ? <CheckIcon className="h-4 w-4" /> : choice.id}
                     </span>
                     <span className={`min-w-0 flex-1 font-serif text-[17px] leading-6 text-[#111] ${eliminated ? "line-through" : ""}`}><MathText>{choice.text}</MathText></span>
                   </button>
-                  {selected && !result && (
+                  {selected && !resultForAnswer && !result?.correct && (
                     <button type="button" onClick={() => void onCheck()} disabled={submitting} className="mr-1 rounded-lg bg-[#1aa8ef] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1096d8] disabled:opacity-60">{submitting ? "Checking…" : "Check"}</button>
                   )}
-                  {selected && result && (
+                  {choiceResult && (
                     <button type="button" onClick={onToggleExplanation} className="mr-1 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-black">Explain</button>
                   )}
                 </div>
@@ -448,22 +496,22 @@ function AnswerArea({ question, answer, result, submitting, submitError, explana
       ) : (
         <div className="max-w-md">
           <label htmlFor="math-response" className="mb-2 block text-sm font-semibold text-[#222]">Enter your answer</label>
-          <div className={`flex min-h-[54px] items-center rounded-[10px] border bg-white p-1.5 ${result?.correct ? "border-2 border-[#138a50] bg-[#e8f7ef]" : result && !result.correct ? "border-2 border-[#dc2626] bg-[#fee2e2]" : "border-[#333] focus-within:border-2 focus-within:border-[#139ee9]"}`}>
+          <div className={`flex min-h-[54px] items-center rounded-[10px] border bg-white p-1.5 transition-[border-color,box-shadow] duration-200 ${resultForAnswer?.correct ? "border-2 border-[#138a50] bg-[#e8f7ef]" : resultForAnswer && !resultForAnswer.correct ? "border-2 border-[#dc2626] bg-[#fee2e2]" : "border-[#777] focus-within:border-[#139ee9] focus-within:ring-2 focus-within:ring-[#139ee9]/20"}`}>
             <input
               id="math-response"
               type="text"
               inputMode="decimal"
               autoComplete="off"
               value={answer}
-              disabled={Boolean(result)}
+              disabled={result?.correct}
               onChange={(event) => onAnswer(normalizeGridInInput(event.target.value))}
               onKeyDown={(event) => {
                 if (event.key === "Enter") void onCheck();
               }}
               placeholder="Answer"
-              className="min-w-0 flex-1 bg-transparent px-3 font-serif text-lg text-[#111] outline-none placeholder:text-[#aaa]"
+              className="min-w-0 flex-1 bg-transparent px-3 font-serif text-lg text-[#111] outline-none placeholder:text-[#aaa] focus-visible:outline-none"
             />
-            {!result ? (
+            {!resultForAnswer && !result?.correct ? (
               <button type="button" disabled={!answer.trim() || submitting} onClick={() => void onCheck()} className="min-h-10 rounded-lg bg-[#1aa8ef] px-4 text-sm font-semibold text-white hover:bg-[#1096d8] disabled:cursor-not-allowed disabled:bg-[#d6dae1] disabled:text-[#929db0]">{submitting ? "Checking…" : "Check"}</button>
             ) : (
               <button type="button" onClick={onToggleExplanation} className="min-h-10 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-black">Explain</button>
@@ -517,7 +565,7 @@ function RunnerFooter({ subject, currentIndex, total, canGoPrevious, nextLabel, 
   );
 }
 
-function RunnerNavigator({ questions, currentIndex, answers, results, marked, onGoTo, onClose }: { questions: BankRunnerQuestion[]; currentIndex: number; answers: Record<string, string>; results: Record<string, RunnerResult>; marked: Set<string>; onGoTo: (index: number) => void; onClose: () => void }) {
+function RunnerNavigator({ questions, currentIndex, attempts, marked, onGoTo, onClose }: { questions: BankRunnerQuestion[]; currentIndex: number; attempts: Record<string, QuestionBankAttemptState>; marked: Set<string>; onGoTo: (index: number) => void; onClose: () => void }) {
   return (
     <>
       <button type="button" aria-label="Close question navigator" onClick={onClose} className="fixed inset-0 z-30 bg-black/5" />
@@ -528,22 +576,46 @@ function RunnerNavigator({ questions, currentIndex, answers, results, marked, on
           </div>
           <button type="button" onClick={onClose} aria-label="Close navigator" className="grid h-10 w-10 place-items-center rounded-md text-[#777] hover:bg-[#f1f1f1] hover:text-black"><CloseIcon className="h-5 w-5" /></button>
         </div>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2 border-y border-[#e5e5e5] py-3 text-xs font-medium text-[#555]">
-          <Legend color="bg-[#15945f]" label="Correct" />
-          <Legend color="bg-[#dc2626]" label="Incorrect" />
-          <Legend color="bg-[#f3c442]" label="Answered" />
-          <Legend color="bg-[#ef8a13]" label="For review" />
+        <div className="mt-3 space-y-2.5 border-y border-[#e5e5e5] py-3 text-xs font-medium text-[#555]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="font-semibold text-[#222]">Difficulty</span>
+            <Legend color="bg-[#d9f7e5] ring-1 ring-[#9ee4bd]" label="Easy" />
+            <Legend color="bg-[#fff2be] ring-1 ring-[#f0d978]" label="Medium" />
+            <Legend color="bg-[#fee2e2] ring-1 ring-[#f5abab]" label="Hard" />
+            <Legend color="bg-[#efe3ff] ring-1 ring-[#d6b8ff]" label="Challenge" />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="font-semibold text-[#222]">Status</span>
+            <Legend color="bg-[#168448]" label="Correct" />
+            <Legend color="bg-[#dc2626]" label="Incorrect" />
+            <Legend color="bg-white ring-2 ring-[#d97706]" label="Correct after incorrect" />
+            <Legend color="bg-[#ef8a13]" label="Saved" />
+          </div>
         </div>
-        <ol className="mt-5 grid grid-cols-6 gap-3">
+        <ol className="mt-5 grid grid-cols-[repeat(6,2.75rem)] justify-center gap-x-[7px] gap-y-3 sm:gap-x-5">
           {questions.map((question, index) => {
-            const result = results[question.id];
-            const answered = Boolean(answers[question.id]?.trim());
+            const attempt = attempts[question.id];
+            const corrected = attempt?.correct === true && attempt.hadIncorrectAttempt;
             const isMarked = marked.has(question.id);
-            const tone = result ? (result.correct ? "bg-[#d9f7e5] text-[#168448]" : "bg-[#fee2e2] text-[#dc2626]") : answered ? "bg-[#fff2be] text-[#d87807]" : "bg-white text-[#111]";
+            const statusLabel = attempt ? (corrected ? ", answered correctly after an incorrect attempt" : attempt.correct ? ", answered correctly" : ", answered incorrectly") : "";
+            const savedLabel = isMarked ? ", saved for review" : "";
             return (
-              <li key={question.id} className="relative">
-                {isMarked && <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full border-2 border-white bg-[#ef8a13]" />}
-                <button type="button" onClick={() => onGoTo(index)} aria-current={index === currentIndex ? "step" : undefined} aria-label={`Question ${index + 1}${isMarked ? ", marked for review" : ""}`} className={`grid h-11 w-11 place-items-center rounded-[9px] text-sm font-semibold ${tone} ${index === currentIndex ? "ring-2 ring-black ring-offset-2" : ""}`}>{index + 1}</button>
+              <li key={question.id} className="relative h-11 w-11 justify-self-center">
+                {attempt && (
+                  <span aria-hidden="true" className={`absolute -right-2 -top-2 z-10 grid h-[22px] w-[22px] place-items-center rounded-full shadow-sm ${corrected ? "border-[3px] border-[#d97706] bg-white text-[#d97706] ring-2 ring-white" : `border-[3px] border-white text-white ${attempt.correct ? "bg-[#168448]" : "bg-[#dc2626]"}`}`}>
+                    {attempt.correct ? <CheckIcon className="h-3 w-3" /> : <CloseIcon className="h-3 w-3" />}
+                  </span>
+                )}
+                {isMarked && <span aria-hidden="true" className="absolute -bottom-1.5 -right-1.5 z-10 grid h-[18px] w-[18px] place-items-center rounded-full border-[3px] border-white bg-[#ef8a13] text-white shadow-sm"><BookmarkIcon filled className="h-2.5 w-2.5" /></span>}
+                <button
+                  type="button"
+                  onClick={() => onGoTo(index)}
+                  aria-current={index === currentIndex ? "step" : undefined}
+                  aria-label={`Question ${index + 1}, ${formatLevel(question.level)} difficulty${statusLabel}${savedLabel}`}
+                  className={`grid h-11 w-11 cursor-pointer place-items-center rounded-[9px] text-sm font-semibold transition-[box-shadow,filter] duration-200 hover:brightness-95 ${levelTone(question.level)} ${index === currentIndex ? "ring-2 ring-black ring-offset-2" : ""}`}
+                >
+                  {index + 1}
+                </button>
               </li>
             );
           })}
@@ -654,6 +726,26 @@ function formatTime(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function initialAnswers(attempts: Record<string, QuestionBankAttemptState>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(attempts).map(([questionId, attempt]) => [questionId, attempt.response]),
+  );
+}
+
+function levelTone(level: QuestionBankLevel): string {
+  const tones: Record<QuestionBankLevel, string> = {
+    easy: "bg-[#d9f7e5] text-[#168448]",
+    medium: "bg-[#fff2be] text-[#d87807]",
+    hard: "bg-[#fee2e2] text-[#dc2626]",
+    challenge: "bg-[#efe3ff] text-[#8b31e8]",
+  };
+  return tones[level];
+}
+
+function formatLevel(level: QuestionBankLevel): string {
+  return level.charAt(0).toUpperCase() + level.slice(1);
 }
 
 function createToken(): string {

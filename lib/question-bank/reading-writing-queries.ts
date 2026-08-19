@@ -11,7 +11,7 @@ import {
   type ReadingWritingRunnerQuestion,
   type ReadingWritingSkillMetric,
 } from "@/lib/question-bank/reading-writing";
-import { calculateAccuracy } from "@/lib/question-bank/math";
+import { calculateAccuracy, questionBankLevel } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 
@@ -254,6 +254,7 @@ function toRunnerQuestion(row: ReadingQuestionRow): ReadingWritingRunnerQuestion
     domain: row.domain,
     skill: row.skill,
     difficulty: row.difficulty,
+    level: questionBankLevel(row.difficulty, row.content),
     answerType: "mc_single",
     prompt,
     passage,

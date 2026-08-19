@@ -1,4 +1,5 @@
 import type { ChoiceId, Difficulty } from "@/lib/sat/types";
+import type { QuestionBankLevel } from "@/lib/question-bank/math";
 
 export const READING_WRITING_DOMAINS = [
   "Craft and Structure",
@@ -51,6 +52,7 @@ export type ReadingWritingRunnerQuestion = {
   domain: ReadingWritingDomain;
   skill: string;
   difficulty: Difficulty;
+  level: QuestionBankLevel;
   answerType: "mc_single";
   prompt: string;
   passage: string | null;

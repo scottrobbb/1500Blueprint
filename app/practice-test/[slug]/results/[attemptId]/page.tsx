@@ -5,6 +5,7 @@ import { scoreTest } from "@/lib/sat/scoring";
 import { getSession } from "@/lib/auth/session";
 import { getTestAttempt } from "@/lib/gamification/state";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
+import { getStudyPlannerProfile } from "@/lib/study-planner/profile";
 
 export const metadata = {
   title: "Your results · 1500 SAT Blueprint",
@@ -34,7 +35,7 @@ export default async function AttemptResultsPage({
   const returnToUltimate = workspace === "ultimate" && isUltimatePreviewEmail(session.email);
 
   // getTestAttempt filters by email, so a student can only open their own attempts.
-  const attempt = await getTestAttempt(session.email, attemptId);
+  const [attempt, profile] = await Promise.all([getTestAttempt(session.email, attemptId), getStudyPlannerProfile(session.email)]);
   if (!attempt || attempt.testSlug !== slug) notFound();
 
   const test = await loadTest(slug);
@@ -58,6 +59,8 @@ export default async function AttemptResultsPage({
       completedHref={returnToUltimate ? "/ultimate/tests/completed" : undefined}
       testsHref={returnToUltimate ? "/ultimate/tests" : undefined}
       attemptDate={formatTaken(attempt.createdAt)}
+      scorePromptAttemptId={attemptId}
+      shouldPromptForScore={Boolean(profile && profile.lastScorePromptAttemptId !== attemptId)}
     />
   );
 }
