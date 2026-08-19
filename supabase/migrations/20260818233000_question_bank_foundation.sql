@@ -73,7 +73,12 @@ select q.id, 'ultimate'
 from public.drill_questions q
 where q.status = 'published'
   and (
-    (q.drill_slug = 'grammar' and q.section = 'rw' and q.answer_type = 'mc_single')
+    (
+      q.drill_slug = 'grammar'
+      and q.section = 'rw'
+      and q.answer_type = 'mc_single'
+      and q.created_by = 'scott-reading-import'
+    )
     or
     (
       q.drill_slug = 'targeted-math'
@@ -107,7 +112,10 @@ as $$
     where c.enabled = true
       and q.status = 'published'
       and q.section in ('rw', 'math')
-      and (q.section <> 'math' or q.created_by = 'scott-math-import')
+      and (
+        (q.section = 'rw' and q.created_by = 'scott-reading-import')
+        or (q.section = 'math' and q.created_by = 'scott-math-import')
+      )
   ),
   attempts as (
     select a.*

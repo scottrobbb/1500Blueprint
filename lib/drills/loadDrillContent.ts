@@ -34,6 +34,7 @@ type QuestionRow = {
   status: string;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
   drill_walkthrough_steps: StepRow[] | null;
 };
 type StepRow = { id: string; position: number; kind: string; text: string; detail: string | null };
@@ -57,7 +58,7 @@ function toQuestion(r: QuestionRow): DrillQuestion {
     content: (r.content ?? {}) as DrillContent,
     explanation: r.explanation,
     status: r.status as QuestionStatus,
-    createdBy: null,
+    createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
     walkthrough: (r.drill_walkthrough_steps ?? [])
@@ -76,7 +77,7 @@ export async function loadDrillQuestions(drillSlug: DrillSlug): Promise<DrillQue
       .from("drill_questions")
       .select(
         "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_at,updated_at," +
-          "drill_walkthrough_steps(id,position,kind,text,detail)",
+          "created_by,drill_walkthrough_steps(id,position,kind,text,detail)",
       )
       .eq("drill_slug", drillSlug)
       .eq("status", "published")

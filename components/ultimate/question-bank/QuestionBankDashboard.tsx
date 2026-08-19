@@ -49,7 +49,7 @@ export function QuestionBankDashboardView({ dashboard }: { dashboard: QuestionBa
       <div className="flex min-h-9 items-center justify-between gap-3 bg-navy px-4 py-2 text-[11px] font-semibold text-white/75 sm:px-7">
         <span>Ultimate question bank · live student analytics</span>
         <span className="rounded-full bg-gold px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-navy">
-          Math first
+          Math + R&amp;W live
         </span>
       </div>
 
@@ -142,14 +142,19 @@ export function QuestionBankDashboardView({ dashboard }: { dashboard: QuestionBa
         <aside className="mt-8 flex flex-col gap-4 overflow-hidden rounded-[18px] border border-brand/20 bg-[linear-gradient(120deg,#edf8ff_0%,#f7fbff_58%,#fff9e8_100%)] p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-brand-600">Now available</p>
-            <h2 className="mt-1 font-display text-xl font-extrabold text-navy">Start focused Math practice.</h2>
+            <h2 className="mt-1 font-display text-xl font-extrabold text-navy">Both SAT sections are ready.</h2>
             <p className="mt-1 text-sm leading-5 text-navy/50">
-              Choose from all 19 SAT Math skills, check answers immediately, and send every attempt back to these analytics.
+              Practice all 19 Math skills or all 10 Reading &amp; Writing skills, with every checked answer feeding these analytics.
             </p>
           </div>
-          <Link href="/ultimate/bank/math" className="inline-flex min-h-11 flex-none items-center justify-center gap-2 rounded-xl bg-navy px-4 text-sm font-bold text-white transition-colors hover:bg-[#15396d]">
-            Open Math bank <ArrowRightIcon className="h-4 w-4" />
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/ultimate/bank/reading-writing" className="inline-flex min-h-11 flex-none items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-white transition-colors hover:bg-brand-600">
+              Open Reading &amp; Writing <ArrowRightIcon className="h-4 w-4" />
+            </Link>
+            <Link href="/ultimate/bank/math" className="inline-flex min-h-11 flex-none items-center justify-center gap-2 rounded-xl bg-navy px-4 text-sm font-bold text-white transition-colors hover:bg-[#15396d]">
+              Open Math <ArrowRightIcon className="h-4 w-4" />
+            </Link>
+          </div>
         </aside>
       </div>
     </div>
@@ -175,7 +180,7 @@ function SubjectCard({ subject }: { subject: QuestionBankSubject }) {
       </div>
       <div className="relative z-10 max-w-[68%] sm:max-w-[62%]">
         <span className="inline-flex rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-white/85">
-          {isMath ? "Ready to practice" : "Content queued"}
+          Ready to practice
         </span>
         <h3 className="mt-3 font-display text-2xl font-extrabold tracking-[-0.025em]">{copy.title}</h3>
         <p className="mt-1 text-xs leading-5 text-white/70">{copy.description}</p>
@@ -186,15 +191,9 @@ function SubjectCard({ subject }: { subject: QuestionBankSubject }) {
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20" aria-label={`${progress}% solved`}>
           <div className="h-full rounded-full bg-white transition-[width] duration-300" style={{ width: `${progress}%` }} />
         </div>
-        {isMath ? (
-          <Link href="/ultimate/bank/math" className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-navy shadow-sm transition-transform hover:-translate-y-0.5">
-            Open Math <ArrowRightIcon className="h-4 w-4" />
-          </Link>
-        ) : (
-          <span className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white/80 px-4 text-sm font-bold text-navy/55" aria-disabled="true">
-            After Math <ArrowRightIcon className="h-4 w-4" />
-          </span>
-        )}
+        <Link href={isMath ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing"} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-navy shadow-sm transition-transform hover:-translate-y-0.5">
+          Open {copy.shortTitle} <ArrowRightIcon className="h-4 w-4" />
+        </Link>
       </div>
       <div aria-hidden="true" className="absolute bottom-0 right-0 w-[44%] max-w-[220px]">
         {isMath ? <MathToolsArt /> : <ReadingArt />}

@@ -11,6 +11,33 @@ import {
 } from "@/lib/question-bank/math";
 
 export function MathBankCatalogView({ catalog }: { catalog: MathBankCatalog }) {
+  return (
+    <SubjectBankCatalogView
+      catalog={catalog}
+      domains={MATH_DOMAINS}
+      subjectTitle="Math"
+      skillCount={19}
+      basePath="/ultimate/bank/math"
+    />
+  );
+}
+
+type BankSkillMetric = Omit<MathSkillMetric, "domain"> & { domain: string };
+type BankCatalog = Omit<MathBankCatalog, "skills"> & { skills: BankSkillMetric[] };
+
+export function SubjectBankCatalogView({
+  catalog,
+  domains,
+  subjectTitle,
+  skillCount,
+  basePath,
+}: {
+  catalog: BankCatalog;
+  domains: readonly string[];
+  subjectTitle: string;
+  skillCount: number;
+  basePath: string;
+}) {
   const [difficulty, setDifficulty] = useState<MathDifficultyFilter>("all");
   const [completion, setCompletion] = useState<MathCompletionFilter>("all");
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(() => new Set());
@@ -22,8 +49,8 @@ export function MathBankCatalogView({ catalog }: { catalog: MathBankCatalog }) {
     ),
     [catalog.skills, selectedSkills],
   );
-  const practiceHref = buildPracticeHref(difficulty, completion, [...selectedSkills]);
-  const allPracticeHref = buildPracticeHref(difficulty, completion, []);
+  const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills]);
+  const allPracticeHref = buildPracticeHref(basePath, difficulty, completion, []);
 
   function toggleSkill(name: string) {
     setSelectedSkills((current) => {
@@ -48,7 +75,7 @@ export function MathBankCatalogView({ catalog }: { catalog: MathBankCatalog }) {
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-brand-600">Question Bank</p>
             <h1 className="mt-1 font-display text-[34px] font-extrabold tracking-[-0.04em] text-ink sm:text-[42px]">
-              Math
+              {subjectTitle}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-navy/50">
               Choose one or more SAT skills, then work through the questions in a focused practice session.
@@ -96,9 +123,9 @@ export function MathBankCatalogView({ catalog }: { catalog: MathBankCatalog }) {
         <section className="mt-5 overflow-hidden rounded-[18px] border border-brand/20 bg-[linear-gradient(115deg,#eaf7ff_0%,#f8fbff_62%,#fff7da_100%)] p-5 shadow-pop sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-600">Complete bank</p>
-            <h2 className="mt-1 font-display text-xl font-extrabold text-navy">Practice all Math topics</h2>
+            <h2 className="mt-1 font-display text-xl font-extrabold text-navy">Practice all {subjectTitle} topics</h2>
             <p className="mt-1 text-sm leading-5 text-navy/50">
-              Start across all 19 skills. Your active difficulty and completion filters still apply.
+              Start across all {skillCount} skills. Your active difficulty and completion filters still apply.
             </p>
           </div>
           {catalog.totalAvailable > 0 ? (
@@ -122,7 +149,7 @@ export function MathBankCatalogView({ catalog }: { catalog: MathBankCatalog }) {
         </div>
 
         <div className="divide-y divide-navy/10">
-          {MATH_DOMAINS.map((domain) => {
+          {domains.map((domain) => {
             const skills = catalog.skills.filter((skill) => skill.domain === domain);
             return (
               <section key={domain} aria-labelledby={slug(domain)} className="py-7 first:pt-6">
@@ -174,7 +201,7 @@ function SkillRow({
   checked,
   onToggle,
 }: {
-  skill: MathSkillMetric;
+  skill: BankSkillMetric;
   checked: boolean;
   onToggle: () => void;
 }) {
@@ -246,6 +273,7 @@ function FilterSelect({
 }
 
 function buildPracticeHref(
+  basePath: string,
   difficulty: MathDifficultyFilter,
   completion: MathCompletionFilter,
   skills: string[],
@@ -255,7 +283,7 @@ function buildPracticeHref(
   if (completion !== "all") params.set("completion", completion);
   if (skills.length > 0) params.set("skills", skills.join("|"));
   const query = params.toString();
-  return `/ultimate/bank/math/practice${query ? `?${query}` : ""}`;
+  return `${basePath}/practice${query ? `?${query}` : ""}`;
 }
 
 function accuracyTone(accuracy: number | null): string {

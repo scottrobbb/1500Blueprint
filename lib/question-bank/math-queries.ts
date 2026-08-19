@@ -137,34 +137,7 @@ export function getCorrectAnswerLabel(question: MathQuestionForGrading): string 
 
 async function loadEligibleMathRows(questionId?: string): Promise<MathQuestionRow[]> {
   const db = supabaseAdmin();
-  let catalogQuery = db
-    .from("question_bank_catalog")
-    .select("question_id")
-    .eq("enabled", true);
-  if (questionId) catalogQuery = catalogQuery.eq("question_id", questionId);
-  const catalog = await catalogQuery.returns<{ question_id: string }[]>();
-
-  if (!catalog.error) {
-    const ids = (catalog.data ?? []).map((row) => row.question_id);
-    if (ids.length === 0) return [];
-    let questionQuery = db
-      .from("drill_questions")
-      .select(QUESTION_SELECT)
-      .in("id", ids)
-      .eq("created_by", "scott-math-import")
-      .eq("status", "published")
-      .eq("section", "math")
-      .in("answer_type", ["mc_single", "grid_in"])
-      .order("created_at");
-    if (questionId) questionQuery = questionQuery.eq("id", questionId);
-    const questions = await questionQuery.returns<MathQuestionRow[]>();
-    if (questions.error) throw databaseError("Could not load Math bank questions", questions.error);
-    return questions.data ?? [];
-  }
-
-  // Pre-migration fallback keeps the preview functional until the explicit
-  // question_bank_catalog allowlist has been deployed.
-  let fallbackQuery = db
+  let questionQuery = db
     .from("drill_questions")
     .select(QUESTION_SELECT)
     .eq("drill_slug", "targeted-math")
@@ -173,10 +146,11 @@ async function loadEligibleMathRows(questionId?: string): Promise<MathQuestionRo
     .eq("section", "math")
     .in("answer_type", ["mc_single", "grid_in"])
     .order("created_at");
-  if (questionId) fallbackQuery = fallbackQuery.eq("id", questionId);
-  const fallback = await fallbackQuery.returns<MathQuestionRow[]>();
-  if (fallback.error) throw databaseError("Could not load fallback Math bank", fallback.error);
-  return fallback.data ?? [];
+  if (questionId) questionQuery = questionQuery.eq("id", questionId);
+  const questions = await questionQuery.returns<MathQuestionRow[]>();
+  if (questions.error) throw databaseError("Could not load Math bank questions", questions.error);
+
+  return filterMathRowsByCatalog(questions.data ?? []);
 }
 
 const QUESTION_SELECT =
@@ -190,6 +164,27 @@ async function loadMathSkills(): Promise<MathSkillRow[]> {
     .returns<MathSkillRow[]>();
   if (error) throw databaseError("Could not load Math taxonomy", error);
   return data ?? [];
+}
+
+async function filterMathRowsByCatalog(rows: MathQuestionRow[]): Promise<MathQuestionRow[]> {
+  if (rows.length === 0) return [];
+  const enabledIds = new Set<string>();
+
+  for (const idBatch of chunks(rows.map((row) => row.id), 100)) {
+    const result = await supabaseAdmin()
+      .from("question_bank_catalog")
+      .select("question_id")
+      .eq("enabled", true)
+      .in("question_id", idBatch)
+      .returns<{ question_id: string }[]>();
+    if (result.error) {
+      if (isMissingCatalogError(result.error)) return rows;
+      throw databaseError("Could not load Math Question Bank catalog", result.error);
+    }
+    for (const item of result.data ?? []) enabledIds.add(item.question_id);
+  }
+
+  return rows.filter((row) => enabledIds.has(row.id));
 }
 
 async function loadQuestionActivity(email: string, questionIds: string[]): Promise<QuestionActivity> {
@@ -402,4 +397,10 @@ function isDifficulty(value: string): value is Difficulty {
 function databaseError(action: string, error: { message: string; code?: string }): Error {
   const code = error.code ? ` [${error.code}]` : "";
   return new Error(`${action}${code}: ${error.message}`);
+}
+
+function isMissingCatalogError(error: { message: string; code?: string }): boolean {
+  return error.code === "42P01"
+    || error.code === "PGRST205"
+    || /question_bank_catalog.*(?:not find|does not exist|schema cache)/i.test(error.message);
 }

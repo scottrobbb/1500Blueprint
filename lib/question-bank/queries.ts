@@ -43,6 +43,7 @@ async function loadPreMigrationDashboard(email: string): Promise<QuestionBankDas
       .select("id,section,domain,difficulty")
       .eq("status", "published")
       .eq("drill_slug", "grammar")
+      .eq("created_by", "scott-reading-import")
       .eq("section", "rw")
       .eq("answer_type", "mc_single")
       .returns<InventoryQuestion[]>(),

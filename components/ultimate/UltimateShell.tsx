@@ -59,7 +59,10 @@ export function UltimateShell({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  if (pathname.startsWith("/ultimate/bank/math/practice")) {
+  if (
+    pathname.startsWith("/ultimate/bank/math/practice")
+    || pathname.startsWith("/ultimate/bank/reading-writing/practice")
+  ) {
     return <main className="min-h-dvh bg-white">{children}</main>;
   }
 

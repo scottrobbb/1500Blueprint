@@ -12,14 +12,29 @@ import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 
 type RunnerResult = MathAttemptResult & { response: string };
 type ToolPanel = "calculator" | "reference" | "directions" | "more" | "note" | "report" | null;
+type BankSubject = "math" | "reading-writing";
+type BankRunnerQuestion = Omit<MathRunnerQuestion, "domain"> & { domain: string };
+type BankRunnerProps = {
+  questions: BankRunnerQuestion[];
+  filters: MathSessionFilters;
+};
 
 export function MathBankRunner({
   questions,
   filters,
-}: {
-  questions: MathRunnerQuestion[];
-  filters: MathSessionFilters;
-}) {
+}: BankRunnerProps) {
+  return <ObjectiveBankRunner questions={questions} filters={filters} subject="math" />;
+}
+
+export function ReadingWritingBankRunner({ questions, filters }: BankRunnerProps) {
+  return <ObjectiveBankRunner questions={questions} filters={filters} subject="reading-writing" />;
+}
+
+function ObjectiveBankRunner({
+  questions,
+  filters,
+  subject,
+}: BankRunnerProps & { subject: BankSubject }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [results, setResults] = useState<Record<string, RunnerResult>>({});
@@ -89,7 +104,7 @@ export function MathBankRunner({
     sessionId.current ??= createToken();
 
     try {
-      const response = await fetch("/api/question-bank/math/attempt", {
+      const response = await fetch(`/api/question-bank/${subject}/attempt`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -123,14 +138,51 @@ export function MathBankRunner({
   }
 
   if (questions.length === 0) {
-    return <EmptySession filters={filters} />;
+    return <EmptySession filters={filters} subject={subject} />;
   }
 
   const correctCount = Object.values(results).filter((item) => item.correct).length;
+  const questionStrip = (
+    <QuestionStrip
+      index={currentIndex}
+      marked={marked.has(question.id)}
+      eliminatorOn={eliminatorOn}
+      onToggleMarked={toggleMarked}
+      onToggleEliminator={() => setEliminatorOn((value) => !value)}
+      onOpenNote={() => setToolPanel((current) => current === "note" ? null : "note")}
+      onOpenReport={() => setToolPanel((current) => current === "report" ? null : "report")}
+    />
+  );
+  const answerArea = (
+    <AnswerArea
+      question={question}
+      answer={answer}
+      result={result}
+      submitting={submitting}
+      submitError={submitError}
+      explanationOpen={explanationOpen}
+      eliminatorOn={eliminatorOn}
+      eliminatedChoices={eliminated[question.id] ?? []}
+      onAnswer={setAnswer}
+      onCheck={checkAnswer}
+      onToggleExplanation={() => setExplanationOpen((value) => !value)}
+      onToggleEliminated={(choiceId) => {
+        setEliminated((current) => {
+          const currentChoices = current[question.id] ?? [];
+          const nextChoices = currentChoices.includes(choiceId)
+            ? currentChoices.filter((id) => id !== choiceId)
+            : [...currentChoices, choiceId];
+          return { ...current, [question.id]: nextChoices };
+        });
+        if (answer === choiceId) setAnswer("");
+      }}
+    />
+  );
 
   return (
     <div className="flex h-dvh min-h-[620px] flex-col overflow-hidden bg-white text-[#111]">
       <RunnerHeader
+        subject={subject}
         elapsedSeconds={elapsedSeconds}
         timerHidden={timerHidden}
         paused={paused}
@@ -144,6 +196,7 @@ export function MathBankRunner({
 
       {finished ? (
         <SessionSummary
+          subject={subject}
           total={questions.length}
           answered={Object.keys(results).length}
           correct={correctCount}
@@ -155,71 +208,58 @@ export function MathBankRunner({
         />
       ) : (
         <main className="min-h-0 flex-1 overflow-y-auto bg-white">
-          <article className={`mx-auto w-full max-w-3xl px-4 py-8 selection:bg-[#ffe37a] sm:px-0 sm:py-11 ${highlightOn ? "cursor-text" : ""}`}>
-            <QuestionStrip
-              index={currentIndex}
-              marked={marked.has(question.id)}
-              eliminatorOn={eliminatorOn}
-              onToggleMarked={toggleMarked}
-              onToggleEliminator={() => setEliminatorOn((value) => !value)}
-              onOpenNote={() => setToolPanel((current) => current === "note" ? null : "note")}
-              onOpenReport={() => setToolPanel((current) => current === "report" ? null : "report")}
-            />
-
-            <div className="px-1 py-5 sm:px-0">
-              {highlightOn && (
-                <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-[#fff4bd] px-3 py-2 text-xs font-semibold text-[#555]">
-                  <HighlightIcon className="h-4 w-4" /> Select text to highlight while you work.
+          {subject === "reading-writing" ? (
+            <div className={`grid min-h-full selection:bg-[#ffe37a] lg:grid-cols-2 ${highlightOn ? "cursor-text" : ""}`}>
+              <section aria-label="Reading passage" className="border-b border-[#e3e3e3] bg-[#fcfcfc] px-5 py-8 lg:border-b-0 lg:border-r lg:px-10 lg:py-10 xl:px-[7.5vw]">
+                <div className="mx-auto max-w-2xl">
+                  {highlightOn && (
+                    <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-[#fff4bd] px-3 py-2 text-xs font-semibold text-[#555]">
+                      <HighlightIcon className="h-4 w-4" /> Select text to highlight while you work.
+                    </div>
+                  )}
+                  {question.passage && (
+                    <QuestionContent text={question.passage} pClassName="font-serif text-[18px] leading-[1.65] text-[#111]" />
+                  )}
+                  {question.figureUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={question.figureUrl} alt="Figure for this question" className="mt-6 max-h-[420px] max-w-full object-contain" />
+                  )}
                 </div>
-              )}
-              {question.passage && (
-                <QuestionContent
-                  text={question.passage}
-                  pClassName="mb-4 font-serif text-[17px] leading-7 text-[#111]"
-                />
-              )}
-              {question.figureUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={question.figureUrl}
-                  alt="Figure for this question"
-                  className="mb-5 max-h-80 max-w-full object-contain"
-                />
-              )}
-              <QuestionContent
-                text={question.prompt}
-                pClassName="font-serif text-[17px] leading-[1.55] text-[#111] sm:text-[18px]"
-              />
-
-              <AnswerArea
-                question={question}
-                answer={answer}
-                result={result}
-                submitting={submitting}
-                submitError={submitError}
-                explanationOpen={explanationOpen}
-                eliminatorOn={eliminatorOn}
-                eliminatedChoices={eliminated[question.id] ?? []}
-                onAnswer={setAnswer}
-                onCheck={checkAnswer}
-                onToggleExplanation={() => setExplanationOpen((value) => !value)}
-                onToggleEliminated={(choiceId) => {
-                  setEliminated((current) => {
-                    const currentChoices = current[question.id] ?? [];
-                    const nextChoices = currentChoices.includes(choiceId)
-                      ? currentChoices.filter((id) => id !== choiceId)
-                      : [...currentChoices, choiceId];
-                    return { ...current, [question.id]: nextChoices };
-                  });
-                  if (answer === choiceId) setAnswer("");
-                }}
-              />
+              </section>
+              <article className="px-4 py-6 sm:px-7 lg:px-6 lg:py-6 xl:px-10">
+                <div className="mx-auto max-w-2xl">
+                  {questionStrip}
+                  <div className="px-1 py-5 sm:px-0">
+                    <QuestionContent text={question.prompt} pClassName="font-serif text-[17px] leading-[1.55] text-[#111] sm:text-[18px]" />
+                    {answerArea}
+                  </div>
+                </div>
+              </article>
             </div>
-          </article>
+          ) : (
+            <article className={`mx-auto w-full max-w-3xl px-4 py-8 selection:bg-[#ffe37a] sm:px-0 sm:py-11 ${highlightOn ? "cursor-text" : ""}`}>
+              {questionStrip}
+              <div className="px-1 py-5 sm:px-0">
+                {highlightOn && (
+                  <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-[#fff4bd] px-3 py-2 text-xs font-semibold text-[#555]">
+                    <HighlightIcon className="h-4 w-4" /> Select text to highlight while you work.
+                  </div>
+                )}
+                {question.passage && <QuestionContent text={question.passage} pClassName="mb-4 font-serif text-[17px] leading-7 text-[#111]" />}
+                {question.figureUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={question.figureUrl} alt="Figure for this question" className="mb-5 max-h-80 max-w-full object-contain" />
+                )}
+                <QuestionContent text={question.prompt} pClassName="font-serif text-[17px] leading-[1.55] text-[#111] sm:text-[18px]" />
+                {answerArea}
+              </div>
+            </article>
+          )}
         </main>
       )}
 
       <RunnerFooter
+        subject={subject}
         currentIndex={currentIndex}
         total={questions.length}
         canGoPrevious={!finished && currentIndex > 0}
@@ -249,7 +289,7 @@ export function MathBankRunner({
       {paused && <PausedOverlay onResume={() => setPaused(false)} />}
       {toolPanel === "calculator" && <CalculatorPanel onClose={() => setToolPanel(null)} />}
       {toolPanel === "reference" && <ReferenceModal onClose={() => setToolPanel(null)} />}
-      {toolPanel === "directions" && <DirectionsPanel onClose={() => setToolPanel(null)} />}
+      {toolPanel === "directions" && <DirectionsPanel subject={subject} onClose={() => setToolPanel(null)} />}
       {toolPanel === "note" && question && (
         <NotePanel
           value={notes[question.id] ?? ""}
@@ -260,6 +300,7 @@ export function MathBankRunner({
       {toolPanel === "report" && <ReportPanel onClose={() => setToolPanel(null)} />}
       {toolPanel === "more" && (
         <MoreMenu
+          subject={subject}
           timerHidden={timerHidden}
           onToggleTimer={() => setTimerHidden((value) => !value)}
           onClose={() => setToolPanel(null)}
@@ -270,6 +311,7 @@ export function MathBankRunner({
 }
 
 function RunnerHeader({
+  subject,
   elapsedSeconds,
   timerHidden,
   paused,
@@ -280,6 +322,7 @@ function RunnerHeader({
   onToggleHighlight,
   onOpenTool,
 }: {
+  subject: BankSubject;
   elapsedSeconds: number;
   timerHidden: boolean;
   paused: boolean;
@@ -290,11 +333,14 @@ function RunnerHeader({
   onToggleHighlight: () => void;
   onOpenTool: (tool: Exclude<ToolPanel, null>) => void;
 }) {
+  const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
+  const subjectLabel = subject === "math" ? "Math" : "Reading & Writing";
+
   return (
     <header className="relative z-20 border-b border-[#e8e8e8] bg-white px-3 py-2 sm:px-5">
       <div className="mx-auto grid max-w-[1480px] grid-cols-[1fr_auto] items-center gap-3 lg:grid-cols-[1fr_auto_1fr]">
         <div className="flex items-center gap-1 sm:gap-3">
-          <Link href="/ultimate/bank/math" aria-label="Go back to Math topics" className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-[#737373] hover:bg-[#f4f4f4] hover:text-[#222] sm:px-3 sm:text-sm">
+          <Link href={catalogHref} aria-label={`Go back to ${subjectLabel} topics`} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-semibold text-[#737373] hover:bg-[#f4f4f4] hover:text-[#222] sm:px-3 sm:text-sm">
             <ArrowLeftIcon className="h-4 w-4" /> <span className="hidden sm:inline">Go back</span>
           </Link>
           <button type="button" onClick={() => onOpenTool("directions")} className="hidden min-h-11 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-[#737373] hover:bg-[#f4f4f4] hover:text-[#222] sm:inline-flex">
@@ -316,10 +362,10 @@ function RunnerHeader({
           </span>
         </div>
 
-        <nav aria-label="Math tools" className="col-span-2 flex items-center justify-end gap-1 border-t border-[#ededed] pt-2 lg:col-span-1 lg:border-0 lg:pt-0">
+        <nav aria-label={`${subjectLabel} tools`} className="col-span-2 flex items-center justify-end gap-1 border-t border-[#ededed] pt-2 lg:col-span-1 lg:border-0 lg:pt-0">
           <ToolButton label="Highlight" active={highlightOn} onClick={onToggleHighlight}><HighlightIcon className="h-5 w-5" /></ToolButton>
-          <ToolButton label="Calculator" active={toolPanel === "calculator"} onClick={() => onOpenTool("calculator")}><CalculatorIcon className="h-5 w-5" /></ToolButton>
-          <ToolButton label="Reference" active={toolPanel === "reference"} onClick={() => onOpenTool("reference")}><ReferenceIcon className="h-5 w-5" /></ToolButton>
+          {subject === "math" && <ToolButton label="Calculator" active={toolPanel === "calculator"} onClick={() => onOpenTool("calculator")}><CalculatorIcon className="h-5 w-5" /></ToolButton>}
+          {subject === "math" && <ToolButton label="Reference" active={toolPanel === "reference"} onClick={() => onOpenTool("reference")}><ReferenceIcon className="h-5 w-5" /></ToolButton>}
           <ToolButton label="More" active={toolPanel === "more"} onClick={() => onOpenTool("more")}><MoreIcon className="h-5 w-5" /></ToolButton>
           <Link href="/ultimate/community" aria-label="Community" title="Community" className="hidden h-11 w-11 items-center justify-center rounded-lg text-[#888] hover:bg-[#f5f5f5] hover:text-[#333] xl:inline-flex">
             <UsersIcon className="h-5 w-5" />
@@ -362,7 +408,7 @@ function QuestionStrip({ index, marked, eliminatorOn, onToggleMarked, onToggleEl
   );
 }
 
-function AnswerArea({ question, answer, result, submitting, submitError, explanationOpen, eliminatorOn, eliminatedChoices, onAnswer, onCheck, onToggleExplanation, onToggleEliminated }: { question: MathRunnerQuestion; answer: string; result: RunnerResult | undefined; submitting: boolean; submitError: string | null; explanationOpen: boolean; eliminatorOn: boolean; eliminatedChoices: string[]; onAnswer: (value: string) => void; onCheck: () => void; onToggleExplanation: () => void; onToggleEliminated: (choiceId: string) => void }) {
+function AnswerArea({ question, answer, result, submitting, submitError, explanationOpen, eliminatorOn, eliminatedChoices, onAnswer, onCheck, onToggleExplanation, onToggleEliminated }: { question: BankRunnerQuestion; answer: string; result: RunnerResult | undefined; submitting: boolean; submitError: string | null; explanationOpen: boolean; eliminatorOn: boolean; eliminatedChoices: string[]; onAnswer: (value: string) => void; onCheck: () => void; onToggleExplanation: () => void; onToggleEliminated: (choiceId: string) => void }) {
   const isMultipleChoice = question.answerType === "mc_single";
 
   return (
@@ -445,7 +491,10 @@ function AnswerArea({ question, answer, result, submitting, submitError, explana
   );
 }
 
-function RunnerFooter({ currentIndex, total, canGoPrevious, nextLabel, finished, navigatorOpen, explanationAvailable, explanationOpen, onPrevious, onNext, onToggleNavigator, onOpenInfo, onToggleExplanation }: { currentIndex: number; total: number; canGoPrevious: boolean; nextLabel: string; finished: boolean; navigatorOpen: boolean; explanationAvailable: boolean; explanationOpen: boolean; onPrevious: () => void; onNext: () => void; onToggleNavigator: () => void; onOpenInfo: () => void; onToggleExplanation: () => void }) {
+function RunnerFooter({ subject, currentIndex, total, canGoPrevious, nextLabel, finished, navigatorOpen, explanationAvailable, explanationOpen, onPrevious, onNext, onToggleNavigator, onOpenInfo, onToggleExplanation }: { subject: BankSubject; currentIndex: number; total: number; canGoPrevious: boolean; nextLabel: string; finished: boolean; navigatorOpen: boolean; explanationAvailable: boolean; explanationOpen: boolean; onPrevious: () => void; onNext: () => void; onToggleNavigator: () => void; onOpenInfo: () => void; onToggleExplanation: () => void }) {
+  const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
+  const lessonsLabel = subject === "math" ? "Math lessons" : "Reading lessons";
+
   return (
     <footer className="relative z-20 border-t border-[#e8e8e8] bg-white px-3 py-3 sm:px-6">
       <div className="mx-auto grid max-w-[1170px] grid-cols-[auto_1fr_auto] items-center gap-3">
@@ -455,8 +504,8 @@ function RunnerFooter({ currentIndex, total, canGoPrevious, nextLabel, finished,
         <div className="hidden items-center justify-center gap-2 lg:flex">
           <button type="button" onClick={onOpenInfo} aria-label="Question information" title="Question information" className="grid h-11 w-11 place-items-center rounded-[10px] border border-[#dedede] text-[#777] hover:bg-[#f5f5f5] hover:text-black"><InfoIcon className="h-5 w-5" /></button>
           <Link href="/ultimate/ask-scott" className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-600"><SparkIcon className="h-4 w-4" /> Ask Scott</Link>
-          <Link href="/ultimate/drills" className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-brand/10 px-4 text-sm font-semibold text-brand-600 hover:bg-brand/15"><PlayCircleIcon className="h-4 w-4" /> Math lessons</Link>
-          <Link href="/ultimate/bank/math" className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-[#ffedf5] px-4 text-sm font-semibold text-[#de367b] hover:bg-[#ffe2ef]"><RemixIcon className="h-4 w-4" /> Remix</Link>
+          <Link href="/ultimate/drills" className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-brand/10 px-4 text-sm font-semibold text-brand-600 hover:bg-brand/15"><PlayCircleIcon className="h-4 w-4" /> {lessonsLabel}</Link>
+          <Link href={catalogHref} className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-[#ffedf5] px-4 text-sm font-semibold text-[#de367b] hover:bg-[#ffe2ef]"><RemixIcon className="h-4 w-4" /> Remix</Link>
           <button type="button" onClick={onToggleExplanation} disabled={!explanationAvailable} aria-pressed={explanationOpen} className={`inline-flex min-h-11 items-center gap-2 rounded-[10px] px-4 text-sm font-semibold ${explanationAvailable ? "bg-[#f2f2f2] text-[#555] hover:bg-[#e9e9e9]" : "cursor-not-allowed bg-[#f6f6f6] text-[#b9b9b9]"}`}><ListCheckIcon className="h-4 w-4" /> Explanation</button>
         </div>
         <div className="flex items-center gap-2">
@@ -468,7 +517,7 @@ function RunnerFooter({ currentIndex, total, canGoPrevious, nextLabel, finished,
   );
 }
 
-function RunnerNavigator({ questions, currentIndex, answers, results, marked, onGoTo, onClose }: { questions: MathRunnerQuestion[]; currentIndex: number; answers: Record<string, string>; results: Record<string, RunnerResult>; marked: Set<string>; onGoTo: (index: number) => void; onClose: () => void }) {
+function RunnerNavigator({ questions, currentIndex, answers, results, marked, onGoTo, onClose }: { questions: BankRunnerQuestion[]; currentIndex: number; answers: Record<string, string>; results: Record<string, RunnerResult>; marked: Set<string>; onGoTo: (index: number) => void; onClose: () => void }) {
   return (
     <>
       <button type="button" aria-label="Close question navigator" onClick={onClose} className="fixed inset-0 z-30 bg-black/5" />
@@ -504,14 +553,16 @@ function RunnerNavigator({ questions, currentIndex, answers, results, marked, on
   );
 }
 
-function SessionSummary({ total, answered, correct, marked, onReview }: { total: number; answered: number; correct: number; marked: number; onReview: () => void }) {
+function SessionSummary({ subject, total, answered, correct, marked, onReview }: { subject: BankSubject; total: number; answered: number; correct: number; marked: number; onReview: () => void }) {
   const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
+  const subjectLabel = subject === "math" ? "Math" : "Reading & Writing";
+  const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
   return (
     <main className="min-h-0 flex-1 overflow-y-auto bg-[#f5f6f8] px-4 py-10 sm:px-7">
       <div className="mx-auto max-w-3xl rounded-[24px] border border-navy/10 bg-white p-6 text-center shadow-pop sm:p-10">
         <span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-brand/10 text-brand-600"><CheckIcon className="h-8 w-8" /></span>
         <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600">Session complete</p>
-        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.035em] text-navy">Math practice recap</h1>
+        <h1 className="mt-1 font-display text-3xl font-extrabold tracking-[-0.035em] text-navy">{subjectLabel} practice recap</h1>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-navy/50">Every checked answer has been added to your Question Bank analytics.</p>
         <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <SummaryMetric value={`${answered}/${total}`} label="Checked" />
@@ -521,7 +572,7 @@ function SessionSummary({ total, answered, correct, marked, onReview }: { total:
         </div>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
           <button type="button" onClick={onReview} className="min-h-11 rounded-xl border border-navy/15 px-5 text-sm font-bold text-navy hover:border-brand/35 hover:text-brand-600">Review questions</button>
-          <Link href="/ultimate/bank/math" className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-600">Choose new topics</Link>
+          <Link href={catalogHref} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-600">Choose new topics</Link>
         </div>
       </div>
     </main>
@@ -532,15 +583,17 @@ function SummaryMetric({ value, label }: { value: string; label: string }) {
   return <div className="rounded-2xl bg-[#f5f7fa] px-3 py-4"><p className="font-display text-2xl font-extrabold text-navy">{value}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[0.11em] text-navy/40">{label}</p></div>;
 }
 
-function EmptySession({ filters }: { filters: MathSessionFilters }) {
+function EmptySession({ filters, subject }: { filters: MathSessionFilters; subject: BankSubject }) {
   const filtered = filters.skills.length > 0 || filters.difficulty !== "all" || filters.completion !== "all";
+  const subjectLabel = subject === "math" ? "Math" : "Reading & Writing";
+  const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
   return (
     <main className="grid min-h-dvh place-items-center bg-[#f5f6f8] px-4">
       <div className="max-w-lg rounded-[24px] border border-navy/10 bg-white p-8 text-center shadow-pop">
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand/10 text-brand-600"><FilterIcon className="h-7 w-7" /></span>
-        <h1 className="mt-5 font-display text-2xl font-extrabold text-navy">No matching Math questions</h1>
-        <p className="mt-2 text-sm leading-6 text-navy/50">{filtered ? "That combination of topics and filters has no available questions yet." : "The Math bank is ready for content, but no questions are currently published."}</p>
-        <Link href="/ultimate/bank/math" className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-600">Change filters</Link>
+        <h1 className="mt-5 font-display text-2xl font-extrabold text-navy">No matching {subjectLabel} questions</h1>
+        <p className="mt-2 text-sm leading-6 text-navy/50">{filtered ? "That combination of topics and filters has no available questions yet." : `The ${subjectLabel} bank is ready for content, but no questions are currently published.`}</p>
+        <Link href={catalogHref} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-600">Change filters</Link>
       </div>
     </main>
   );
@@ -550,8 +603,9 @@ function PausedOverlay({ onResume }: { onResume: () => void }) {
   return <div className="fixed inset-0 z-[60] grid place-items-center bg-navy/45 p-4 backdrop-blur-sm"><div role="dialog" aria-modal="true" aria-labelledby="paused-title" className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl"><span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gold/20 text-gold-600"><PauseIcon className="h-7 w-7" /></span><h2 id="paused-title" className="mt-4 font-display text-2xl font-extrabold text-navy">Practice paused</h2><p className="mt-2 text-sm text-navy/50">Your timer is stopped. Resume when you are ready.</p><button type="button" onClick={onResume} className="mt-6 min-h-11 rounded-xl bg-brand px-6 text-sm font-extrabold text-white hover:bg-brand-600">Resume practice</button></div></div>;
 }
 
-function DirectionsPanel({ onClose }: { onClose: () => void }) {
-  return <div className="fixed inset-0 z-50"><button type="button" aria-label="Close directions" onClick={onClose} className="absolute inset-0 bg-navy/30" /><section role="dialog" aria-modal="true" aria-labelledby="directions-title" className="absolute left-0 top-0 flex h-full w-full max-w-md flex-col bg-white shadow-2xl"><div className="flex-1 overflow-y-auto p-7"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600">1500 Blueprint</p><h2 id="directions-title" className="mt-1 font-display text-2xl font-extrabold text-navy">Math directions</h2><div className="mt-5 space-y-4 text-sm leading-7 text-navy/65"><p>Use the calculator and reference sheet whenever they help. You can move between questions at any time.</p><p>For multiple-choice questions, select one answer and check it. For student-produced responses, enter a decimal or fraction without symbols or units.</p><p>Checked answers are saved to your Question Bank analytics. Mark any item you want to revisit before ending the session.</p></div></div><div className="border-t border-navy/10 p-5"><button type="button" onClick={onClose} className="min-h-11 w-full rounded-xl bg-brand text-sm font-extrabold text-white hover:bg-brand-600">Return to practice</button></div></section></div>;
+function DirectionsPanel({ subject, onClose }: { subject: BankSubject; onClose: () => void }) {
+  const isMath = subject === "math";
+  return <div className="fixed inset-0 z-50"><button type="button" aria-label="Close directions" onClick={onClose} className="absolute inset-0 bg-navy/30" /><section role="dialog" aria-modal="true" aria-labelledby="directions-title" className="absolute left-0 top-0 flex h-full w-full max-w-md flex-col bg-white shadow-2xl"><div className="flex-1 overflow-y-auto p-7"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600">1500 Blueprint</p><h2 id="directions-title" className="mt-1 font-display text-2xl font-extrabold text-navy">{isMath ? "Math" : "Reading & Writing"} directions</h2><div className="mt-5 space-y-4 text-sm leading-7 text-navy/65">{isMath ? <><p>Use the calculator and reference sheet whenever they help. You can move between questions at any time.</p><p>For multiple-choice questions, select one answer and check it. For student-produced responses, enter a decimal or fraction without symbols or units.</p></> : <><p>Read the passage in the left panel, then choose the answer that best responds to the question on the right.</p><p>Select one answer and check it. You can highlight text, eliminate choices, move between questions, and mark questions for review.</p></>}<p>Checked answers are saved to your Question Bank analytics. Mark any item you want to revisit before ending the session.</p></div></div><div className="border-t border-navy/10 p-5"><button type="button" onClick={onClose} className="min-h-11 w-full rounded-xl bg-brand text-sm font-extrabold text-white hover:bg-brand-600">Return to practice</button></div></section></div>;
 }
 
 function NotePanel({ value, onChange, onClose }: { value: string; onChange: (value: string) => void; onClose: () => void }) {
@@ -587,8 +641,9 @@ function ReportPanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-function MoreMenu({ timerHidden, onToggleTimer, onClose }: { timerHidden: boolean; onToggleTimer: () => void; onClose: () => void }) {
-  return <><button type="button" aria-label="Close more menu" onClick={onClose} className="fixed inset-0 z-30" /><div className="fixed right-4 top-[116px] z-40 w-64 rounded-2xl border border-navy/10 bg-white p-2 shadow-2xl lg:top-[76px]"><button type="button" onClick={onToggleTimer} className="flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-bold text-navy hover:bg-navy/5"><span>{timerHidden ? "Show timer" : "Hide timer"}</span><TimerIcon className="h-5 w-5 text-navy/40" /></button><Link href="/ultimate/bank/math" className="flex min-h-11 items-center justify-between rounded-xl px-3 text-sm font-bold text-navy hover:bg-navy/5"><span>End session</span><ArrowRightIcon className="h-4 w-4 text-navy/40" /></Link></div></>;
+function MoreMenu({ subject, timerHidden, onToggleTimer, onClose }: { subject: BankSubject; timerHidden: boolean; onToggleTimer: () => void; onClose: () => void }) {
+  const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
+  return <><button type="button" aria-label="Close more menu" onClick={onClose} className="fixed inset-0 z-30" /><div className="fixed right-4 top-[116px] z-40 w-64 rounded-2xl border border-navy/10 bg-white p-2 shadow-2xl lg:top-[76px]"><button type="button" onClick={onToggleTimer} className="flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-bold text-navy hover:bg-navy/5"><span>{timerHidden ? "Show timer" : "Hide timer"}</span><TimerIcon className="h-5 w-5 text-navy/40" /></button><Link href={catalogHref} className="flex min-h-11 items-center justify-between rounded-xl px-3 text-sm font-bold text-navy hover:bg-navy/5"><span>End session</span><ArrowRightIcon className="h-4 w-4 text-navy/40" /></Link></div></>;
 }
 
 function Legend({ color, label }: { color: string; label: string }) {

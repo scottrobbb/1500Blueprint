@@ -43,7 +43,9 @@ export default async function DrillPage({
 
   switch (slug) {
     case "grammar": {
-      const raw = await loadDrillQuestions("grammar");
+      const raw = (await loadDrillQuestions("grammar")).filter(
+        (question) => question.createdBy !== "scott-reading-import",
+      );
       const [ordered, nav, mastery] = email
         ? await Promise.all([
             selectForStudent("grammar", email, raw),
