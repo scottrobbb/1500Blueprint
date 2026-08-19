@@ -192,16 +192,11 @@ async function loadMathSkills(): Promise<MathSkillRow[]> {
 
 async function loadQuestionActivity(email: string, questionIds: string[]): Promise<QuestionActivity> {
   if (questionIds.length === 0) return emptyActivity(false);
-  const attempts = await supabaseAdmin()
-    .from("question_bank_attempts")
-    .select("question_id,correct")
-    .eq("email", email)
-    .in("question_id", questionIds)
-    .returns<AttemptRow[]>();
+  const attempts = await loadAttemptRows(email, questionIds);
 
   if (!attempts.error) {
     const activity = emptyActivity(true);
-    for (const row of attempts.data ?? []) {
+    for (const row of attempts.data) {
       activity.attemptedIds.add(row.question_id);
       const current = activity.attemptsByQuestion.get(row.question_id) ?? { attempts: 0, correct: 0 };
       current.attempts += 1;
@@ -211,17 +206,11 @@ async function loadQuestionActivity(email: string, questionIds: string[]): Promi
     return activity;
   }
 
-  const legacy = await supabaseAdmin()
-    .from("drill_question_progress")
-    .select("question_id,attempts,mastered_at")
-    .eq("email", email)
-    .eq("drill_slug", "targeted-math")
-    .in("question_id", questionIds)
-    .returns<LegacyProgressRow[]>();
+  const legacy = await loadLegacyProgressRows(email, questionIds);
   if (legacy.error) throw databaseError("Could not load Math progress", legacy.error);
 
   const activity = emptyActivity(false);
-  for (const row of legacy.data ?? []) {
+  for (const row of legacy.data) {
     activity.attemptedIds.add(row.question_id);
     activity.attemptsByQuestion.set(row.question_id, {
       attempts: row.attempts,
@@ -229,6 +218,60 @@ async function loadQuestionActivity(email: string, questionIds: string[]): Promi
     });
   }
   return activity;
+}
+
+type BatchResult<T> = {
+  data: T[];
+  error: { message: string; code?: string } | null;
+};
+
+async function loadAttemptRows(email: string, questionIds: string[]): Promise<BatchResult<AttemptRow>> {
+  const rows: AttemptRow[] = [];
+  for (const questionIdBatch of chunks(questionIds, 100)) {
+    let offset = 0;
+    while (true) {
+      const result = await supabaseAdmin()
+        .from("question_bank_attempts")
+        .select("question_id,correct")
+        .eq("email", email)
+        .in("question_id", questionIdBatch)
+        .range(offset, offset + 999)
+        .returns<AttemptRow[]>();
+      if (result.error) return { data: [], error: result.error };
+      const page = result.data ?? [];
+      rows.push(...page);
+      if (page.length < 1000) break;
+      offset += 1000;
+    }
+  }
+  return { data: rows, error: null };
+}
+
+async function loadLegacyProgressRows(
+  email: string,
+  questionIds: string[],
+): Promise<BatchResult<LegacyProgressRow>> {
+  const rows: LegacyProgressRow[] = [];
+  for (const questionIdBatch of chunks(questionIds, 100)) {
+    const result = await supabaseAdmin()
+      .from("drill_question_progress")
+      .select("question_id,attempts,mastered_at")
+      .eq("email", email)
+      .eq("drill_slug", "targeted-math")
+      .in("question_id", questionIdBatch)
+      .returns<LegacyProgressRow[]>();
+    if (result.error) return { data: [], error: result.error };
+    rows.push(...result.data ?? []);
+  }
+  return { data: rows, error: null };
+}
+
+function chunks<T>(items: readonly T[], size: number): T[][] {
+  const batches: T[][] = [];
+  for (let index = 0; index < items.length; index += size) {
+    batches.push(items.slice(index, index + size));
+  }
+  return batches;
 }
 
 function buildSkillMetrics(

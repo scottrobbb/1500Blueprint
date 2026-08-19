@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/drills/mastery.test.ts lib/drills/readingProgress.test.ts lib/drills/scoreTone.test.ts lib/drills/vocabImport.test.ts lib/drills/vocabProgress.test.ts lib/flags.test.ts lib/question-bank/dashboard.test.ts lib/question-bank/math.test.ts lib/sat/formattedText.test.ts lib/sat/gridIn.test.ts lib/sat/mathText.test.ts lib/sat/results.test.ts lib/sat/testState.test.ts scripts/import/parse.test.ts scripts/import/parse-test6.test.ts"
+    "test": "tsx --test lib/drills/mastery.test.ts lib/drills/readingProgress.test.ts lib/drills/scoreTone.test.ts lib/drills/vocabImport.test.ts lib/drills/vocabProgress.test.ts lib/flags.test.ts lib/question-bank/dashboard.test.ts lib/question-bank/math.test.ts lib/sat/formattedText.test.ts lib/sat/gridIn.test.ts lib/sat/mathText.test.ts lib/sat/results.test.ts lib/sat/testState.test.ts scripts/import/math-bank.test.ts scripts/import/parse.test.ts scripts/import/parse-test6.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

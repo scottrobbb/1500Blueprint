@@ -63,6 +63,7 @@ const ALIASES: Record<string, string> = {
   "linear equations in one var": "Linear equations in one variable",
   "linear equations in two var": "Linear equations in two variables",
   "linear equations": "Linear equations in one variable",
+  "linear equations in one or two variables": "Linear inequalities in one or two variables",
   "linear unctions": "Linear functions",
   "linear functions linear equations in one variable": "Linear functions",
   "linear inequalities in one or two var": "Linear inequalities in one or two variables",
