@@ -11,10 +11,21 @@ import { saveCourse } from "../../lib/courses/queries";
 import type { CourseInput, CourseModule, LessonBlock } from "../../lib/courses/types";
 
 type SourceLesson = {
+  key?: string;
   title: string;
+  intro?: string;
   video?: string;
+  videoMissing?: boolean;
   notes?: string;
-  resources?: { title: string; id: string; kind: "document" | "spreadsheet" }[];
+  resources?: {
+    title: string;
+    description: string;
+    id?: string;
+    url?: string;
+    kind?: "document" | "spreadsheet";
+    actionLabel?: string;
+  }[];
+  practiceSkills?: string[];
 };
 
 type SourceModule = {
@@ -342,58 +353,89 @@ const math: SourceModule[] = [
 const readingWriting: SourceModule[] = [
   {
     title: "Start Here",
-    description: "Set your pacing, learn Scott's Read–Analyze–Predict method, and prioritize your study plan.",
+    description: "Choose the right starting point for your score, set your pacing, and learn Scott's Read–Analyze–Predict method before studying individual question types.",
     lessons: [
-      { title: "Pacing and General Reading Strategies", video: "1_a7F0sUWIWSiKGXUcuDZI2-sjLwI6sdG", notes: "1qiMKJLP74b8jIxek7FlFyW6rYCxr7lndTcy4ZnmpHsE" },
-      { title: "The Read–Analyze–Predict Method", video: "1OTOxKUAKqKsWQ9gNDmvacXgcN_bf7CM1", notes: "1xW5YIPVUzpTg4kUkwsn0IOURg3Pf7uSJXcayii7-rj8" },
-      { title: "Priorities Below a 500 Reading and Writing Score", notes: "1P2CvoJvyZb59H2bFNmoUMr5wkOfnmkSVa0VoFypyoHk" },
+      {
+        key: "Priorities Below a 500 Reading and Writing Score",
+        title: "Start Here if Your Reading and Writing Score Is Below 500",
+        intro: "Use this lesson if your current Reading and Writing score is below 500. Build the core grammar and comprehension foundation in Scott's priority order before moving into the full subtopic sequence.",
+        videoMissing: true,
+        notes: "1P2CvoJvyZb59H2bFNmoUMr5wkOfnmkSVa0VoFypyoHk",
+      },
+      {
+        key: "Pacing and General Reading Strategies",
+        title: "Pacing and General Reading Tips",
+        intro: "Once you are around the 600 range, your biggest priorities become reading comprehension and execution. Use this lesson to set your question order, timing checkpoints, and general reading process.",
+        video: "1_a7F0sUWIWSiKGXUcuDZI2-sjLwI6sdG",
+        notes: "1qiMKJLP74b8jIxek7FlFyW6rYCxr7lndTcy4ZnmpHsE",
+      },
+      {
+        key: "The Read–Analyze–Predict Method",
+        title: "How to R-A-P: Read, Analyze, Predict",
+        intro: "Learn Scott's repeatable Read–Analyze–Predict process. Apply it before looking at the answer choices so the choices do not control your interpretation of the passage.",
+        video: "1OTOxKUAKqKsWQ9gNDmvacXgcN_bf7CM1",
+        notes: "1xW5YIPVUzpTg4kUkwsn0IOURg3Pf7uSJXcayii7-rj8",
+      },
     ],
   },
   {
     title: "Craft and Structure",
     description: "Words in context, text structure and purpose, and cross-text connections.",
     lessons: [
-      { title: "Words in Context", video: "1iG8mhVLbd89v-YQeJB54MgOzQoAmXTo2", notes: "1n4SUIyAuZJKcfJuMkoX2TDhqOUvSRWWr0P24v1FzKXI", resources: [{ title: "Word Parts Reference", id: "1E9yffKgi2PKQ0cMYnS4Va2Zpw0cW5hGg7MDPxF2rvn0", kind: "spreadsheet" }] },
-      { title: "Text Structure and Purpose", video: "1z73bj6gglDWXrjNvA2hj1jey2QjpzyXi", notes: "1lQ-mE7RLsuig3GVw3kX8-DzWOsy4s6sh9zBAJH1NJrQ" },
-      { title: "Cross-Text Connections", video: "17Ev2w7omYCiSDZZm4tQ92ojFSIxGjiXa", notes: "1AAeft63HqtRrbIYaO6lBDWZy2aSj0_x2kJuCtrouEMw" },
+      {
+        title: "Words in Context",
+        video: "1iG8mhVLbd89v-YQeJB54MgOzQoAmXTo2",
+        notes: "1n4SUIyAuZJKcfJuMkoX2TDhqOUvSRWWr0P24v1FzKXI",
+        resources: [
+          { title: "Word Parts Reference", description: "Use prefixes, roots, and suffixes to reason through unfamiliar vocabulary.", id: "1E9yffKgi2PKQ0cMYnS4Va2Zpw0cW5hGg7MDPxF2rvn0", kind: "spreadsheet", actionLabel: "Open word-parts sheet" },
+          { title: "The 1,000 Most Common SAT Words", description: "SparkNotes vocabulary reference supplied with Scott's course.", url: "https://img.sparknotes.com/content/testprep/pdf/sat.vocab.pdf", actionLabel: "Open vocabulary PDF" },
+        ],
+        practiceSkills: ["Words in Context"],
+      },
+      { title: "Cross-Text Connections", video: "17Ev2w7omYCiSDZZm4tQ92ojFSIxGjiXa", notes: "1AAeft63HqtRrbIYaO6lBDWZy2aSj0_x2kJuCtrouEMw", practiceSkills: ["Cross-Text Connections"] },
+      { title: "Text Structure and Purpose", video: "1z73bj6gglDWXrjNvA2hj1jey2QjpzyXi", notes: "1lQ-mE7RLsuig3GVw3kX8-DzWOsy4s6sh9zBAJH1NJrQ", practiceSkills: ["Text Structure and Purpose"] },
     ],
   },
   {
     title: "Information and Ideas",
     description: "Central ideas, evidence, and inference questions.",
     lessons: [
-      { title: "Central Ideas and Details", video: "1pVGImrIvjwNwPu6y4cDy6AK9WVBhMfgR", notes: "1xX0Jac-8vVDOtUHcfytQCrB4EWYyo-hkR3MddFRVxyI" },
-      { title: "Command of Evidence", video: "1hSMwAvixZ6SERBZN36PU8NMrMrSPMJYr", notes: "12_gbIM0bnUuEkysW2TGvFNbrg7Vwn6cGl6FJtYuEFCA" },
-      { title: "Inferences", video: "1iFWY9-Rs0mCQ3JraV1Tzc8zQD-2KXpE_", notes: "1PLL-QZOmmmeqg7joIWVsUx1ASgS7C0Q4VLwh-wD9cKw" },
-    ],
-  },
-  {
-    title: "Expression of Ideas",
-    description: "Rhetorical synthesis and transitions.",
-    lessons: [
-      { title: "Rhetorical Synthesis", video: "1WXkQR3NHTtcr5vKSwwk1fM6mBmNunAhP", notes: "1xIIWQuzLMSD3jrTJhHG6zJXKVSumJVjo8HVyffTRPTc" },
-      { title: "Transitions", video: "1RYojVhA07LJ8ENE_gMfwveN2zvwTYTHG", notes: "1rFnXicK4V4SYNat6AYr5km76Z-6XHzaH9xFQc_LiFLc" },
+      { title: "Central Ideas and Details", video: "1pVGImrIvjwNwPu6y4cDy6AK9WVBhMfgR", notes: "1xX0Jac-8vVDOtUHcfytQCrB4EWYyo-hkR3MddFRVxyI", practiceSkills: ["Central Ideas and Details"] },
+      { title: "Command of Evidence", video: "1hSMwAvixZ6SERBZN36PU8NMrMrSPMJYr", notes: "12_gbIM0bnUuEkysW2TGvFNbrg7Vwn6cGl6FJtYuEFCA", practiceSkills: ["Command of Evidence"] },
+      { title: "Inferences", video: "1iFWY9-Rs0mCQ3JraV1Tzc8zQD-2KXpE_", notes: "1PLL-QZOmmmeqg7joIWVsUx1ASgS7C0Q4VLwh-wD9cKw", practiceSkills: ["Inferences"] },
     ],
   },
   {
     title: "Standard English Conventions",
     description: "Sentence boundaries, form, structure, and sense.",
     lessons: [
-      { title: "Boundaries", video: "1p4yc1xtg_b3lR3nM1elKqNOaDJB0yFhy", notes: "1uSCn7LzddC1-DnCzy7j4MfRRb2SX6CHkZiy4qBd19uY" },
-      { title: "Form, Structure, and Sense", video: "1G9yV5zXFvEjtgRpI05iBiatCr467wdMS", notes: "1hfsjPPuv2goRcyfyd8fU9z2SNtIiKkcsZEZOOwzLqjw" },
+      { title: "Boundaries", video: "1p4yc1xtg_b3lR3nM1elKqNOaDJB0yFhy", notes: "1uSCn7LzddC1-DnCzy7j4MfRRb2SX6CHkZiy4qBd19uY", practiceSkills: ["Boundaries"] },
+      { title: "Form, Structure, and Sense", video: "1G9yV5zXFvEjtgRpI05iBiatCr467wdMS", notes: "1hfsjPPuv2goRcyfyd8fU9z2SNtIiKkcsZEZOOwzLqjw", practiceSkills: ["Form, Structure, and Sense"] },
+    ],
+  },
+  {
+    title: "Expression of Ideas",
+    description: "Transitions and rhetorical synthesis.",
+    lessons: [
+      { title: "Transitions", video: "1RYojVhA07LJ8ENE_gMfwveN2zvwTYTHG", notes: "1rFnXicK4V4SYNat6AYr5km76Z-6XHzaH9xFQc_LiFLc", practiceSkills: ["Transitions"] },
+      { title: "Rhetorical Synthesis", video: "1WXkQR3NHTtcr5vKSwwk1fM6mBmNunAhP", notes: "1xIIWQuzLMSD3jrTJhHG6zJXKVSumJVjo8HVyffTRPTc", practiceSkills: ["Rhetorical Synthesis"] },
     ],
   },
 ];
 
 function lessonBlocks(lesson: SourceLesson): LessonBlock[] {
   const blocks: Omit<LessonBlock, "id" | "position">[] = [];
-  if (lesson.video) blocks.push({ kind: "video", content: { url: driveVideo(lesson.video), title: lesson.title } });
-  if (lesson.notes) blocks.push({ kind: "file", content: { url: driveDocument(lesson.notes), title: `${lesson.title} — Guided Notes`, description: "Follow along with Scott's original visual notes." } });
+  let step = 1;
+  if (lesson.intro) blocks.push({ kind: "text", content: { body: lesson.intro } });
+  if (lesson.video) blocks.push({ kind: "video", content: { url: driveVideo(lesson.video), title: `Watch: ${lesson.title}`, description: "Take notes and pause whenever you need to apply Scott's process yourself.", eyebrow: "Video lesson", step: String(step++) } });
+  if (lesson.videoMissing) blocks.push({ kind: "video", content: { url: "", title: `Upload: ${lesson.title} video`, description: "The original course includes a video here, but that video was not present in Scott's shared Drive.", eyebrow: "Video lesson", step: String(step++), status: "unavailable" } });
+  if (lesson.notes) blocks.push({ kind: "file", content: { url: driveDocument(lesson.notes), title: `${lesson.title} — Guided Notes`, description: "Open Scott's original notes and follow along with the lesson.", eyebrow: "Guided notes", step: String(step++), actionLabel: "Open guided notes", display: "card" } });
   for (const resource of lesson.resources ?? []) {
-    const url = resource.kind === "spreadsheet" ? driveSpreadsheet(resource.id) : driveDocument(resource.id);
-    blocks.push({ kind: "file", content: { url, title: resource.title, description: "Course reference resource." } });
+    const url = resource.url ?? (resource.kind === "spreadsheet" ? driveSpreadsheet(resource.id ?? "") : driveDocument(resource.id ?? ""));
+    blocks.push({ kind: "file", content: { url, title: resource.title, description: resource.description, eyebrow: "Reference", step: String(step++), actionLabel: resource.actionLabel ?? "Open resource", display: "card" } });
   }
-  return blocks.map((block, index) => ({ ...block, id: stableId(lesson.title, block.kind, String(index + 1)), position: index + 1 }));
+  if (lesson.practiceSkills?.length) blocks.push({ kind: "file", content: { url: readingPractice(...lesson.practiceSkills), title: `Practice: ${lesson.title}`, description: "Apply the lesson immediately using questions from Scott's imported Reading and Writing bank.", eyebrow: "Targeted practice", step: String(step++), actionLabel: "Start focused practice", display: "card" } });
+  return blocks.map((block, index) => ({ ...block, id: stableId(lesson.title, block.kind, block.content.title ?? "intro", String(index + 1)), position: index + 1 }));
 }
 
 function foundationLessonBlocks(courseSlug: string, weekTitle: string, day: FoundationDay): LessonBlock[] {
@@ -502,10 +544,11 @@ function course(slug: string, title: string, description: string, eyebrow: strin
     position: moduleIndex + 1,
     status: "published",
     lessons: module.lessons.map((lesson, lessonIndex) => {
-      const blocks = lessonBlocks(lesson).map((block) => ({ ...block, id: stableId(slug, module.title, lesson.title, block.kind, String(block.position)) }));
+      const lessonKey = lesson.key ?? lesson.title;
+      const blocks = lessonBlocks(lesson).map((block) => ({ ...block, id: stableId(slug, module.title, lessonKey, block.kind, String(block.position)) }));
       return {
-        id: stableId(slug, module.title, lesson.title),
-        slug: slugify(lesson.title),
+        id: stableId(slug, module.title, lessonKey),
+        slug: slugify(lessonKey),
         title: lesson.title,
         summary: lesson.video && lesson.notes ? "Video lesson with Scott's guided notes." : lesson.video ? "Video lesson." : "Scott's guided notes.",
         position: lessonIndex + 1,
@@ -528,7 +571,10 @@ const courses = [
 
 async function main() {
   const write = process.argv.includes("--write");
-  const modules = courses.flatMap((item) => item.modules);
+  const requestedSlug = process.argv.find((argument) => argument.startsWith("--course="))?.slice("--course=".length);
+  const selectedCourses = requestedSlug ? courses.filter((item) => item.slug === requestedSlug) : courses;
+  if (selectedCourses.length === 0) throw new Error(`Unknown course slug: ${requestedSlug}`);
+  const modules = selectedCourses.flatMap((item) => item.modules);
   const lessons = modules.flatMap((module) => module.lessons);
   const blocks = lessons.flatMap((lesson) => lesson.blocks);
   const invalidUrl = blocks.map((block) => block.content.url).filter((url): url is string => Boolean(url)).find((url) => {
@@ -536,10 +582,10 @@ async function main() {
     try { new URL(url); return false; } catch { return true; }
   });
   if (invalidUrl) throw new Error(`Invalid course resource URL: ${invalidUrl}`);
-  console.log(`Courses: ${courses.length}\nModules: ${modules.length}\nLessons: ${lessons.length}\nBlocks: ${blocks.length}`);
-  for (const item of courses) console.log(`- ${item.title}: ${item.modules.length} modules, ${item.modules.flatMap((module) => module.lessons).length} lessons`);
+  console.log(`Courses: ${selectedCourses.length}\nModules: ${modules.length}\nLessons: ${lessons.length}\nBlocks: ${blocks.length}`);
+  for (const item of selectedCourses) console.log(`- ${item.title}: ${item.modules.length} modules, ${item.modules.flatMap((module) => module.lessons).length} lessons`);
   if (!write) { console.log("Audit only. Add --write to import."); return; }
-  for (const item of courses) {
+  for (const item of selectedCourses) {
     if (!(await saveCourse(item))) throw new Error(`Failed to import ${item.slug}`);
     console.log(`Imported ${item.slug}`);
   }
