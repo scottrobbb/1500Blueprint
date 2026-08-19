@@ -50,8 +50,13 @@ function renderExponents(text: string): ReactNode[] {
 }
 
 function renderPlain(text: string, key: string): ReactNode {
-  if (!text.includes("^")) return <Fragment key={key}>{text}</Fragment>;
-  return <Fragment key={key}>{renderExponents(text)}</Fragment>;
+  const normalized = normalizeLegacyMathText(text);
+  if (!normalized.includes("^")) return <Fragment key={key}>{normalized}</Fragment>;
+  return <Fragment key={key}>{renderExponents(normalized)}</Fragment>;
+}
+
+export function normalizeLegacyMathText(text: string): string {
+  return text.replace(/(?<![A-Za-z])sqrt\s*\(/gi, "√(");
 }
 
 function renderMath(text: string, keyPrefix: string): ReactNode[] {

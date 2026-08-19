@@ -36,6 +36,7 @@ const navigation: { title?: string; items: NavItem[] }[] = [
   {
     title: "Practice",
     items: [
+      { href: "/ultimate/bank", label: "Question Bank", Icon: QuestionBankIcon, chip: "New" },
       { href: "/ultimate/drills", label: "Drills", Icon: DrillsIcon },
       { href: "/ultimate/tests", label: "Full-Length Tests", Icon: TestsIcon },
       { href: "/ultimate/flashcards", label: "Flashcards", Icon: LayersIcon },
@@ -57,6 +58,10 @@ export function UltimateShell({
 }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  if (pathname.startsWith("/ultimate/bank/math/practice")) {
+    return <main className="min-h-dvh bg-white">{children}</main>;
+  }
 
   const rail = (
     <div className="flex h-full flex-col">
@@ -247,6 +252,15 @@ function CalendarIcon({ className }: IconProps) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <rect x="4" y="5.5" width="16" height="14" rx="2" />
       <path d="M8 3.5v4M16 3.5v4M4 10h16M8 14h2M14 14h2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function QuestionBankIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="3.5" y="4" width="17" height="14" rx="2.5" />
+      <path d="M8 20h8M12 18v2M8.5 9.2h7M8.5 12.8h4.5" strokeLinecap="round" />
     </svg>
   );
 }

@@ -7,13 +7,14 @@ export const TOKEN_TTL_SECONDS = 60 * 15; // magic link is valid for 15 minutes
 // Stripe subscription statuses that count as an active membership.
 export const ACTIVE_STATUSES = ["active", "trialing"] as const;
 
-// Absolute base URL for building login links + redirects. Prefers
-// NEXT_PUBLIC_APP_URL (canonical/custom domain) but tolerates a scheme-less value
-// like "1500-blueprint.vercel.app" by defaulting it to https — otherwise
-// `new URL("/path", base)` throws ERR_INVALID_URL. Falls back to the request
-// origin when the env var is unset. Trailing slashes are trimmed so callers can
-// safely append paths.
+export const CANONICAL_APP_URL = "https://1500satblueprint.com";
+
+// Production auth links and redirects always use the public domain, even when
+// the request reaches a Vercel deployment URL. Development keeps its configured
+// or request origin so localhost login testing still works.
 export function appBaseUrl(fallbackOrigin: string): string {
+  if (process.env.NODE_ENV === "production") return CANONICAL_APP_URL;
+
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
   const raw = configured || fallbackOrigin;
   const withScheme = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;

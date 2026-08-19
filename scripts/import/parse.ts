@@ -359,7 +359,7 @@ function normalizeAnswerValue(raw: string): string {
   return raw.replace(/[–—−]/g, "-").trim();
 }
 
-function parseQuestionBlock(
+export function parseQuestionBlock(
   lines: string[],
   section: Section,
   pendingImages: string[],
@@ -398,7 +398,7 @@ function parseQuestionBlock(
 
   // drop the breadcrumb line from content
   const body = contentLines.filter(
-    (l) => !isBreadcrumbLine(l) && !/^answer choices?$/i.test(l.trim()),
+    (l) => !isBreadcrumbLine(l) && !/^answer(?: choices?)?$/i.test(l.trim()),
   );
   const { choices, firstIdx } = parseChoices(body);
 

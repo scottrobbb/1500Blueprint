@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseMathSegments } from "@/components/test/MathText";
+import { normalizeLegacyMathText, parseMathSegments } from "@/components/test/MathText";
 
 test("separates inline LaTeX from ordinary text", () => {
   assert.deepEqual(parseMathSegments("Solve $x^2=9$ for $x$."), [
@@ -22,4 +22,8 @@ test("renders escaped currency dollars as literal text", () => {
 
 test("does not treat an unmatched dollar as math", () => {
   assert.deepEqual(parseMathSegments("The price is $5."), [{ type: "text", value: "The price is $5." }]);
+});
+
+test("normalizes legacy square-root notation", () => {
+  assert.equal(normalizeLegacyMathText("7sqrt(a) + SQRT (b)"), "7√(a) + √(b)");
 });
