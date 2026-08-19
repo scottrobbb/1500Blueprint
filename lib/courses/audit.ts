@@ -58,18 +58,18 @@ export function auditCourse(course: Course): CourseAudit {
   let publishedLessons = 0;
   let blockCount = 0;
 
-  for (const module of course.modules) {
-    for (const lesson of module.lessons) {
+  for (const courseModule of course.modules) {
+    for (const lesson of courseModule.lessons) {
       if (lesson.status === "published") publishedLessons += 1;
-      else issues.push({ id: `draft-${lesson.id}`, moduleId: module.id, lessonId: lesson.id, severity: "warning", category: "publishing", title: `${lesson.title} is still a draft`, detail: "Publish it when its content is ready for students." });
-      if (lesson.blocks.length === 0) issues.push({ id: `empty-${lesson.id}`, moduleId: module.id, lessonId: lesson.id, severity: "missing", category: "asset", title: `${lesson.title} has no content`, detail: "Add text, a video, a resource, an image, or a practice." });
+      else issues.push({ id: `draft-${lesson.id}`, moduleId: courseModule.id, lessonId: lesson.id, severity: "warning", category: "publishing", title: `${lesson.title} is still a draft`, detail: "Publish it when its content is ready for students." });
+      if (lesson.blocks.length === 0) issues.push({ id: `empty-${lesson.id}`, moduleId: courseModule.id, lessonId: lesson.id, severity: "missing", category: "asset", title: `${lesson.title} has no content`, detail: "Add text, a video, a resource, an image, or a practice." });
       for (const block of lesson.blocks) {
         blockCount += 1;
         if (block.kind === "practice") {
           practiceCount += 1;
           questionCount += block.content.practice?.questions.length ?? 0;
         }
-        for (const [issueIndex, blockIssue] of issueForBlock(block, module.id, lesson.id).entries()) issues.push({ ...blockIssue, id: `${block.id}-${issueIndex}` });
+        for (const [issueIndex, blockIssue] of issueForBlock(block, courseModule.id, lesson.id).entries()) issues.push({ ...blockIssue, id: `${block.id}-${issueIndex}` });
       }
     }
   }
