@@ -1,6 +1,6 @@
 "use client";
 
-import { SubjectBankCatalogView } from "@/components/ultimate/question-bank/math/MathBankCatalog";
+import SubjectBankCatalogView from "@/components/ultimate/question-bank/math/MathBankCatalog";
 import {
   READING_WRITING_DOMAINS,
   type ReadingWritingBankCatalog,

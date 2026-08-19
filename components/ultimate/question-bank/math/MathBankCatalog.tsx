@@ -196,6 +196,8 @@ export function SubjectBankCatalogView({
   );
 }
 
+export default SubjectBankCatalogView;
+
 function SkillRow({
   skill,
   checked,

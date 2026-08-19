@@ -1,0 +1,36 @@
+{
+  "courses": [
+    {
+      "slug": "start-here",
+      "title": "Start Here",
+      "description": "Orientation and the Blueprint study process.",
+      "eyebrow": "New student orientation",
+      "coverUrl": null,
+      "estimatedMinutes": 30,
+      "status": "draft",
+      "modules": [
+        {
+          "slug": "welcome",
+          "title": "Welcome to the Blueprint",
+          "description": "Set up the platform and understand the study sequence.",
+          "status": "draft",
+          "lessons": [
+            {
+              "slug": "how-to-use-the-blueprint",
+              "title": "How to use the Blueprint",
+              "summary": "The course, practice, and review loop.",
+              "estimatedMinutes": 5,
+              "status": "draft",
+              "blocks": [
+                { "kind": "text", "content": { "body": "Replace this text with Scott's lesson content." } },
+                { "kind": "video", "content": { "url": "", "title": "Lesson video" } },
+                { "kind": "image", "content": { "url": "", "alt": "", "caption": "" } },
+                { "kind": "file", "content": { "url": "", "title": "Lesson worksheet", "description": "" } }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

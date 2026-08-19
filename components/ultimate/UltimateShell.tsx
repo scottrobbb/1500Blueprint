@@ -29,8 +29,13 @@ const navigation: { title?: string; items: NavItem[] }[] = [
   {
     items: [
       { href: "/ultimate", label: "Home", Icon: HomeIcon },
-      { href: "/ultimate/ask-scott", label: "Ask Scott", Icon: ChatIcon },
+    ],
+  },
+  {
+    title: "Learning",
+    items: [
       { href: "/ultimate/planner", label: "Study Planner", Icon: CalendarIcon },
+      { href: "/ultimate/courses", label: "Courses", Icon: CoursesIcon },
     ],
   },
   {
@@ -45,7 +50,10 @@ const navigation: { title?: string; items: NavItem[] }[] = [
   },
   {
     title: "Connect",
-    items: [{ href: "/ultimate/community", label: "Community", Icon: CommunityIcon }],
+    items: [
+      { href: "/ultimate/community", label: "Community", Icon: CommunityIcon },
+      { href: "/ultimate/live-calls", label: "Live Calls", Icon: LiveCallsIcon },
+    ],
   },
 ];
 
@@ -78,11 +86,11 @@ export function UltimateShell({
         </span>
       </Link>
 
-      <div className="mb-3 grid grid-cols-4 rounded-full bg-white/[0.055] p-0.5 text-center text-[10px] font-semibold text-white/35">
-        <span className="rounded-full bg-sky/20 py-1 text-white">SAT</span>
-        <span className="py-1">ACT</span>
-        <span className="py-1">AP</span>
-        <span className="py-1">IB</span>
+      <div className="mb-3 grid grid-cols-4 rounded-full bg-white/[0.055] p-0.5 text-center text-[9px] font-semibold text-white/45">
+        <WorkspaceShortcut href="/ultimate/courses" label="Learn" active={pathname.startsWith("/ultimate/courses") || pathname.startsWith("/ultimate/planner")} />
+        <WorkspaceShortcut href="/ultimate/bank" label="Practice" active={pathname.startsWith("/ultimate/bank") || pathname.startsWith("/ultimate/drills") || pathname.startsWith("/ultimate/flashcards") || pathname.startsWith("/ultimate/history")} />
+        <WorkspaceShortcut href="/ultimate/tests" label="Tests" active={pathname.startsWith("/ultimate/tests")} />
+        <WorkspaceShortcut href="/ultimate/community" label="Connect" active={pathname.startsWith("/ultimate/community") || pathname.startsWith("/ultimate/live-calls")} />
       </div>
 
       <nav aria-label="Ultimate workspace" className="min-h-0 flex-1 overflow-y-auto">
@@ -230,6 +238,20 @@ function RailLink({ item, active, onNavigate }: { item: NavItem; active: boolean
   );
 }
 
+function WorkspaceShortcut({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`flex min-h-8 items-center justify-center rounded-full px-1 transition-colors ${
+        active ? "bg-sky/20 text-white" : "hover:bg-white/[0.07] hover:text-white"
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
+
 function isActivePath(pathname: string, href: string): boolean {
   return href === "/ultimate" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -242,10 +264,20 @@ function HomeIcon({ className }: IconProps) {
   );
 }
 
-function ChatIcon({ className }: IconProps) {
+function CoursesIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <path d="M20 11.5a7.5 7.5 0 0 1-10.6 6.8L4.5 20l1.2-4.4A7.5 7.5 0 1 1 20 11.5Z" strokeLinejoin="round" />
+      <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" strokeLinejoin="round" />
+      <path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 7h8M8 10.5h6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function LiveCallsIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="3" y="5" width="13" height="14" rx="2.5" />
+      <path d="m16 10 5-3v10l-5-3v-4Z" strokeLinejoin="round" />
     </svg>
   );
 }
