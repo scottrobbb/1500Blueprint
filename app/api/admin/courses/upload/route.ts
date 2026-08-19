@@ -4,10 +4,12 @@ import { supabaseAdmin } from "@/utils/supabase/admin";
 
 export const runtime = "nodejs";
 const BUCKET = "course-assets";
-const MAX_BYTES = 4 * 1024 * 1024;
+const MAX_BYTES = 500 * 1024 * 1024;
 const EXTENSIONS: Record<string, string> = {
   "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp",
   "application/pdf": "pdf", "application/zip": "zip", "text/plain": "txt",
+  "video/mp4": "mp4", "video/webm": "webm", "video/quicktime": "mov",
+  "audio/mpeg": "mp3", "audio/mp4": "m4a", "audio/wav": "wav",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
@@ -15,19 +17,19 @@ const EXTENSIONS: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   if (!(await getAdminSession())) return NextResponse.json({ error: "forbidden" }, { status: 403 });
-  const file = (await request.formData()).get("file");
-  if (!(file instanceof File) || file.size === 0) return NextResponse.json({ error: "no_file" }, { status: 400 });
-  if (file.size > MAX_BYTES) return NextResponse.json({ error: "too_large" }, { status: 413 });
-  const extension = EXTENSIONS[file.type];
+  const body = (await request.json().catch(() => null)) as { name?: string; type?: string; size?: number } | null;
+  if (!body?.name || !body.type || !body.size || body.size <= 0) return NextResponse.json({ error: "no_file" }, { status: 400 });
+  if (body.size > MAX_BYTES) return NextResponse.json({ error: "too_large" }, { status: 413 });
+  const extension = EXTENSIONS[body.type];
   if (!extension) return NextResponse.json({ error: "unsupported_type" }, { status: 400 });
   const storage = supabaseAdmin().storage;
   if (!(await storage.getBucket(BUCKET)).data) {
     const created = await storage.createBucket(BUCKET, { public: true });
     if (created.error && !/already exists/i.test(created.error.message)) return NextResponse.json({ error: "upload_failed" }, { status: 500 });
   }
-  const path = `lessons/${crypto.randomUUID()}.${extension}`;
+  const path = `lessons/${new Date().getUTCFullYear()}/${crypto.randomUUID()}.${extension}`;
   const bucket = storage.from(BUCKET);
-  const uploaded = await bucket.upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, cacheControl: "31536000" });
-  if (uploaded.error) return NextResponse.json({ error: "upload_failed" }, { status: 500 });
-  return NextResponse.json({ url: bucket.getPublicUrl(path).data.publicUrl, name: file.name });
+  const signed = await bucket.createSignedUploadUrl(path);
+  if (signed.error) return NextResponse.json({ error: "upload_failed" }, { status: 500 });
+  return NextResponse.json({ path, token: signed.data.token, url: bucket.getPublicUrl(path).data.publicUrl, name: body.name });
 }

@@ -1,5 +1,24 @@
 export type CourseStatus = "draft" | "published";
-export type LessonBlockKind = "text" | "video" | "image" | "file";
+export type LessonBlockKind = "text" | "video" | "image" | "file" | "practice";
+export type CoursePracticeQuestionType = "multiple_choice" | "free_response";
+
+export type CoursePracticeQuestion = {
+  id: string;
+  type: CoursePracticeQuestionType;
+  prompt: string;
+  choices: string[];
+  correctAnswer: string;
+  explanation: string;
+  imageUrl?: string;
+};
+
+export type CoursePractice = {
+  title: string;
+  instructions: string;
+  passingScore: number;
+  randomizeQuestions: boolean;
+  questions: CoursePracticeQuestion[];
+};
 
 export type LessonBlock = {
   id: string;
@@ -17,6 +36,7 @@ export type LessonBlock = {
     actionLabel?: string;
     display?: "card" | "embed";
     status?: "instruction" | "unavailable";
+    practice?: CoursePractice;
   };
 };
 

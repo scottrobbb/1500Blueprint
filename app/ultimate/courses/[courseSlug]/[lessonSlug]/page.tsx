@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CoursePracticeRunner } from "@/components/ultimate/courses/CoursePracticeRunner";
 import { CourseProgress } from "@/components/ultimate/courses/CourseProgress";
 import { getSession } from "@/lib/auth/session";
 import { getCourseForStudent } from "@/lib/courses/queries";
@@ -38,7 +39,7 @@ export default async function UltimateLessonPage({ params }: Props) {
         <div className="overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-pop">
           <header className="border-b border-navy/10 px-5 py-6 sm:px-8 sm:py-8"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600">{module.title} · {lesson.estimatedMinutes || 5} min</p><h1 className="mt-2 font-display text-[30px] font-extrabold leading-tight tracking-[-0.035em] text-ink sm:text-[38px]">{lesson.title}</h1>{lesson.summary ? <p className="mt-3 max-w-2xl text-sm leading-6 text-navy/50">{lesson.summary}</p> : null}</header>
           <article className="space-y-7 px-5 py-7 sm:px-8 sm:py-9">
-            {lesson.blocks.length > 0 ? lesson.blocks.map((block) => <LessonContent key={block.id} block={block} />) : <p className="rounded-2xl bg-haze p-5 text-sm text-navy/50">Lesson content is being formatted.</p>}
+            {lesson.blocks.length > 0 ? lesson.blocks.map((block) => <LessonContent key={block.id} block={block} lessonId={lesson.id} />) : <p className="rounded-2xl bg-haze p-5 text-sm text-navy/50">Lesson content is being formatted.</p>}
           </article>
           <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-navy/10 bg-haze/45 px-5 py-5 sm:px-8"><CourseProgress lessonId={lesson.id} initialCompleted={lesson.completed} /><div className="flex gap-2">{previous ? <Link href={`/ultimate/courses/${course.slug}/${previous.slug}`} className="inline-flex min-h-11 items-center rounded-xl border border-navy/15 bg-white px-4 text-sm font-bold text-navy">Previous</Link> : null}{next ? <Link href={`/ultimate/courses/${course.slug}/${next.slug}`} className="inline-flex min-h-11 items-center rounded-xl bg-navy px-4 text-sm font-bold text-white">Next lesson →</Link> : <Link href={`/ultimate/courses/${course.slug}`} className="inline-flex min-h-11 items-center rounded-xl bg-navy px-4 text-sm font-bold text-white">Finish course</Link>}</div></footer>
         </div>
@@ -47,7 +48,7 @@ export default async function UltimateLessonPage({ params }: Props) {
   );
 }
 
-function LessonContent({ block }: { block: LessonBlock }) {
+function LessonContent({ block, lessonId }: { block: LessonBlock; lessonId: string }) {
   if (block.kind === "text" && block.content.title) {
     const unavailable = block.content.status === "unavailable";
     return (
@@ -69,6 +70,7 @@ function LessonContent({ block }: { block: LessonBlock }) {
     if (embedUrl) return <section className="overflow-hidden rounded-2xl border border-navy/10 bg-white"><div className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-navy/10 bg-haze/55 px-4 py-3 sm:px-5"><div><h2 className="font-display text-lg font-extrabold text-navy">{block.content.title ?? "Lesson notes"}</h2>{block.content.description ? <p className="mt-1 text-xs text-navy/45">{block.content.description}</p> : null}</div><a href={block.content.url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-brand/25 bg-white px-4 text-xs font-bold text-brand-700 transition-colors hover:border-brand/45 hover:bg-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Open full size ↗</a></div><iframe src={embedUrl} title={block.content.title ?? "Lesson notes"} loading="lazy" className="h-[68vh] min-h-[520px] w-full bg-white" /></section>;
     return <ResourceCard block={block} />;
   }
+  if (block.kind === "practice" && block.content.practice) return <CoursePracticeRunner lessonId={lessonId} blockId={block.id} practice={block.content.practice} />;
   return null;
 }
 
