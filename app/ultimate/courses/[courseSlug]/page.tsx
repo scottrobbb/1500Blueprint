@@ -18,7 +18,10 @@ export default async function UltimateCoursePage({ params }: Props) {
     <div className="min-h-dvh bg-[#f5f6f8]">
       <header className="bg-[linear-gradient(125deg,#0b2a5b,#164582_68%,#2b8fe0)] px-4 py-8 text-white sm:px-7 sm:py-11">
         <div className="mx-auto max-w-[1120px]">
-          <Link href="/ultimate/courses" className="inline-flex min-h-11 items-center text-sm font-bold text-white/65 hover:text-white">← Back to courses</Link>
+          <Link href="/ultimate/courses" aria-label="Back to all courses" className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3.5 text-[13px] font-bold text-white/80 shadow-[0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition duration-200 hover:border-white/25 hover:bg-white/[0.14] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5"><path d="m15 18-6-6 6-6" /></svg>
+            <span>All courses</span>
+          </Link>
           <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-sky">{course.eyebrow ?? "1500 Blueprint course"}</p>
           <h1 className="mt-2 max-w-3xl font-display text-[34px] font-extrabold leading-tight tracking-[-0.04em] sm:text-[46px]">{course.title}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">{course.description}</p>
