@@ -75,7 +75,12 @@ where q.status = 'published'
   and (
     (q.drill_slug = 'grammar' and q.section = 'rw' and q.answer_type = 'mc_single')
     or
-    (q.drill_slug = 'targeted-math' and q.section = 'math' and q.answer_type in ('mc_single', 'grid_in'))
+    (
+      q.drill_slug = 'targeted-math'
+      and q.section = 'math'
+      and q.answer_type in ('mc_single', 'grid_in')
+      and q.created_by = 'scott-math-import'
+    )
   )
 on conflict (question_id) do nothing;
 
@@ -102,6 +107,7 @@ as $$
     where c.enabled = true
       and q.status = 'published'
       and q.section in ('rw', 'math')
+      and (q.section <> 'math' or q.created_by = 'scott-math-import')
   ),
   attempts as (
     select a.*
