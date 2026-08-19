@@ -31,14 +31,29 @@ export default async function UltimateCoursePage({ params }: Props) {
       </header>
       <main className="mx-auto max-w-[1120px] px-4 py-8 sm:px-7">
         <div className="space-y-5">
-          {course.modules.map((module, moduleIndex) => (
-            <section key={module.id} className="overflow-hidden rounded-[18px] border border-navy/10 bg-white shadow-pop">
-              <header className="border-b border-navy/10 bg-haze/60 px-5 py-4 sm:px-6"><p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-600">Module {moduleIndex + 1}</p><h2 className="mt-1 font-display text-xl font-extrabold text-navy">{module.title}</h2>{module.description ? <p className="mt-1 text-sm text-navy/50">{module.description}</p> : null}</header>
-              <ol className="divide-y divide-navy/10">
-                {module.lessons.map((lesson, lessonIndex) => <li key={lesson.id}><Link href={`/ultimate/courses/${course.slug}/${lesson.slug}`} className="group flex min-h-[72px] items-center gap-4 px-5 py-3 transition-colors hover:bg-ice/50 sm:px-6"><span className={`grid h-8 w-8 flex-none place-items-center rounded-full text-xs font-extrabold ${lesson.completed ? "bg-success text-white" : "bg-navy/7 text-navy/45"}`}>{lesson.completed ? "✓" : lessonIndex + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-navy">{lesson.title}</strong><span className="mt-1 block text-xs text-navy/40">{lesson.estimatedMinutes || 5} min{lesson.summary ? ` · ${lesson.summary}` : ""}</span></span><span className="text-brand transition-transform group-hover:translate-x-1">→</span></Link></li>)}
-              </ol>
-            </section>
-          ))}
+          {course.modules.map((module, moduleIndex) => {
+            const isFoundationsCourse = course.slug === "blueprint-foundations";
+            const completedDays = module.lessons.filter((lesson) => lesson.completed).length;
+            const weekProgress = module.lessons.length > 0 ? Math.round((completedDays / module.lessons.length) * 100) : 0;
+            return (
+              <section key={module.id} className="overflow-hidden rounded-[18px] border border-navy/10 bg-white shadow-pop">
+                <header className="border-b border-navy/10 bg-haze/60 px-5 py-5 sm:px-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="max-w-3xl">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-600">{isFoundationsCourse ? `Week ${moduleIndex + 1}` : `Module ${moduleIndex + 1}`}</p>
+                      <h2 className="mt-1 font-display text-xl font-extrabold text-navy sm:text-2xl">{module.title}</h2>
+                      {module.description ? <p className="mt-1.5 text-sm leading-6 text-navy/50">{module.description}</p> : null}
+                    </div>
+                    <span className="rounded-full border border-navy/10 bg-white px-3 py-1.5 text-xs font-bold text-navy/50">{completedDays}/{module.lessons.length} {isFoundationsCourse ? "day groups" : "lessons"}</span>
+                  </div>
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-navy/[0.07]" aria-label={`${weekProgress}% of this week complete`}><div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${weekProgress}%` }} /></div>
+                </header>
+                <ol className="divide-y divide-navy/10">
+                  {module.lessons.map((lesson, lessonIndex) => <li key={lesson.id}><Link href={`/ultimate/courses/${course.slug}/${lesson.slug}`} className="group flex min-h-[82px] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-ice/50 focus-visible:bg-ice/50 focus-visible:outline-none sm:px-6"><span className={`grid h-9 w-9 flex-none place-items-center rounded-xl text-xs font-extrabold ${lesson.completed ? "bg-success text-white" : "bg-navy/7 text-navy/45"}`}>{lesson.completed ? "✓" : lessonIndex + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-navy sm:text-[15px]">{lesson.title}</strong><span className="mt-1 line-clamp-2 block text-xs leading-5 text-navy/40">{lesson.estimatedMinutes || 5} min{lesson.summary ? ` · ${lesson.summary}` : ""}</span></span><span className="text-brand transition-transform group-hover:translate-x-1">→</span></Link></li>)}
+                </ol>
+              </section>
+            );
+          })}
         </div>
       </main>
     </div>

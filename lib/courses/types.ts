@@ -12,6 +12,11 @@ export type LessonBlock = {
     description?: string;
     alt?: string;
     caption?: string;
+    eyebrow?: string;
+    step?: string;
+    actionLabel?: string;
+    display?: "card" | "embed";
+    status?: "instruction" | "unavailable";
   };
 };
 
