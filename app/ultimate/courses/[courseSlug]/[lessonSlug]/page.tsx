@@ -52,9 +52,13 @@ function LessonContent({ block }: { block: LessonBlock }) {
   if (block.kind === "image" && block.content.url) return <figure className="overflow-hidden rounded-2xl border border-navy/10 bg-haze p-2"><img src={block.content.url} alt={block.content.alt ?? "Lesson illustration"} className="mx-auto max-h-[620px] w-auto rounded-xl object-contain" />{block.content.caption ? <figcaption className="px-3 py-2 text-center text-xs text-navy/45">{block.content.caption}</figcaption> : null}</figure>;
   if (block.kind === "video" && block.content.url) {
     const embedUrl = videoEmbed(block.content.url);
-    return <section><h2 className="mb-3 font-display text-xl font-extrabold text-navy">{block.content.title ?? "Video lesson"}</h2>{embedUrl ? <div className="aspect-video overflow-hidden rounded-2xl bg-navy"><iframe src={embedUrl} title={block.content.title ?? "Lesson video"} className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div> : <video controls src={block.content.url} className="aspect-video w-full rounded-2xl bg-navy" />}</section>;
+    return <section><h2 className="mb-3 font-display text-xl font-extrabold text-navy">{block.content.title ?? "Video lesson"}</h2>{embedUrl ? <div className="aspect-video overflow-hidden rounded-2xl bg-navy"><iframe src={embedUrl} title={block.content.title ?? "Lesson video"} loading="lazy" className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div> : <video controls src={block.content.url} className="aspect-video w-full rounded-2xl bg-navy" />}</section>;
   }
-  if (block.kind === "file" && block.content.url) return <a href={block.content.url} target="_blank" rel="noreferrer" className="flex min-h-20 items-center gap-4 rounded-2xl border border-brand/20 bg-ice px-5 py-4 transition-colors hover:border-brand/40"><span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white">↓</span><span><strong className="block text-sm text-navy">{block.content.title ?? "Download resource"}</strong>{block.content.description ? <span className="mt-1 block text-xs text-navy/45">{block.content.description}</span> : null}</span></a>;
+  if (block.kind === "file" && block.content.url) {
+    const embedUrl = driveResourceEmbed(block.content.url);
+    if (embedUrl) return <section className="overflow-hidden rounded-2xl border border-navy/10 bg-white"><div className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-navy/10 bg-haze/55 px-4 py-3 sm:px-5"><div><h2 className="font-display text-lg font-extrabold text-navy">{block.content.title ?? "Lesson notes"}</h2>{block.content.description ? <p className="mt-1 text-xs text-navy/45">{block.content.description}</p> : null}</div><a href={block.content.url} target="_blank" rel="noreferrer" className="inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-brand/25 bg-white px-4 text-xs font-bold text-brand-700 transition-colors hover:border-brand/45 hover:bg-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Open full size ↗</a></div><iframe src={embedUrl} title={block.content.title ?? "Lesson notes"} loading="lazy" className="h-[68vh] min-h-[520px] w-full bg-white" /></section>;
+    return <a href={block.content.url} target="_blank" rel="noreferrer" className="flex min-h-20 cursor-pointer items-center gap-4 rounded-2xl border border-brand/20 bg-ice px-5 py-4 transition-colors hover:border-brand/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><span className="grid h-10 w-10 place-items-center rounded-xl bg-brand text-white">↓</span><span><strong className="block text-sm text-navy">{block.content.title ?? "Download resource"}</strong>{block.content.description ? <span className="mt-1 block text-xs text-navy/45">{block.content.description}</span> : null}</span></a>;
+  }
   return null;
 }
 
@@ -64,6 +68,22 @@ function videoEmbed(url: string): string | null {
     if (parsed.hostname.includes("youtube.com")) { const id = parsed.searchParams.get("v"); return id ? `https://www.youtube.com/embed/${id}` : null; }
     if (parsed.hostname === "youtu.be") return `https://www.youtube.com/embed/${parsed.pathname.slice(1)}`;
     if (parsed.hostname.includes("vimeo.com")) return `https://player.vimeo.com/video/${parsed.pathname.split("/").filter(Boolean).pop()}`;
+    if (parsed.hostname === "drive.google.com") {
+      const id = parsed.pathname.match(/\/file\/d\/([^/]+)/)?.[1];
+      return id ? `https://drive.google.com/file/d/${id}/preview` : null;
+    }
+  } catch { return null; }
+  return null;
+}
+
+function driveResourceEmbed(url: string): string | null {
+  try {
+    const parsed = new URL(url);
+    const id = parsed.pathname.match(/\/(?:document|spreadsheets|presentation)\/d\/([^/]+)/)?.[1];
+    if (!id) return null;
+    if (parsed.hostname === "docs.google.com" && parsed.pathname.startsWith("/document/")) return `https://docs.google.com/document/d/${id}/preview`;
+    if (parsed.hostname === "docs.google.com" && parsed.pathname.startsWith("/spreadsheets/")) return `https://docs.google.com/spreadsheets/d/${id}/preview`;
+    if (parsed.hostname === "docs.google.com" && parsed.pathname.startsWith("/presentation/")) return `https://docs.google.com/presentation/d/${id}/preview`;
   } catch { return null; }
   return null;
 }

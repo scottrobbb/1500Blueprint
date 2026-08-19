@@ -26,6 +26,9 @@ const CREATED_BY = "scott-math-import";
 const INFORMATIONAL_NOTES = new Set([
   "answer label inferred from final source line",
 ]);
+const DRAFT_NOTES = new Set([
+  "multiple-choice item has duplicate choice text",
+]);
 
 type ChoiceId = "A" | "B" | "C" | "D";
 
@@ -47,7 +50,7 @@ type DrillQuestionRow = {
   figure_url: string | null;
   content: Record<string, unknown>;
   explanation: null;
-  status: "published";
+  status: "published" | "draft";
   created_by: typeof CREATED_BY;
   updated_at: string;
 };
@@ -89,8 +92,14 @@ function questionId(question: ParsedMathBankQuestion): string {
   return `scott-math-${hash.slice(0, 32)}`;
 }
 
-function blockingNotes(question: ParsedMathBankQuestion): string[] {
-  return question.notes.filter((note) => !INFORMATIONAL_NOTES.has(note));
+function fatalNotes(question: ParsedMathBankQuestion): string[] {
+  return question.notes.filter(
+    (note) => !INFORMATIONAL_NOTES.has(note) && !DRAFT_NOTES.has(note),
+  );
+}
+
+function questionStatus(question: ParsedMathBankQuestion): "published" | "draft" {
+  return question.notes.some((note) => DRAFT_NOTES.has(note)) ? "draft" : "published";
 }
 
 function isChoiceId(value: string | null): value is ChoiceId {
@@ -137,7 +146,7 @@ function validateQuestions(questions: ParsedMathBankQuestion[]): void {
     } else if (question.acceptedAnswers.length === 0) {
       errors.push(`${label}: missing accepted answer`);
     }
-    for (const note of blockingNotes(question)) errors.push(`${label}: ${note}`);
+    for (const note of fatalNotes(question)) errors.push(`${label}: ${note}`);
 
     const fingerprint = questionFingerprint(question);
     const duplicate = fingerprints.get(fingerprint);
@@ -174,6 +183,7 @@ function printAudit(parsed: ArchiveParse): void {
   const inferredAnswers = questions.filter((question) =>
     question.notes.some((note) => INFORMATIONAL_NOTES.has(note)),
   );
+  const draftQuestions = questions.filter((question) => questionStatus(question) === "draft");
 
   console.log("Scott Math archive audit");
   console.log(`  DOCX documents:          ${documents.length}`);
@@ -183,6 +193,7 @@ function printAudit(parsed: ArchiveParse): void {
   console.log(`  Student-produced:        ${questions.filter((question) => question.type === "grid").length}`);
   console.log(`  Questions with figures:  ${questions.filter((question) => question.figureData).length}`);
   console.log(`  Inferred answer labels:  ${inferredAnswers.length}`);
+  console.log(`  Held for source review:  ${draftQuestions.length}`);
   console.log(`  Domains:                 ${JSON.stringify(countBy(questions.map((question) => question.domain)))}`);
   console.log(`  Difficulty:              ${JSON.stringify(countBy(questions.map((question) => question.difficulty)))}`);
 
@@ -190,6 +201,12 @@ function printAudit(parsed: ArchiveParse): void {
     console.log("\nSource filename mismatches (content was retained):");
     for (const document of unmatchedDocuments) {
       console.log(`  - ${document.sourcePath}: ${document.warnings.join("; ")}`);
+    }
+  }
+  if (draftQuestions.length > 0) {
+    console.log("\nQuestions imported as drafts:");
+    for (const question of draftQuestions) {
+      console.log(`  - ${question.sourcePath} #${question.sourceOrdinal}: ${question.notes.filter((note) => DRAFT_NOTES.has(note)).join("; ")}`);
     }
   }
 }
@@ -275,7 +292,7 @@ function toRow(
         reviewNotes: question.notes,
       },
       explanation: null,
-      status: "published",
+      status: questionStatus(question),
       created_by: CREATED_BY,
       updated_at: updatedAt,
     };
@@ -299,7 +316,7 @@ function toRow(
       reviewNotes: question.notes,
     },
     explanation: null,
-    status: "published",
+    status: questionStatus(question),
     created_by: CREATED_BY,
     updated_at: updatedAt,
   };
@@ -326,8 +343,9 @@ async function allowlistQuestions(
   supabase: SupabaseClient,
   rows: DrillQuestionRow[],
 ): Promise<boolean> {
-  for (let index = 0; index < rows.length; index += 200) {
-    const batch = rows.slice(index, index + 200).map((row) => ({
+  const publishedRows = rows.filter((row) => row.status === "published");
+  for (let index = 0; index < publishedRows.length; index += 200) {
+    const batch = publishedRows.slice(index, index + 200).map((row) => ({
       question_id: row.id,
       access_tier: "ultimate",
       enabled: true,
@@ -343,7 +361,7 @@ async function allowlistQuestions(
 
 async function verifyLiveRows(
   supabase: SupabaseClient,
-  expectedIds: Set<string>,
+  expectedStatuses: Map<string, "published" | "draft">,
 ): Promise<void> {
   const result = await supabase
     .from("drill_questions")
@@ -353,19 +371,22 @@ async function verifyLiveRows(
   if (result.error) throw result.error;
 
   const rows = result.data ?? [];
-  const imported = rows.filter((row) => expectedIds.has(row.id));
-  if (imported.length !== expectedIds.size) {
-    throw new Error(`Live verification found ${imported.length}/${expectedIds.size} imported questions.`);
+  const imported = rows.filter((row) => expectedStatuses.has(row.id));
+  if (imported.length !== expectedStatuses.size) {
+    throw new Error(`Live verification found ${imported.length}/${expectedStatuses.size} imported questions.`);
   }
-  if (imported.some((row) => row.status !== "published")) {
-    throw new Error("Live verification found unpublished imported questions.");
+  if (imported.some((row) => row.status !== expectedStatuses.get(row.id))) {
+    throw new Error("Live verification found an unexpected publication status.");
   }
+  const activeRows = rows.filter((row) => row.status === "published");
+  const activeImported = imported.filter((row) => row.status === "published");
 
   console.log("\nLive verification");
   console.log(`  Scott archive questions: ${imported.length}`);
-  console.log(`  Total targeted Math:     ${rows.length}`);
-  console.log(`  Multiple choice:         ${rows.filter((row) => row.answer_type === "mc_single").length}`);
-  console.log(`  Student-produced:        ${rows.filter((row) => row.answer_type === "grid_in").length}`);
+  console.log(`  Active Scott questions:  ${activeImported.length}`);
+  console.log(`  Total active Math:       ${activeRows.length}`);
+  console.log(`  Multiple choice:         ${activeRows.filter((row) => row.answer_type === "mc_single").length}`);
+  console.log(`  Student-produced:        ${activeRows.filter((row) => row.answer_type === "grid_in").length}`);
 }
 
 async function main(): Promise<void> {
@@ -402,7 +423,7 @@ async function main(): Promise<void> {
     ? "  Question Bank catalog allowlist updated"
     : "  Catalog migration is not deployed; targeted-math fallback remains active");
 
-  await verifyLiveRows(supabase, new Set(rows.map((row) => row.id)));
+  await verifyLiveRows(supabase, new Map(rows.map((row) => [row.id, row.status])));
 }
 
 main().catch((error: unknown) => {

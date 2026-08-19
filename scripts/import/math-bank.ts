@@ -108,6 +108,10 @@ export function parseMathBankLines(
     if (!domain) notes.push("domain not mapped");
     if (!difficulty) notes.push("difficulty not mapped");
     if (parsed.type === "mc" && parsed.choices.length !== 4) notes.push("multiple-choice item does not have four choices");
+    if (
+      parsed.type === "mc"
+      && new Set(parsed.choices.map((choice) => normalizeChoiceText(choice.text))).size !== parsed.choices.length
+    ) notes.push("multiple-choice item has duplicate choice text");
     if (parsed.type === "mc" && !parsed.correct) notes.push("multiple-choice item has no answer key");
     if (parsed.type === "grid" && parsed.acceptedAnswers.length === 0) notes.push("student-produced response has no answer key");
 
@@ -361,6 +365,10 @@ function expandAcceptedAnswers(value: string): string[] {
     .split(/\s*,\s*/)
     .map((answer) => answer.trim())
     .filter(Boolean);
+}
+
+function normalizeChoiceText(value: string): string {
+  return value.normalize("NFKC").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function findQuestionNumber(lines: string[]): number | null {

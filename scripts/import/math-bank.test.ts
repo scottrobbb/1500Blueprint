@@ -95,3 +95,19 @@ test("converts literal HTML tables into runner-compatible markdown tables", () =
   assert.match(result.questions[0].prompt, /\| x \| y \|@@ROW@@/);
   assert.doesNotMatch(result.questions[0].prompt, /<p>|<table>/);
 });
+
+test("flags ambiguous multiple-choice items with duplicate answer text", () => {
+  const result = parseMathBankLines([
+    "(Math – Algebra – Linear functions – Medium)",
+    "What is f(2)?",
+    "A. 4",
+    "B. 6",
+    "C. 8",
+    "D. 8",
+    "Correct Answer: C",
+  ], SOURCE);
+
+  assert.deepEqual(result.questions[0].notes, [
+    "multiple-choice item has duplicate choice text",
+  ]);
+});
