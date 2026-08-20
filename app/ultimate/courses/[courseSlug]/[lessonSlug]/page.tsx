@@ -109,7 +109,12 @@ function videoEmbed(url: string): string | null {
     const parsed = new URL(url);
     if (parsed.hostname.includes("youtube.com")) { const id = parsed.searchParams.get("v"); return id ? `https://www.youtube.com/embed/${id}` : null; }
     if (parsed.hostname === "youtu.be") return `https://www.youtube.com/embed/${parsed.pathname.slice(1)}`;
-    if (parsed.hostname.includes("vimeo.com")) return `https://player.vimeo.com/video/${parsed.pathname.split("/").filter(Boolean).pop()}`;
+    if (parsed.hostname === "player.vimeo.com") return parsed.toString();
+    if (parsed.hostname === "vimeo.com" || parsed.hostname.endsWith(".vimeo.com")) {
+      const id = parsed.pathname.match(/(?:\/video)?\/(\d+)/)?.[1];
+      const hash = parsed.searchParams.get("h");
+      return id ? `https://player.vimeo.com/video/${id}${hash ? `?h=${encodeURIComponent(hash)}` : ""}` : null;
+    }
     if (parsed.hostname === "drive.google.com") {
       const id = parsed.pathname.match(/\/file\/d\/([^/]+)/)?.[1];
       return id ? `https://drive.google.com/file/d/${id}/preview` : null;
