@@ -10,6 +10,8 @@ import type { Course } from "@/lib/courses/types";
 import { loadHistory } from "@/lib/drills/progress";
 import { listStudentLibrary } from "@/lib/flashcards/queries";
 import { getHubState, getTestProgress } from "@/lib/gamification/state";
+import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
+import { PlanBadge } from "@/components/account/PlanBadge";
 
 export const metadata = { title: "Home" };
 
@@ -17,21 +19,23 @@ export default async function UltimateHomePage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
-  const [hub, testProgress, history, flashcards, courses] = await Promise.all([
+  const [hub, testProgress, history, flashcards, courses, access] = await Promise.all([
     getHubState(session.email),
     getTestProgress(session.email),
     loadHistory(session.email),
     listStudentLibrary(session.email),
     listCoursesForStudent(session.email),
+    getStudentAccess(session.email),
   ]);
+  const availableCourses = courses.filter((course) => canAccessCourse(access, course.slug));
 
   const mastered = history.filter((entry) => entry.mastered).length;
   const masteryRate = history.length > 0 ? Math.round((mastered / history.length) * 100) : 0;
   const dailyProgress = Math.min(100, Math.round((hub.dailyGoal.done / Math.max(1, hub.dailyGoal.total)) * 100));
   const cardCount = [...flashcards.owned, ...flashcards.shared].reduce((sum, set) => sum + set.cardCount, 0);
-  const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0);
-  const completedLessons = courses.reduce((sum, course) => sum + course.completedLessons, 0);
-  const activeCourse = courses.find((course) => course.progress < 100) ?? courses[0] ?? null;
+  const totalLessons = availableCourses.reduce((sum, course) => sum + course.totalLessons, 0);
+  const completedLessons = availableCourses.reduce((sum, course) => sum + course.completedLessons, 0);
+  const activeCourse = availableCourses.find((course) => course.progress < 100) ?? availableCourses[0] ?? null;
   const nextLesson = activeCourse?.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed) ?? null;
   const nextCourseHref = activeCourse
     ? nextLesson
@@ -44,6 +48,7 @@ export default async function UltimateHomePage() {
     <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
       <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
+          <div className="mb-3"><PlanBadge plan={access.plan} test={access.isTestAccount} /></div>
           <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand-600">
             {isNewStudent ? "Your SAT workspace" : "Your blueprint today"}
           </p>

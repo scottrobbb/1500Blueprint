@@ -7,6 +7,8 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { isPracticeTestUnderConstruction } from "@/lib/flags";
 import { getTestProgress } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
+import { getStudentAccess } from "@/lib/auth/entitlements";
+import { PlanBadge } from "@/components/account/PlanBadge";
 
 export const metadata = { title: "Full-Length Tests" };
 
@@ -14,10 +16,10 @@ export default async function UltimateTestsPage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
-  const [tests, progress] = await Promise.all([listTests(), getTestProgress(session.email)]);
+  const [tests, progress, access] = await Promise.all([listTests(), getTestProgress(session.email), getStudentAccess(session.email)]);
   const isAdmin = isAdminEmail(session.email);
-  const availableCount = tests.filter((test) => !isPracticeTestUnderConstruction(test.slug) || isAdmin).length;
-  const launchTest = tests.find((test) => !isPracticeTestUnderConstruction(test.slug) || isAdmin);
+  const availableCount = tests.filter((test, index) => index < access.entitlements.fullTestLimit && (!isPracticeTestUnderConstruction(test.slug) || isAdmin)).length;
+  const launchTest = tests.find((test, index) => index < access.entitlements.fullTestLimit && (!isPracticeTestUnderConstruction(test.slug) || isAdmin));
   const scoreProgress = progress.bestScore == null ? 0 : Math.max(0, Math.min(100, ((progress.bestScore - 400) / 1200) * 100));
 
   return (
@@ -99,6 +101,11 @@ export default async function UltimateTestsPage() {
         ) : null}
       </div>
 
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 bg-ice/60 px-4 py-3">
+        <div className="flex items-center gap-2.5"><PlanBadge plan={access.plan} test={access.isTestAccount} /><span className="text-xs font-semibold text-navy/55">Your plan includes {access.entitlements.fullTestLimit} full-length {access.entitlements.fullTestLimit === 1 ? "test" : "tests"}.</span></div>
+        {access.plan !== "max" ? <Link href="/pricing" className="text-xs font-extrabold text-brand-700 hover:text-navy">Unlock more tests →</Link> : null}
+      </div>
+
       {isAdmin ? (
         <div className="mb-5 flex items-start gap-3 rounded-xl border border-gold/30 bg-[#fffaf0] px-4 py-3 text-[12px] font-medium leading-5 text-navy/60">
           <span className="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full bg-gold/20 text-[10px] font-black text-gold-600">A</span>
@@ -112,11 +119,13 @@ export default async function UltimateTestsPage() {
         </div>
       ) : (
         <ul className="grid gap-4 md:grid-cols-2">
-          {tests.map((test) => {
+          {tests.map((test, testIndex) => {
             const number = test.slug.match(/(\d+)\s*$/)?.[1] ?? "•";
             const best = progress.bestBySlug[test.slug] ?? null;
             const attempts = progress.countBySlug[test.slug] ?? 0;
-            const locked = isPracticeTestUnderConstruction(test.slug) && !isAdmin;
+            const constructionLocked = isPracticeTestUnderConstruction(test.slug) && !isAdmin;
+            const planLocked = testIndex >= access.entitlements.fullTestLimit && !isAdmin;
+            const locked = constructionLocked || planLocked;
 
             return (
               <li key={test.slug}>
@@ -151,7 +160,7 @@ export default async function UltimateTestsPage() {
 
                   {locked ? (
                     <div className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-navy/[0.05] px-4 text-center text-sm font-bold text-navy/40">
-                      Available after Scott publishes it
+                      {planLocked ? `Upgrade to unlock test ${testIndex + 1}` : "Available after Scott publishes it"}
                     </div>
                   ) : (
                     <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-2">

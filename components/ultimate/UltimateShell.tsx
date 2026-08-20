@@ -8,6 +8,7 @@ import { CommunityIcon } from "@/components/community/icons";
 import { LayersIcon } from "@/components/flashcards/icons";
 import { AccountMenu } from "@/components/shell/AccountMenu";
 import { NotificationBell } from "@/components/shell/NotificationBell";
+import { PlanBadge } from "@/components/account/PlanBadge";
 import {
   DrillsIcon,
   FlameIcon,
@@ -16,6 +17,7 @@ import {
   TestsIcon,
 } from "@/components/shell/icons";
 import type { NavStats } from "@/lib/gamification";
+import type { StudentAccess } from "@/lib/auth/plans";
 
 type IconProps = { className?: string };
 type NavItem = {
@@ -23,6 +25,7 @@ type NavItem = {
   label: string;
   Icon: (props: IconProps) => ReactElement;
   chip?: string;
+  requires?: "drills" | "planner" | "live";
 };
 
 const navigation: { title?: string; items: NavItem[] }[] = [
@@ -34,7 +37,7 @@ const navigation: { title?: string; items: NavItem[] }[] = [
   {
     title: "Learning",
     items: [
-      { href: "/ultimate/planner", label: "Study Planner", Icon: CalendarIcon },
+      { href: "/ultimate/planner", label: "Study Planner", Icon: CalendarIcon, requires: "planner" },
       { href: "/ultimate/courses", label: "Courses", Icon: CoursesIcon },
     ],
   },
@@ -42,7 +45,7 @@ const navigation: { title?: string; items: NavItem[] }[] = [
     title: "Practice",
     items: [
       { href: "/ultimate/bank", label: "Question Bank", Icon: QuestionBankIcon, chip: "New" },
-      { href: "/ultimate/drills", label: "Drills", Icon: DrillsIcon },
+      { href: "/ultimate/drills", label: "Drills", Icon: DrillsIcon, requires: "drills" },
       { href: "/ultimate/tests", label: "Full-Length Tests", Icon: TestsIcon },
       { href: "/ultimate/flashcards", label: "Flashcards", Icon: LayersIcon },
       { href: "/ultimate/history", label: "History", Icon: HistoryIcon },
@@ -52,16 +55,18 @@ const navigation: { title?: string; items: NavItem[] }[] = [
     title: "Connect",
     items: [
       { href: "/ultimate/community", label: "Community", Icon: CommunityIcon },
-      { href: "/ultimate/live-calls", label: "Live Calls", Icon: LiveCallsIcon },
+      { href: "/ultimate/live-calls", label: "Live Calls", Icon: LiveCallsIcon, requires: "live" },
     ],
   },
 ];
 
 export function UltimateShell({
   stats,
+  access,
   children,
 }: {
   stats: NavStats;
+  access: StudentAccess;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -100,6 +105,7 @@ export function UltimateShell({
                   key={item.href}
                   item={item}
                   active={isActivePath(pathname, item.href)}
+                  locked={!canUse(item, access)}
                   onNavigate={() => setMenuOpen(false)}
                 />
               ))}
@@ -144,7 +150,7 @@ export function UltimateShell({
           />
           <div className="min-w-0 flex-1">
             <div className="truncate text-xs font-bold text-navy">{stats.name}</div>
-            <div className="text-[10px] capitalize text-navy/40">{stats.plan}</div>
+            <div className="mt-1"><PlanBadge plan={access.plan} test={access.isTestAccount} /></div>
           </div>
           <NotificationBell communityHrefBase="/ultimate/community" />
         </div>
@@ -211,7 +217,7 @@ export function UltimateShell({
   );
 }
 
-function RailLink({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate: () => void }) {
+function RailLink({ item, active, locked = false, onNavigate }: { item: NavItem; active: boolean; locked?: boolean; onNavigate: () => void }) {
   const { Icon } = item;
   return (
     <Link
@@ -224,11 +230,19 @@ function RailLink({ item, active, onNavigate }: { item: NavItem; active: boolean
     >
       <Icon className={`h-[18px] w-[18px] flex-none ${active ? "text-brand-600" : "text-navy/45"}`} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
+      {locked ? <span className="rounded-full bg-navy/[0.06] px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-navy/40">{item.requires === "drills" ? "Core" : "Max"}</span> : null}
       {item.chip && (
         <span className="rounded-full bg-brand/10 px-1.5 py-0.5 text-[9px] font-bold text-brand-600">{item.chip}</span>
       )}
     </Link>
   );
+}
+
+function canUse(item: NavItem, access: StudentAccess): boolean {
+  if (item.requires === "drills") return access.entitlements.dailyDrillLimit !== null;
+  if (item.requires === "planner") return access.entitlements.studyPlanner;
+  if (item.requires === "live") return access.entitlements.liveGroupClasses;
+  return true;
 }
 
 function isActivePath(pathname: string, href: string): boolean {

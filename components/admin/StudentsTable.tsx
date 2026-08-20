@@ -5,6 +5,7 @@ import { drillTitle } from "@/lib/drills/registry";
 import { label } from "@/components/drills/shared/ui";
 import { FlameIcon } from "@/components/shell/icons";
 import type { StudentRow } from "@/lib/gamification/state";
+import { PlanBadge } from "@/components/account/PlanBadge";
 
 // Drills shown in the per-student mastery breakdown (must match ROSTER_DRILLS
 // in lib/gamification/state.ts).
@@ -152,9 +153,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
                     </div>
                   </Td>
                   <Td>
-                    <span className="inline-flex items-center rounded-chip border border-brand/30 bg-ice px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-brand-600">
-                      {s.plan}
-                    </span>
+                    <div className="flex flex-wrap gap-1.5"><PlanBadge plan={s.plan} suspended={s.accountStatus === "suspended"} test={s.isTestAccount} />{s.accountStatus === "archived" ? <span className="inline-flex rounded-full border border-navy/15 bg-navy/[0.04] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-navy/45">Archived</span> : null}</div>
                   </Td>
                   <Td className="whitespace-nowrap">
                     <div className="font-semibold text-navy">Lvl {s.level}</div>

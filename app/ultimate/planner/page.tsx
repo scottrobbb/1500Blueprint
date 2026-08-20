@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { ChevronRightIcon } from "@/components/shell/icons";
 import { PageHeader } from "@/components/ultimate/PageHeader";
 import { StudyPlanner } from "@/components/ultimate/StudyPlanner";
+import { AccessGate } from "@/components/account/AccessGate";
+import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getHubState } from "@/lib/gamification/state";
@@ -13,6 +15,10 @@ export const metadata = { title: "Study Planner" };
 export default async function PlannerPage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
+  const access = await getStudentAccess(session.email);
+  if (!access.entitlements.studyPlanner) {
+    return <AccessGate title="Build a personal study plan" description="The adaptive study planner, score goals, and weekly schedule are included with Max." currentPlan={access.plan} />;
+  }
   const [hub, profile] = await Promise.all([getHubState(session.email), getStudyPlannerProfile(session.email)]);
 
   return (

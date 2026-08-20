@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { Achievements } from "@/components/hub/Achievements";
+import { AccessGate } from "@/components/account/AccessGate";
+import { getStudentAccess } from "@/lib/auth/entitlements";
 import { DrillCatalog } from "@/components/hub/DrillCatalog";
 import { Leaderboard } from "@/components/hub/Leaderboard";
 import { OnboardingTour } from "@/components/hub/OnboardingTour";
@@ -17,6 +19,10 @@ export const metadata = { title: "Drills" };
 export default async function UltimateDrillsPage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
+  const access = await getStudentAccess(session.email);
+  if (access.entitlements.dailyDrillLimit === null) {
+    return <AccessGate title="Unlock daily skill drills" description="Core includes up to 20 completed drills per day. Max removes the daily limit." currentPlan={access.plan} requiredPlan="core" />;
+  }
 
   const [hub, showOnboarding, grammarMastery, vocabState] = await Promise.all([
     getHubState(session.email),

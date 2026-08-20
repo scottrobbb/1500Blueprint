@@ -6,7 +6,7 @@ import styles from "./pricing.module.css";
 
 export const metadata: Metadata = {
   title: "Pricing — 1500 SAT Blueprint",
-  description: "Choose a one-time 1500 SAT Blueprint exam pass. No subscription required.",
+  description: "Compare Free, Core, and Max access for 1500 SAT Blueprint.",
 };
 
 type FeatureIcon = "target" | "grid" | "chat" | "bolt" | "file" | "calendar" | "play" | "star" | "check";
@@ -17,28 +17,28 @@ type PlanFeature = {
 };
 
 const freeFeatures: PlanFeature[] = [
-  { label: "20-question score diagnostic", icon: "target" },
-  { label: "~200 starter questions", icon: "grid" },
-  { label: "10 Ask Scott messages a week", icon: "chat" },
-  { label: "1 Question Rush demo", icon: "bolt" },
+  { label: "300 Question Bank questions", icon: "grid" },
+  { label: "1 full-length practice test", icon: "file" },
+  { label: "Desmos 101 course", icon: "target" },
+  { label: "Reading & Writing 101 course", icon: "play" },
 ];
 
 const blueprintFeatures: PlanFeature[] = [
-  { label: "Full Digital SAT question bank", icon: "grid" },
-  { label: "2 full-length Blueprint tests", icon: "file" },
-  { label: "Study planner from your test date", icon: "calendar" },
-  { label: "Question Rush practice sets", icon: "bolt" },
-  { label: "Core analytics", icon: "target" },
+  { label: "3,000+ questions, including Challenge", icon: "grid" },
+  { label: "2 full-length practice tests", icon: "file" },
+  { label: "Up to 20 drills per day", icon: "bolt" },
+  { label: "Desmos 101 and R&W 101 courses", icon: "play" },
+  { label: "Discord Core role", icon: "chat" },
 ];
 
 const proFeatures: PlanFeature[] = [
-  { label: "Everything in Blueprint", icon: "check" },
-  { label: "Masterclass for R&W and Math", icon: "play" },
-  { label: "All 6 full-length Blueprint tests", icon: "target" },
-  { label: "Ask Scott unlimited", icon: "chat" },
-  { label: "Challenge Questions unlocked", icon: "star" },
-  { label: "Unlimited Question Rush", icon: "bolt" },
-  { label: "Priority plans from Scott", icon: "calendar" },
+  { label: "Everything in Core", icon: "check" },
+  { label: "10 tests with Desmos explanations", icon: "target" },
+  { label: "Unlimited daily drills", icon: "bolt" },
+  { label: "Every course and advanced track", icon: "play" },
+  { label: "Weekly live group classes and recordings", icon: "star" },
+  { label: "Personal study planner", icon: "calendar" },
+  { label: "Discord Max role", icon: "chat" },
 ];
 
 export default function PricingPage() {
@@ -46,9 +46,9 @@ export default function PricingPage() {
     <main className={styles.page}>
       <div className={styles.saleBar}>
         <LockIcon />
-        <strong>Lock in 40% off</strong>
+        <strong>Choose the access that fits your prep</strong>
         <span aria-hidden="true" />
-        <em>Exam-pass pricing</em>
+        <em>Upgrade anytime</em>
       </div>
 
       <header className={styles.header}>
@@ -65,15 +65,15 @@ export default function PricingPage() {
 
       <section className={styles.content}>
         <div className={styles.hero}>
-          <p className={styles.eyebrow}>Simple exam-pass pricing</p>
+          <p className={styles.eyebrow}>Simple monthly pricing</p>
           <h1>All plans</h1>
           <div className={styles.accessOptions} aria-label="Plan terms">
-            <span>One-time payment</span>
-            <span>No subscription</span>
-            <strong>Keep it through your SAT</strong>
+            <span>Start free</span>
+            <span>Upgrade anytime</span>
+            <strong>Keep your progress when plans change</strong>
           </div>
           <p className={styles.included}>
-            Every paid plan includes the complete Digital SAT practice system.
+            Every account keeps its course progress, attempts, scores, and study history.
           </p>
         </div>
 
@@ -87,21 +87,19 @@ export default function PricingPage() {
           />
           <PriceCard
             tier="blueprint"
-            name="Blueprint"
-            oldPrice="119"
-            price="69"
-            description="The complete practice system for one focused SAT attempt."
+            name="Core"
+            price="39"
+            description="Daily structured practice and the complete Core question library."
             features={blueprintFeatures}
-            cta="Get Blueprint"
+            cta="Get Core"
           />
           <PriceCard
             tier="pro"
-            name="Blueprint Pro"
-            oldPrice="135"
-            price="79"
-            description="Scott’s full system, every test, and unlimited guided practice."
+            name="Max"
+            price="80"
+            description="Scott’s complete system, every test, every course, and live support."
             features={proFeatures}
-            cta="Get Pro"
+            cta="Get Max"
             popular
           />
         </div>
@@ -153,16 +151,16 @@ function PriceCard({
       <div className={styles.priceRow}>
         {paid ? (
           <>
-            <s>${oldPrice}</s>
+            {oldPrice ? <s>${oldPrice}</s> : null}
             <strong>${price}</strong>
-            <span className={styles.saleChip}>40% off</span>
+            <span className={styles.saleChip}>/ month</span>
           </>
         ) : (
           <strong>Free</strong>
         )}
       </div>
 
-      <p className={styles.paymentNote}>{paid ? "One-time payment · access through your SAT" : "No card required"}</p>
+      <p className={styles.paymentNote}>{paid ? "Monthly access · cancel anytime" : "No card required"}</p>
       <p className={styles.description}>{description}</p>
 
       <ul className={styles.features}>

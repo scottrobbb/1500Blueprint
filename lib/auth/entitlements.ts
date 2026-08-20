@@ -3,17 +3,19 @@ import "server-only";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import {
   accessForPlan,
+  normalizeLegacyPlanCode,
   normalizePlanCode,
   type StudentAccess,
 } from "./plans";
 
 export type { AccessSource, PlanCode, PlanEntitlements, StudentAccess } from "./plans";
-export { accessForPlan, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
+export { accessForPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
 
 type AccountRow = {
   id: string;
   plan: string | null;
   account_status: "active" | "suspended" | "archived";
+  is_test_account: boolean;
 };
 
 type PlanRow = { plan_code: string };
@@ -22,14 +24,14 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
   const admin = supabaseAdmin();
   const { data: account, error: accountError } = await admin
     .from("users")
-    .select("id,plan,account_status")
+    .select("id,plan,account_status,is_test_account")
     .eq("email", email.trim().toLowerCase())
     .maybeSingle<AccountRow>();
 
   if (accountError) throw new Error(`failed to load student access: ${accountError.message}`);
   if (!account) return accessForPlan("free", "free", null);
   if (account.account_status !== "active") {
-    return accessForPlan("free", "free", account.id, false);
+    return accessForPlan("free", "free", account.id, false, account.account_status, account.is_test_account);
   }
 
   const now = new Date().toISOString();
@@ -60,12 +62,37 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
     throw new Error(`failed to load student subscription: ${subscriptionError.message}`);
   }
 
-  if (grant) return accessForPlan(normalizePlanCode(grant.plan_code), "grant", account.id);
+  if (grant) return accessForPlan(normalizePlanCode(grant.plan_code), "grant", account.id, true, "active", account.is_test_account);
   if (subscription) {
-    return accessForPlan(normalizePlanCode(subscription.plan_code), "subscription", account.id);
+    return accessForPlan(normalizePlanCode(subscription.plan_code), "subscription", account.id, true, "active", account.is_test_account);
   }
   if (account.plan) {
-    return accessForPlan(normalizePlanCode(account.plan), "legacy", account.id);
+    return accessForPlan(normalizeLegacyPlanCode(account.plan), "legacy", account.id, true, "active", account.is_test_account);
   }
-  return accessForPlan("free", "free", account.id);
+  return accessForPlan("free", "free", account.id, true, "active", account.is_test_account);
+}
+
+export async function getQuestionBankUsage(email: string): Promise<number> {
+  const { count, error } = await supabaseAdmin()
+    .from("question_bank_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("email", email.trim().toLowerCase());
+  if (error) throw new Error(`failed to load question bank usage: ${error.message}`);
+  return count ?? 0;
+}
+
+export async function getDrillUsageToday(email: string): Promise<number> {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const { count, error } = await supabaseAdmin()
+    .from("drill_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("email", email.trim().toLowerCase())
+    .gte("created_at", start);
+  if (error) throw new Error(`failed to load daily drill usage: ${error.message}`);
+  return count ?? 0;
+}
+
+export function canAccessCourse(plan: StudentAccess, courseSlug: string): boolean {
+  return plan.entitlements.allCourses || courseSlug === "blueprint-foundations";
 }

@@ -12,6 +12,9 @@ import type {
 } from "@/lib/gamification";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { normalizeLegacyPlanCode, normalizePlanCode, type PlanCode } from "@/lib/auth/plans";
+import { getStudentAccess } from "@/lib/auth/entitlements";
+import { drillAllowance } from "@/lib/auth/access-control";
 import type { AnswerMap, ModuleVariant, SectionId } from "@/lib/sat/types";
 import {
   ACHIEVEMENTS,
@@ -114,7 +117,7 @@ export async function getHubState(email: string): Promise<HubState> {
   const weekStartDate = weekStart(now);
   const weekStartIso = weekStartDate.toISOString();
 
-  const user = await loadUser(email);
+  const [user, access] = await Promise.all([loadUser(email), getStudentAccess(email)]);
   const xp = user?.xp ?? 0;
   const prog = levelProgress(xp);
   const id = identity(email, user?.name ?? null);
@@ -218,7 +221,7 @@ export async function getHubState(email: string): Promise<HubState> {
     xp,
     xpForNextLevel: prog.ceil,
     streak: user?.streak_current ?? 0,
-    plan: user?.plan ?? "1500 Club",
+    plan: access.plan,
     rank: myIndex + 1,
     season: SEASON,
     rivalName: rival ? identity(rival.email, null).firstName : "the top spot",
@@ -326,6 +329,8 @@ export type DrillResult = {
 
 // Record a completed drill, award XP, advance the streak, unlock achievements.
 export async function awardDrill(email: string, result: DrillResult): Promise<AwardOutcome> {
+  const allowance = await drillAllowance(email);
+  if (!allowance.allowed) throw new Error("This drill is not included with the student's plan or the daily limit has been reached.");
   const db = supabaseAdmin();
   // Quality drives XP: the AI grade for graded drills, accuracy for objective ones.
   const quality =
@@ -586,7 +591,7 @@ export async function getTestAttempt(
 
 // Lightweight stats for the shared top nav, without the full hub query.
 export async function getNavStats(email: string): Promise<NavStats> {
-  const [user, avatarUrl] = await Promise.all([loadUser(email), loadAvatarUrl(email)]);
+  const [user, avatarUrl, access] = await Promise.all([loadUser(email), loadAvatarUrl(email), getStudentAccess(email)]);
   const xp = user?.xp ?? 0;
   const id = identity(email, user?.name ?? null);
   return {
@@ -596,7 +601,7 @@ export async function getNavStats(email: string): Promise<NavStats> {
     name: id.name,
     initials: id.initials,
     avatarUrl,
-    plan: user?.plan ?? "1500 Club",
+    plan: access.plan,
     isAdmin: isAdminEmail(email),
   };
 }
@@ -606,10 +611,13 @@ export async function getNavStats(email: string): Promise<NavStats> {
 export type StudentDrillStat = { attempted: number; mastered: number };
 
 export type StudentRow = {
+  id: string;
   email: string;
   name: string;
   initials: string;
-  plan: string;
+  plan: PlanCode;
+  accountStatus: "active" | "suspended" | "archived";
+  isTestAccount: boolean;
   level: number;
   xp: number;
   streak: number;
@@ -632,15 +640,19 @@ const ROSTER_DRILLS = ["grammar", "reading", "targeted-math", "vocab"] as const;
 // large. Sorted by XP, highest first.
 export async function listStudents(): Promise<StudentRow[]> {
   const db = supabaseAdmin();
-  const [usersRes, progRes, testRes] = await Promise.all([
+  const now = new Date().toISOString();
+  const [usersRes, progRes, testRes, grantsRes, subscriptionsRes] = await Promise.all([
     db
       .from("users")
-      .select("email,name,plan,xp,streak_current,last_login_at,last_active_date,created_at,onboarded_at")
+      .select("id,email,name,plan,account_status,is_test_account,xp,streak_current,last_login_at,last_active_date,created_at,onboarded_at")
       .returns<
         {
+          id: string;
           email: string;
           name: string | null;
           plan: string | null;
+          account_status: "active" | "suspended" | "archived";
+          is_test_account: boolean;
           xp: number | null;
           streak_current: number | null;
           last_login_at: string | null;
@@ -657,7 +669,14 @@ export async function listStudents(): Promise<StudentRow[]> {
       .from("test_attempts")
       .select("email,total_score")
       .returns<{ email: string; total_score: number | null }[]>(),
+    db.from("access_grants").select("user_id,plan_code,created_at").is("revoked_at", null).lte("starts_at", now).or(`expires_at.is.null,expires_at.gt.${now}`).order("created_at", { ascending: false }).returns<{ user_id: string; plan_code: string; created_at: string }[]>(),
+    db.from("student_subscriptions").select("user_id,plan_code,updated_at").in("status", ["active", "trialing"]).order("updated_at", { ascending: false }).returns<{ user_id: string; plan_code: string; updated_at: string }[]>(),
   ]);
+
+  const grantPlan = new Map<string, PlanCode>();
+  for (const grant of grantsRes.data ?? []) if (!grantPlan.has(grant.user_id)) grantPlan.set(grant.user_id, normalizePlanCode(grant.plan_code));
+  const subscriptionPlan = new Map<string, PlanCode>();
+  for (const subscription of subscriptionsRes.data ?? []) if (!subscriptionPlan.has(subscription.user_id)) subscriptionPlan.set(subscription.user_id, normalizePlanCode(subscription.plan_code));
 
   // Per-drill mastery per student.
   const progByEmail = new Map<string, Record<string, StudentDrillStat>>();
@@ -703,10 +722,13 @@ export async function listStudents(): Promise<StudentRow[]> {
     }
     const test = testByEmail.get(u.email);
     return {
+      id: u.id,
       email: u.email,
       name: id.name,
       initials: id.initials,
-      plan: u.plan ?? "1500 Club",
+      plan: u.account_status === "active" ? grantPlan.get(u.id) ?? subscriptionPlan.get(u.id) ?? normalizeLegacyPlanCode(u.plan) : "free",
+      accountStatus: u.account_status,
+      isTestAccount: u.is_test_account,
       level: levelProgress(xp).level,
       xp,
       streak: u.streak_current ?? 0,

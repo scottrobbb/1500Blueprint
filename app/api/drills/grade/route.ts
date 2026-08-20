@@ -20,6 +20,7 @@ import type {
 } from "@/lib/drills/types";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isDrillUnderConstruction } from "@/lib/flags";
+import { drillAllowance } from "@/lib/auth/access-control";
 
 // Per-student grading runs on a cheap, fast model (Haiku 4.5) per the cost
 // analysis (~$0.003/grade, well under the $10/student/month cap). Kept separate
@@ -118,6 +119,13 @@ function buildReadingUser(
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const allowance = await drillAllowance(session.email);
+  if (!allowance.allowed) {
+    const error = allowance.limit === null
+      ? "Daily drills are included with Core and Max."
+      : `You have completed all ${allowance.limit} drills included today.`;
+    return NextResponse.json({ error, code: "plan_limit", ...allowance }, { status: 402 });
+  }
 
   let body: GradeBody;
   try {

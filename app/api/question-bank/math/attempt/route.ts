@@ -8,6 +8,7 @@ import {
 } from "@/lib/question-bank/math-queries";
 import { recordProgress } from "@/lib/drills/progress";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { questionBankAllowance } from "@/lib/auth/access-control";
 
 type AttemptBody = {
   questionId: string;
@@ -21,6 +22,10 @@ export async function POST(request: Request) {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const allowance = await questionBankAllowance(session.email);
+  if (!allowance.allowed) {
+    return NextResponse.json({ error: `You have used all ${allowance.limit} questions included with your plan.`, code: "plan_limit", ...allowance }, { status: 402 });
   }
 
   const input = parseAttemptBody(await request.json().catch(() => null));

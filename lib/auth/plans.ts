@@ -17,6 +17,8 @@ export type PlanEntitlements = {
 export type StudentAccess = {
   active: boolean;
   accountId: string | null;
+  accountStatus: "active" | "suspended" | "archived";
+  isTestAccount: boolean;
   plan: PlanCode;
   source: AccessSource;
   entitlements: PlanEntitlements;
@@ -68,15 +70,25 @@ export function normalizePlanCode(value: string | null | undefined): PlanCode {
   return "free";
 }
 
+export function normalizeLegacyPlanCode(value: string | null | undefined): PlanCode {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  if (["testing", "complimentary", "admin", "dev"].includes(normalized)) return "max";
+  return normalizePlanCode(value);
+}
+
 export function accessForPlan(
   plan: PlanCode,
   source: AccessSource,
   accountId: string | null,
   active = true,
+  accountStatus: StudentAccess["accountStatus"] = active ? "active" : "suspended",
+  isTestAccount = false,
 ): StudentAccess {
   return {
     active,
     accountId,
+    accountStatus,
+    isTestAccount,
     plan,
     source,
     entitlements: PLAN_ENTITLEMENTS[plan],

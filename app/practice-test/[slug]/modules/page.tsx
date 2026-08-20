@@ -7,6 +7,7 @@ import { listPracticeModules, type PracticeModuleMeta } from "@/lib/sat/modules"
 import { bestByModuleKey } from "@/lib/sat/moduleAttempts";
 import { getSession } from "@/lib/auth/session";
 import { getNavStats } from "@/lib/gamification/state";
+import { canAccessPracticeTest } from "@/lib/auth/access-control";
 
 export const metadata = {
   title: "Practice a module · 1500 SAT Blueprint",
@@ -28,6 +29,7 @@ export default async function ModulesPage({
   if (!session) redirect("/login");
 
   const { slug } = await params;
+  if (!(await canAccessPracticeTest(session.email, slug))) redirect("/ultimate/tests?upgrade=1");
   const [test, nav, best] = await Promise.all([
     loadTest(slug),
     getNavStats(session.email),

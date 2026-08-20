@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accessForPlan, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
+import { accessForPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
 
 test("legacy Stripe labels normalize to stable plan codes", () => {
   assert.equal(normalizePlanCode("Core monthly"), "core");
   assert.equal(normalizePlanCode("1500 MAX"), "max");
   assert.equal(normalizePlanCode("complimentary"), "free");
   assert.equal(normalizePlanCode(null), "free");
+});
+
+test("existing pre-tier customers retain full access during migration", () => {
+  assert.equal(normalizeLegacyPlanCode("testing"), "max");
+  assert.equal(normalizeLegacyPlanCode("complimentary"), "max");
+  assert.equal(normalizeLegacyPlanCode(null), "free");
 });
 
 test("plan capabilities reflect the current tier definition", () => {

@@ -6,6 +6,8 @@ import { CourseProgress } from "@/components/ultimate/courses/CourseProgress";
 import { getSession } from "@/lib/auth/session";
 import { getCourseForStudent } from "@/lib/courses/queries";
 import type { LessonBlock } from "@/lib/courses/types";
+import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
+import { AccessGate } from "@/components/account/AccessGate";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ courseSlug: string; lessonSlug: string }> };
@@ -14,6 +16,8 @@ export default async function UltimateLessonPage({ params }: Props) {
   const session = await getSession();
   if (!session) notFound();
   const { courseSlug, lessonSlug } = await params;
+  const access = await getStudentAccess(session.email);
+  if (!canAccessCourse(access, courseSlug)) return <AccessGate title="Unlock the complete Blueprint curriculum" description="Advanced Math and Reading & Writing lessons are included with Max." currentPlan={access.plan} />;
   const course = await getCourseForStudent(courseSlug, session.email);
   if (!course) notFound();
   const lessons = course.modules.flatMap((module) => module.lessons.map((lesson) => ({ lesson, module })));
