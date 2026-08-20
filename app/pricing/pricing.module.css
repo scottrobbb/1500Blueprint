@@ -110,6 +110,18 @@
   padding: 50px 26px 80px;
 }
 
+.billingNotice {
+  background: #171717;
+  border: 1px solid #34383f;
+  border-radius: 14px;
+  color: #dcecff;
+  font-size: 13px;
+  margin: 0 auto 28px;
+  max-width: 680px;
+  padding: 13px 16px;
+  text-align: center;
+}
+
 .hero {
   text-align: center;
 }
@@ -499,6 +511,12 @@
   transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
 }
 
+.actions form,
+.actions button {
+  font: inherit;
+  width: 100%;
+}
+
 .primaryAction {
   background: #1b1d20;
   border: 1px solid #2b2e33;
@@ -508,6 +526,14 @@
 .primaryAction:hover {
   background: #25282c;
   border-color: #444950;
+}
+
+.disabledAction,
+.disabledAction:hover {
+  background: #17191c;
+  border-color: #282b30;
+  color: #737983;
+  cursor: not-allowed;
 }
 
 .blueprint .primaryAction {
@@ -530,6 +556,15 @@
   background: #ffcb4c;
 }
 
+.blueprint .disabledAction,
+.blueprint .disabledAction:hover,
+.pro .disabledAction,
+.pro .disabledAction:hover {
+  background: #17191c;
+  border-color: #282b30;
+  color: #737983;
+}
+
 .secondaryAction {
   background: rgba(255, 255, 255, 0.055);
   border: 1px solid transparent;
@@ -545,6 +580,13 @@
   color: #757c86;
   font-size: 13px;
   margin: 34px 0 0;
+  text-align: center;
+}
+
+.refundPolicy {
+  color: #626a75;
+  font-size: 11px;
+  margin: 10px 0 0;
   text-align: center;
 }
 

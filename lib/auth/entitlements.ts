@@ -7,6 +7,7 @@ import {
   normalizePlanCode,
   type StudentAccess,
 } from "./plans";
+import { billingLivemode } from "@/lib/billing/config";
 
 export type { AccessSource, PlanCode, PlanEntitlements, StudentAccess } from "./plans";
 export { accessForPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
@@ -51,6 +52,7 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
         .from("student_subscriptions")
         .select("plan_code")
         .eq("user_id", account.id)
+        .eq("livemode", billingLivemode())
         .in("status", ["active", "trialing"])
         .order("updated_at", { ascending: false })
         .limit(1)

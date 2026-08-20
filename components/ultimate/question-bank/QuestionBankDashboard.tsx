@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { FlameIcon } from "@/components/shell/icons";
+import { PlanBadge } from "@/components/account/PlanBadge";
+import type { PlanCode } from "@/lib/auth/plans";
 import type {
   QuestionBankActivity,
   QuestionBankDashboard,
@@ -38,23 +40,20 @@ const DOMAINS: Record<QuestionBankSection, string[]> = {
   ],
 };
 
-export function QuestionBankDashboardView({ dashboard }: { dashboard: QuestionBankDashboard }) {
+type QuestionBankAccess = { plan: PlanCode; test: boolean; used: number; limit: number };
+
+export function QuestionBankDashboardView({ dashboard, access }: { dashboard: QuestionBankDashboard; access: QuestionBankAccess }) {
   const totalActivity = dashboard.activity.reduce(
     (total, week) => ({ correct: total.correct + week.correct, wrong: total.wrong + week.wrong }),
     { correct: 0, wrong: 0 },
   );
+  const usage = Math.min(access.used, access.limit);
+  const usagePercent = access.limit > 0 ? Math.min(100, Math.round((usage / access.limit) * 100)) : 0;
 
   return (
     <div className="min-h-dvh bg-[#f5f6f8]">
-      <div className="flex min-h-9 items-center justify-between gap-3 bg-navy px-4 py-2 text-[11px] font-semibold text-white/75 sm:px-7">
-        <span>Ultimate question bank · live student analytics</span>
-        <span className="rounded-full bg-gold px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-navy">
-          Math + R&amp;W live
-        </span>
-      </div>
-
       <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
-        <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <header className="mb-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
           <div className="flex items-start gap-3">
             <span className="mt-1 grid h-11 w-11 flex-none place-items-center rounded-[14px] border border-navy/10 bg-white text-brand-600 shadow-pop">
               <QuestionBankIcon className="h-6 w-6" />
@@ -69,12 +68,18 @@ export function QuestionBankDashboardView({ dashboard }: { dashboard: QuestionBa
               </p>
             </div>
           </div>
-          <a
-            href="#analytics"
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-navy/10 bg-white px-4 text-sm font-bold text-navy transition-colors hover:border-brand/40 hover:text-brand-600"
-          >
-            View analytics <ChevronDownIcon className="h-4 w-4" />
-          </a>
+          <div className="rounded-[16px] border border-navy/10 bg-white p-4 shadow-[0_8px_24px_-20px_rgba(11,42,91,0.45)]">
+            <div className="flex items-center justify-between gap-3">
+              <PlanBadge plan={access.plan} test={access.test} />
+              <span className="rounded-full bg-[#fff4cc] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.11em] text-[#755600]">Math + R&amp;W live</span>
+            </div>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div><strong className="font-display text-lg font-extrabold text-navy">{usage.toLocaleString()}</strong><span className="text-xs font-semibold text-navy/40"> / {access.limit.toLocaleString()} used</span></div>
+              {access.plan !== "max" ? <Link href="/pricing" className="text-xs font-extrabold text-brand-700 transition-colors hover:text-navy">Compare plans →</Link> : null}
+            </div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy/[0.07]" aria-label={`${usagePercent}% of included questions used`}><div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${usagePercent}%` }} /></div>
+            <a href="#analytics" className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-haze text-xs font-extrabold text-navy transition-colors hover:bg-ice hover:text-brand-700">View analytics <ChevronDownIcon className="h-4 w-4" /></a>
+          </div>
         </header>
 
         <section aria-labelledby="subject-heading">

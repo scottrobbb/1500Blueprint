@@ -15,7 +15,7 @@ import { PlanBadge } from "@/components/account/PlanBadge";
 
 export const metadata = { title: "Home" };
 
-export default async function UltimateHomePage() {
+export default async function UltimateHomePage({ searchParams }: { searchParams: Promise<{ billing?: string }> }) {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
@@ -43,9 +43,15 @@ export default async function UltimateHomePage() {
       : `/ultimate/courses/${activeCourse.slug}`
     : "/ultimate/courses";
   const isNewStudent = history.length === 0 && testProgress.testsDone === 0 && completedLessons === 0;
+  const { billing } = await searchParams;
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
+      {billing === "success" ? (
+        <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status">
+          Your subscription is active. Your new plan access is ready.
+        </div>
+      ) : null}
       <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="mb-3"><PlanBadge plan={access.plan} test={access.isTestAccount} /></div>

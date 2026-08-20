@@ -8,7 +8,6 @@ import { CommunityIcon } from "@/components/community/icons";
 import { LayersIcon } from "@/components/flashcards/icons";
 import { AccountMenu } from "@/components/shell/AccountMenu";
 import { NotificationBell } from "@/components/shell/NotificationBell";
-import { PlanBadge } from "@/components/account/PlanBadge";
 import {
   DrillsIcon,
   FlameIcon,
@@ -140,18 +139,17 @@ export function UltimateShell({
             <span className="mt-0.5 block text-[10px] text-navy/40">level {stats.level}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-navy/[0.025]">
+        <div className="flex items-center gap-1">
           <AccountMenu
             name={stats.name}
             initials={stats.initials}
             level={stats.level}
             plan={stats.plan}
             avatarUrl={stats.avatarUrl}
+            wide
+            test={access.isTestAccount}
+            billing={access.source === "subscription"}
           />
-          <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-bold text-navy">{stats.name}</div>
-            <div className="mt-1"><PlanBadge plan={access.plan} test={access.isTestAccount} /></div>
-          </div>
           <NotificationBell communityHrefBase="/ultimate/community" />
         </div>
       </div>
@@ -186,6 +184,7 @@ export function UltimateShell({
             level={stats.level}
             plan={stats.plan}
             avatarUrl={stats.avatarUrl}
+            billing={access.source === "subscription"}
           />
         </header>
 

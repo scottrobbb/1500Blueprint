@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
+import { getStudentAccess } from "@/lib/auth/entitlements";
+import type { PlanCode } from "@/lib/auth/plans";
+import { getSession } from "@/lib/auth/session";
 import styles from "./pricing.module.css";
 
 export const metadata: Metadata = {
@@ -41,7 +44,16 @@ const proFeatures: PlanFeature[] = [
   { label: "Discord Max role", icon: "chat" },
 ];
 
-export default function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ billing?: string }>;
+}) {
+  const session = await getSession();
+  const access = session ? await getStudentAccess(session.email) : null;
+  const { billing } = await searchParams;
+  const billingEnabled = Boolean(process.env.STRIPE_CORE_PRICE_ID && process.env.STRIPE_MAX_PRICE_ID);
+
   return (
     <main className={styles.page}>
       <div className={styles.saleBar}>
@@ -64,6 +76,7 @@ export default function PricingPage() {
       </header>
 
       <section className={styles.content}>
+        {billing ? <BillingNotice state={billing} /> : null}
         <div className={styles.hero}>
           <p className={styles.eyebrow}>Simple monthly pricing</p>
           <h1>All plans</h1>
@@ -84,6 +97,8 @@ export default function PricingPage() {
             description="Start with a real diagnostic and find your weak spots."
             features={freeFeatures}
             cta="Get started"
+            currentPlan={access?.plan ?? null}
+            billingEnabled={billingEnabled}
           />
           <PriceCard
             tier="blueprint"
@@ -92,6 +107,8 @@ export default function PricingPage() {
             description="Daily structured practice and the complete Core question library."
             features={blueprintFeatures}
             cta="Get Core"
+            currentPlan={access?.plan ?? null}
+            billingEnabled={billingEnabled}
           />
           <PriceCard
             tier="pro"
@@ -101,12 +118,15 @@ export default function PricingPage() {
             features={proFeatures}
             cta="Get Max"
             popular
+            currentPlan={access?.plan ?? null}
+            billingEnabled={billingEnabled}
           />
         </div>
 
         <p className={styles.bottomLink}>
           Already have access? <Link href="/login">Open the app <ArrowIcon /></Link>
         </p>
+        <p className={styles.refundPolicy}>First purchase covered by a 24-hour refund window.</p>
       </section>
     </main>
   );
@@ -121,6 +141,8 @@ function PriceCard({
   features,
   cta,
   popular = false,
+  currentPlan,
+  billingEnabled,
 }: {
   tier: "free" | "blueprint" | "pro";
   name: string;
@@ -130,8 +152,12 @@ function PriceCard({
   features: PlanFeature[];
   cta: string;
   popular?: boolean;
+  currentPlan: PlanCode | null;
+  billingEnabled: boolean;
 }) {
   const paid = tier !== "free";
+  const plan = tier === "blueprint" ? "core" : tier === "pro" ? "max" : "free";
+  const current = currentPlan === plan;
 
   return (
     <article className={`${styles.card} ${styles[tier]}`}>
@@ -149,18 +175,20 @@ function PriceCard({
       </div>
 
       <div className={styles.priceRow}>
-        {paid ? (
+        {paid && billingEnabled ? (
           <>
             {oldPrice ? <s>${oldPrice}</s> : null}
             <strong>${price}</strong>
             <span className={styles.saleChip}>/ month</span>
           </>
+        ) : paid ? (
+          <span className={`${styles.primaryAction} ${styles.disabledAction}`}>Billing opens soon</span>
         ) : (
           <strong>Free</strong>
         )}
       </div>
 
-      <p className={styles.paymentNote}>{paid ? "Monthly access · cancel anytime" : "No card required"}</p>
+      <p className={styles.paymentNote}>{paid ? "Monthly access · cancel anytime · 24-hour refunds" : "No card required"}</p>
       <p className={styles.description}>{description}</p>
 
       <ul className={styles.features}>
@@ -173,7 +201,14 @@ function PriceCard({
       </ul>
 
       <div className={styles.actions}>
-        <Link href="/login" className={styles.primaryAction}>{cta}</Link>
+        {paid ? (
+          <form action="/api/billing/checkout" method="post">
+            <input type="hidden" name="plan" value={plan} />
+            <button type="submit" className={styles.primaryAction}>{current ? "Manage plan" : cta}</button>
+          </form>
+        ) : (
+          <Link href={currentPlan ? "/ultimate" : "/account/login"} className={styles.primaryAction}>{currentPlan ? "Open app" : cta}</Link>
+        )}
         {paid && (
           <a
             className={styles.secondaryAction}
@@ -185,6 +220,17 @@ function PriceCard({
       </div>
     </article>
   );
+}
+
+function BillingNotice({ state }: { state: string }) {
+  const message = state === "cancelled"
+    ? "Checkout was cancelled. Nothing was charged."
+    : state === "account"
+      ? "This account cannot start a subscription."
+      : state === "invalid"
+        ? "Choose Core or Max to continue."
+        : "Billing could not be opened. Please try again.";
+  return <div className={styles.billingNotice} role="status">{message}</div>;
 }
 
 function PlanArt({ tier }: { tier: "free" | "blueprint" | "pro" }) {
