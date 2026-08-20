@@ -2,11 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify, type JWTPayload } from "jose";
 import { SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { isPasswordAuthEnabled } from "@/lib/auth/password";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { isDrillUnderConstruction, isPracticeTestUnderConstruction } from "@/lib/flags";
+import { updateSession as updatePasswordSession } from "@/utils/supabase/proxy";
 
 // Paths reachable without a session.
-const PUBLIC_PATHS = ["/login", "/pricing"];
+const PUBLIC_PATHS = ["/login", "/pricing", "/account"];
 // The admin CMS is gated to allowlisted admin emails (ADMIN_EMAILS).
 const ADMIN_PREFIX = "/admin";
 const ULTIMATE_PREFIX = "/ultimate";
@@ -45,24 +47,35 @@ async function sessionPayload(request: NextRequest): Promise<JWTPayload | null> 
 // admin email (defense-in-depth; pages/routes re-check via getAdminSession).
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (isPublic(pathname)) return NextResponse.next();
+  const publicPath = isPublic(pathname);
+  if (publicPath && !pathname.startsWith("/account")) return NextResponse.next();
 
-  const payload = await sessionPayload(request);
-  if (!payload) {
+  const legacyPayload = await sessionPayload(request);
+  let email = typeof legacyPayload?.sub === "string" ? legacyPayload.sub : null;
+  let passwordResponse: NextResponse | null = null;
+
+  if (!email && isPasswordAuthEnabled()) {
+    const passwordSession = await updatePasswordSession(request);
+    passwordResponse = passwordSession.response;
+    email = passwordSession.identity?.email ?? null;
+  }
+
+  if (publicPath) return passwordResponse ?? NextResponse.next();
+
+  if (!email) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = "";
-    return NextResponse.redirect(loginUrl);
+    return redirectWithCookies(loginUrl, passwordResponse);
   }
 
-  const email = typeof payload.sub === "string" ? payload.sub : null;
   const isAdmin = isAdminEmail(email);
 
   if (isUltimatePath(pathname) && !isUltimatePreviewEmail(email)) {
     const url = request.nextUrl.clone();
     url.pathname = "/drills";
     url.search = "";
-    return NextResponse.redirect(url);
+    return redirectWithCookies(url, passwordResponse);
   }
 
   if (isAdminPath(pathname)) {
@@ -71,7 +84,7 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/drills";
       url.search = "";
-      return NextResponse.redirect(url);
+      return redirectWithCookies(url, passwordResponse);
     }
   }
 
@@ -83,7 +96,7 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/drills";
       url.search = "";
-      return NextResponse.redirect(url);
+      return redirectWithCookies(url, passwordResponse);
     }
   }
 
@@ -96,11 +109,17 @@ export async function proxy(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/practice-test";
       url.search = "";
-      return NextResponse.redirect(url);
+      return redirectWithCookies(url, passwordResponse);
     }
   }
 
-  return NextResponse.next();
+  return passwordResponse ?? NextResponse.next();
+}
+
+function redirectWithCookies(url: URL, source: NextResponse | null): NextResponse {
+  const response = NextResponse.redirect(url);
+  source?.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
+  return response;
 }
 
 export const config = {

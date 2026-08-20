@@ -76,28 +76,21 @@ export function UltimateShell({
 
   const rail = (
     <div className="flex h-full flex-col">
-      <Link href="/ultimate" className="mx-2 mb-4 flex items-center gap-2.5" onClick={() => setMenuOpen(false)}>
+      <Link href="/ultimate" className="mx-2 mb-7 flex items-center gap-2.5" onClick={() => setMenuOpen(false)}>
         <Logo withWordmark={false} className="[&>svg]:h-7 [&>svg]:w-7" />
         <span className="leading-none">
-          <strong className="block font-display text-[15px] font-extrabold tracking-tight text-white">
+          <strong className="block font-display text-[15px] font-extrabold tracking-tight text-navy">
             1500 SAT Blueprint
           </strong>
-          <span className="mt-1 block text-[11px] font-medium text-sky">by Scott Robinson</span>
+          <span className="mt-1 block text-[11px] font-semibold text-brand-600">by Scott Robinson</span>
         </span>
       </Link>
-
-      <div className="mb-3 grid grid-cols-4 rounded-full bg-white/[0.055] p-0.5 text-center text-[9px] font-semibold text-white/45">
-        <WorkspaceShortcut href="/ultimate/courses" label="Learn" active={pathname.startsWith("/ultimate/courses") || pathname.startsWith("/ultimate/planner")} />
-        <WorkspaceShortcut href="/ultimate/bank" label="Practice" active={pathname.startsWith("/ultimate/bank") || pathname.startsWith("/ultimate/drills") || pathname.startsWith("/ultimate/flashcards") || pathname.startsWith("/ultimate/history")} />
-        <WorkspaceShortcut href="/ultimate/tests" label="Tests" active={pathname.startsWith("/ultimate/tests")} />
-        <WorkspaceShortcut href="/ultimate/community" label="Connect" active={pathname.startsWith("/ultimate/community") || pathname.startsWith("/ultimate/live-calls")} />
-      </div>
 
       <nav aria-label="Ultimate workspace" className="min-h-0 flex-1 overflow-y-auto">
         {navigation.map((section, index) => (
           <div key={section.title ?? index} className="mb-2.5">
             {section.title && (
-              <p className="mx-2 mb-1.5 mt-3 text-[10px] font-bold uppercase tracking-[0.15em] text-[#5f7595]">
+              <p className="mx-2 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-navy/35">
                 {section.title}
               </p>
             )}
@@ -116,7 +109,7 @@ export function UltimateShell({
 
         {stats.isAdmin && (
           <div className="mb-2.5">
-            <p className="mx-2 mb-1.5 mt-3 text-[10px] font-bold uppercase tracking-[0.15em] text-[#5f7595]">
+            <p className="mx-2 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-navy/35">
               Scott
             </p>
             <RailLink
@@ -128,20 +121,20 @@ export function UltimateShell({
         )}
       </nav>
 
-      <div className="mt-3 border-t border-white/10 pt-3">
-        <div className="mb-2 grid grid-cols-2 gap-2">
-          <div className="rounded-xl bg-white/[0.06] px-3 py-2">
-            <span className="flex items-center gap-1 text-xs font-bold text-gold">
+      <div className="mt-3 border-t border-navy/10 pt-3">
+        <div className="mb-2 grid grid-cols-2 divide-x divide-navy/10 rounded-xl bg-[#f6f8fb] py-2.5">
+          <div className="px-3">
+            <span className="flex items-center gap-1 text-xs font-bold text-flag">
               <FlameIcon className="h-4 w-4" /> {stats.streak}
             </span>
-            <span className="mt-0.5 block text-[10px] text-white/40">day streak</span>
+            <span className="mt-0.5 block text-[10px] text-navy/40">day streak</span>
           </div>
-          <div className="rounded-xl bg-white/[0.06] px-3 py-2">
-            <span className="text-xs font-bold text-white">{stats.xp.toLocaleString()} XP</span>
-            <span className="mt-0.5 block text-[10px] text-white/40">level {stats.level}</span>
+          <div className="px-3">
+            <span className="text-xs font-bold text-navy">{stats.xp.toLocaleString()} XP</span>
+            <span className="mt-0.5 block text-[10px] text-navy/40">level {stats.level}</span>
           </div>
         </div>
-        <div className="flex items-center gap-2.5 rounded-xl px-2 py-1.5">
+        <div className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 hover:bg-navy/[0.025]">
           <AccountMenu
             name={stats.name}
             initials={stats.initials}
@@ -150,18 +143,18 @@ export function UltimateShell({
             avatarUrl={stats.avatarUrl}
           />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-xs font-semibold text-white/85">{stats.name}</div>
-            <div className="text-[10px] text-white/40">Private preview</div>
+            <div className="truncate text-xs font-bold text-navy">{stats.name}</div>
+            <div className="text-[10px] capitalize text-navy/40">{stats.plan}</div>
           </div>
-          <NotificationBell tone="dark" communityHrefBase="/ultimate/community" />
+          <NotificationBell communityHrefBase="/ultimate/community" />
         </div>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-dvh bg-[#f5f6f8] text-ink lg:grid lg:grid-cols-[236px_minmax(0,1fr)]">
-      <aside className="sticky top-0 hidden h-dvh bg-[#0c2348] px-3 pb-3 pt-4 lg:block">{rail}</aside>
+    <div className="min-h-dvh bg-[#f5f7fa] text-ink lg:grid lg:grid-cols-[244px_minmax(0,1fr)]">
+      <aside className="sticky top-0 hidden h-dvh border-r border-navy/10 bg-white px-3 pb-3 pt-5 lg:block">{rail}</aside>
 
       <div className="min-w-0">
         <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-navy/10 bg-white/95 px-4 backdrop-blur lg:hidden">
@@ -198,12 +191,12 @@ export function UltimateShell({
               className="absolute inset-0 bg-navy/45 backdrop-blur-[2px]"
               onClick={() => setMenuOpen(false)}
             />
-            <aside className="relative h-dvh w-[min(86vw,280px)] bg-[#0c2348] px-3 pb-3 pt-4 shadow-2xl">
+            <aside className="relative h-dvh w-[min(86vw,280px)] border-r border-navy/10 bg-white px-3 pb-3 pt-5 shadow-2xl">
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
                 aria-label="Close navigation"
-                className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white"
+                className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-xl text-navy/55 hover:bg-navy/5 hover:text-navy"
               >
                 <CloseIcon className="h-5 w-5" />
               </button>
@@ -225,29 +218,15 @@ function RailLink({ item, active, onNavigate }: { item: NavItem; active: boolean
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-10 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13px] font-medium transition-colors ${
-        active ? "bg-sky/15 text-white" : "text-white/60 hover:bg-white/[0.07] hover:text-white"
+      className={`flex min-h-11 items-center gap-2.5 rounded-[11px] px-3 py-2 text-[13px] font-semibold transition-colors ${
+        active ? "bg-[#eaf6ff] text-navy shadow-[inset_3px_0_0_#3fa9f5]" : "text-navy/58 hover:bg-navy/[0.045] hover:text-navy"
       }`}
     >
-      <Icon className="h-[17px] w-[17px] flex-none" />
+      <Icon className={`h-[18px] w-[18px] flex-none ${active ? "text-brand-600" : "text-navy/45"}`} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {item.chip && (
-        <span className="rounded-full bg-brand/20 px-1.5 py-0.5 text-[9px] font-bold text-sky">{item.chip}</span>
+        <span className="rounded-full bg-brand/10 px-1.5 py-0.5 text-[9px] font-bold text-brand-600">{item.chip}</span>
       )}
-    </Link>
-  );
-}
-
-function WorkspaceShortcut({ href, label, active }: { href: string; label: string; active: boolean }) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={`flex min-h-8 items-center justify-center rounded-full px-1 transition-colors ${
-        active ? "bg-sky/20 text-white" : "hover:bg-white/[0.07] hover:text-white"
-      }`}
-    >
-      {label}
     </Link>
   );
 }

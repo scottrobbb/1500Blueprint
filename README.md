@@ -19,6 +19,29 @@ The integrated Ultimate workspace lives at `/ultimate` in this same application.
 - Signed-in users outside both allowlists are redirected to `/drills`.
 - No separate database or content migration is required.
 
+## Password account rollout
+
+Password accounts run alongside the existing member magic-link flow. The
+current `/login` page and its Stripe membership check remain unchanged.
+
+1. Apply `supabase/migrations/20260820130000_student_accounts_and_entitlements.sql`.
+2. Add `/account/confirm` to the allowed Supabase Auth redirect URLs.
+3. Set `PASSWORD_AUTH_ENABLED=true` in production to enable password login,
+   recovery, and account claiming.
+4. Set `PASSWORD_SIGNUP_ENABLED=true` separately when public Free registration
+   is ready to open and server-side plan entitlements are enforced across the
+   existing drills, tests, courses, and planner routes.
+
+Keep `PASSWORD_SIGNUP_ENABLED` off during the migration period. Password login
+can be enabled independently for existing students without opening Free signup.
+
+Both flows are available by default during local development and can be forced
+off there by setting either flag to `false`.
+
+Existing students can continue signing in through `/login`. Once password auth
+is enabled, an already signed-in legacy student can visit `/account/claim` to
+create a password without losing any email-owned progress.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

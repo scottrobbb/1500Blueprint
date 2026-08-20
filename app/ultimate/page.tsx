@@ -5,6 +5,8 @@ import { LayersIcon } from "@/components/flashcards/icons";
 import { ChevronRightIcon, DrillsIcon, FlameIcon, HistoryIcon, TestsIcon } from "@/components/shell/icons";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
+import { listCoursesForStudent } from "@/lib/courses/queries";
+import type { Course } from "@/lib/courses/types";
 import { loadHistory } from "@/lib/drills/progress";
 import { listStudentLibrary } from "@/lib/flashcards/queries";
 import { getHubState, getTestProgress } from "@/lib/gamification/state";
@@ -15,226 +17,172 @@ export default async function UltimateHomePage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
-  const [hub, testProgress, history, flashcards] = await Promise.all([
+  const [hub, testProgress, history, flashcards, courses] = await Promise.all([
     getHubState(session.email),
     getTestProgress(session.email),
     loadHistory(session.email),
     listStudentLibrary(session.email),
+    listCoursesForStudent(session.email),
   ]);
 
   const mastered = history.filter((entry) => entry.mastered).length;
-  const accuracy = history.length > 0 ? Math.round((mastered / history.length) * 100) : null;
+  const masteryRate = history.length > 0 ? Math.round((mastered / history.length) * 100) : 0;
   const dailyProgress = Math.min(100, Math.round((hub.dailyGoal.done / Math.max(1, hub.dailyGoal.total)) * 100));
   const cardCount = [...flashcards.owned, ...flashcards.shared].reduce((sum, set) => sum + set.cardCount, 0);
+  const totalLessons = courses.reduce((sum, course) => sum + course.totalLessons, 0);
+  const completedLessons = courses.reduce((sum, course) => sum + course.completedLessons, 0);
+  const activeCourse = courses.find((course) => course.progress < 100) ?? courses[0] ?? null;
+  const nextLesson = activeCourse?.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed) ?? null;
+  const nextCourseHref = activeCourse
+    ? nextLesson
+      ? `/ultimate/courses/${activeCourse.slug}/${nextLesson.slug}`
+      : `/ultimate/courses/${activeCourse.slug}`
+    : "/ultimate/courses";
+  const isNewStudent = history.length === 0 && testProgress.testsDone === 0 && completedLessons === 0;
 
   return (
-    <div>
-      <div className="flex min-h-9 items-center justify-between gap-3 bg-navy px-4 py-2 text-[11px] font-semibold text-white/75 sm:px-7">
-        <span>Ultimate integration workspace · live student data</span>
-        <span className="rounded-full bg-gold px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.12em] text-navy">
-          Private
-        </span>
-      </div>
+    <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
+      <header className="mb-7 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand-600">
+            {isNewStudent ? "Your SAT workspace" : "Your blueprint today"}
+          </p>
+          <h1 className="mt-1 font-display text-[31px] font-extrabold tracking-[-0.04em] text-ink sm:text-[40px]">
+            {isNewStudent ? `Welcome, ${hub.player.firstName}.` : `Welcome back, ${hub.player.firstName}.`}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-navy/52">
+            {isNewStudent
+              ? "Start with a lesson, practice what you learned, then use a full test to measure your progress."
+              : "Keep moving through your course, practice weak skills, and use full tests to measure the result."}
+          </p>
+        </div>
+        <div className="flex min-h-11 items-center gap-3 rounded-xl border border-navy/10 bg-white px-4 shadow-[0_1px_2px_rgba(11,42,91,0.04)]">
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#fff6dc] text-flag"><FlameIcon className="h-[18px] w-[18px]" /></span>
+          <span><strong className="block font-display text-sm leading-none text-navy">{hub.player.streak} day streak</strong><span className="mt-1 block text-[10px] text-navy/40">Keep showing up</span></span>
+        </div>
+      </header>
 
-      <div className="mx-auto w-full max-w-[1180px] px-4 py-7 sm:px-7 sm:py-9">
-        <div className="mb-7 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-600">Your command center</p>
-            <h1 className="mt-1 font-display text-[30px] font-extrabold tracking-[-0.035em] text-ink sm:text-[38px]">
-              Welcome back, {hub.player.firstName}.
-            </h1>
-            <p className="mt-1 text-sm text-navy/50">Pick up where you left off or choose a focused practice path.</p>
-          </div>
-          <div className="flex items-center gap-2 rounded-2xl border border-navy/10 bg-white px-4 py-3 shadow-pop">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-gold/15 text-gold-600">
-              <FlameIcon className="h-5 w-5" />
-            </span>
-            <div>
-              <strong className="block font-display text-lg leading-none text-navy">{hub.player.streak} days</strong>
-              <span className="text-[11px] text-navy/45">current streak</span>
+      <section className="mb-7 grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(290px,0.55fr)]">
+        <div className="relative overflow-hidden rounded-[20px] bg-navy p-6 text-white shadow-[0_18px_48px_-30px_rgba(11,42,91,0.8)] sm:p-8">
+          <div aria-hidden="true" className="absolute -right-16 -top-24 h-64 w-64 rounded-full border-[40px] border-sky/[0.08]" />
+          <div className="relative">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky">Your next move</p>
+              {activeCourse ? <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-bold text-white/65">{activeCourse.progress}% complete</span> : null}
             </div>
-          </div>
-        </div>
-
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
-          <div className="space-y-5">
-            <section className="relative overflow-hidden rounded-[18px] bg-[linear-gradient(125deg,#0b2a5b_0%,#123d80_62%,#1b5cab_100%)] p-6 text-white shadow-[0_18px_45px_-28px_rgba(11,42,91,0.75)] sm:p-8">
-              <div aria-hidden="true" className="absolute -right-12 -top-20 h-60 w-60 rounded-full border-[36px] border-sky/10" />
-              <div aria-hidden="true" className="absolute -bottom-24 right-24 h-52 w-52 rounded-full border-[28px] border-brand/10" />
-              <div className="relative max-w-xl">
-                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-sky">Today&apos;s target</p>
-                <h2 className="mt-2 font-display text-2xl font-extrabold tracking-[-0.025em] sm:text-[30px]">
-                  Complete {Math.max(0, hub.dailyGoal.total - hub.dailyGoal.done)} more focused reps.
-                </h2>
-                <p className="mt-2 max-w-lg text-sm leading-6 text-white/65">
-                  Your existing drills, scores, mastery, streak, and XP all continue here from the same student account.
-                </p>
-                <div className="mt-5 max-w-md">
-                  <div className="mb-2 flex items-center justify-between text-xs font-semibold text-white/65">
-                    <span>{hub.dailyGoal.done} of {hub.dailyGoal.total} drills</span>
-                    <span>{dailyProgress}%</span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-white/15">
-                    <div className="h-full rounded-full bg-gold" style={{ width: `${dailyProgress}%` }} />
-                  </div>
+            <h2 className="mt-4 max-w-2xl font-display text-[27px] font-extrabold leading-tight tracking-[-0.03em] sm:text-[34px]">
+              {nextLesson?.title ?? activeCourse?.title ?? "Explore your available courses"}
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-white/62">
+              {nextLesson?.summary ?? activeCourse?.description ?? "Open Courses to see Scott's lessons and begin with the first module."}
+            </p>
+            {activeCourse ? (
+              <div className="mt-5 max-w-lg">
+                <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-white/50">
+                  <span>{activeCourse.title}</span><span>{activeCourse.completedLessons} of {activeCourse.totalLessons} lessons</span>
                 </div>
-                <Link
-                  href="/ultimate/drills"
-                  className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px"
-                >
-                  Start a drill <ChevronRightIcon className="h-4 w-4" />
-                </Link>
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/12"><div className="h-full rounded-full bg-sky" style={{ width: `${activeCourse.progress}%` }} /></div>
               </div>
-            </section>
-
-            <section>
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <h2 className="font-display text-xl font-extrabold text-ink">Continue studying</h2>
-                <span className="text-xs text-navy/40">All activity stays on the current account</span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <FeatureCard
-                  href="/ultimate/drills"
-                  title="Targeted drills"
-                  detail={`${history.length} questions attempted`}
-                  Icon={DrillsIcon}
-                  tone="blue"
-                />
-                <FeatureCard
-                  href="/ultimate/tests"
-                  title="Full-length tests"
-                  detail={testProgress.bestScore ? `Best score ${testProgress.bestScore}` : "Ready for your first test"}
-                  Icon={TestsIcon}
-                  tone="navy"
-                />
-                <FeatureCard
-                  href="/ultimate/flashcards"
-                  title="Flashcards"
-                  detail={`${cardCount} cards across ${flashcards.owned.length + flashcards.shared.length} sets`}
-                  Icon={LayersIcon}
-                  tone="gold"
-                />
-                <FeatureCard
-                  href="/ultimate/community"
-                  title="Community"
-                  detail="Questions, wins, and score drops"
-                  Icon={CommunityIcon}
-                  tone="sky"
-                />
-              </div>
-            </section>
-
-            <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Metric label="Attempted" value={history.length.toLocaleString()} />
-              <Metric label="Mastered" value={mastered.toLocaleString()} />
-              <Metric label="Mastery rate" value={accuracy == null ? "—" : `${accuracy}%`} />
-              <Metric label="Tests done" value={testProgress.testsDone.toLocaleString()} />
-            </section>
-          </div>
-
-          <aside className="space-y-4">
-            <section className="rounded-[18px] border border-navy/10 bg-white p-5 shadow-pop">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-navy/40">Score trajectory</p>
-              <div className="mt-4 flex items-end justify-between gap-4">
-                <div>
-                  <strong className="font-display text-4xl font-extrabold tracking-[-0.04em] text-navy">
-                    {testProgress.bestScore ?? "—"}
-                  </strong>
-                  <span className="mt-1 block text-xs text-navy/45">best practice score</span>
-                </div>
-                {testProgress.improvement != null && (
-                  <span className="rounded-full bg-success-bg px-2.5 py-1 text-xs font-bold text-success-600">
-                    {testProgress.improvement >= 0 ? "+" : ""}{testProgress.improvement}
-                  </span>
-                )}
-              </div>
-              <div className="my-5 h-px bg-navy/10" />
-              <div className="grid grid-cols-2 gap-3">
-                <SmallMetric label="Level" value={String(hub.player.level)} />
-                <SmallMetric label="Total XP" value={hub.player.xp.toLocaleString()} />
-              </div>
-              <Link href="/ultimate/tests" className="mt-5 flex min-h-11 items-center justify-between rounded-xl bg-navy px-4 text-sm font-bold text-white">
-                Open test center <ChevronRightIcon className="h-4 w-4" />
-              </Link>
-            </section>
-
-            <section className="rounded-[18px] border border-gold/35 bg-[#fffaf0] p-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-gold-600">Next achievement</p>
-              <h3 className="mt-2 font-display text-lg font-extrabold text-navy">
-                {hub.achievements.nextUp?.label ?? "Achievement set complete"}
-              </h3>
-              <p className="mt-1 text-sm leading-5 text-navy/55">
-                {hub.achievements.nextUp?.description ?? "You have unlocked every current achievement."}
-              </p>
-              <div className="mt-4 text-xs font-semibold text-navy/50">
-                {hub.achievements.unlocked} of {hub.achievements.total} unlocked
-              </div>
-            </section>
-
-            <Link
-              href="/ultimate/history"
-              className="flex min-h-14 items-center gap-3 rounded-[16px] border border-navy/10 bg-white px-4 text-sm font-bold text-navy transition-colors hover:border-brand/35"
-            >
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-haze text-brand-600">
-                <HistoryIcon className="h-5 w-5" />
-              </span>
-              Review practice history
-              <ChevronRightIcon className="ml-auto h-4 w-4 text-navy/35" />
+            ) : null}
+            <Link href={nextCourseHref} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-extrabold text-white shadow-[0_2px_0_#2b8fe0] transition-colors hover:bg-[#50b5fb]">
+              {nextLesson ? "Continue lesson" : activeCourse ? "Open course" : "Browse courses"} <ChevronRightIcon className="h-4 w-4" />
             </Link>
-          </aside>
+          </div>
         </div>
+
+        <aside className="rounded-[20px] border border-navy/10 bg-white p-5 shadow-[0_1px_3px_rgba(11,42,91,0.04)] sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Today&apos;s practice</p><h2 className="mt-1 font-display text-xl font-extrabold text-ink">{hub.dailyGoal.done} of {hub.dailyGoal.total} drills</h2></div>
+            <span className="font-display text-2xl font-extrabold text-navy">{dailyProgress}%</span>
+          </div>
+          <div className="mt-5 h-2 overflow-hidden rounded-full bg-navy/[0.07]"><div className="h-full rounded-full bg-brand" style={{ width: `${dailyProgress}%` }} /></div>
+          <p className="mt-3 text-xs leading-5 text-navy/45">A short focused session keeps your skill history and recommendations current.</p>
+          <Link href="/ultimate/drills" className="mt-5 flex min-h-11 items-center justify-between rounded-xl bg-[#eaf6ff] px-4 text-sm font-extrabold text-navy transition-colors hover:bg-[#dcefff]">
+            Start a drill <span className="flex items-center gap-2 text-xs text-brand-600">Practice <ChevronRightIcon className="h-4 w-4" /></span>
+          </Link>
+        </aside>
+      </section>
+
+      <section className="mb-8">
+        <div className="mb-3">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">How to use the platform</p>
+          <h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">Learn, practice, then measure.</h2>
+        </div>
+        <div className="grid overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-[0_1px_3px_rgba(11,42,91,0.04)] md:grid-cols-3 md:divide-x md:divide-navy/10">
+          <PathCard step="1" href="/ultimate/courses" title="Learn the method" detail={`${courses.length} ${courses.length === 1 ? "course" : "courses"} available · ${completedLessons}/${totalLessons} lessons complete`} Icon={BookIcon} />
+          <PathCard step="2" href="/ultimate/drills" title="Practice the skill" detail={`${history.length} questions attempted · ${masteryRate}% mastery`} Icon={DrillsIcon} />
+          <PathCard step="3" href="/ultimate/tests" title="Measure your score" detail={testProgress.bestScore ? `Best score ${testProgress.bestScore} · ${testProgress.testsDone} tests complete` : "Take your first full-length practice test"} Icon={TestsIcon} />
+        </div>
+      </section>
+
+      <div className="grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div><p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">Your content</p><h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">Available courses</h2></div>
+            <Link href="/ultimate/courses" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-brand-600 hover:text-navy">View all <ChevronRightIcon className="h-4 w-4" /></Link>
+          </div>
+          {courses.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {courses.slice(0, 4).map((course) => <CourseCard key={course.id} course={course} />)}
+            </div>
+          ) : (
+            <div className="rounded-[18px] border border-dashed border-navy/15 bg-white p-7 text-center"><h3 className="font-display text-lg font-extrabold text-navy">Courses are being prepared</h3><p className="mt-2 text-sm text-navy/45">Published course content will appear here automatically.</p></div>
+          )}
+        </section>
+
+        <aside>
+          <div className="mb-3"><p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">More tools</p><h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">Study your way</h2></div>
+          <div className="overflow-hidden rounded-[18px] border border-navy/10 bg-white shadow-[0_1px_3px_rgba(11,42,91,0.04)]">
+            <ToolLink href="/ultimate/bank" title="Question Bank" detail="Practice by SAT skill" Icon={QuestionBankIcon} />
+            <ToolLink href="/ultimate/flashcards" title="Flashcards" detail={`${cardCount} cards in your library`} Icon={LayersIcon} />
+            <ToolLink href="/ultimate/history" title="Practice history" detail="Review answers and mastery" Icon={HistoryIcon} />
+            <ToolLink href="/ultimate/community" title="Community" detail="Ask questions and share wins" Icon={CommunityIcon} />
+          </div>
+        </aside>
       </div>
     </div>
   );
 }
 
-function FeatureCard({
-  href,
-  title,
-  detail,
-  Icon,
-  tone,
-}: {
-  href: string;
-  title: string;
-  detail: string;
-  Icon: (props: { className?: string }) => React.ReactElement;
-  tone: "blue" | "navy" | "gold" | "sky";
-}) {
-  const tones = {
-    blue: "bg-brand/10 text-brand-600",
-    navy: "bg-navy/10 text-navy",
-    gold: "bg-gold/15 text-gold-600",
-    sky: "bg-ice text-brand-600",
-  };
+function PathCard({ step, href, title, detail, Icon }: { step: string; href: string; title: string; detail: string; Icon: (props: { className?: string }) => React.ReactElement }) {
   return (
-    <Link href={href} className="group flex min-h-[92px] items-center gap-4 rounded-[16px] border border-navy/10 bg-white p-4 shadow-pop transition-all hover:-translate-y-0.5 hover:border-brand/35">
-      <span className={`grid h-11 w-11 flex-none place-items-center rounded-xl ${tones[tone]}`}>
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <strong className="block font-display text-base text-ink">{title}</strong>
-        <span className="mt-1 block truncate text-xs text-navy/45">{detail}</span>
-      </span>
-      <ChevronRightIcon className="h-4 w-4 flex-none text-navy/25 transition-transform group-hover:translate-x-0.5 group-hover:text-brand" />
+    <Link href={href} className="group relative flex min-h-[150px] flex-col p-5 transition-colors hover:bg-[#f8fbfe] sm:p-6">
+      <div className="flex items-center justify-between"><span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-navy/30">Step {step}</span><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#eaf6ff] text-brand-600"><Icon className="h-5 w-5" /></span></div>
+      <strong className="mt-5 font-display text-lg font-extrabold text-navy">{title}</strong>
+      <span className="mt-1 text-xs leading-5 text-navy/45">{detail}</span>
+      <ChevronRightIcon className="absolute bottom-5 right-5 h-4 w-4 text-navy/25 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-600" />
     </Link>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function CourseCard({ course }: { course: Course }) {
+  const nextLesson = course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed);
+  const href = nextLesson ? `/ultimate/courses/${course.slug}/${nextLesson.slug}` : `/ultimate/courses/${course.slug}`;
   return (
-    <div className="rounded-[15px] border border-navy/10 bg-white p-4 shadow-pop">
-      <strong className="font-display text-2xl font-extrabold tracking-tight text-navy">{value}</strong>
-      <span className="mt-1 block text-[11px] font-medium text-navy/45">{label}</span>
-    </div>
+    <Link href={href} className="group rounded-[18px] border border-navy/10 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_12px_30px_-24px_rgba(11,42,91,0.5)] motion-reduce:transition-none">
+      <div className="flex items-start justify-between gap-4"><span className="grid h-10 w-10 place-items-center rounded-xl bg-navy text-white"><BookIcon className="h-5 w-5" /></span><span className="text-xs font-extrabold tabular-nums text-navy/40">{course.progress}%</span></div>
+      <p className="mt-4 text-[9px] font-extrabold uppercase tracking-[0.15em] text-brand-600">{course.eyebrow ?? "1500 Blueprint course"}</p>
+      <h3 className="mt-1 line-clamp-2 font-display text-lg font-extrabold leading-tight text-ink">{course.title}</h3>
+      <div className="mt-5 h-1.5 overflow-hidden rounded-full bg-navy/[0.07]"><div className="h-full rounded-full bg-brand" style={{ width: `${course.progress}%` }} /></div>
+      <div className="mt-3 flex items-center justify-between gap-3 text-[11px] font-semibold text-navy/42"><span>{course.completedLessons}/{course.totalLessons} lessons</span><span className="inline-flex items-center gap-1 text-brand-600">{course.progress ? "Continue" : "Start"}<ChevronRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" /></span></div>
+    </Link>
   );
 }
 
-function SmallMetric({ label, value }: { label: string; value: string }) {
+function ToolLink({ href, title, detail, Icon }: { href: string; title: string; detail: string; Icon: (props: { className?: string }) => React.ReactElement }) {
   return (
-    <div className="rounded-xl bg-haze px-3 py-2.5">
-      <strong className="block font-display text-lg text-navy">{value}</strong>
-      <span className="text-[10px] text-navy/40">{label}</span>
-    </div>
+    <Link href={href} className="group flex min-h-[76px] items-center gap-3 border-b border-navy/10 px-4 last:border-b-0 hover:bg-[#f8fbfe]">
+      <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-haze text-navy/65"><Icon className="h-[18px] w-[18px]" /></span>
+      <span className="min-w-0 flex-1"><strong className="block font-display text-sm text-navy">{title}</strong><span className="mt-0.5 block text-xs text-navy/42">{detail}</span></span>
+      <ChevronRightIcon className="h-4 w-4 text-navy/20 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-600" />
+    </Link>
   );
+}
+
+function BookIcon({ className }: { className?: string }) {
+  return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" strokeLinejoin="round" /><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 7h8M8 10.5h6" strokeLinecap="round" /></svg>;
+}
+
+function QuestionBankIcon({ className }: { className?: string }) {
+  return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3.5" y="4" width="17" height="14" rx="2.5" /><path d="M8 20h8M12 18v2M8.5 9.2h7M8.5 12.8h4.5" strokeLinecap="round" /></svg>;
 }

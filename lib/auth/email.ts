@@ -36,18 +36,68 @@ function fromHeader(): string {
 }
 
 export async function sendMagicLink(email: string, url: string): Promise<void> {
-  const { error } = await resend().emails.send({
-    from: fromHeader(),
-    to: email,
+  await sendLinkEmail({
+    email,
+    url,
     subject: "Your 1500 SAT Blueprint login link",
+    heading: "Sign in to your account",
+    introduction: "Tap the button below to log in. This link works once and expires in 15 minutes.",
+    buttonLabel: "Log in to 1500 SAT Blueprint",
     text:
       `Sign in to 1500 SAT Blueprint:\n\n${url}\n\n` +
       `This link works once and expires in 15 minutes. If you didn't request it, you can ignore this email.`,
-    html: render(url),
+  });
+}
+
+export async function sendAccountVerification(email: string, url: string): Promise<void> {
+  await sendLinkEmail({
+    email,
+    url,
+    subject: "Verify your 1500 SAT Blueprint account",
+    heading: "Verify your email",
+    introduction: "Confirm your email address to finish setting up your password login.",
+    buttonLabel: "Verify email",
+    text:
+      `Verify your 1500 SAT Blueprint account:\n\n${url}\n\n` +
+      `If you didn't create this login, you can ignore this email.`,
+  });
+}
+
+export async function sendPasswordReset(email: string, url: string): Promise<void> {
+  await sendLinkEmail({
+    email,
+    url,
+    subject: "Reset your 1500 SAT Blueprint password",
+    heading: "Reset your password",
+    introduction: "Use the secure link below to choose a new password.",
+    buttonLabel: "Reset password",
+    text:
+      `Reset your 1500 SAT Blueprint password:\n\n${url}\n\n` +
+      `If you didn't request a password reset, you can ignore this email.`,
+  });
+}
+
+type LinkEmail = {
+  email: string;
+  url: string;
+  subject: string;
+  heading: string;
+  introduction: string;
+  buttonLabel: string;
+  text: string;
+};
+
+async function sendLinkEmail(message: LinkEmail): Promise<void> {
+  const { error } = await resend().emails.send({
+    from: fromHeader(),
+    to: message.email,
+    subject: message.subject,
+    text: message.text,
+    html: render(message),
   });
   if (error) {
     throw new Error(
-      `failed to send magic link (${error.name}, ${error.statusCode ?? "unknown status"}): ` +
+      `failed to send auth email (${error.name}, ${error.statusCode ?? "unknown status"}): ` +
         error.message,
     );
   }
@@ -68,7 +118,8 @@ function isEmailAddress(value: string): boolean {
   return /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(value);
 }
 
-function render(url: string): string {
+function render(message: LinkEmail): string {
+  const url = escapeHtml(message.url);
   return `
   <div style="margin:0;padding:24px 16px;background:#eef2f7;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;">
     <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid rgba(11,42,91,0.10);box-shadow:0 12px 40px rgba(7,25,59,0.12);">
@@ -82,12 +133,12 @@ function render(url: string): string {
       </div>
 
       <div style="padding:32px;color:#1a233e;">
-        <h1 style="margin:0 0 10px;font-size:21px;font-weight:800;letter-spacing:-0.01em;color:#0b2a5b;">Sign in to your account</h1>
+        <h1 style="margin:0 0 10px;font-size:21px;font-weight:800;letter-spacing:-0.01em;color:#0b2a5b;">${escapeHtml(message.heading)}</h1>
         <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#41506b;">
-          Tap the button below to log in. This link works once and expires in 15 minutes.
+          ${escapeHtml(message.introduction)}
         </p>
         <a href="${url}" style="display:inline-block;background:#3fa9f5;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none;padding:13px 26px;border-radius:11px;box-shadow:0 2px 0 #2b8fe0;">
-          Log in to 1500 SAT Blueprint
+          ${escapeHtml(message.buttonLabel)}
         </a>
         <p style="margin:26px 0 0;font-size:13px;line-height:1.6;color:#8a93a6;">
           If you didn't request this, you can safely ignore this email. If the button doesn't work, paste this link into your browser:
@@ -102,4 +153,13 @@ function render(url: string): string {
       </div>
     </div>
   </div>`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 }

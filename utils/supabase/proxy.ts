@@ -4,12 +4,24 @@ import { NextResponse, type NextRequest } from "next/server";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
+export type PasswordIdentity = {
+  userId: string;
+  email: string;
+};
+
 // Refreshes the Supabase auth session on each request and keeps cookies in sync.
 // (Next 16 renamed Middleware → Proxy; wired from the root proxy.ts.)
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest): Promise<{
+  response: NextResponse;
+  identity: PasswordIdentity | null;
+}> {
   let supabaseResponse = NextResponse.next({ request });
 
-  const supabase = createServerClient(supabaseUrl!, supabaseKey!, {
+  if (!supabaseUrl || !supabaseKey) {
+    return { response: supabaseResponse, identity: null };
+  }
+
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -24,8 +36,13 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  // Touch the session so expired tokens refresh. Effectively a no-op until auth ships.
-  await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getClaims();
+  const email = data?.claims.email;
+  const userId = data?.claims.sub;
+  const identity =
+    !error && typeof email === "string" && typeof userId === "string"
+      ? { email: email.trim().toLowerCase(), userId }
+      : null;
 
-  return supabaseResponse;
+  return { response: supabaseResponse, identity };
 }
