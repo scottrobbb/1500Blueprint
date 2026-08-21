@@ -4,13 +4,28 @@ import type Stripe from "stripe";
 import { normalizePlanCode, type PlanCode } from "@/lib/auth/plans";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { planForPriceId, REFUND_WINDOW_HOURS, type BillablePlan } from "./config";
+import { refundDeadline } from "./policy";
+
+type StripeEventContext = {
+  id: string;
+  created: number;
+};
+
+type ExistingSubscriptionRow = {
+  refundable_until: string | null;
+  pending_plan_code: string | null;
+  pending_change_effective_at: string | null;
+  stripe_schedule_id: string | null;
+  last_stripe_event_created_at: number | null;
+  last_stripe_event_id: string | null;
+};
 
 function stripeId(value: string | { id: string } | null): string | null {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;
 }
 
-function subscriptionPlan(subscription: Stripe.Subscription): BillablePlan | null {
+export function stripeSubscriptionPlan(subscription: Stripe.Subscription): BillablePlan | null {
   const priceId = subscription.items.data[0]?.price.id;
   if (priceId) {
     const configuredPlan = planForPriceId(priceId);
@@ -23,16 +38,17 @@ function subscriptionPlan(subscription: Stripe.Subscription): BillablePlan | nul
 export async function syncStripeSubscription(
   subscription: Stripe.Subscription,
   fallbackUserId?: string | null,
+  event?: StripeEventContext,
 ): Promise<void> {
   const customerId = stripeId(subscription.customer);
-  const plan = subscriptionPlan(subscription);
+  const plan = stripeSubscriptionPlan(subscription);
   let userId = subscription.metadata.user_id || fallbackUserId || null;
 
   if (!userId && customerId) {
     const { data, error } = await supabaseAdmin()
       .from("users")
       .select("id")
-      .eq("stripe_customer_id", customerId)
+      .eq(subscription.livemode ? "stripe_live_customer_id" : "stripe_test_customer_id", customerId)
       .maybeSingle<{ id: string }>();
     if (error) throw new Error(`failed to resolve subscription owner: ${error.message}`);
     userId = data?.id ?? null;
@@ -49,13 +65,43 @@ export async function syncStripeSubscription(
   const createdAt = new Date(subscription.created * 1000);
   const { data: existingSubscription, error: purchaseError } = await supabaseAdmin()
     .from("student_subscriptions")
-    .select("refundable_until")
+    .select("refundable_until,pending_plan_code,pending_change_effective_at,stripe_schedule_id,last_stripe_event_created_at,last_stripe_event_id")
     .eq("stripe_subscription_id", subscription.id)
-    .maybeSingle<{ refundable_until: string }>();
+    .maybeSingle<ExistingSubscriptionRow>();
   if (purchaseError) throw new Error(`failed to load refund window: ${purchaseError.message}`);
+
+  if (
+    event
+    && existingSubscription?.last_stripe_event_created_at
+    && existingSubscription.last_stripe_event_created_at > event.created
+  ) {
+    return;
+  }
+
+  const { data: earlierPurchase, error: earlierPurchaseError } = await supabaseAdmin()
+    .from("student_subscriptions")
+    .select("stripe_subscription_id")
+    .eq("user_id", userId)
+    .eq("livemode", subscription.livemode)
+    .neq("stripe_subscription_id", subscription.id)
+    .not("stripe_created_at", "is", null)
+    .lt("stripe_created_at", createdAt.toISOString())
+    .order("stripe_created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<{ stripe_subscription_id: string }>();
+  if (earlierPurchaseError) {
+    throw new Error(`failed to load first purchase: ${earlierPurchaseError.message}`);
+  }
+
   const refundableUntil = existingSubscription?.refundable_until
     ? new Date(existingSubscription.refundable_until)
-    : new Date(createdAt.getTime() + REFUND_WINDOW_HOURS * 60 * 60 * 1000);
+    : earlierPurchase
+      ? null
+      : refundDeadline(createdAt, REFUND_WINDOW_HOURS);
+  const scheduleId = stripeId(subscription.schedule);
+  const pendingPlan = existingSubscription?.pending_plan_code === plan || !scheduleId
+    ? null
+    : existingSubscription?.pending_plan_code ?? null;
 
   const { error } = await supabaseAdmin()
     .from("student_subscriptions")
@@ -74,7 +120,14 @@ export async function syncStripeSubscription(
         cancel_at_period_end: subscription.cancel_at_period_end,
         livemode: subscription.livemode,
         stripe_created_at: createdAt.toISOString(),
-        refundable_until: refundableUntil.toISOString(),
+        refundable_until: refundableUntil?.toISOString() ?? null,
+        pending_plan_code: pendingPlan,
+        pending_change_effective_at: pendingPlan
+          ? existingSubscription?.pending_change_effective_at ?? null
+          : null,
+        stripe_schedule_id: scheduleId,
+        last_stripe_event_created_at: event?.created ?? existingSubscription?.last_stripe_event_created_at ?? null,
+        last_stripe_event_id: event?.id ?? existingSubscription?.last_stripe_event_id ?? null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "stripe_subscription_id" },

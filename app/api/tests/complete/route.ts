@@ -15,6 +15,7 @@ import type { AnswerMap, ModuleVariant, SectionId } from "@/lib/sat/types";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isPracticeTestUnderConstruction } from "@/lib/flags";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
+import { getStudentAccess } from "@/lib/auth/entitlements";
 
 type CompleteBody = {
   testSlug?: string;
@@ -67,7 +68,11 @@ export async function POST(req: NextRequest) {
     .limit(1)
     .maybeSingle<{ id: string; created_at: string }>();
   if (recent.data && Date.now() - Date.parse(recent.data.created_at) < DEDUPE_MS) {
-    return NextResponse.json({ attemptId: recent.data.id, deduped: true });
+    return NextResponse.json({
+      attemptId: recent.data.id,
+      deduped: true,
+      hasStudyPlanner: await hasStudyPlanner(session.email),
+    });
   }
 
   const result = scoreTest(test, routed, answers);
@@ -111,11 +116,27 @@ export async function POST(req: NextRequest) {
 
   // The planner migration may be deployed separately from this route, so a
   // missing profile/table must never block a completed test from being saved.
-  const { data: plannerProfile } = await supabaseAdmin()
-    .from("study_planner_profiles")
-    .select("email")
-    .eq("email", session.email)
-    .maybeSingle<{ email: string }>();
+  return NextResponse.json({
+    attemptId,
+    xpAwarded,
+    total: result.total,
+    hasStudyPlanner: await hasStudyPlanner(session.email),
+    ...(nav ?? {}),
+  });
+}
 
-  return NextResponse.json({ attemptId, xpAwarded, total: result.total, hasStudyPlanner: Boolean(plannerProfile), ...(nav ?? {}) });
+async function hasStudyPlanner(email: string): Promise<boolean> {
+  const [{ data: plannerProfile }, plannerAccess] = await Promise.all([
+    supabaseAdmin()
+      .from("study_planner_profiles")
+      .select("email")
+      .eq("email", email)
+      .maybeSingle<{ email: string }>(),
+    getStudentAccess(email).catch(() => null),
+  ]);
+  return Boolean(
+    plannerProfile
+    && plannerAccess?.active
+    && plannerAccess.entitlements.studyPlanner,
+  );
 }

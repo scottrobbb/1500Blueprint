@@ -13,13 +13,14 @@ type Props = {
   plan: string;
   avatarUrl: string | null;
   wide?: boolean;
+  tone?: "light" | "dark";
   test?: boolean;
   billing?: boolean;
 };
 
 // The nav avatar: clicking it opens a small menu with profile-photo controls and
 // the sign-out action (a plain form POST to the logout route).
-export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = false, test = false, billing = false }: Props) {
+export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = false, tone = "light", test = false, billing = false }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -82,11 +83,11 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
         aria-expanded={open}
         aria-label="Account menu"
         className={wide
-          ? "flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors duration-200 hover:bg-navy/[0.045] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          ? `flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 ${tone === "dark" ? "hover:bg-white/[0.07] focus-visible:outline-sky" : "hover:bg-navy/[0.045] focus-visible:outline-brand"}`
           : "inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"}
       >
-        <Avatar src={avatarUrl} initials={initials} alt={name} className={wide ? "h-10 w-10 flex-none border-2 border-white text-[13px] shadow-[0_0_0_1px_rgba(11,42,91,0.15)]" : "h-[34px] w-[34px] border-2 border-white text-[13px] shadow-[0_0_0_1px_rgba(11,42,91,0.15)]"} />
-        {wide ? <><span className="min-w-0 flex-1"><strong className="block truncate text-xs font-extrabold text-navy">{name}</strong><span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.1em] ${planTone(plan)}`}>{plan}{test ? " · Test" : ""}</span></span><ChevronIcon className={`h-4 w-4 flex-none text-navy/35 transition-transform duration-200 motion-reduce:transition-none ${open ? "rotate-180" : ""}`} /></> : null}
+        <Avatar src={avatarUrl} initials={initials} alt={name} className={wide ? `h-10 w-10 flex-none border-2 text-[13px] ${tone === "dark" ? "border-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]" : "border-white shadow-[0_0_0_1px_rgba(11,42,91,0.15)]"}` : "h-[34px] w-[34px] border-2 border-white text-[13px] shadow-[0_0_0_1px_rgba(11,42,91,0.15)]"} />
+        {wide ? <><span className="min-w-0 flex-1"><strong className={`block truncate text-xs font-extrabold ${tone === "dark" ? "text-white/90" : "text-navy"}`}>{name}</strong><span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.1em] ${planTone(plan, tone)}`}>{plan}{test ? " · Test" : ""}</span></span><ChevronIcon className={`h-4 w-4 flex-none transition-transform duration-200 motion-reduce:transition-none ${tone === "dark" ? "text-white/40" : "text-navy/35"} ${open ? "rotate-180" : ""}`} /></> : null}
       </button>
 
       {open && typeof document !== "undefined" ? createPortal(
@@ -180,8 +181,13 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
   );
 }
 
-function planTone(plan: string): string {
+function planTone(plan: string, tone: "light" | "dark"): string {
   const normalized = plan.toLowerCase();
+  if (tone === "dark") {
+    if (normalized === "max") return "border-gold/35 bg-gold/15 text-gold";
+    if (normalized === "core") return "border-sky/30 bg-sky/10 text-sky";
+    return "border-white/15 bg-white/[0.07] text-white/65";
+  }
   if (normalized === "max") return "border-gold/35 bg-[#fff7db] text-[#7b5900]";
   if (normalized === "core") return "border-brand/25 bg-ice text-brand-700";
   return "border-navy/15 bg-navy/[0.05] text-navy/55";

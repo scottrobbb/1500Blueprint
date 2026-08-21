@@ -76,6 +76,19 @@ export function normalizeLegacyPlanCode(value: string | null | undefined): PlanC
   return normalizePlanCode(value);
 }
 
+export function highestPlan(...plans: PlanCode[]): PlanCode {
+  const rank: Record<PlanCode, number> = { free: 0, core: 1, max: 2 };
+  return plans.reduce((highest, plan) => rank[plan] > rank[highest] ? plan : highest, "free");
+}
+
+export function effectivePlan(
+  grant: PlanCode | null,
+  subscription: PlanCode | null,
+  legacy: PlanCode,
+): PlanCode {
+  return grant || subscription ? highestPlan(grant ?? "free", subscription ?? "free") : legacy;
+}
+
 export function accessForPlan(
   plan: PlanCode,
   source: AccessSource,

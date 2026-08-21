@@ -5,6 +5,7 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import {
   parseCompletionFilter,
   parseDifficultyFilter,
+  parseQuestionLimit,
   parseSkillFilter,
 } from "@/lib/question-bank/math";
 import { getMathRunnerQuestions } from "@/lib/question-bank/math-queries";
@@ -25,10 +26,11 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
     difficulty: parseDifficultyFilter(readParam(params.difficulty)),
     completion: parseCompletionFilter(readParam(params.completion)),
   };
-  const questions = await getMathRunnerQuestions(session.email, filters);
+  const limit = parseQuestionLimit(readParam(params.limit));
+  const questions = await getMathRunnerQuestions(session.email, filters, limit);
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
-  return <MathBankRunner questions={questions} filters={filters} initialState={initialState} />;
+  return <MathBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined} />;
 }
 
 function readParam(value: string | string[] | undefined): string | undefined {

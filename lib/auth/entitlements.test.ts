@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accessForPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
+import { accessForPlan, effectivePlan, highestPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
 
 test("legacy Stripe labels normalize to stable plan codes", () => {
   assert.equal(normalizePlanCode("Core monthly"), "core");
@@ -12,6 +12,8 @@ test("legacy Stripe labels normalize to stable plan codes", () => {
 test("existing pre-tier customers retain full access during migration", () => {
   assert.equal(normalizeLegacyPlanCode("testing"), "max");
   assert.equal(normalizeLegacyPlanCode("complimentary"), "max");
+  assert.equal(normalizeLegacyPlanCode("admin"), "max");
+  assert.equal(normalizeLegacyPlanCode("dev"), "max");
   assert.equal(normalizeLegacyPlanCode(null), "free");
 });
 
@@ -19,6 +21,8 @@ test("plan capabilities reflect the current tier definition", () => {
   assert.equal(PLAN_ENTITLEMENTS.free.fullTestLimit, 1);
   assert.equal(PLAN_ENTITLEMENTS.core.dailyDrillLimit, 20);
   assert.equal(PLAN_ENTITLEMENTS.max.dailyDrillLimit, "unlimited");
+  assert.equal(PLAN_ENTITLEMENTS.free.studyPlanner, false);
+  assert.equal(PLAN_ENTITLEMENTS.core.studyPlanner, false);
   assert.equal(PLAN_ENTITLEMENTS.max.studyPlanner, true);
 });
 
@@ -27,4 +31,16 @@ test("access records retain their resolution source", () => {
   assert.equal(access.plan, "core");
   assert.equal(access.source, "grant");
   assert.equal(access.entitlements.discordRole, "core");
+});
+
+test("the strongest active source wins instead of a lower manual grant", () => {
+  assert.equal(highestPlan("core", "max", "free"), "max");
+  assert.equal(highestPlan("max", "core"), "max");
+  assert.equal(highestPlan("free", "core"), "core");
+});
+
+test("explicit persona grants replace stale legacy labels", () => {
+  assert.equal(effectivePlan("free", null, "max"), "free");
+  assert.equal(effectivePlan("core", "max", "free"), "max");
+  assert.equal(effectivePlan(null, null, "max"), "max");
 });

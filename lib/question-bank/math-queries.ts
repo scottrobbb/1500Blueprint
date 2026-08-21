@@ -6,6 +6,7 @@ import {
   calculateAccuracy,
   isMathDomain,
   normalizeMathResponse,
+  prioritizeBoundedQuestions,
   questionBankLevel,
   type MathAnswerType,
   type MathBankCatalog,
@@ -68,9 +69,16 @@ export type MathQuestionForGrading = {
   explanation: string;
 };
 
-export async function getMathBankCatalog(email: string): Promise<MathBankCatalog> {
+export async function getMathBankCatalog(
+  email: string,
+  options: { strictActivity?: boolean } = {},
+): Promise<MathBankCatalog> {
   const [questions, skills] = await Promise.all([loadEligibleMathRows(), loadMathSkills()]);
-  const activity = await loadQuestionActivity(email, questions.map((question) => question.id));
+  const activity = await loadQuestionActivity(
+    email,
+    questions.map((question) => question.id),
+    options.strictActivity,
+  );
   const metrics = buildSkillMetrics(skills, questions, activity);
 
   return {
@@ -83,21 +91,39 @@ export async function getMathBankCatalog(email: string): Promise<MathBankCatalog
 export async function getMathRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
+  limit: number | null = null,
 ): Promise<MathRunnerQuestion[]> {
   const rows = await loadEligibleMathRows();
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
+  const skillRows = rows.filter((row) => (
+    selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill))
+  ));
+  const completionRows = skillRows.filter((row) => matchesCompletion(row.id, filters.completion, activity));
+  const preferredRows = completionRows.filter((row) => (
+    filters.difficulty === "all" || row.difficulty === filters.difficulty
+  ));
+  const preferred = toMathRunnerQuestions(preferredRows);
+  if (limit === null || preferred.length >= limit) return limit === null ? preferred : preferred.slice(0, limit);
 
-  return rows
-    .filter((row) => selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill)))
-    .filter((row) => filters.difficulty === "all" || row.difficulty === filters.difficulty)
-    .filter((row) => {
-      if (filters.completion === "all") return true;
-      const attempted = activity.attemptedIds.has(row.id);
-      return filters.completion === "attempted" ? attempted : !attempted;
-    })
-    .map(toRunnerQuestion)
-    .filter((question): question is MathRunnerQuestion => question !== null);
+  return prioritizeBoundedQuestions(
+    [preferred, toMathRunnerQuestions(completionRows), toMathRunnerQuestions(skillRows)],
+    limit,
+  );
+}
+
+function matchesCompletion(
+  questionId: string,
+  completion: MathCompletionFilter,
+  activity: QuestionActivity,
+): boolean {
+  if (completion === "all") return true;
+  const attempted = activity.attemptedIds.has(questionId);
+  return completion === "attempted" ? attempted : !attempted;
+}
+
+function toMathRunnerQuestions(rows: MathQuestionRow[]): MathRunnerQuestion[] {
+  return rows.map(toRunnerQuestion).filter((question): question is MathRunnerQuestion => question !== null);
 }
 
 export async function getMathQuestionForGrading(
@@ -188,7 +214,11 @@ async function filterMathRowsByCatalog(rows: MathQuestionRow[]): Promise<MathQue
   return rows.filter((row) => enabledIds.has(row.id));
 }
 
-async function loadQuestionActivity(email: string, questionIds: string[]): Promise<QuestionActivity> {
+async function loadQuestionActivity(
+  email: string,
+  questionIds: string[],
+  strict = false,
+): Promise<QuestionActivity> {
   if (questionIds.length === 0) return emptyActivity(false);
   const attempts = await loadAttemptRows(email, questionIds);
 
@@ -203,6 +233,7 @@ async function loadQuestionActivity(email: string, questionIds: string[]): Promi
     }
     return activity;
   }
+  if (strict) throw databaseError("Could not load Math Question Bank activity", attempts.error);
 
   const legacy = await loadLegacyProgressRows(email, questionIds);
   if (legacy.error) throw databaseError("Could not load Math progress", legacy.error);

@@ -13,30 +13,40 @@ const COURSE_COLUMNS = "id,slug,title,description,eyebrow,cover_url,position,est
 
 function status(value: string): CourseStatus { return value === "published" ? "published" : "draft"; }
 
-async function hydrateCourses(rows: CourseRow[], email: string, publishedOnly: boolean): Promise<Course[]> {
+async function hydrateCourses(
+  rows: CourseRow[],
+  email: string,
+  publishedOnly: boolean,
+  strict = false,
+): Promise<Course[]> {
   if (rows.length === 0) return [];
   const db = supabaseAdmin();
   const courseIds = rows.map((row) => row.id);
   let modulesQuery = db.from("course_modules").select("id,course_id,slug,title,description,position,status").in("course_id", courseIds).order("position");
   if (publishedOnly) modulesQuery = modulesQuery.eq("status", "published");
   const modulesResult = await modulesQuery.returns<ModuleRow[]>();
+  if (strict && modulesResult.error) throw modulesResult.error;
   const moduleRows = modulesResult.data ?? [];
   const moduleIds = moduleRows.map((row) => row.id);
   let lessonRows: LessonRow[] = [];
   if (moduleIds.length > 0) {
     let lessonsQuery = db.from("course_lessons").select("id,module_id,slug,title,summary,position,estimated_minutes,status").in("module_id", moduleIds).order("position");
     if (publishedOnly) lessonsQuery = lessonsQuery.eq("status", "published");
-    lessonRows = (await lessonsQuery.returns<LessonRow[]>()).data ?? [];
+    const lessonsResult = await lessonsQuery.returns<LessonRow[]>();
+    if (strict && lessonsResult.error) throw lessonsResult.error;
+    lessonRows = lessonsResult.data ?? [];
   }
   const lessonIds = lessonRows.map((row) => row.id);
   const [blocksResult, completionsResult] = await Promise.all([
     lessonIds.length > 0
       ? db.from("course_lesson_blocks").select("id,lesson_id,position,kind,content").in("lesson_id", lessonIds).order("position").returns<BlockRow[]>()
-      : Promise.resolve({ data: [] as BlockRow[] }),
+      : Promise.resolve({ data: [] as BlockRow[], error: null }),
     lessonIds.length > 0
       ? db.from("course_lesson_completions").select("lesson_id").eq("email", email).in("lesson_id", lessonIds).returns<{ lesson_id: string }[]>()
-      : Promise.resolve({ data: [] as { lesson_id: string }[] }),
+      : Promise.resolve({ data: [] as { lesson_id: string }[], error: null }),
   ]);
+  if (strict && blocksResult.error) throw blocksResult.error;
+  if (strict && completionsResult.error) throw completionsResult.error;
   const completed = new Set((completionsResult.data ?? []).map((row) => row.lesson_id));
   const blocks = blocksResult.data ?? [];
 
@@ -85,6 +95,17 @@ async function hydrateCourses(rows: CourseRow[], email: string, publishedOnly: b
 export async function listCoursesForStudent(email: string): Promise<Course[]> {
   const { data } = await supabaseAdmin().from("courses").select(COURSE_COLUMNS).eq("status", "published").order("position").returns<CourseRow[]>();
   return hydrateCourses(data ?? [], email, true);
+}
+
+export async function listCoursesForStudentStrict(email: string): Promise<Course[]> {
+  const result = await supabaseAdmin()
+    .from("courses")
+    .select(COURSE_COLUMNS)
+    .eq("status", "published")
+    .order("position")
+    .returns<CourseRow[]>();
+  if (result.error) throw result.error;
+  return hydrateCourses(result.data ?? [], email, true, true);
 }
 
 export async function getCourseForStudent(slug: string, email: string): Promise<Course | null> {

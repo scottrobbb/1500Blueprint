@@ -29,8 +29,12 @@ export function PlannerScorePrompt({ attemptId, score }: { attemptId: string; sc
   async function dismiss() {
     setBusy(true);
     try {
-      await fetch("/api/study-planner/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scorePromptAttemptId: attemptId }) });
+      const response = await fetch("/api/study-planner/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scorePromptAttemptId: attemptId }) });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? "Could not dismiss this update.");
       setOpen(false);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Could not dismiss this update.");
     } finally { setBusy(false); }
   }
 

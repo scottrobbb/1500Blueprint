@@ -25,24 +25,27 @@ type BankRunnerProps = {
   questions: BankRunnerQuestion[];
   filters: MathSessionFilters;
   initialState: QuestionBankRunnerState;
+  returnHref?: string;
 };
 
 export function MathBankRunner({
   questions,
   filters,
   initialState,
+  returnHref,
 }: BankRunnerProps) {
-  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} subject="math" />;
+  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} subject="math" />;
 }
 
-export function ReadingWritingBankRunner({ questions, filters, initialState }: BankRunnerProps) {
-  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} subject="reading-writing" />;
+export function ReadingWritingBankRunner({ questions, filters, initialState, returnHref }: BankRunnerProps) {
+  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} subject="reading-writing" />;
 }
 
 function ObjectiveBankRunner({
   questions,
   filters,
   initialState,
+  returnHref,
   subject,
 }: BankRunnerProps & { subject: BankSubject }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -247,6 +250,7 @@ function ObjectiveBankRunner({
           answered={Object.keys(results).length}
           correct={correctCount}
           marked={marked.size}
+          returnHref={returnHref}
           onReview={() => {
             setFinished(false);
             setNavigatorOpen(true);
@@ -625,7 +629,7 @@ function RunnerNavigator({ questions, currentIndex, attempts, marked, onGoTo, on
   );
 }
 
-function SessionSummary({ subject, total, answered, correct, marked, onReview }: { subject: BankSubject; total: number; answered: number; correct: number; marked: number; onReview: () => void }) {
+function SessionSummary({ subject, total, answered, correct, marked, returnHref, onReview }: { subject: BankSubject; total: number; answered: number; correct: number; marked: number; returnHref?: string; onReview: () => void }) {
   const accuracy = answered > 0 ? Math.round((correct / answered) * 100) : 0;
   const subjectLabel = subject === "math" ? "Math" : "Reading & Writing";
   const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
@@ -644,7 +648,7 @@ function SessionSummary({ subject, total, answered, correct, marked, onReview }:
         </div>
         <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
           <button type="button" onClick={onReview} className="min-h-11 rounded-xl border border-navy/15 px-5 text-sm font-bold text-navy hover:border-brand/35 hover:text-brand-600">Review questions</button>
-          <Link href={catalogHref} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-600">Choose new topics</Link>
+          <Link href={returnHref ?? catalogHref} className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-600">{returnHref ? "Back to my plan" : "Choose new topics"}</Link>
         </div>
       </div>
     </main>

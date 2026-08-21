@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { findBillingAccount, ensureStripeCustomer } from "@/lib/billing/accounts";
+import { changeBillingPlan } from "@/lib/billing/changes";
 import { billingBaseUrl, billingLivemode, isBillablePlan, priceIdForPlan } from "@/lib/billing/config";
 import { billingStripe } from "@/lib/billing/stripe";
 import { getSession } from "@/lib/auth/session";
@@ -24,16 +25,31 @@ export async function POST(request: Request) {
 
     const { data: existing, error } = await supabaseAdmin()
       .from("student_subscriptions")
-      .select("stripe_customer_id")
+      .select("stripe_customer_id,plan_code,pending_plan_code")
       .eq("user_id", account.id)
       .eq("livemode", billingLivemode())
       .in("status", ["active", "trialing", "past_due"])
       .order("updated_at", { ascending: false })
       .limit(1)
-      .maybeSingle<{ stripe_customer_id: string }>();
+      .maybeSingle<{
+        stripe_customer_id: string;
+        plan_code: string;
+        pending_plan_code: string | null;
+      }>();
     if (error) throw new Error(`failed to check current subscription: ${error.message}`);
 
     if (existing?.stripe_customer_id) {
+      if (existing.plan_code !== plan || existing.pending_plan_code) {
+        const result = await changeBillingPlan(account.id, plan);
+        const state = result.kind === "upgrade"
+          ? "upgraded"
+          : result.kind === "downgrade"
+            ? "downgrade"
+            : result.kind === "pending-change-canceled"
+              ? "change-cancelled"
+              : "managed";
+        return redirect(baseUrl, `/pricing?billing=${state}`);
+      }
       const portal = await billingStripe().billingPortal.sessions.create({
         customer: existing.stripe_customer_id,
         return_url: `${baseUrl}/pricing`,
@@ -59,10 +75,16 @@ export async function POST(request: Request) {
     return NextResponse.redirect(checkout.url, 303);
   } catch (error) {
     console.error("Stripe Checkout creation failed:", error);
-    return redirect(baseUrl, "/pricing?billing=error");
+    return redirect(baseUrl, isPaymentFailure(error) ? "/pricing?billing=payment" : "/pricing?billing=error");
   }
 }
 
 function redirect(baseUrl: string, path: string) {
   return NextResponse.redirect(new URL(path, baseUrl), 303);
+}
+
+function isPaymentFailure(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const candidate = error as { statusCode?: number; type?: string };
+  return candidate.statusCode === 402 || candidate.type === "StripeCardError";
 }

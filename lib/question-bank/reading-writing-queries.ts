@@ -11,7 +11,7 @@ import {
   type ReadingWritingRunnerQuestion,
   type ReadingWritingSkillMetric,
 } from "@/lib/question-bank/reading-writing";
-import { calculateAccuracy, questionBankLevel } from "@/lib/question-bank/math";
+import { calculateAccuracy, prioritizeBoundedQuestions, questionBankLevel } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 
@@ -56,12 +56,17 @@ export type ReadingWritingQuestionForGrading = {
 
 export async function getReadingWritingBankCatalog(
   email: string,
+  options: { strictActivity?: boolean } = {},
 ): Promise<ReadingWritingBankCatalog> {
   const [questions, skills] = await Promise.all([
     loadEligibleReadingRows(),
     loadReadingSkills(),
   ]);
-  const activity = await loadQuestionActivity(email, questions.map((question) => question.id));
+  const activity = await loadQuestionActivity(
+    email,
+    questions.map((question) => question.id),
+    options.strictActivity,
+  );
 
   return {
     totalAvailable: questions.length,
@@ -73,21 +78,39 @@ export async function getReadingWritingBankCatalog(
 export async function getReadingWritingRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
+  limit: number | null = null,
 ): Promise<ReadingWritingRunnerQuestion[]> {
   const rows = await loadEligibleReadingRows();
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
+  const skillRows = rows.filter((row) => (
+    selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill))
+  ));
+  const completionRows = skillRows.filter((row) => matchesCompletion(row.id, filters.completion, activity));
+  const preferredRows = completionRows.filter((row) => (
+    filters.difficulty === "all" || row.difficulty === filters.difficulty
+  ));
+  const preferred = toReadingWritingRunnerQuestions(preferredRows);
+  if (limit === null || preferred.length >= limit) return limit === null ? preferred : preferred.slice(0, limit);
 
-  return rows
-    .filter((row) => selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill)))
-    .filter((row) => filters.difficulty === "all" || row.difficulty === filters.difficulty)
-    .filter((row) => {
-      if (filters.completion === "all") return true;
-      const attempted = activity.attemptedIds.has(row.id);
-      return filters.completion === "attempted" ? attempted : !attempted;
-    })
-    .map(toRunnerQuestion)
-    .filter((question): question is ReadingWritingRunnerQuestion => question !== null);
+  return prioritizeBoundedQuestions(
+    [preferred, toReadingWritingRunnerQuestions(completionRows), toReadingWritingRunnerQuestions(skillRows)],
+    limit,
+  );
+}
+
+function matchesCompletion(
+  questionId: string,
+  completion: MathSessionFilters["completion"],
+  activity: QuestionActivity,
+): boolean {
+  if (completion === "all") return true;
+  const attempted = activity.attemptedIds.has(questionId);
+  return completion === "attempted" ? attempted : !attempted;
+}
+
+function toReadingWritingRunnerQuestions(rows: ReadingQuestionRow[]): ReadingWritingRunnerQuestion[] {
+  return rows.map(toRunnerQuestion).filter((question): question is ReadingWritingRunnerQuestion => question !== null);
 }
 
 export async function getReadingWritingQuestionForGrading(
@@ -165,7 +188,11 @@ async function filterByCatalog(rows: ReadingQuestionRow[]): Promise<ReadingQuest
   return rows.filter((row) => enabledIds.has(row.id));
 }
 
-async function loadQuestionActivity(email: string, questionIds: string[]): Promise<QuestionActivity> {
+async function loadQuestionActivity(
+  email: string,
+  questionIds: string[],
+  strict = false,
+): Promise<QuestionActivity> {
   const activity = emptyActivity(false);
   if (questionIds.length === 0) return activity;
 
@@ -179,7 +206,10 @@ async function loadQuestionActivity(email: string, questionIds: string[]): Promi
         .in("question_id", questionIdBatch)
         .range(offset, offset + 999)
         .returns<AttemptRow[]>();
-      if (result.error) return activity;
+      if (result.error) {
+        if (strict) throw databaseError("Could not load Reading & Writing Question Bank activity", result.error);
+        return activity;
+      }
       activity.hasAccuracy = true;
       const page = result.data ?? [];
       for (const row of page) {

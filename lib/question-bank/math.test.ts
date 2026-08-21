@@ -6,7 +6,9 @@ import {
   normalizeMathResponse,
   parseCompletionFilter,
   parseDifficultyFilter,
+  parseQuestionLimit,
   parseSkillFilter,
+  prioritizeBoundedQuestions,
   questionBankLevel,
 } from "./math";
 
@@ -15,10 +17,26 @@ test("math bank filters reject unsupported query values", () => {
   assert.equal(parseDifficultyFilter("impossible"), "all");
   assert.equal(parseCompletionFilter("attempted"), "attempted");
   assert.equal(parseCompletionFilter("correct"), "all");
+  assert.equal(parseQuestionLimit("12"), 12);
+  assert.equal(parseQuestionLimit("2"), 5);
+  assert.equal(parseQuestionLimit("100"), 30);
+  assert.equal(parseQuestionLimit("all"), null);
+  assert.equal(parseQuestionLimit(undefined), null);
 });
 
 test("skill filters are trimmed and deduplicated", () => {
   assert.deepEqual(parseSkillFilter("Circles| Percentages |Circles"), ["Circles", "Percentages"]);
+});
+
+test("bounded planner sessions preserve preferred questions and backfill without duplicates", () => {
+  const preferred = [{ id: "easy-1" }, { id: "easy-2" }];
+  const sameCompletion = [{ id: "easy-1" }, { id: "medium-1" }];
+  const wholeSkill = [{ id: "easy-2" }, { id: "hard-1" }, { id: "seen-1" }];
+
+  assert.deepEqual(
+    prioritizeBoundedQuestions([preferred, sameCompletion, wholeSkill], 5).map((question) => question.id),
+    ["easy-1", "easy-2", "medium-1", "hard-1", "seen-1"],
+  );
 });
 
 test("math responses normalize without changing fractions or decimals", () => {

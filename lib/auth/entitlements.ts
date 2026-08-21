@@ -3,11 +3,13 @@ import "server-only";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import {
   accessForPlan,
+  effectivePlan,
   normalizeLegacyPlanCode,
   normalizePlanCode,
   type StudentAccess,
 } from "./plans";
 import { billingLivemode } from "@/lib/billing/config";
+import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
 
 export type { AccessSource, PlanCode, PlanEntitlements, StudentAccess } from "./plans";
 export { accessForPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
@@ -53,7 +55,7 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
         .select("plan_code")
         .eq("user_id", account.id)
         .eq("livemode", billingLivemode())
-        .in("status", ["active", "trialing"])
+        .in("status", [...PAID_ACCESS_STATUSES])
         .order("updated_at", { ascending: false })
         .limit(1)
         .maybeSingle<PlanRow>(),
@@ -64,14 +66,15 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
     throw new Error(`failed to load student subscription: ${subscriptionError.message}`);
   }
 
-  if (grant) return accessForPlan(normalizePlanCode(grant.plan_code), "grant", account.id, true, "active", account.is_test_account);
-  if (subscription) {
-    return accessForPlan(normalizePlanCode(subscription.plan_code), "subscription", account.id, true, "active", account.is_test_account);
-  }
-  if (account.plan) {
-    return accessForPlan(normalizeLegacyPlanCode(account.plan), "legacy", account.id, true, "active", account.is_test_account);
-  }
-  return accessForPlan("free", "free", account.id, true, "active", account.is_test_account);
+  const grantPlan = grant ? normalizePlanCode(grant.plan_code) : "free";
+  const subscriptionPlan = subscription ? normalizePlanCode(subscription.plan_code) : "free";
+  const legacyPlan = account.plan ? normalizeLegacyPlanCode(account.plan) : "free";
+  const plan = effectivePlan(grant ? grantPlan : null, subscription ? subscriptionPlan : null, legacyPlan);
+  const source = plan === subscriptionPlan && subscription ? "subscription"
+    : plan === grantPlan && grant ? "grant"
+    : plan === legacyPlan && account.plan ? "legacy"
+    : "free";
+  return accessForPlan(plan, source, account.id, true, "active", account.is_test_account);
 }
 
 export async function getQuestionBankUsage(email: string): Promise<number> {

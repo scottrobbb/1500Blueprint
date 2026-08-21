@@ -83,6 +83,29 @@ export function parseSkillFilter(value: string | undefined): string[] {
   return [...new Set(value.split("|").map((skill) => skill.trim()).filter(Boolean))];
 }
 
+export function parseQuestionLimit(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? Math.max(5, Math.min(30, parsed)) : null;
+}
+
+export function prioritizeBoundedQuestions<T extends { id: string }>(
+  groups: T[][],
+  limit: number,
+): T[] {
+  const questions: T[] = [];
+  const seen = new Set<string>();
+  for (const group of groups) {
+    for (const question of group) {
+      if (seen.has(question.id)) continue;
+      seen.add(question.id);
+      questions.push(question);
+      if (questions.length === limit) return questions;
+    }
+  }
+  return questions;
+}
+
 export function normalizeMathResponse(value: string): string {
   return value.trim().replace(/\s+/g, "").replace(/^\+/, "");
 }

@@ -12,9 +12,11 @@ import type {
 } from "@/lib/gamification";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { normalizeLegacyPlanCode, normalizePlanCode, type PlanCode } from "@/lib/auth/plans";
+import { effectivePlan, normalizeLegacyPlanCode, normalizePlanCode, type PlanCode } from "@/lib/auth/plans";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { drillAllowance } from "@/lib/auth/access-control";
+import { billingLivemode } from "@/lib/billing/config";
+import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
 import type { AnswerMap, ModuleVariant, SectionId } from "@/lib/sat/types";
 import {
   ACHIEVEMENTS,
@@ -670,7 +672,7 @@ export async function listStudents(): Promise<StudentRow[]> {
       .select("email,total_score")
       .returns<{ email: string; total_score: number | null }[]>(),
     db.from("access_grants").select("user_id,plan_code,created_at").is("revoked_at", null).lte("starts_at", now).or(`expires_at.is.null,expires_at.gt.${now}`).order("created_at", { ascending: false }).returns<{ user_id: string; plan_code: string; created_at: string }[]>(),
-    db.from("student_subscriptions").select("user_id,plan_code,updated_at").in("status", ["active", "trialing"]).order("updated_at", { ascending: false }).returns<{ user_id: string; plan_code: string; updated_at: string }[]>(),
+    db.from("student_subscriptions").select("user_id,plan_code,updated_at").eq("livemode", billingLivemode()).in("status", [...PAID_ACCESS_STATUSES]).order("updated_at", { ascending: false }).returns<{ user_id: string; plan_code: string; updated_at: string }[]>(),
   ]);
 
   const grantPlan = new Map<string, PlanCode>();
@@ -726,7 +728,13 @@ export async function listStudents(): Promise<StudentRow[]> {
       email: u.email,
       name: id.name,
       initials: id.initials,
-      plan: u.account_status === "active" ? grantPlan.get(u.id) ?? subscriptionPlan.get(u.id) ?? normalizeLegacyPlanCode(u.plan) : "free",
+      plan: u.account_status === "active"
+        ? effectivePlan(
+            grantPlan.get(u.id) ?? null,
+            subscriptionPlan.get(u.id) ?? null,
+            normalizeLegacyPlanCode(u.plan),
+          )
+        : "free",
       accountStatus: u.account_status,
       isTestAccount: u.is_test_account,
       level: levelProgress(xp).level,

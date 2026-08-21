@@ -223,13 +223,17 @@ function PriceCard({
 }
 
 function BillingNotice({ state }: { state: string }) {
-  const message = state === "cancelled"
-    ? "Checkout was cancelled. Nothing was charged."
-    : state === "account"
-      ? "This account cannot start a subscription."
-      : state === "invalid"
-        ? "Choose Core or Max to continue."
-        : "Billing could not be opened. Please try again.";
+  const messages: Record<string, string> = {
+    cancelled: "Checkout was cancelled. Nothing was charged.",
+    account: "This account cannot start a subscription.",
+    invalid: "Choose Core or Max to continue.",
+    upgraded: "Your upgrade is active. Stripe charged the prorated difference now.",
+    downgrade: "Your downgrade is scheduled for your next renewal. Current access stays active until then.",
+    "change-cancelled": "The scheduled plan change was removed. Your current plan will continue.",
+    payment: "Stripe could not collect the prorated upgrade charge, so your current plan was not changed.",
+    managed: "Your subscription is already on that plan.",
+  };
+  const message = messages[state] ?? "Billing could not be opened. Please try again.";
   return <div className={styles.billingNotice} role="status">{message}</div>;
 }
 
