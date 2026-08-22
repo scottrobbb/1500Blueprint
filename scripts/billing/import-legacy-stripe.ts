@@ -3,6 +3,7 @@
  * Dry-run is the default. Writes require both --apply and ALLOW_STRIPE_IMPORT_WRITE=true.
  *
  * npx tsx scripts/billing/import-legacy-stripe.ts --mode=live
+ * STRIPE_LEGACY_MAX_PRODUCT_IDS=prod_... npx tsx scripts/billing/import-legacy-stripe.ts --mode=live
  * npx tsx scripts/billing/import-legacy-stripe.ts --mode=live --core-price=price_... --max-price=price_... --apply
  */
 import * as fs from "node:fs";
@@ -37,6 +38,14 @@ const configuredPrices = new Map<string, Plan>([
   [option("core-price") ?? process.env.STRIPE_CORE_PRICE_ID ?? "", "core"],
   [option("max-price") ?? process.env.STRIPE_MAX_PRICE_ID ?? "", "max"],
 ].filter(([price]) => Boolean(price)) as [string, Plan][]);
+const configuredProducts = new Map<string, Plan>([
+  ...configuredIds(option("core-products") ?? process.env.STRIPE_LEGACY_CORE_PRODUCT_IDS).map(
+    (productId) => [productId, "core"] as const,
+  ),
+  ...configuredIds(option("max-products") ?? process.env.STRIPE_LEGACY_MAX_PRODUCT_IDS).map(
+    (productId) => [productId, "max"] as const,
+  ),
+]);
 
 if (!stripeKey || !supabaseUrl || !supabaseKey) {
   throw new Error("Stripe and Supabase service credentials are required");
@@ -148,6 +157,8 @@ async function planForSubscription(subscription: Stripe.Subscription): Promise<P
 
   const productId = stripeId(price.product);
   if (!productId) return null;
+  const configuredProductPlan = configuredProducts.get(productId);
+  if (configuredProductPlan) return configuredProductPlan;
   if (productPlans.has(productId)) return productPlans.get(productId) ?? null;
   const product = await stripe.products.retrieve(productId);
   const productPlan = product.metadata.plan_code?.toLowerCase();
@@ -170,6 +181,13 @@ function option(name: string): string | null {
 function stripeId(value: string | { id: string } | null | undefined): string | null {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;
+}
+
+function configuredIds(value: string | undefined | null): string[] {
+  return value
+    ?.split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean) ?? [];
 }
 
 main().catch((error: unknown) => {

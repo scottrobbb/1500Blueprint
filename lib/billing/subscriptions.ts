@@ -3,7 +3,12 @@ import "server-only";
 import type Stripe from "stripe";
 import { normalizePlanCode, type PlanCode } from "@/lib/auth/plans";
 import { supabaseAdmin } from "@/utils/supabase/admin";
-import { planForPriceId, REFUND_WINDOW_HOURS, type BillablePlan } from "./config";
+import {
+  planForLegacyProductId,
+  planForPriceId,
+  REFUND_WINDOW_HOURS,
+  type BillablePlan,
+} from "./config";
 import { refundDeadline } from "./policy";
 
 type StripeEventContext = {
@@ -26,10 +31,16 @@ function stripeId(value: string | { id: string } | null): string | null {
 }
 
 export function stripeSubscriptionPlan(subscription: Stripe.Subscription): BillablePlan | null {
-  const priceId = subscription.items.data[0]?.price.id;
-  if (priceId) {
-    const configuredPlan = planForPriceId(priceId);
+  const price = subscription.items.data[0]?.price;
+  if (price) {
+    const configuredPlan = planForPriceId(price.id);
     if (configuredPlan) return configuredPlan;
+
+    const productId = stripeId(price.product);
+    if (productId) {
+      const legacyPlan = planForLegacyProductId(productId);
+      if (legacyPlan) return legacyPlan;
+    }
   }
   const metadataPlan = normalizePlanCode(subscription.metadata.plan_code) as PlanCode;
   return metadataPlan === "core" || metadataPlan === "max" ? metadataPlan : null;

@@ -28,6 +28,21 @@ export function planForPriceId(priceId: string): BillablePlan | null {
   return null;
 }
 
+export function planForLegacyProductId(productId: string): BillablePlan | null {
+  if (configuredIds("STRIPE_LEGACY_CORE_PRODUCT_IDS").has(productId)) return "core";
+  if (configuredIds("STRIPE_LEGACY_MAX_PRODUCT_IDS").has(productId)) return "max";
+  return null;
+}
+
+function configuredIds(name: string): Set<string> {
+  return new Set(
+    process.env[name]
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter(Boolean) ?? [],
+  );
+}
+
 export function billingBaseUrl(requestUrl: string): string {
   const previewUrl = process.env.BILLING_PREVIEW_URL?.trim();
   if (process.env.VERCEL_ENV === "preview" && previewUrl) {
