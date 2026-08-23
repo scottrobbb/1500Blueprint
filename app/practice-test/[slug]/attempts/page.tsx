@@ -6,6 +6,9 @@ import { getSession } from "@/lib/auth/session";
 import { getNavStats, listTestAttempts } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
 import { listModuleAttempts } from "@/lib/sat/moduleAttempts";
+import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
+import { getStudentAccess } from "@/lib/auth/entitlements";
+import { UltimateShell } from "@/components/ultimate/UltimateShell";
 
 export const metadata = {
   title: "Your attempts · 1500 SAT Blueprint",
@@ -24,30 +27,36 @@ function formatTaken(iso: string): string {
 // Next 16: route params are async.
 export default async function AttemptsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ workspace?: string }>;
 }) {
   const { slug } = await params;
+  const { workspace } = await searchParams;
   const session = await getSession();
   if (!session) redirect("/login");
+  const returnToUltimate = workspace === "ultimate" && isUltimatePreviewEmail(session.email);
+  const workspaceQuery = returnToUltimate ? "?workspace=ultimate" : "";
+  const testsHref = returnToUltimate ? "/ultimate/tests" : "/practice-test";
 
-  const [nav, attempts, moduleAttempts, tests] = await Promise.all([
+  const [nav, attempts, moduleAttempts, tests, access] = await Promise.all([
     getNavStats(session.email),
     listTestAttempts(session.email, slug),
     listModuleAttempts(session.email, slug),
     listTests(),
+    getStudentAccess(session.email),
   ]);
 
   const title = tests.find((t) => t.slug === slug)?.title ?? slug;
   const num = slug.match(/(\d+)\s*$/)?.[1] ?? "";
   const label = num ? `Practice Test ${num}` : title;
 
-  return (
-    <div className="min-h-dvh bg-haze text-ink">
-      <AppNav activePage="tests" stats={nav} />
-      <main className="mx-auto w-full max-w-[860px] px-6 pb-12 pt-7">
+  const content = (
+    <>
+      <div className="mx-auto w-full max-w-[860px] px-4 pb-12 pt-7 sm:px-6">
         <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-navy/50">
-          <Link href="/practice-test" className="hover:text-navy">
+          <Link href={testsHref} className="hover:text-navy">
             Practice Tests
           </Link>
           <span aria-hidden>/</span>
@@ -61,7 +70,7 @@ export default async function AttemptsPage({
         {attempts.length === 0 ? (
           <div className="mt-6 rounded-xl border border-navy/15 bg-white p-8 text-center text-navy/60">
             You have not finished this test yet.{" "}
-            <Link href={`/practice-test/${slug}`} className="font-semibold text-brand-600">
+            <Link href={`/practice-test/${slug}${workspaceQuery}`} className="font-semibold text-brand-600">
               Start it now
             </Link>
             .
@@ -71,7 +80,7 @@ export default async function AttemptsPage({
             {attempts.map((a, i) => (
               <li key={a.id}>
                 <Link
-                  href={`/practice-test/${slug}/results/${a.id}`}
+                  href={`/practice-test/${slug}/results/${a.id}${workspaceQuery}`}
                   className="group flex items-center gap-4 rounded-xl border border-navy/15 bg-white p-4 transition-colors hover:border-navy/30"
                 >
                   <div className="flex h-11 w-11 flex-none items-center justify-center rounded-[10px] bg-navy font-display text-base font-extrabold text-white">
@@ -102,7 +111,7 @@ export default async function AttemptsPage({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-display text-lg font-extrabold text-navy">Single-module practice</h2>
               <Link
-                href={`/practice-test/${slug}/modules`}
+                href={`/practice-test/${slug}/modules${workspaceQuery}`}
                 className="text-xs font-semibold text-navy/55 hover:text-navy"
               >
                 Practice a module
@@ -113,7 +122,7 @@ export default async function AttemptsPage({
               {moduleAttempts.map((a) => (
                 <li key={a.id}>
                   <Link
-                    href={`/practice-test/${slug}/module/${a.moduleKey}/results/${a.id}`}
+                    href={`/practice-test/${slug}/module/${a.moduleKey}/results/${a.id}${workspaceQuery}`}
                     className="group flex items-center gap-4 rounded-xl border border-navy/15 bg-white p-4 transition-colors hover:border-navy/30"
                   >
                     <div className="flex h-11 w-11 flex-none items-center justify-center rounded-[10px] bg-ice font-display text-sm font-extrabold tabular-nums text-brand-600">
@@ -130,11 +139,26 @@ export default async function AttemptsPage({
             </ul>
           </section>
         )}
-      </main>
+      </div>
       <footer className="mx-auto w-full max-w-[860px] px-6 pb-10 text-center text-xs text-navy/40">
         1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
         Board.
       </footer>
+    </>
+  );
+
+  if (returnToUltimate) {
+    return (
+      <UltimateShell stats={{ ...nav, plan: access.plan }} access={access}>
+        {content}
+      </UltimateShell>
+    );
+  }
+
+  return (
+    <div className="min-h-dvh bg-haze text-ink">
+      <AppNav activePage="tests" stats={nav} />
+      <main>{content}</main>
     </div>
   );
 }

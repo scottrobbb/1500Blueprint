@@ -17,8 +17,6 @@ import { CalculatorPanel } from "./CalculatorPanel";
 import { LineReader } from "./LineReader";
 import { ModuleResults } from "./ModuleResults";
 
-const STUDENT_NAME = "Shouqi Han";
-
 type Phase = "module" | "review" | "results";
 
 // A focused, single-module practice runner. Reuses the full test's Bluebook UI
@@ -30,14 +28,21 @@ export function ModuleRunner({
   section,
   module,
   meta,
+  studentName,
+  returnToUltimate = false,
 }: {
   slug: string;
   section: Section;
   module: TestModule;
   meta: PracticeModuleMeta;
+  studentName: string;
+  returnToUltimate?: boolean;
 }) {
   const router = useRouter();
   const totalSeconds = meta.minutes * 60;
+  const workspaceQuery = returnToUltimate ? "?workspace=ultimate" : "";
+  const modulesHref = `/practice-test/${slug}/modules${workspaceQuery}`;
+  const testsHref = returnToUltimate ? "/ultimate/tests" : "/practice-test";
 
   const [phase, setPhase] = useState<Phase>("module");
   const [qIndex, setQIndex] = useState(0);
@@ -50,6 +55,9 @@ export function ModuleRunner({
   const [perQuestionTime, setPerQuestionTime] = useState<Record<string, number>>({});
   const [highlights, setHighlights] = useState<Record<string, Highlight[]>>({});
   const [savedAttemptId, setSavedAttemptId] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveVersion, setSaveVersion] = useState(0);
 
   const [overlay, setOverlay] = useState<null | "directions" | "reference">(null);
   const [calcOpen, setCalcOpen] = useState(false);
@@ -61,7 +69,8 @@ export function ModuleRunner({
   useEffect(() => {
     qIndexRef.current = qIndex;
   }, [qIndex]);
-  const completedRef = useRef(false);
+  const saveInFlightRef = useRef(false);
+  const attemptTokenRef = useRef(crypto.randomUUID());
 
   // Review is part of the timed module; reaching zero submits it immediately.
   useEffect(() => {
@@ -82,28 +91,39 @@ export function ModuleRunner({
     return () => clearInterval(id);
   }, [phase, module]);
 
-  // Save the attempt once, when the student reaches the results screen. The
-  // server recomputes the score from the answers (the client can't inflate it).
+  // Save before offering a persistent report link. The stable token makes a
+  // retry after a lost response idempotent.
   useEffect(() => {
-    if (phase !== "results") {
-      completedRef.current = false;
-      return;
-    }
-    if (completedRef.current) return;
-    completedRef.current = true;
-    const clientToken = crypto.randomUUID();
-    void fetch("/api/practice-test/module/complete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ testSlug: slug, moduleKey: meta.key, answers, perQuestionTime, clientToken }),
-      keepalive: true,
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d: { attemptId?: string } | null) => {
-        if (d?.attemptId) setSavedAttemptId(d.attemptId);
-      })
-      .catch(() => {});
-  }, [phase, slug, meta.key, answers, perQuestionTime]);
+    if (phase !== "results" || saveInFlightRef.current || savedAttemptId) return;
+    saveInFlightRef.current = true;
+    setSaveStatus("saving");
+    setSaveError(null);
+    void (async () => {
+      try {
+        const response = await fetch("/api/practice-test/module/complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            testSlug: slug,
+            moduleKey: meta.key,
+            answers,
+            perQuestionTime,
+            clientToken: attemptTokenRef.current,
+          }),
+          keepalive: true,
+        });
+        const body = (await response.json().catch(() => null)) as { attemptId?: string; error?: string } | null;
+        if (!response.ok || !body?.attemptId) throw new Error(body?.error ?? "Your module result could not be saved.");
+        setSavedAttemptId(body.attemptId);
+        setSaveStatus("saved");
+      } catch (error) {
+        setSaveStatus("error");
+        setSaveError(error instanceof Error ? error.message : "Your module result could not be saved.");
+      } finally {
+        saveInFlightRef.current = false;
+      }
+    })();
+  }, [phase, slug, meta.key, answers, perQuestionTime, saveVersion, savedAttemptId]);
 
   function restart() {
     setPhase("module");
@@ -117,7 +137,11 @@ export function ModuleRunner({
     setHighlights({});
     setNavOpen(false);
     setSavedAttemptId(null);
-    completedRef.current = false;
+    setSaveStatus("idle");
+    setSaveError(null);
+    setSaveVersion(0);
+    saveInFlightRef.current = false;
+    attemptTokenRef.current = crypto.randomUUID();
   }
 
   function addHighlight(qid: string, h: Highlight) {
@@ -153,12 +177,17 @@ export function ModuleRunner({
         perQuestionTime={perQuestionTime}
         timeUsedSeconds={totalSeconds - timeLeft}
         slug={slug}
-        onRestart={restart}
+        onRestart={saveStatus === "saving" ? undefined : restart}
         savedHref={
           savedAttemptId
-            ? `/practice-test/${slug}/module/${meta.key}/results/${savedAttemptId}`
+            ? `/practice-test/${slug}/module/${meta.key}/results/${savedAttemptId}${workspaceQuery}`
             : undefined
         }
+        saveStatus={saveStatus}
+        saveError={saveError}
+        onRetrySave={() => setSaveVersion((version) => version + 1)}
+        modulesHref={modulesHref}
+        testsHref={testsHref}
       />
     );
   }
@@ -181,7 +210,7 @@ export function ModuleRunner({
       onOpenReference={() => setOverlay("reference")}
       onOpenCalculator={() => setCalcOpen(true)}
       onOpenLineReader={() => setLineReaderOn(true)}
-      onExit={() => router.push(`/practice-test/${slug}/modules`)}
+      onExit={() => router.push(modulesHref)}
     />
   );
 
@@ -210,7 +239,7 @@ export function ModuleRunner({
           }}
         />
         <FooterNav
-          studentName={STUDENT_NAME}
+          studentName={studentName}
           showCenter={false}
           canBack
           onBack={() => setPhase("module")}
@@ -277,7 +306,7 @@ export function ModuleRunner({
       </div>
 
       <FooterNav
-        studentName={STUDENT_NAME}
+        studentName={studentName}
         questionLabel={`Question ${qIndex + 1} of ${module.questions.length}`}
         canBack={qIndex > 0}
         onBack={() => setQIndex((i) => Math.max(0, i - 1))}

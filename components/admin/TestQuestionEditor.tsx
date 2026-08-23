@@ -153,11 +153,14 @@ export function TestQuestionEditor({
         }),
       });
       if (!res.ok) {
-        setError("Save failed. Please try again.");
+        const result = (await res.json().catch(() => null)) as { detail?: string } | null;
+        setError(result?.detail ?? "Save failed. Please try again.");
         return;
       }
       setDirty(false);
       router.refresh();
+    } catch {
+      setError("Save failed. Check your connection and retry.");
     } finally {
       setSaving("idle");
     }
@@ -173,10 +176,11 @@ export function TestQuestionEditor({
         router.refresh();
         return;
       }
-      setError("Delete failed. Please try again.");
-      setSaving("idle");
+      const result = (await res.json().catch(() => null)) as { detail?: string } | null;
+      setError(result?.detail ?? "Delete failed. Please try again.");
     } catch {
-      setError("Delete failed. Please try again.");
+      setError("Delete failed. Check your connection and retry.");
+    } finally {
       setSaving("idle");
     }
   }

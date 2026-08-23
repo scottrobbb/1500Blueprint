@@ -2,13 +2,17 @@ import "server-only";
 
 import type { Flashcard } from "@/components/drills/flashcards/mock";
 import { awardDrill, type AwardOutcome } from "@/lib/gamification/state";
+import {
+  recordObjectiveProgress,
+  summarizeDrillQuestionSession,
+} from "@/lib/drills/progress";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { VocabContent } from "./types";
 import type { VocabImportEntry } from "./vocabImport";
 import {
-  advanceVocabProgress,
   nextVocabFlashcardPosition,
   summarizeVocabAttempts,
+  VOCAB_SESSION_SIZE,
   type VocabAnswerResult,
   type VocabDashboardState,
 } from "./vocabProgress";
@@ -224,6 +228,39 @@ async function loadAllVocabQuestionRows(): Promise<VocabQuestionRow[]> {
   }
 }
 
+async function loadVocabStreak(
+  email: string,
+  fallback: StoredVocabState,
+): Promise<Pick<StoredVocabState, "currentStreak" | "bestStreak">> {
+  const rows: { id: string; correct: boolean; attempted_at: string }[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const result = await supabaseAdmin()
+      .from("drill_question_attempts")
+      .select("id,correct,attempted_at")
+      .eq("email", email)
+      .eq("drill_slug", "vocab")
+      .eq("source", "drill")
+      .order("attempted_at")
+      .order("id")
+      .range(from, from + pageSize - 1)
+      .returns<{ id: string; correct: boolean; attempted_at: string }[]>();
+    if (result.error) throw databaseError("Could not load vocab answer history", result.error);
+    rows.push(...(result.data ?? []));
+    if ((result.data?.length ?? 0) < pageSize) break;
+  }
+  if (rows.length === 0) {
+    return { currentStreak: fallback.currentStreak, bestStreak: fallback.bestStreak };
+  }
+  let currentStreak = 0;
+  let bestStreak = fallback.bestStreak;
+  for (const row of rows) {
+    currentStreak = row.correct ? currentStreak + 1 : 0;
+    bestStreak = Math.max(bestStreak, currentStreak);
+  }
+  return { currentStreak, bestStreak };
+}
+
 export async function loadVocabDashboard(email: string): Promise<VocabDashboardState> {
   const db = supabaseAdmin();
   const [questions, progressRes, attemptsRes, set] = await Promise.all([
@@ -260,6 +297,7 @@ export async function loadVocabDashboard(email: string): Promise<VocabDashboardS
 
   const cards = set ? await loadCards(set.id) : [];
   const state = parseState(set?.description ?? null);
+  const streak = await loadVocabStreak(email, state);
   const questionById = new Map(questions.map((question) => [question.id, question]));
   const questionIdByWord = new Map(
     questions.flatMap((question) => {
@@ -272,8 +310,8 @@ export async function loadVocabDashboard(email: string): Promise<VocabDashboardS
   return {
     totalWords: questions.length,
     masteredCount: progress.filter((row) => row.mastered_at).length,
-    currentStreak: state.currentStreak,
-    bestStreak: state.bestStreak,
+    currentStreak: streak.currentStreak,
+    bestStreak: streak.bestStreak,
     autoAddFlashcards: state.autoAdd,
     savedQuestionIds: cards.flatMap((card) => {
       const id = questionIdByWord.get(card.term.toLocaleLowerCase());
@@ -309,58 +347,28 @@ export async function loadVocabDashboard(email: string): Promise<VocabDashboardS
 
 export async function recordVocabAnswer(
   email: string,
-  input: { questionId: string; selectedWord: string },
+  input: {
+    questionId: string;
+    selectedWord: string;
+    clientToken: string;
+    sessionToken: string;
+  },
 ): Promise<VocabAnswerResult> {
-  const db = supabaseAdmin();
   const question = await loadQuestion(input.questionId);
   const content = vocabContent(question);
   const answer = correctWord(question) as string;
   if (!content.options.includes(input.selectedWord)) throw new Error("Selected word is not an answer choice.");
   const isCorrect = input.selectedWord === answer;
+  await recordObjectiveProgress(email, {
+    drillSlug: "vocab",
+    questionId: input.questionId,
+    correct: isCorrect,
+    clientToken: input.clientToken,
+    sessionToken: input.sessionToken,
+  });
 
-  const [set, progressRes] = await Promise.all([
-    loadVocabSet(email),
-    db
-      .from("drill_question_progress")
-      .select("attempts,best_score,mastered_at")
-      .eq("email", email)
-      .eq("question_id", input.questionId)
-      .maybeSingle<{ attempts: number; best_score: number | null; mastered_at: string | null }>(),
-  ]);
-  if (progressRes.error) throw databaseError("Could not load word progress", progressRes.error);
+  const set = await loadVocabSet(email);
   const stored = parseState(set?.description ?? null);
-  const next = advanceVocabProgress(
-    {
-      wordCorrectStreak: progressRes.data?.best_score ?? 0,
-      currentStreak: stored.currentStreak,
-      bestStreak: stored.bestStreak,
-      mastered: Boolean(progressRes.data?.mastered_at),
-    },
-    isCorrect,
-  );
-  const now = new Date().toISOString();
-  const masteredAt = progressRes.data?.mastered_at ?? (next.mastered ? now : null);
-
-  const [progressWrite] = await Promise.all([
-    db.from("drill_question_progress").upsert(
-      {
-        email,
-        question_id: input.questionId,
-        drill_slug: "vocab",
-        attempts: (progressRes.data?.attempts ?? 0) + 1,
-        best_score: next.wordCorrectStreak,
-        mastered_at: masteredAt,
-        last_seen_at: now,
-      },
-      { onConflict: "email,question_id" },
-    ),
-    saveStoredState(email, {
-      currentStreak: next.currentStreak,
-      bestStreak: next.bestStreak,
-      autoAdd: stored.autoAdd,
-    }),
-  ]);
-  if (progressWrite.error) throw databaseError("Could not save word progress", progressWrite.error);
 
   let autoAdded = false;
   let flashcardSaveFailed = false;
@@ -373,24 +381,58 @@ export async function recordVocabAnswer(
       console.error("Vocab answer was saved but auto-add failed", error);
     }
   }
-  const masteredRes = await db
-    .from("drill_question_progress")
-    .select("question_id", { count: "exact", head: true })
-    .eq("email", email)
-    .eq("drill_slug", "vocab")
-    .not("mastered_at", "is", null);
-  if (masteredRes.error) throw databaseError("Could not count mastered vocab words", masteredRes.error);
-
   return {
-    correct: isCorrect,
-    correctWord: answer,
-    wordCorrectStreak: next.wordCorrectStreak,
-    mastered: next.mastered,
-    masteredCount: masteredRes.count ?? 0,
-    currentStreak: next.currentStreak,
-    bestStreak: next.bestStreak,
+    ...(await loadCurrentVocabAnswerResult(email, question, input.selectedWord)),
     autoAdded,
     flashcardSaveFailed,
+  };
+}
+
+async function loadCurrentVocabAnswerResult(
+  email: string,
+  question: VocabQuestionRow,
+  selectedWord: string,
+): Promise<VocabAnswerResult> {
+  const db = supabaseAdmin();
+  const answer = correctWord(question) as string;
+  const [set, progressRes, masteredRes] = await Promise.all([
+    loadVocabSet(email),
+    db
+      .from("drill_question_progress")
+      .select("best_score,mastered_at")
+      .eq("email", email)
+      .eq("question_id", question.id)
+      .maybeSingle<{ best_score: number | null; mastered_at: string | null }>(),
+    db
+      .from("drill_question_progress")
+      .select("question_id", { count: "exact", head: true })
+      .eq("email", email)
+      .eq("drill_slug", "vocab")
+      .not("mastered_at", "is", null),
+  ]);
+  if (progressRes.error) throw databaseError("Could not reload word progress", progressRes.error);
+  if (masteredRes.error) throw databaseError("Could not count mastered vocab words", masteredRes.error);
+  const stored = parseState(set?.description ?? null);
+  const streak = await loadVocabStreak(email, stored);
+  let autoAdded = false;
+  if (set && selectedWord !== answer && stored.autoAdd) {
+    const saved = await db
+      .from("flashcard_cards")
+      .select("id", { count: "exact", head: true })
+      .eq("set_id", set.id)
+      .ilike("term", answer);
+    if (saved.error) throw databaseError("Could not reload the vocab flashcard", saved.error);
+    autoAdded = (saved.count ?? 0) > 0;
+  }
+  return {
+    correct: selectedWord === answer,
+    correctWord: answer,
+    wordCorrectStreak: progressRes.data?.best_score ?? 0,
+    mastered: Boolean(progressRes.data?.mastered_at),
+    masteredCount: masteredRes.count ?? 0,
+    currentStreak: streak.currentStreak,
+    bestStreak: streak.bestStreak,
+    autoAdded,
   };
 }
 
@@ -503,16 +545,28 @@ export async function importVocabFlashcards(
 
 export async function completeVocabSession(
   email: string,
-  input: { correct: number; total: number; durationSeconds: number; clientToken: string },
+  input: { durationSeconds: number; clientToken: string },
 ): Promise<AwardOutcome> {
   const db = supabaseAdmin();
+  const summary = await summarizeDrillQuestionSession(email, "vocab", input.clientToken);
+  if (summary.total !== VOCAB_SESSION_SIZE) {
+    throw new Error(`A complete vocab session requires ${VOCAB_SESSION_SIZE} saved answers.`);
+  }
+  // Award first. A retry after a later module-attempt failure receives a zero-XP
+  // duplicate award, then safely repairs the missing summary row.
+  const award = await awardDrill(email, {
+    drillSlug: "vocab",
+    correct: summary.correct,
+    total: summary.total,
+    clientToken: input.clientToken,
+  });
   const { error } = await db.from("module_attempts").insert({
     email,
     test_slug: "vocab",
     module_key: "vocab-drill",
     label: "Vocab Drill — 7 words",
-    correct: input.correct,
-    total: input.total,
+    correct: summary.correct,
+    total: summary.total,
     per_question_time: { durationSeconds: input.durationSeconds },
     client_token: input.clientToken,
   });
@@ -520,14 +574,10 @@ export async function completeVocabSession(
     const { data: existing } = await db
       .from("module_attempts")
       .select("id")
+      .eq("email", email)
       .eq("client_token", input.clientToken)
       .maybeSingle<{ id: string }>();
-    if (existing) return { xpAwarded: 0, newAchievements: [] };
-    throw databaseError("Could not save vocab session", error);
+    if (!existing) throw databaseError("Could not save vocab session", error);
   }
-  return awardDrill(email, {
-    drillSlug: "vocab",
-    correct: input.correct,
-    total: input.total,
-  });
+  return award;
 }

@@ -1,12 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { drillStats, patternOfTheDay } from "@/lib/gamification";
 import type { GrammarMasteryState } from "@/lib/drills/mastery";
-import { isDrillUnderConstruction } from "@/lib/flags";
+import type { DrillSlug, QuestionStatus } from "@/lib/drills/types";
 import { DrillIcon, type DrillIconKey } from "./icons";
 import { PlayIcon } from "@/components/shell/icons";
 
-const HREF = {
+const BASE_HREF = {
   grammar: "/drills/grammar",
   reading: "/drills/reading",
   wordScanCeased: "/drills/word-scan?mode=ceased",
@@ -53,8 +52,8 @@ function LockableCard({ locked, title, children }: { locked: boolean; title: str
       </div>
       <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 p-5 backdrop-blur-[1px]">
         <div role="status" className="max-w-[220px] rounded-xl border border-gold/45 bg-[#fffaf0] px-5 py-4 text-center shadow-sm">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.15em] text-gold-600">Under construction</div>
-          <p className="mt-1.5 text-[13px] font-semibold leading-5 text-navy/70">{title} is coming soon.</p>
+          <div className="text-[10.5px] font-bold uppercase tracking-[0.15em] text-gold-600">Not published</div>
+          <p className="mt-1.5 text-[13px] font-semibold leading-5 text-navy/70">{title} is not currently available.</p>
         </div>
       </div>
     </div>
@@ -66,45 +65,73 @@ export function DrillCatalog({
   vocabStats,
   streak,
   isAdmin,
+  publication,
+  workspace = "legacy",
 }: {
   grammarMastery: GrammarMasteryState;
   vocabStats: { words: number; mastered: number; bestStreak: number; flashcards: number };
   streak: number;
   isAdmin: boolean;
+  publication: Partial<Record<DrillSlug, QuestionStatus>>;
+  workspace?: "legacy" | "ultimate";
 }) {
   const grammarBarPct =
     grammarMastery.total > 0
       ? Math.round((grammarMastery.mastered / grammarMastery.total) * 100)
       : 0;
+  const drillHref = (value: string) => {
+    if (workspace !== "ultimate") return value;
+    return `${value}${value.includes("?") ? "&" : "?"}workspace=ultimate`;
+  };
+  const href = {
+    grammar: drillHref(BASE_HREF.grammar),
+    reading: drillHref(BASE_HREF.reading),
+    wordScanCeased: drillHref(BASE_HREF.wordScanCeased),
+    wordScanBadMold: drillHref(BASE_HREF.wordScanBadMold),
+    mathMedium: drillHref(BASE_HREF.mathMedium),
+    mathHard: drillHref(BASE_HREF.mathHard),
+    aiMath: drillHref(BASE_HREF.aiMath),
+    vocab: drillHref(BASE_HREF.vocab),
+    flashcards: drillHref(BASE_HREF.flashcards),
+  };
+  const historyHref = (slug: DrillSlug) => `${workspace === "ultimate" ? "/ultimate/history" : "/history"}?drill=${slug}`;
   const locked = {
-    reading: isDrillUnderConstruction("reading"),
-    wordScan: isDrillUnderConstruction("word-scan"),
-    targetedMath: isDrillUnderConstruction("targeted-math"),
-    aiMath: isDrillUnderConstruction("ai-math"),
-    vocab: isDrillUnderConstruction("vocab"),
-    flashcards: isDrillUnderConstruction("flashcards"),
+    grammar: publication.grammar !== "published",
+    reading: publication.reading !== "published",
+    wordScan: publication["word-scan"] !== "published",
+    targetedMath: publication["targeted-math"] !== "published",
+    aiMath: publication["ai-math"] !== "published",
+    vocab: publication.vocab !== "published",
+    flashcards: publication.flashcards !== "published",
   };
   const hasLockedDrills = Object.values(locked).some(Boolean);
+  const hasVisibleDrills = isAdmin || Object.values(locked).some((value) => !value);
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-6 pb-12 pt-[30px]">
       <div className="mb-[18px] flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-navy">Practice Drills</h2>
-        <span className="text-[13px] text-navy/50">Earn XP. Build streaks. Master one pattern at a time.</span>
+        <span className="text-[13px] text-navy/50">Build streaks. Master one pattern at a time.</span>
       </div>
 
-      {hasLockedDrills && (
+      {isAdmin && hasLockedDrills && (
         <div className="mb-6 rounded-xl border border-gold/40 bg-gold/[0.07] px-4 py-3 text-[13px] font-semibold leading-5 text-navy/70">
-          {isAdmin
-            ? "Some drills are locked for students — you can still open them as an admin."
-            : "Targeted Math, AI Math, and Word Scan are still under construction. Vocabulary and Flashcards are available now."}
+          Draft drills are hidden from students. Admin links remain available for content QA.
         </div>
       )}
 
+      {!hasVisibleDrills ? (
+        <div className="rounded-2xl border border-navy/10 bg-white px-5 py-12 text-center text-sm font-semibold text-navy/55">
+          No drills are currently published.
+        </div>
+      ) : null}
+
       {/* Writing */}
+      {isAdmin || !locked.grammar ? <>
       <CategoryHeader title="Writing" />
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className={cardBox}>
+        <LockableCard locked={locked.grammar && !isAdmin} title="Grammar Drill">
+          <div className={cardBox}>
           <div className="flex items-center gap-3.5">
             <IconTile name="grammar" />
             <div className="min-w-0">
@@ -139,42 +166,24 @@ export function DrillCatalog({
             </div>
           </div>
           <div className="mt-auto flex items-center gap-2.5 pt-[18px]">
-            <Link href={HREF.grammar} className={startBtn}>
+            <Link href={href.grammar} className={startBtn}>
               <PlayIcon className="h-3.5 w-3.5" />
-              Start · +{drillStats.grammar.xpReward} XP
+              Start practice
             </Link>
-            <Link href={HREF.grammar} className={ghostBtn}>
+            <Link href={historyHref("grammar")} className={ghostBtn}>
               History
             </Link>
           </div>
-        </div>
-
-        {/* Pattern of the day */}
-        <div className="relative flex flex-col justify-center overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#0b2a5b,#1b46a8)] p-6 text-white">
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute -bottom-5 -right-2.5 font-display font-black leading-none text-white/[0.06]"
-            style={{ fontSize: "120px" }}
-          >
-            +
           </div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-sky">Pattern of the day</div>
-          <h4 className="mt-2 font-display text-[22px] font-bold tracking-[-0.01em]">{patternOfTheDay.title}</h4>
-          <p className="mt-2.5 max-w-[280px] text-[13.5px] leading-[1.55] text-white/70">
-            Nail this one twice in a row for a <strong className="text-gold">2× XP</strong> bonus and a fresh badge.
-          </p>
-          <Link
-            href={HREF.grammar}
-            className="mt-[18px] self-start rounded-[11px] bg-gold px-[19px] py-[11px] text-[13.5px] font-bold text-navy shadow-[0_2px_0_#d99a00] transition-transform active:translate-y-px"
-          >
-            Take the challenge
-          </Link>
-        </div>
+        </LockableCard>
       </div>
+      </> : null}
 
       {/* Reading */}
+      {isAdmin || !locked.reading || !locked.wordScan ? <>
       <CategoryHeader title="Reading" />
       <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {isAdmin || !locked.reading ? (
         <LockableCard
           locked={locked.reading && !isAdmin}
           title="Reading Comprehension"
@@ -194,29 +203,20 @@ export function DrillCatalog({
           <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
             Comprehend hard SAT passages under time pressure, then recall the gist from memory.
           </p>
-          <div className="mt-4">
-            <div className="mb-[7px] flex items-center justify-between text-[11.5px] font-semibold text-navy/50">
-              <span>
-                Level {drillStats.reading.level} · {drillStats.reading.attempts} attempts
-              </span>
-              <span>Next: Level {drillStats.reading.level + 1}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-navy/[0.09]">
-              <div className="h-full rounded-full bg-brand" style={{ width: `${drillStats.reading.barPct}%` }} />
-            </div>
-          </div>
           <div className="mt-auto flex items-center gap-2.5 pt-[18px]">
-            <Link href={HREF.reading} className={startBtn}>
+            <Link href={href.reading} className={startBtn}>
               <PlayIcon className="h-3.5 w-3.5" />
-              Start · +{drillStats.reading.xpReward} XP
+              Start practice
             </Link>
-            <Link href={HREF.reading} className={ghostBtn}>
+            <Link href={historyHref("reading")} className={ghostBtn}>
               History
             </Link>
           </div>
           </div>
         </LockableCard>
+        ) : null}
 
+        {isAdmin || !locked.wordScan ? (
         <LockableCard locked={locked.wordScan && !isAdmin} title="Word Scan Drill">
           <div className={cardBox}>
           <div className="flex items-center gap-3.5">
@@ -231,23 +231,15 @@ export function DrillCatalog({
           <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
             Train your eye to spot elimination keywords before the timer drains. Pure speed reps.
           </p>
-          <div className="mt-4 flex gap-2.5 text-xs text-navy/55">
-            <span className="flex-1 rounded-[10px] bg-[#f3f6fb] px-3 py-[9px]">
-              <strong className="block font-display text-sm text-navy">—</strong>Ceased
-            </span>
-            <span className="flex-1 rounded-[10px] bg-[#f3f6fb] px-3 py-[9px]">
-              <strong className="block font-display text-sm text-navy">—</strong>Bad Mold
-            </span>
-          </div>
           <div className="mt-auto flex gap-2.5 pt-[18px]">
             <Link
-              href={HREF.wordScanCeased}
+              href={href.wordScanCeased}
               className="flex-1 rounded-[11px] bg-haze px-3 py-3 text-center text-[13.5px] font-bold text-navy transition-colors hover:bg-navy/10"
             >
               Ceased
             </Link>
             <Link
-              href={HREF.wordScanBadMold}
+              href={href.wordScanBadMold}
               className="flex-1 rounded-[11px] bg-haze px-3 py-3 text-center text-[13.5px] font-bold text-navy transition-colors hover:bg-navy/10"
             >
               Bad Mold
@@ -255,22 +247,22 @@ export function DrillCatalog({
           </div>
           </div>
         </LockableCard>
+        ) : null}
       </div>
+      </> : null}
 
       {/* Math */}
+      {isAdmin || !locked.targetedMath || !locked.aiMath ? <>
       <CategoryHeader title="Math" />
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {isAdmin || !locked.targetedMath ? <>
         <MathCard
           locked={locked.targetedMath && !isAdmin}
           name="target"
           tier="Medium"
           tierClass="text-success-600"
-          desc="Get 10 right before you lose all 3 lives."
-          stats={[
-            { v: drillStats.mathMedium.accuracy, l: "acc" },
-            { v: drillStats.mathMedium.avg, l: "avg" },
-          ]}
-          href={HREF.mathMedium}
+          desc="Get 10 right before your lives run out."
+          href={href.mathMedium}
           cta="Start Challenge"
           ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
         />
@@ -280,14 +272,12 @@ export function DrillCatalog({
           tier="Hard"
           tierClass="text-danger-600"
           desc="Same rules, brutal questions. For 1500-chasers."
-          stats={[
-            { v: drillStats.mathHard.accuracy, l: "acc" },
-            { v: drillStats.mathHard.avg, l: "avg" },
-          ]}
-          href={HREF.mathHard}
+          href={href.mathHard}
           cta="Start Challenge"
           ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
         />
+        </> : null}
+        {isAdmin || !locked.aiMath ? (
         <MathCard
           locked={locked.aiMath && !isAdmin}
           name="aimath"
@@ -295,19 +285,19 @@ export function DrillCatalog({
           tierClass="text-brand-600"
           title="AI Math"
           desc="Fresh AI-generated questions tuned to your weak spots."
-          stats={[
-            { v: drillStats.aiMath.accuracy, l: "acc" },
-            { v: drillStats.aiMath.pool, l: "pool" },
-          ]}
-          href={HREF.aiMath}
+          href={href.aiMath}
           cta="Start Practice"
           ctaClass="bg-brand text-white shadow-[0_2px_0_#2b8fe0]"
         />
+        ) : null}
       </div>
+      </> : null}
 
       {/* Vocabulary */}
+      {isAdmin || !locked.vocab || !locked.flashcards ? <>
       <CategoryHeader title="Vocabulary" />
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {isAdmin || !locked.vocab ? (
         <LockableCard locked={locked.vocab && !isAdmin} title="Vocab Drill">
           <div className={cardBox}>
           <div className="flex items-center gap-3.5">
@@ -334,17 +324,19 @@ export function DrillCatalog({
             </span>
           </div>
           <div className="mt-auto flex gap-2.5 pt-[18px]">
-            <Link href={HREF.vocab} className={startBtn}>
+            <Link href={href.vocab} className={startBtn}>
               <PlayIcon className="h-3.5 w-3.5" />
-              Start · +{drillStats.vocab.xpReward} XP
+              Start practice
             </Link>
-            <Link href={`${HREF.vocab}?view=progress`} className={ghostBtn}>
-              Progress
+            <Link href={historyHref("vocab")} className={ghostBtn}>
+              History
             </Link>
           </div>
           </div>
         </LockableCard>
+        ) : null}
 
+        {isAdmin || !locked.flashcards ? (
         <LockableCard locked={locked.flashcards && !isAdmin} title="Vocab Flashcards">
           <div className={cardBox}>
           <div className="flex items-center gap-3.5">
@@ -363,24 +355,23 @@ export function DrillCatalog({
             <span>
               <strong className="text-navy">{vocabStats.flashcards}</strong> in deck
             </span>
-            <span>
-              <strong className="text-navy">{vocabStats.flashcards}</strong> due
-            </span>
           </div>
           <div className="mt-auto flex gap-2.5 pt-[18px]">
             <Link
-              href={HREF.flashcards}
+              href={href.flashcards}
               className="flex-1 rounded-[11px] bg-haze px-3 py-3 text-center text-sm font-bold text-navy transition-colors hover:bg-navy/10"
             >
               Instructions
             </Link>
-            <Link href={HREF.flashcards} className={ghostBtn}>
+            <Link href={href.flashcards} className={ghostBtn}>
               Manage
             </Link>
           </div>
           </div>
         </LockableCard>
+        ) : null}
       </div>
+      </> : null}
     </div>
   );
 }
@@ -392,7 +383,6 @@ function MathCard({
   tierClass,
   title = "Targeted Math",
   desc,
-  stats,
   href,
   cta,
   ctaClass,
@@ -403,7 +393,6 @@ function MathCard({
   tierClass: string;
   title?: string;
   desc: string;
-  stats: { v: string; l: string }[];
   href: string;
   cta: string;
   ctaClass: string;
@@ -421,13 +410,6 @@ function MathCard({
         </div>
       </div>
       <p className="mt-[13px] text-[13px] leading-[1.55] text-navy/60">{desc}</p>
-      <div className="mt-[13px] flex gap-4 text-xs text-navy/55">
-        {stats.map((s) => (
-          <span key={s.l}>
-            <strong className="text-navy">{s.v}</strong> {s.l}
-          </span>
-        ))}
-      </div>
       <Link
         href={href}
         className={`mt-auto rounded-[11px] px-3 py-3 text-center text-[13.5px] font-bold transition-transform active:translate-y-px ${ctaClass}`}

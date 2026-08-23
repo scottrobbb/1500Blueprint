@@ -9,9 +9,12 @@ import { listCoursesForStudent } from "@/lib/courses/queries";
 import type { Course } from "@/lib/courses/types";
 import { loadHistory } from "@/lib/drills/progress";
 import { listStudentLibrary } from "@/lib/flashcards/queries";
-import { getHubState, getTestProgress } from "@/lib/gamification/state";
+import { getHubState } from "@/lib/gamification/state";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { PlanBadge } from "@/components/account/PlanBadge";
+import { ProgressOverview } from "@/components/history/ProgressOverview";
+import { getStudentProgress } from "@/lib/progress/queries";
+import { withLessonProgress } from "@/lib/progress/summary";
 
 export const metadata = { title: "Home" };
 
@@ -19,13 +22,13 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
-  const [hub, testProgress, history, flashcards, courses, access] = await Promise.all([
+  const [hub, history, flashcards, courses, access, savedProgress] = await Promise.all([
     getHubState(session.email),
-    getTestProgress(session.email),
     loadHistory(session.email),
     listStudentLibrary(session.email),
     listCoursesForStudent(session.email),
     getStudentAccess(session.email),
+    getStudentProgress(session.email),
   ]);
   const availableCourses = courses.filter((course) => canAccessCourse(access, course.slug));
 
@@ -35,6 +38,7 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
   const cardCount = [...flashcards.owned, ...flashcards.shared].reduce((sum, set) => sum + set.cardCount, 0);
   const totalLessons = availableCourses.reduce((sum, course) => sum + course.totalLessons, 0);
   const completedLessons = availableCourses.reduce((sum, course) => sum + course.completedLessons, 0);
+  const progress = withLessonProgress(savedProgress, { completed: completedLessons, total: totalLessons });
   const activeCourse = availableCourses.find((course) => course.progress < 100) ?? availableCourses[0] ?? null;
   const nextLesson = activeCourse?.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed) ?? null;
   const nextCourseHref = activeCourse
@@ -42,7 +46,11 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
       ? `/ultimate/courses/${activeCourse.slug}/${nextLesson.slug}`
       : `/ultimate/courses/${activeCourse.slug}`
     : "/ultimate/courses";
-  const isNewStudent = history.length === 0 && testProgress.testsDone === 0 && completedLessons === 0;
+  const isNewStudent = progress.questions.attempted === 0
+    && progress.tests.count === 0
+    && progress.drills.sessions === 0
+    && progress.drills.uniqueQuestions === 0
+    && completedLessons === 0;
   const { billing } = await searchParams;
 
   return (
@@ -114,6 +122,8 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
         </aside>
       </section>
 
+      <ProgressOverview progress={progress} />
+
       <section className="mb-8">
         <div className="mb-3">
           <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">How to use the platform</p>
@@ -121,8 +131,8 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
         </div>
         <div className="grid overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-[0_1px_3px_rgba(11,42,91,0.04)] md:grid-cols-3 md:divide-x md:divide-navy/10">
           <PathCard step="1" href="/ultimate/courses" title="Learn the method" detail={`${courses.length} ${courses.length === 1 ? "course" : "courses"} available · ${completedLessons}/${totalLessons} lessons complete`} Icon={BookIcon} />
-          <PathCard step="2" href="/ultimate/drills" title="Practice the skill" detail={`${history.length} questions attempted · ${masteryRate}% mastery`} Icon={DrillsIcon} />
-          <PathCard step="3" href="/ultimate/tests" title="Measure your score" detail={testProgress.bestScore ? `Best score ${testProgress.bestScore} · ${testProgress.testsDone} tests complete` : "Take your first full-length practice test"} Icon={TestsIcon} />
+          <PathCard step="2" href="/ultimate/drills" title="Practice the skill" detail={`${history.length} unique drill questions · ${masteryRate}% mastered`} Icon={DrillsIcon} />
+          <PathCard step="3" href="/ultimate/tests" title="Measure your score" detail={progress.tests.bestScore ? `Best score ${progress.tests.bestScore} · ${progress.tests.count} tests complete` : "Take your first full-length practice test"} Icon={TestsIcon} />
         </div>
       </section>
 

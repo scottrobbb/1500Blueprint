@@ -1,31 +1,36 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  isDrillUnderConstruction,
-  isPracticeTestUnderConstruction,
+  canAccessPublication,
+  isMissingPublicationStatusColumn,
+  isPublicationStatus,
+  legacyPublicationStatus,
 } from "./flags";
 
-test("publishes Grammar, Reading, Vocab, and Flashcards while locking unfinished drills", () => {
-  for (const slug of ["grammar", "reading", "vocab", "flashcards"]) {
-    assert.equal(isDrillUnderConstruction(slug), false, slug);
-  }
-
-  for (const slug of ["targeted-math", "word-scan", "ai-math"]) {
-    assert.equal(isDrillUnderConstruction(slug), true, slug);
-  }
+test("publication status validation rejects arbitrary values", () => {
+  assert.equal(isPublicationStatus("draft"), true);
+  assert.equal(isPublicationStatus("published"), true);
+  assert.equal(isPublicationStatus("under-construction"), false);
+  assert.equal(isPublicationStatus(null), false);
 });
 
-test("does not turn unknown routes into construction redirects", () => {
-  assert.equal(isDrillUnderConstruction("not-a-drill"), false);
+test("published content is student-visible while admins can QA drafts", () => {
+  assert.equal(canAccessPublication("published", false), true);
+  assert.equal(canAccessPublication("published", true), true);
+  assert.equal(canAccessPublication("draft", false), false);
+  assert.equal(canAccessPublication("draft", true), true);
 });
 
-test("makes Practice Tests 1, 2, 6, and 7 public while keeping Tests 3-5 locked", () => {
-  for (let number = 3; number <= 5; number++) {
-    assert.equal(isPracticeTestUnderConstruction(`practice-test-${number}`), true);
-  }
-  assert.equal(isPracticeTestUnderConstruction("practice-test-1"), false);
-  assert.equal(isPracticeTestUnderConstruction("practice-test-2"), false);
-  assert.equal(isPracticeTestUnderConstruction("practice-test-6"), false);
-  assert.equal(isPracticeTestUnderConstruction("practice-test-7"), false);
-  assert.equal(isPracticeTestUnderConstruction("completed"), false);
+test("legacy rollout fallback preserves the prior availability", () => {
+  assert.equal(legacyPublicationStatus("drill", "targeted-math"), "draft");
+  assert.equal(legacyPublicationStatus("drill", "grammar"), "published");
+  assert.equal(legacyPublicationStatus("test", "practice-test-4"), "draft");
+  assert.equal(legacyPublicationStatus("test", "practice-test-7"), "published");
+});
+
+test("only a missing status column enables the rollout fallback", () => {
+  assert.equal(isMissingPublicationStatusColumn({ code: "42703", message: "column tests.status does not exist" }), true);
+  assert.equal(isMissingPublicationStatusColumn({ code: "PGRST204", message: "Could not find the 'status' column" }), true);
+  assert.equal(isMissingPublicationStatusColumn({ code: "08006", message: "connection failed" }), false);
+  assert.equal(isMissingPublicationStatusColumn({ code: "42703", message: "another column is missing" }), false);
 });

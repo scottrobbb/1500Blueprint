@@ -13,6 +13,17 @@ export type CoursePracticeGrade = {
   results: Record<string, boolean>;
 };
 
+export type SavedCoursePracticeAttempt = {
+  id: string;
+  score: number;
+  correctCount: number;
+  questionCount: number;
+  passed: boolean;
+  completedAt: string;
+  attemptCount: number;
+  bestScore: number;
+};
+
 export function normalizeCoursePracticeAnswer(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }

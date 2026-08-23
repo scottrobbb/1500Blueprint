@@ -38,8 +38,8 @@ export function QuestionContent({ text, pClassName }: { text: string; pClassName
         }
         const [head, ...body] = rows;
         return (
-          <div key={i} className="mt-5 flex justify-center">
-            <table className="border-collapse font-serif text-[15px] text-exam-ink">
+          <div key={i} className="mt-5 max-w-full overflow-x-auto pb-1">
+            <table className="mx-auto w-max border-collapse font-serif text-[15px] text-exam-ink">
               <thead>
                 <tr>
                   {head.map((c, j) => (

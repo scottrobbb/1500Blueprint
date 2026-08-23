@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { removeVocabFlashcard, saveVocabFlashcard } from "@/lib/drills/vocab.server";
+import { canAccessDrillPublication } from "@/lib/drills/loadDrillContent";
+import { isAdminEmail } from "@/lib/auth/admin";
 
 async function questionIdFrom(request: Request): Promise<string | null> {
   const body = (await request.json().catch(() => null)) as { questionId?: unknown } | null;
@@ -10,6 +12,9 @@ async function questionIdFrom(request: Request): Promise<string | null> {
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await canAccessDrillPublication("flashcards", isAdminEmail(session.email)))) {
+    return NextResponse.json({ error: "Drill not found" }, { status: 404 });
+  }
   const questionId = await questionIdFrom(request);
   if (!questionId) return NextResponse.json({ error: "questionId is required." }, { status: 400 });
   try {
@@ -24,6 +29,9 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await canAccessDrillPublication("flashcards", isAdminEmail(session.email)))) {
+    return NextResponse.json({ error: "Drill not found" }, { status: 404 });
+  }
   const questionId = await questionIdFrom(request);
   if (!questionId) return NextResponse.json({ error: "questionId is required." }, { status: 400 });
   try {

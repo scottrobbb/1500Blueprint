@@ -11,6 +11,7 @@ import { isAdminEmail } from "@/lib/auth/admin";
 import { getHubState, needsOnboarding } from "@/lib/gamification/state";
 import { loadGrammarMastery } from "@/lib/drills/progress";
 import { loadVocabDashboard } from "@/lib/drills/vocab.server";
+import { listDrills } from "@/lib/drills/admin-queries";
 
 export const metadata = {
   title: "Practice Drills — 1500 SAT Blueprint",
@@ -22,11 +23,12 @@ export default async function DrillsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [hub, showOnboarding, grammarMastery, vocabState] = await Promise.all([
+  const [hub, showOnboarding, grammarMastery, vocabState, drills] = await Promise.all([
     getHubState(session.email),
     needsOnboarding(session.email),
     loadGrammarMastery(session.email),
     loadVocabDashboard(session.email),
+    listDrills(),
   ]);
   const nav = {
     streak: hub.player.streak,
@@ -65,6 +67,7 @@ export default async function DrillsPage() {
         }}
         streak={hub.player.streak}
         isAdmin={nav.isAdmin}
+        publication={Object.fromEntries(drills.map((drill) => [drill.slug, drill.status]))}
       />
 
       {showOnboarding && (

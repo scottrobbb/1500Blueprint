@@ -54,7 +54,6 @@ const navigation: { title?: string; items: NavItem[] }[] = [
     title: "Connect",
     items: [
       { href: "/ultimate/community", label: "Community", Icon: CommunityIcon },
-      { href: "/ultimate/live-calls", label: "Live Calls", Icon: LiveCallsIcon, requires: "live" },
     ],
   },
 ];
@@ -246,6 +245,7 @@ function canUse(item: NavItem, access: StudentAccess): boolean {
 }
 
 function isActivePath(pathname: string, href: string): boolean {
+  if (href === "/ultimate/tests" && pathname.startsWith("/practice-test/")) return true;
   return href === "/ultimate" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -262,15 +262,6 @@ function CoursesIcon({ className }: IconProps) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" strokeLinejoin="round" />
       <path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20M8 7h8M8 10.5h6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function LiveCallsIcon({ className }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-      <rect x="3" y="5" width="13" height="14" rx="2.5" />
-      <path d="m16 10 5-3v10l-5-3v-4Z" strokeLinejoin="round" />
     </svg>
   );
 }

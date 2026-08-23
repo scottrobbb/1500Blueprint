@@ -70,6 +70,7 @@ function ObjectiveBankRunner({
   const [notes, setNotes] = useState<Record<string, string>>({});
   const enteredQuestionAt = useRef(0);
   const sessionId = useRef<string | null>(null);
+  const attemptTokens = useRef<Record<string, { response: string; token: string }>>({});
   const question = questions[currentIndex];
   const answer = question ? answers[question.id] ?? "" : "";
   const result = question ? results[question.id] : undefined;
@@ -144,6 +145,9 @@ function ObjectiveBankRunner({
     setSubmitting(true);
     setSubmitError(null);
     sessionId.current ??= createToken();
+    const previousToken = attemptTokens.current[question.id];
+    const clientToken = previousToken?.response === answer ? previousToken.token : createToken();
+    attemptTokens.current[question.id] = { response: answer, token: clientToken };
 
     try {
       const response = await fetch(`/api/question-bank/${subject}/attempt`, {
@@ -154,7 +158,7 @@ function ObjectiveBankRunner({
           response: answer,
           durationMs: Date.now() - enteredQuestionAt.current,
           sessionId: sessionId.current,
-          clientToken: createToken(),
+          clientToken,
         }),
       });
       const body = (await response.json()) as Partial<MathAttemptResult> & { error?: string };

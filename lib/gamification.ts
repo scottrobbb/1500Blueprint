@@ -1,6 +1,5 @@
-// Gamification UI contracts (the shapes the hub + nav render). The live values
-// come from lib/gamification/state.ts (DB-backed). drillStats + patternOfTheDay
-// are still placeholder content for the drill-catalog cards.
+// Gamification UI contracts (the shapes the hub + nav render). Live values
+// come from lib/gamification/state.ts (DB-backed).
 
 export type Player = {
   name: string;
@@ -76,19 +75,3 @@ export type AchievementsView = {
   items: AchievementItem[];
   nextUp: AchievementItem | null; // closest locked achievement to chase
 };
-
-// Placeholder pattern-of-the-day + per-drill catalog stats (DrillCatalog cards).
-export const patternOfTheDay = {
-  title: "Verb tense & sequence",
-  note: "Nail this one twice in a row for a 2× XP bonus and a fresh badge.",
-};
-
-export const drillStats = {
-  grammar: { xpReward: 50 },
-  reading: { xpReward: 40, level: 1, attempts: 2, barPct: 20 },
-  mathMedium: { accuracy: "100%", avg: "27s" },
-  mathHard: { accuracy: "33%", avg: "5s" },
-  aiMath: { accuracy: "67%", pool: "1,388" },
-  vocab: { words: "1000", mastered: "0", bestStreak: "0", xpReward: 30 },
-  flashcards: { inDeck: "0", due: "0" },
-} as const;

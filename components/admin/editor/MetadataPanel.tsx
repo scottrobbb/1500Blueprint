@@ -7,6 +7,7 @@ import type {
   SatSkill,
 } from "@/lib/drills/types";
 import type { Difficulty } from "@/lib/sat/types";
+import { isQuestionBankEligibleShape } from "@/lib/question-bank/eligibility";
 import { label } from "@/components/drills/shared/ui";
 
 export type MetadataPanelProps = {
@@ -38,6 +39,7 @@ const NONE = "";
 
 export function MetadataPanel({ question, skills, answerTypes, onChange }: MetadataPanelProps) {
   const section = question.section;
+  const bankEligible = isQuestionBankEligibleShape(question);
 
   // Distinct domains for the chosen section, in taxonomy sort order.
   const domains = section ? distinctDomains(skills, section) : [];
@@ -61,10 +63,18 @@ export function MetadataPanel({ question, skills, answerTypes, onChange }: Metad
           <Select
             id="meta-section"
             value={section ?? NONE}
-            onChange={(v) =>
+            onChange={(v) => {
               // Changing section invalidates the dependent domain + skill.
-              onChange({ section: (v as SatSection) || null, domain: null, skill: null })
-            }
+              const nextSection = (v as SatSection) || null;
+              onChange({
+                section: nextSection,
+                domain: null,
+                skill: null,
+                ...(!isQuestionBankEligibleShape({ ...question, section: nextSection })
+                  ? { includeInQuestionBank: false }
+                  : {}),
+              });
+            }}
           >
             <option value={NONE}>None</option>
             {SECTIONS.map((s) => (
@@ -121,19 +131,29 @@ export function MetadataPanel({ question, skills, answerTypes, onChange }: Metad
           </Select>
         </Field>
 
-        <Field id="meta-answer-type" labelText="Answer type">
-          <Select
-            id="meta-answer-type"
-            value={question.answerType}
-            onChange={(v) => onChange({ answerType: v as AnswerType })}
-          >
-            {answerTypes.map((t) => (
-              <option key={t} value={t}>
-                {ANSWER_TYPE_LABELS[t]}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        {question.drillSlug === "targeted-math" ? null : (
+          <Field id="meta-answer-type" labelText="Answer type">
+            <Select
+              id="meta-answer-type"
+              value={question.answerType}
+              onChange={(v) => {
+                const answerType = v as AnswerType;
+                onChange({
+                  answerType,
+                  ...(!isQuestionBankEligibleShape({ ...question, answerType })
+                    ? { includeInQuestionBank: false }
+                    : {}),
+                });
+              }}
+            >
+              {answerTypes.map((t) => (
+                <option key={t} value={t}>
+                  {ANSWER_TYPE_LABELS[t]}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
 
         <Field id="meta-status" labelText="Status" className="sm:col-span-2">
           <Select
@@ -145,6 +165,27 @@ export function MetadataPanel({ question, skills, answerTypes, onChange }: Metad
             <option value="published">Published</option>
           </Select>
         </Field>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="meta-question-bank" className={`flex min-h-11 items-start gap-3 rounded-xl border border-navy/15 bg-mist/35 px-3.5 py-3 focus-within:ring-2 focus-within:ring-brand/20 ${bankEligible ? "cursor-pointer" : "cursor-not-allowed opacity-65"}`}>
+            <input
+              id="meta-question-bank"
+              type="checkbox"
+              checked={bankEligible && question.includeInQuestionBank}
+              disabled={!bankEligible}
+              onChange={(event) => onChange({ includeInQuestionBank: event.target.checked })}
+              className="mt-0.5 h-4 w-4 flex-none accent-brand"
+            />
+            <span>
+              <span className={`${label} block text-navy/70`}>Include in Question Bank</span>
+              <span className="mt-1 block text-[12px] leading-5 text-navy/45">
+                {bankEligible
+                  ? "Published questions become available to students. Turning this off keeps prior attempt analytics."
+                  : "Question Bank items must be single-choice Grammar (Reading & Writing) or single-choice/grid-in Targeted Math questions."}
+              </span>
+            </span>
+          </label>
+        </div>
       </div>
     </section>
   );

@@ -17,6 +17,7 @@ export function TestSettingsForm({ test }: { test: AdminTest }) {
   const [breakMinutes, setBreakMinutes] = useState(String(test.breakMinutes));
   const [rwThreshold, setRwThreshold] = useState(String(test.rwThreshold));
   const [mathThreshold, setMathThreshold] = useState(String(test.mathThreshold));
+  const [status, setStatus] = useState(test.status);
 
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState<Saving>("idle");
@@ -47,14 +48,18 @@ export function TestSettingsForm({ test }: { test: AdminTest }) {
           breakMinutes: brk,
           rwThreshold: rw,
           mathThreshold: math,
+          status,
         }),
       });
       if (!res.ok) {
-        setError("Save failed. Please try again.");
+        const result = (await res.json().catch(() => null)) as { detail?: string } | null;
+        setError(result?.detail ?? "Save failed. Please try again.");
         return;
       }
       setDirty(false);
       router.refresh();
+    } catch {
+      setError("Save failed. Check your connection and retry.");
     } finally {
       setSaving("idle");
     }
@@ -97,6 +102,22 @@ export function TestSettingsForm({ test }: { test: AdminTest }) {
 
         <div />
 
+        <Field labelText="Publication status" hint="Draft tests remain available to admins for QA but are hidden from students.">
+          <select
+            value={status}
+            onChange={(event) => {
+              setStatus(event.target.value === "published" ? "published" : "draft");
+              touch();
+            }}
+            className={inputClass}
+          >
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+          </select>
+        </Field>
+
+        <div />
+
         <Field labelText="R&W → hard Module 2 threshold" hint="Fraction of R&W Module 1 correct to route into the hard Module 2 (e.g. 0.67 ≈ two-thirds).">
           <input
             type="number"
@@ -129,9 +150,7 @@ export function TestSettingsForm({ test }: { test: AdminTest }) {
       </div>
 
       <p className="mt-4 rounded-[10px] bg-gold/[0.08] px-3 py-2 text-[12px] leading-relaxed text-navy/60">
-        Editing a published test changes it live. Because saved score reports are recomputed from
-        each student&apos;s stored answers, editing questions here will shift the reports of attempts
-        already taken on this test.
+        {status === "published" ? "Changes apply to future attempts once saved." : "This draft is hidden from students and remains available to admins for QA."} Saved reports remain bound to the test version captured when each attempt was completed.
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-navy/10 pt-4">

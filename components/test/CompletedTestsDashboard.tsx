@@ -39,7 +39,7 @@ export function CompletedTestsDashboard({ attempts, testTitles, variant = "defau
   const newestFirst = [...attempts].reverse();
   const [shareAttemptId, setShareAttemptId] = useState<string>();
   const shareAttempt = attempts.find((attempt) => attempt.id === shareAttemptId);
-  const shareTitle = shareAttempt ? testTitles[shareAttempt.testSlug] ?? shareAttempt.testSlug : "Practice Test";
+  const shareTitle = shareAttempt ? shareAttempt.testTitle ?? testTitles[shareAttempt.testSlug] ?? shareAttempt.testSlug : "Practice Test";
 
   return (
     <>
@@ -96,7 +96,7 @@ export function CompletedTestsDashboard({ attempts, testTitles, variant = "defau
           ) : (
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               {newestFirst.map((attempt, index) => {
-                const title = testTitles[attempt.testSlug] ?? attempt.testSlug;
+                const title = attempt.testTitle ?? testTitles[attempt.testSlug] ?? attempt.testSlug;
                 const prior = attempts[attempts.findIndex((item) => item.id === attempt.id) - 1];
                 const change =
                   typeof attempt.totalScore === "number" && typeof prior?.totalScore === "number"

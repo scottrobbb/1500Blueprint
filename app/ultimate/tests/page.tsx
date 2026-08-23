@@ -4,7 +4,6 @@ import { ChevronRightIcon, TestsIcon } from "@/components/shell/icons";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
-import { isPracticeTestUnderConstruction } from "@/lib/flags";
 import { getTestProgress } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
 import { getStudentAccess } from "@/lib/auth/entitlements";
@@ -16,10 +15,10 @@ export default async function UltimateTestsPage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
-  const [tests, progress, access] = await Promise.all([listTests(), getTestProgress(session.email), getStudentAccess(session.email)]);
   const isAdmin = isAdminEmail(session.email);
-  const availableCount = tests.filter((test, index) => index < access.entitlements.fullTestLimit && (!isPracticeTestUnderConstruction(test.slug) || isAdmin)).length;
-  const launchTest = tests.find((test, index) => index < access.entitlements.fullTestLimit && (!isPracticeTestUnderConstruction(test.slug) || isAdmin));
+  const [tests, progress, access] = await Promise.all([listTests({ includeDraft: isAdmin }), getTestProgress(session.email), getStudentAccess(session.email)]);
+  const availableCount = tests.filter((test, index) => (isAdmin || index < access.entitlements.fullTestLimit) && (test.status === "published" || isAdmin)).length;
+  const launchTest = tests.find((test, index) => (isAdmin || index < access.entitlements.fullTestLimit) && (test.status === "published" || isAdmin));
   const scoreProgress = progress.bestScore == null ? 0 : Math.max(0, Math.min(100, ((progress.bestScore - 400) / 1200) * 100));
 
   return (
@@ -123,7 +122,7 @@ export default async function UltimateTestsPage() {
             const number = test.slug.match(/(\d+)\s*$/)?.[1] ?? "•";
             const best = progress.bestBySlug[test.slug] ?? null;
             const attempts = progress.countBySlug[test.slug] ?? 0;
-            const constructionLocked = isPracticeTestUnderConstruction(test.slug) && !isAdmin;
+            const constructionLocked = test.status !== "published" && !isAdmin;
             const planLocked = testIndex >= access.entitlements.fullTestLimit && !isAdmin;
             const locked = constructionLocked || planLocked;
 

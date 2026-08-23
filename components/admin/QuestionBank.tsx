@@ -78,6 +78,7 @@ export function QuestionBank({
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newDrill, setNewDrill] = useState<DrillSlug | "">("");
+  const [error, setError] = useState<string | null>(null);
 
   const drillTitleBySlug = useMemo(
     () => new Map(drills.map((d) => [d.slug, d.title])),
@@ -109,16 +110,19 @@ export function QuestionBank({
     params.set("pageSize", String(PAGE_SIZE));
 
     setLoading(true);
+    setError(null);
     fetch(`/admin/api/questions?${params.toString()}`, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : { questions: [], total: 0 }))
+      .then(async (res) => {
+        if (!res.ok) throw new Error("The question list could not be loaded.");
+        return res.json();
+      })
       .then((data: { questions: DrillQuestion[]; total: number }) => {
         setQuestions(data.questions);
         setTotal(data.total);
       })
       .catch((err: unknown) => {
         if (!(err instanceof DOMException && err.name === "AbortError")) {
-          setQuestions([]);
-          setTotal(0);
+          setError(err instanceof Error ? err.message : "The question list could not be loaded.");
         }
       })
       .finally(() => setLoading(false));
@@ -139,15 +143,21 @@ export function QuestionBank({
   async function onCreate() {
     if (!newDrill || creating) return;
     setCreating(true);
+    setError(null);
     try {
       const res = await fetch("/admin/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ drillSlug: newDrill }),
       });
-      if (!res.ok) return;
+      if (!res.ok) {
+        setError("The question could not be created. Please try again.");
+        return;
+      }
       const question: DrillQuestion = await res.json();
       router.push(`${basePath}/questions/${question.id}`);
+    } catch {
+      setError("The question could not be created. Check your connection and retry.");
     } finally {
       setCreating(false);
     }
@@ -191,6 +201,12 @@ export function QuestionBank({
           </button>
         </div>
       </div>
+
+      {error ? (
+        <p role="alert" className="rounded-xl border border-danger/20 bg-danger-bg px-3.5 py-2.5 text-sm font-semibold text-danger-600">
+          {error}
+        </p>
+      ) : null}
 
       <FilterBar
         filters={filters}
@@ -410,7 +426,14 @@ function ResultsTable({
                 {ANSWER_TYPE_LABELS[q.answerType]}
               </Td>
               <Td>
-                <StatusPill status={q.status} />
+                <div className="flex flex-wrap gap-1.5">
+                  <StatusPill status={q.status} />
+                  {q.includeInQuestionBank ? (
+                    <span className="inline-flex items-center rounded-chip bg-brand/10 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-brand-700">
+                      In bank
+                    </span>
+                  ) : null}
+                </div>
               </Td>
               <Td className="whitespace-nowrap text-navy/50">{formatDate(q.updatedAt)}</Td>
             </tr>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { DrillShell } from "../shared/DrillShell";
+import { DrillEmpty } from "../shared/DrillEmpty";
 import { DigitalTimer, LivesHud } from "../shared/Hud";
 import { chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
 import { CalculatorIcon, CloseIcon, ReferenceIcon } from "@/components/test/icons";
@@ -23,16 +24,41 @@ import {
 
 type Phase = "playing" | "win" | "fail";
 type Overlay = null | "calculator" | "reference";
+type PendingOutcome = { phase: Exclude<Phase, "playing">; correct: number; total: number };
 
 export function TargetedMathDrill({
   difficulty = "medium",
   questions: provided,
+  returnHref = "/drills",
 }: {
   difficulty?: MathDifficulty;
   questions?: MathQuestion[];
+  returnHref?: string;
+}) {
+  if (provided !== undefined && provided.length === 0) {
+    return <DrillEmpty title="Targeted Math Practice" eyebrow="Math" returnHref={returnHref} />;
+  }
+
+  return (
+    <TargetedMathSession
+      difficulty={difficulty}
+      questions={provided}
+      returnHref={returnHref}
+    />
+  );
+}
+
+function TargetedMathSession({
+  difficulty,
+  questions: provided,
+  returnHref,
+}: {
+  difficulty: MathDifficulty;
+  questions?: MathQuestion[];
+  returnHref: string;
 }) {
   // Real DB questions when supplied; otherwise the offline mock for this difficulty.
-  const questions = provided?.length ? provided : questionsFor(difficulty);
+  const questions = provided ?? questionsFor(difficulty);
   // Only DB-backed questions have real ids to record; the offline mock isn't tracked.
   const tracked = Boolean(provided?.length);
 
@@ -44,19 +70,78 @@ export function TargetedMathDrill({
   const [seconds, setSeconds] = useState(SECONDS_PER_QUESTION);
   const [answer, setAnswer] = useState("");
   const [overlay, setOverlay] = useState<Overlay>(null);
+  const [savingAnswer, setSavingAnswer] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [pendingOutcome, setPendingOutcome] = useState<PendingOutcome | null>(null);
+  const savingRef = useRef(false);
+  const answerTokenRef = useRef(crypto.randomUUID());
+  const sessionTokenRef = useRef(crypto.randomUUID());
 
   const question = questions[qIndex % questions.length];
 
-  // Fire-and-forget: record this question as seen (and mastered when correct) so
-  // it stops being re-fed and appears in History. Mock questions aren't tracked.
-  function markSeen(questionId: string, wasCorrect: boolean) {
-    if (!tracked) return;
-    fetch("/api/drills/progress", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ drillSlug: "targeted-math", questionId, correct: wasCorrect }),
-      keepalive: true,
-    }).catch(() => {});
+  // Persist before advancing so a failed request cannot silently drop work.
+  async function markSeen(questionId: string, submittedAnswer: string): Promise<boolean> {
+    if (!tracked) return true;
+    try {
+      const response = await fetch("/api/drills/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          drillSlug: "targeted-math",
+          questionId,
+          answer: submittedAnswer,
+          clientToken: answerTokenRef.current,
+          sessionToken: sessionTokenRef.current,
+        }),
+      });
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        setSaveError(result?.error ?? "Your answer could not be saved. Retry to continue.");
+        return false;
+      }
+      setSaveError(null);
+      answerTokenRef.current = crypto.randomUUID();
+      return true;
+    } catch {
+      setSaveError("Your answer could not be saved. Check your connection and retry.");
+      return false;
+    }
+  }
+
+  async function completeSession(outcome: PendingOutcome): Promise<boolean> {
+    if (!tracked) return true;
+    try {
+      const response = await fetch("/api/drills/targeted-math/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientToken: sessionTokenRef.current,
+        }),
+      });
+      if (!response.ok) {
+        const result = (await response.json().catch(() => null)) as { error?: string } | null;
+        setSaveError(result?.error ?? "Your completed session could not be saved. Retry to continue.");
+        return false;
+      }
+      setSaveError(null);
+      return true;
+    } catch {
+      setSaveError("Your completed session could not be saved. Check your connection and retry.");
+      return false;
+    }
+  }
+
+  async function retryOutcome(outcome: PendingOutcome) {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSavingAnswer(true);
+    const saved = await completeSession(outcome);
+    savingRef.current = false;
+    setSavingAnswer(false);
+    if (saved) {
+      setPendingOutcome(null);
+      setPhase(outcome.phase);
+    }
   }
 
   function advance() {
@@ -65,44 +150,76 @@ export function TargetedMathDrill({
     setAnswer("");
   }
 
-  function loseLife() {
-    markSeen(question.id, false);
+  async function loseLife() {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSavingAnswer(true);
+    const saved = await markSeen(question.id, "");
+    savingRef.current = false;
+    setSavingAnswer(false);
+    if (!saved) return;
     const nextLives = lives - 1;
-    setAttempts((a) => a + 1);
+    const nextAttempts = attempts + 1;
+    setAttempts(nextAttempts);
     setLives(nextLives);
-    if (nextLives <= 0) setPhase("fail");
-    else advance();
+    if (nextLives <= 0) {
+      const outcome: PendingOutcome = { phase: "fail", correct, total: nextAttempts };
+      setPendingOutcome(outcome);
+      await retryOutcome(outcome);
+    } else {
+      advance();
+    }
   }
 
-  function submit() {
-    if (!answer.trim()) return;
-    setAttempts((a) => a + 1);
+  async function submit() {
+    if (pendingOutcome) {
+      await retryOutcome(pendingOutcome);
+      return;
+    }
+    if (!answer.trim() || savingRef.current) return;
+    savingRef.current = true;
+    setSavingAnswer(true);
+    const saved = await markSeen(question.id, answer);
+    savingRef.current = false;
+    setSavingAnswer(false);
+    if (!saved) return;
+    const nextAttempts = attempts + 1;
+    setAttempts(nextAttempts);
     const ok = isCorrect(answer, question.accepted);
-    markSeen(question.id, ok);
     if (ok) {
       const next = correct + 1;
       setCorrect(next);
-      if (next >= WIN_TARGET) setPhase("win");
-      else advance();
+      if (next >= WIN_TARGET) {
+        const outcome: PendingOutcome = { phase: "win", correct: next, total: nextAttempts };
+        setPendingOutcome(outcome);
+        await retryOutcome(outcome);
+      } else {
+        advance();
+      }
     } else {
       const nextLives = lives - 1;
       setLives(nextLives);
-      if (nextLives <= 0) setPhase("fail");
-      else advance();
+      if (nextLives <= 0) {
+        const outcome: PendingOutcome = { phase: "fail", correct, total: nextAttempts };
+        setPendingOutcome(outcome);
+        await retryOutcome(outcome);
+      } else {
+        advance();
+      }
     }
   }
 
   // Per-question countdown. Running out of time costs a life. The transition is
   // triggered inside the interval callback (not the effect body) to stay pure.
   useEffect(() => {
-    if (phase !== "playing") return;
+    if (phase !== "playing" || pendingOutcome) return;
     const id = window.setInterval(() => {
-      if (seconds <= 1) loseLife();
+      if (seconds <= 1) void loseLife();
       else setSeconds((s) => s - 1);
     }, 1000);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, seconds]);
+  }, [phase, seconds, pendingOutcome]);
 
   function restart() {
     setPhase("playing");
@@ -112,14 +229,20 @@ export function TargetedMathDrill({
     setAttempts(0);
     setSeconds(SECONDS_PER_QUESTION);
     setAnswer("");
+    setSaveError(null);
+    setPendingOutcome(null);
+    savingRef.current = false;
+    setSavingAnswer(false);
+    answerTokenRef.current = crypto.randomUUID();
+    sessionTokenRef.current = crypto.randomUUID();
   }
 
   const accuracy = attempts > 0 ? Math.round((correct / attempts) * 100) : 100;
 
   if (phase !== "playing") {
     return (
-      <DrillShell title="Targeted Math Practice" eyebrow="Math" exitHref="/drills">
-        <ResultScreen won={phase === "win"} correct={correct} accuracy={accuracy} onRetry={restart} />
+      <DrillShell title="Targeted Math Practice" eyebrow="Math" exitHref={returnHref}>
+        <ResultScreen won={phase === "win"} correct={correct} accuracy={accuracy} onRetry={restart} returnHref={returnHref} />
       </DrillShell>
     );
   }
@@ -143,7 +266,7 @@ export function TargetedMathDrill({
   );
 
   return (
-    <DrillShell title="Targeted Math Practice" eyebrow="Math" exitHref="/drills" center={center} right={right}>
+    <DrillShell title="Targeted Math Practice" eyebrow="Math" exitHref={returnHref} center={center} right={right}>
       <div className={`mx-auto max-w-5xl ${surface} p-5 sm:p-7`}>
         <div className="grid gap-6 lg:grid-cols-2 lg:gap-0">
           <div className="lg:pr-8">
@@ -169,8 +292,9 @@ export function TargetedMathDrill({
               id="math-answer"
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
+              disabled={savingAnswer || Boolean(pendingOutcome)}
               onKeyDown={(e) => {
-                if (e.key === "Enter") submit();
+                if (e.key === "Enter") void submit();
               }}
               inputMode="text"
               autoComplete="off"
@@ -185,8 +309,9 @@ export function TargetedMathDrill({
               </div>
             </div>
 
-            <button type="button" onClick={submit} disabled={!answer.trim()} className={`${primaryBtn} mt-5 w-full sm:w-auto`}>
-              Submit answer
+            {saveError ? <p role="alert" className="mt-4 text-sm font-semibold text-danger-600">{saveError}</p> : null}
+            <button type="button" onClick={() => void submit()} disabled={(!answer.trim() && !pendingOutcome) || savingAnswer} className={`${primaryBtn} mt-5 w-full sm:w-auto`}>
+              {savingAnswer ? "Saving…" : pendingOutcome ? "Retry session save" : saveError ? "Retry answer" : "Submit answer"}
             </button>
           </div>
         </div>
@@ -239,7 +364,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
-function ResultScreen({ won, correct, accuracy, onRetry }: { won: boolean; correct: number; accuracy: number; onRetry: () => void }) {
+function ResultScreen({ won, correct, accuracy, onRetry, returnHref }: { won: boolean; correct: number; accuracy: number; onRetry: () => void; returnHref: string }) {
   return (
     <div className={`animate-pop-in mx-auto mt-8 max-w-md overflow-hidden rounded-card border ${won ? "border-success/30" : "border-danger/30"}`}>
       <div className={`border-l-[3px] px-6 py-6 ${won ? "border-l-success bg-success-bg" : "border-l-danger bg-danger-bg"}`}>
@@ -266,7 +391,7 @@ function ResultScreen({ won, correct, accuracy, onRetry }: { won: boolean; corre
           <button type="button" onClick={onRetry} className={primaryBtn}>
             Try again
           </button>
-          <Link href="/drills" className={secondaryBtn}>
+          <Link href={returnHref} className={secondaryBtn}>
             Back to drills
           </Link>
         </div>

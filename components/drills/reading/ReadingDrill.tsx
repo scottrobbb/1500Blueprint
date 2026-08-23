@@ -49,9 +49,11 @@ const MOCK_ITEM: ReadingItem = {
 export function ReadingDrill({
   passages,
   initialProgress,
+  returnHref = "/drills",
 }: {
   passages?: ReadingItem[];
   initialProgress: ReadingProgressState;
+  returnHref?: string;
 }) {
   const items = passages && passages.length > 0 ? passages : [MOCK_ITEM];
 
@@ -162,7 +164,7 @@ export function ReadingDrill({
     <DrillShell
       title="Reading Comprehension Drill"
       eyebrow="Reading & Writing"
-      exitHref="/drills"
+      exitHref={returnHref}
       exitLabel="Exit Drill"
       center={center}
       right={right}
@@ -223,7 +225,7 @@ export function ReadingDrill({
                   Try again
                 </button>
               ) : null}
-              <Link href="/drills" className={secondaryBtn}>
+              <Link href={returnHref} className={secondaryBtn}>
                 Back to drills
               </Link>
             </div>
@@ -249,7 +251,7 @@ export function ReadingDrill({
             <button type="button" onClick={nextPassage} className={primaryBtn}>
               Next passage
             </button>
-            <Link href="/drills" className={secondaryBtn}>
+            <Link href={returnHref} className={secondaryBtn}>
               Back to drills
             </Link>
           </div>

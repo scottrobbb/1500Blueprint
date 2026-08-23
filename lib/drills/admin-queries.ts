@@ -22,6 +22,11 @@ import type {
 } from "./types";
 import type { Accent, AiRole } from "./types";
 import { buildVocabQuestions, type VocabImportEntry } from "./vocabImport";
+import {
+  isQuestionBankEligibleShape,
+  questionBankPublishabilityIssue,
+} from "@/lib/question-bank/eligibility";
+import { isMissingPublicationStatusColumn, legacyPublicationStatus } from "@/lib/flags";
 
 // ---- Row shapes (as returned by PostgREST) -------------------------------
 
@@ -36,6 +41,7 @@ type DrillRow = {
   grading_prompt: string | null;
   scoring_config: Record<string, unknown> | null;
   sort: number;
+  status: string;
 };
 
 type QuestionRow = {
@@ -55,6 +61,7 @@ type QuestionRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  question_bank_catalog?: { enabled: boolean }[] | { enabled: boolean } | null;
 };
 
 type StepRow = {
@@ -67,6 +74,9 @@ type StepRow = {
 };
 
 type SkillRow = { id: string; section: string; domain: string; name: string; sort: number };
+
+const DRILL_SELECT =
+  "slug,title,category,accent,uses_ai,ai_role,answer_types,grading_prompt,scoring_config,sort";
 
 // ---- Mappers --------------------------------------------------------------
 
@@ -81,6 +91,7 @@ function toDrill(r: DrillRow): DrillConfig {
     answerTypes: (r.answer_types ?? []) as AnswerType[],
     gradingPrompt: r.grading_prompt,
     scoringConfig: r.scoring_config ?? {},
+    status: r.status === "published" ? "published" : "draft",
   };
 }
 
@@ -95,6 +106,7 @@ function toStep(r: StepRow): WalkthroughStep {
 }
 
 function toQuestion(r: QuestionRow, steps: StepRow[] = []): DrillQuestion {
+  const catalog = r.question_bank_catalog;
   return {
     id: r.id,
     drillSlug: r.drill_slug as DrillSlug,
@@ -109,6 +121,9 @@ function toQuestion(r: QuestionRow, steps: StepRow[] = []): DrillQuestion {
     content: (r.content ?? {}) as DrillContent,
     explanation: r.explanation,
     status: r.status as QuestionStatus,
+    includeInQuestionBank: Array.isArray(catalog)
+      ? catalog.some((entry) => entry.enabled)
+      : Boolean(catalog?.enabled),
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -137,22 +152,52 @@ export async function listSkills(): Promise<SatSkill[]> {
 }
 
 export async function listDrills(): Promise<DrillConfig[]> {
-  const { data, error } = await supabaseAdmin()
+  const db = supabaseAdmin();
+  const result = await db
     .from("drills")
-    .select("slug,title,category,accent,uses_ai,ai_role,answer_types,grading_prompt,scoring_config,sort")
+    .select(`${DRILL_SELECT},status`)
     .order("sort");
-  if (error || !data) return [];
-  return (data as DrillRow[]).map(toDrill);
+  if (result.error) {
+    if (!isMissingPublicationStatusColumn(result.error)) {
+      throw new Error(`Could not list drills: ${result.error.message}`);
+    }
+    const legacy = await db
+      .from("drills")
+      .select(DRILL_SELECT)
+      .order("sort")
+      .returns<Omit<DrillRow, "status">[]>();
+    if (legacy.error) throw new Error(`Could not list legacy drills: ${legacy.error.message}`);
+    return (legacy.data ?? []).map((drill) => toDrill({
+      ...drill,
+      status: legacyPublicationStatus("drill", drill.slug),
+    }));
+  }
+  return ((result.data ?? []) as DrillRow[]).map(toDrill);
 }
 
 export async function getDrill(slug: string): Promise<DrillConfig | null> {
-  const { data, error } = await supabaseAdmin()
+  const db = supabaseAdmin();
+  const result = await db
     .from("drills")
-    .select("slug,title,category,accent,uses_ai,ai_role,answer_types,grading_prompt,scoring_config,sort")
+    .select(`${DRILL_SELECT},status`)
     .eq("slug", slug)
     .maybeSingle<DrillRow>();
-  if (error || !data) return null;
-  return toDrill(data);
+  if (result.error) {
+    if (!isMissingPublicationStatusColumn(result.error)) {
+      throw new Error(`Could not load drill: ${result.error.message}`);
+    }
+    const legacy = await db
+      .from("drills")
+      .select(DRILL_SELECT)
+      .eq("slug", slug)
+      .maybeSingle<Omit<DrillRow, "status">>();
+    if (legacy.error) throw new Error(`Could not load legacy drill: ${legacy.error.message}`);
+    return legacy.data ? toDrill({
+      ...legacy.data,
+      status: legacyPublicationStatus("drill", slug),
+    }) : null;
+  }
+  return result.data ? toDrill(result.data) : null;
 }
 
 export type DrillUpdate = {
@@ -161,15 +206,39 @@ export type DrillUpdate = {
   accent?: Accent;
   gradingPrompt?: string | null;
   scoringConfig?: Record<string, unknown>;
+  status?: QuestionStatus;
 };
 
+export class ContentPublicationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ContentPublicationError";
+  }
+}
+
+const CONTENT_REQUIRED_DRILLS = new Set<DrillSlug>([
+  "grammar",
+  "reading",
+  "targeted-math",
+  "vocab",
+]);
+
 export async function updateDrill(slug: string, patch: DrillUpdate): Promise<void> {
+  if (patch.status === "published" && (slug === "word-scan" || slug === "ai-math")) {
+    throw new ContentPublicationError(
+      "This drill cannot be published until its generated questions and results are persisted server-side.",
+    );
+  }
+  if (patch.status === "published" && CONTENT_REQUIRED_DRILLS.has(slug as DrillSlug)) {
+    await validateDrillForPublication(slug as DrillSlug);
+  }
   const row: Record<string, unknown> = {};
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.category !== undefined) row.category = patch.category;
   if (patch.accent !== undefined) row.accent = patch.accent;
   if (patch.gradingPrompt !== undefined) row.grading_prompt = patch.gradingPrompt;
   if (patch.scoringConfig !== undefined) row.scoring_config = patch.scoringConfig;
+  if (patch.status !== undefined) row.status = patch.status;
   if (Object.keys(row).length === 0) return;
   const { error } = await supabaseAdmin().from("drills").update(row).eq("slug", slug);
   if (error) throw new Error(`updateDrill failed: ${error.message}`);
@@ -197,7 +266,7 @@ export async function listQuestions(
   let query = supabaseAdmin()
     .from("drill_questions")
     .select(
-      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at",
+      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled)",
       { count: "exact" },
     );
 
@@ -217,9 +286,11 @@ export async function listQuestions(
   const from = (Math.max(1, page) - 1) * pageSize;
   const { data, error, count } = await query
     .order("updated_at", { ascending: false })
+    .order("id")
     .range(from, from + pageSize - 1);
 
-  if (error || !data) return { questions: [], total: 0 };
+  if (error) throw new Error(`Could not list drill questions: ${error.message}`);
+  if (!data) return { questions: [], total: 0 };
   return { questions: (data as QuestionRow[]).map((r) => toQuestion(r)), total: count ?? 0 };
 }
 
@@ -230,7 +301,7 @@ export async function getQuestion(id: string): Promise<DrillQuestion | null> {
   const { data, error } = await admin
     .from("drill_questions")
     .select(
-      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at",
+      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled)",
     )
     .eq("id", id)
     .maybeSingle<QuestionRow>();
@@ -259,7 +330,7 @@ export async function createQuestion(
     .from("drill_questions")
     .insert({ drill_slug: drillSlug, answer_type: answerType, status: "draft", created_by: createdBy })
     .select(
-      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at",
+      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled)",
     )
     .single<QuestionRow>();
   if (error || !data) return null;
@@ -279,10 +350,51 @@ export type QuestionInput = {
   content: DrillContent;
   explanation: string | null;
   status: QuestionStatus;
+  includeInQuestionBank: boolean;
 };
 
 export async function updateQuestion(input: QuestionInput): Promise<void> {
-  const { error } = await supabaseAdmin()
+  const db = supabaseAdmin();
+  const question = await db
+    .from("drill_questions")
+    .select("drill_slug")
+    .eq("id", input.id)
+    .maybeSingle<{ drill_slug: string }>();
+  if (question.error) {
+    throw new Error(`updateQuestion(validation) failed: ${question.error.message}`);
+  }
+  if (!question.data) throw new Error("updateQuestion failed: question not found");
+  const drillSlug = question.data.drill_slug as DrillSlug;
+
+  if (input.status === "published") {
+    const issue = drillQuestionPublicationIssue(drillSlug, input);
+    if (issue) throw new ContentPublicationError(`Cannot publish this question: ${issue}`);
+  }
+  if (input.includeInQuestionBank) {
+    if (!isQuestionBankEligibleShape({
+      drillSlug,
+      section: input.section,
+      answerType: input.answerType,
+    })) {
+      throw new ContentPublicationError(
+        "Only single-choice Grammar Reading & Writing questions and single-choice or grid-in Targeted Math questions can be included in the Question Bank.",
+      );
+    }
+    const issue = questionBankPublishabilityIssue({
+      drillSlug,
+      section: input.section,
+      answerType: input.answerType,
+      domain: input.domain,
+      skill: input.skill,
+      difficulty: input.difficulty,
+      stem: input.stem,
+      passage: input.passage,
+      content: input.content,
+    });
+    if (issue) throw new ContentPublicationError(`Cannot include this question in the Question Bank: ${issue}`);
+  }
+
+  const { error } = await db
     .from("drill_questions")
     .update({
       section: input.section,
@@ -299,6 +411,137 @@ export async function updateQuestion(input: QuestionInput): Promise<void> {
     })
     .eq("id", input.id);
   if (error) throw new Error(`updateQuestion failed: ${error.message}`);
+
+  const catalogResult = input.includeInQuestionBank
+    ? await db.from("question_bank_catalog").upsert(
+        { question_id: input.id, access_tier: "ultimate", enabled: true },
+        { onConflict: "question_id" },
+      )
+    : await db.from("question_bank_catalog").delete().eq("question_id", input.id);
+  if (catalogResult.error) {
+    throw new Error(`updateQuestion(question bank) failed: ${catalogResult.error.message}`);
+  }
+}
+
+function drillQuestionPublicationIssue(
+  drillSlug: DrillSlug,
+  question: Pick<QuestionInput, "answerType" | "stem" | "passage" | "content">,
+): string | null {
+  const content = question.content as Record<string, unknown>;
+  const prompt = question.stem?.trim() || question.passage?.trim();
+  switch (drillSlug) {
+    case "grammar":
+      if (question.answerType !== "mc_single") return "Grammar requires a multiple-choice answer.";
+      if (!question.stem?.trim()) return "Add the question prompt.";
+      return multipleChoicePublicationIssue(content);
+    case "targeted-math":
+      if (!prompt) return "Add the Math question prompt.";
+      if (question.answerType === "mc_single") return multipleChoicePublicationIssue(content);
+      if (question.answerType !== "grid_in") return "Choose multiple choice or grid-in.";
+      return acceptedAnswersIssue(content);
+    case "reading": {
+      const body = stringArray(content.body);
+      const keyPoints = stringArray(content.keyPoints);
+      if (body.length === 0) return "Add at least one nonblank passage paragraph.";
+      if (keyPoints.length === 0) return "Add at least one grading key point.";
+      return null;
+    }
+    case "vocab": {
+      const options = stringArray(content.options);
+      const correctIndex = content.correctIndex;
+      if (typeof content.definition !== "string" || !content.definition.trim()) return "Add the definition.";
+      if (options.length !== 4) return "Add exactly four nonblank word choices.";
+      if (!Number.isInteger(correctIndex) || (correctIndex as number) < 0 || (correctIndex as number) >= options.length) {
+        return "Choose the correct word.";
+      }
+      return null;
+    }
+    case "flashcards":
+      return typeof content.word === "string" && content.word.trim()
+        && typeof content.definition === "string" && content.definition.trim()
+        ? null
+        : "Add a word and definition.";
+    case "word-scan":
+      return stringArray(content.verbs).length > 0 ? null : "Add at least one word to scan.";
+    case "ai-math":
+      if (!prompt) return "Add the Math question prompt.";
+      return question.answerType === "grid_in"
+        ? acceptedAnswersIssue(content)
+        : multipleChoicePublicationIssue(content);
+  }
+}
+
+function multipleChoicePublicationIssue(content: Record<string, unknown>): string | null {
+  const choices = Array.isArray(content.choices) ? content.choices : [];
+  if (choices.length !== 4) return "Add exactly four answer choices (A–D).";
+  const ids = new Set<string>();
+  for (const choice of choices) {
+    if (
+      typeof choice !== "object"
+      || choice === null
+      || !("id" in choice)
+      || !("text" in choice)
+      || !["A", "B", "C", "D"].includes(String(choice.id))
+      || typeof choice.text !== "string"
+      || !choice.text.trim()
+    ) {
+      return "Every A–D choice needs nonblank text.";
+    }
+    ids.add(String(choice.id));
+  }
+  if (ids.size !== 4) return "Use each answer label A–D exactly once.";
+  return typeof content.correct === "string" && ids.has(content.correct)
+    ? null
+    : "Select a valid correct answer.";
+}
+
+function acceptedAnswersIssue(content: Record<string, unknown>): string | null {
+  return stringArray(content.accepted).length > 0
+    ? null
+    : "Add at least one accepted grid-in answer.";
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "")
+    : [];
+}
+
+async function validateDrillForPublication(drillSlug: DrillSlug): Promise<void> {
+  const rows: QuestionRow[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const result = await supabaseAdmin()
+      .from("drill_questions")
+      .select("id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at")
+      .eq("drill_slug", drillSlug)
+      .eq("status", "published")
+      .order("created_at")
+      .order("id")
+      .range(from, from + pageSize - 1)
+      .returns<QuestionRow[]>();
+    if (result.error) {
+      throw new Error(`Could not validate drill publication: ${result.error.message}`);
+    }
+    rows.push(...(result.data ?? []));
+    if ((result.data?.length ?? 0) < pageSize) break;
+  }
+  const usable = rows.some((row) => {
+    // Multiple-choice Targeted Math rows are valid Question Bank inventory,
+    // but the whole-drill player is currently a grid-in experience.
+    if (drillSlug === "targeted-math" && row.answer_type !== "grid_in") return false;
+    return drillQuestionPublicationIssue(drillSlug, {
+      answerType: row.answer_type as AnswerType,
+      stem: row.stem,
+      passage: row.passage,
+      content: (row.content ?? {}) as DrillContent,
+    }) === null;
+  });
+  if (!usable) {
+    throw new ContentPublicationError(
+      "Cannot publish this drill until it has at least one published, complete question that its player can use.",
+    );
+  }
 }
 
 export type WalkthroughStepInput = {
@@ -329,8 +572,25 @@ export async function replaceWalkthrough(
   if (ins.error) throw new Error(`replaceWalkthrough(insert) failed: ${ins.error.message}`);
 }
 
+export class QuestionHasHistoryError extends Error {
+  constructor() {
+    super("Questions with student attempt or mastery history must be unpublished instead of deleted.");
+    this.name = "QuestionHasHistoryError";
+  }
+}
+
 export async function deleteQuestion(id: string): Promise<void> {
-  const { error } = await supabaseAdmin().from("drill_questions").delete().eq("id", id);
+  const db = supabaseAdmin();
+  const progress = await db
+    .from("drill_question_progress")
+    .select("question_id")
+    .eq("question_id", id)
+    .limit(1);
+  if (progress.error) throw new Error(`deleteQuestion(history check) failed: ${progress.error.message}`);
+  if ((progress.data?.length ?? 0) > 0) throw new QuestionHasHistoryError();
+
+  const { error } = await db.from("drill_questions").delete().eq("id", id);
+  if (error?.code === "23503") throw new QuestionHasHistoryError();
   if (error) throw new Error(`deleteQuestion failed: ${error.message}`);
 }
 
@@ -365,6 +625,7 @@ export async function importVocabEntries(
       .select("id,content")
       .eq("drill_slug", "vocab")
       .order("created_at")
+      .order("id")
       .range(from, from + pageSize - 1)
       .returns<{ id: string; content: Record<string, unknown> | null }[]>();
     if (error) throw new Error(`Could not inspect existing vocab words: ${error.message}`);

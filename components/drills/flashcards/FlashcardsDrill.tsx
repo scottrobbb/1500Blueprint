@@ -16,9 +16,11 @@ type ReviewFlashcard = Flashcard & { prioritized?: boolean };
 export function FlashcardsDrill({
   deck,
   manageHref = "/flashcards",
+  returnHref = "/drills",
 }: {
   deck?: ReviewFlashcard[];
   manageHref?: string;
+  returnHref?: string;
 }) {
   const cards: ReviewFlashcard[] = deck ?? DECK;
   const dueCount = deck ? deck.length : DUE_COUNT;
@@ -51,7 +53,7 @@ export function FlashcardsDrill({
 
   if (phase === "overview") {
     return (
-      <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref="/drills">
+      <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref={returnHref}>
         <Overview
           onStart={start}
           deckSize={cards.length}
@@ -65,7 +67,7 @@ export function FlashcardsDrill({
 
   if (phase === "summary") {
     return (
-      <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref="/drills">
+      <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref={returnHref}>
         <div className={`animate-pop-in mx-auto mt-8 max-w-md ${surface} px-6 py-7 text-center`}>
           <div className={`${label} text-success-600`}>Review complete</div>
           <h2 className="mt-1 font-display text-2xl font-extrabold text-ink">
@@ -78,7 +80,7 @@ export function FlashcardsDrill({
             <button type="button" onClick={start} className={primaryBtn}>
               Review again
             </button>
-            <Link href="/drills" className={secondaryBtn}>
+            <Link href={returnHref} className={secondaryBtn}>
               Back to drills
             </Link>
           </div>
@@ -94,7 +96,7 @@ export function FlashcardsDrill({
   );
 
   return (
-    <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref="/drills" center={center}>
+    <DrillShell title="Vocab Flashcards" eyebrow="Vocabulary" exitHref={returnHref} center={center}>
       <div className="mx-auto max-w-2xl">
         <ProgressBar value={index} max={cards.length} />
         <ReviewCard card={card} revealed={revealed} onReveal={() => setRevealed(true)} onRate={rate} />

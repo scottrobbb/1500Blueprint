@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ChevronRightIcon, HistoryIcon, TestsIcon } from "@/components/shell/icons";
 import type { StudyPlan, StudyPlanTask } from "@/lib/study-planner/plan";
 import type { StudyPlannerProfile } from "@/lib/study-planner/profile";
+import { upcomingSatDates } from "@/lib/study-planner/sat-dates";
 
 type Props = {
   initialProfile: StudyPlannerProfile | null;
@@ -320,7 +321,13 @@ function PlannerBlankState({ onStart }: { onStart: () => void }) {
 }
 
 function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfile | null; onClose: () => void; onSave: (profile: StudyPlannerProfile, plan: StudyPlan | null) => void }) {
-  const [testDate, setTestDate] = useState(profile?.testDate ?? "");
+  const today = todayInNewYork();
+  const satDates = upcomingSatDates(today);
+  const savedFutureDate = profile?.testDate && profile.testDate > today ? profile.testDate : null;
+  const [testDate, setTestDate] = useState(savedFutureDate ?? satDates[0] ?? "");
+  const [customDateOpen, setCustomDateOpen] = useState(
+    satDates.length === 0 || Boolean(savedFutureDate && !satDates.includes(savedFutureDate)),
+  );
   const [currentScore, setCurrentScore] = useState(profile?.currentScore?.toString() ?? "");
   const [noScoreYet, setNoScoreYet] = useState(profile ? profile.currentScore === null : true);
   const [goalScore, setGoalScore] = useState(profile?.goalScore?.toString() ?? "1500");
@@ -370,7 +377,40 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
         </div>
 
         <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-7">
-          <label className="block text-sm font-bold text-ink">When is your next SAT?<input required type="date" min={todayInNewYork()} value={testDate} onChange={(event) => setTestDate(event.target.value)} className="mt-2 block min-h-12 w-full border border-navy/15 bg-fill px-3 text-base font-medium text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" /></label>
+          <div>
+            <label htmlFor="sat-test-date" className="block text-sm font-bold text-ink">When is your next SAT?</label>
+            <select
+              id="sat-test-date"
+              value={customDateOpen ? "custom" : testDate}
+              onChange={(event) => {
+                if (event.target.value === "custom") {
+                  setCustomDateOpen(true);
+                  setTestDate("");
+                } else {
+                  setCustomDateOpen(false);
+                  setTestDate(event.target.value);
+                }
+              }}
+              className="mt-2 block min-h-12 w-full cursor-pointer rounded-xl border border-navy/15 bg-fill px-3 text-base font-semibold text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
+            >
+              {satDates.map((date, index) => (
+                <option key={date} value={date}>{index === 0 ? "Next · " : ""}{formatSatDate(date)}</option>
+              ))}
+              <option value="custom">Custom or school-day date…</option>
+            </select>
+            {customDateOpen ? (
+              <input
+                required
+                aria-label="Custom SAT date"
+                type="date"
+                min={today}
+                value={testDate}
+                onChange={(event) => setTestDate(event.target.value)}
+                className="mt-2 block min-h-12 w-full rounded-xl border border-navy/15 bg-fill px-3 text-base font-medium text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+              />
+            ) : null}
+            <p className="mt-2 text-[11px] font-medium leading-4 text-navy/45">College Board weekend dates are preloaded; 2027–28 dates are anticipated. Choose custom for SAT School Day or accommodated testing.</p>
+          </div>
           <label className="block text-sm font-bold text-ink">What score are you aiming for?<input required inputMode="numeric" min="400" max="1600" step="10" type="number" value={goalScore} onChange={(event) => setGoalScore(event.target.value)} className="mt-2 block min-h-12 w-full border border-navy/15 bg-fill px-3 text-base font-medium text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" /></label>
 
           <div className="sm:col-span-2">
@@ -451,6 +491,16 @@ function parseDate(value: string): Date {
 
 function formatDate(value: string): string {
   return parseDate(value).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function formatSatDate(value: string): string {
+  return parseDate(value).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
 
 function formatWeekday(value: string): string {

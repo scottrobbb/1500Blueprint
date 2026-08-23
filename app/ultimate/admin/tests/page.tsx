@@ -27,7 +27,7 @@ export default async function UltimateAdminTestsPage() {
                 <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-navy font-display text-sm font-extrabold text-white">{test.slug.match(/\d+$/)?.[0] ?? "T"}</span>
                 <span className="min-w-0 flex-1">
                   <strong className="block truncate font-display text-base text-navy">{test.title}</strong>
-                  <span className="mt-1 block text-xs text-navy/45">{test.questionCount} questions · {test.needsReviewCount} to review</span>
+                  <span className="mt-1 block text-xs text-navy/45">{test.questionCount} questions · {test.needsReviewCount} to review · {test.status}</span>
                 </span>
                 <span className="text-xs font-bold text-brand-600">Edit →</span>
               </Link>

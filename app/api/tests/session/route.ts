@@ -8,7 +8,8 @@ import { saveTestSession, clearTestSession } from "@/lib/sat/testSession";
 import type { TestState } from "@/lib/sat/testState";
 import type { Highlight } from "@/components/test/HighlightablePassage";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { isPracticeTestUnderConstruction } from "@/lib/flags";
+import { canAccessPracticeTestPublication } from "@/lib/sat/loadTest";
+import { canAccessPracticeTest } from "@/lib/auth/access-control";
 
 type SaveBody = {
   testSlug?: string;
@@ -29,8 +30,12 @@ export async function POST(req: NextRequest) {
   if (!body.testSlug || !body.state || typeof body.state !== "object") {
     return NextResponse.json({ error: "testSlug and state are required" }, { status: 400 });
   }
-  if (isPracticeTestUnderConstruction(body.testSlug) && !isAdminEmail(session.email)) {
-    return NextResponse.json({ error: "Practice test is under construction" }, { status: 503 });
+  const isAdmin = isAdminEmail(session.email);
+  if (!isAdmin && !(await canAccessPracticeTest(session.email, body.testSlug))) {
+    return NextResponse.json({ error: "This practice test is not included with your plan." }, { status: 402 });
+  }
+  if (!(await canAccessPracticeTestPublication(body.testSlug, isAdmin))) {
+    return NextResponse.json({ error: "Practice test is not published" }, { status: 404 });
   }
 
   try {
@@ -53,8 +58,8 @@ export async function DELETE(req: NextRequest) {
   if (!testSlug) {
     return NextResponse.json({ error: "testSlug is required" }, { status: 400 });
   }
-  if (isPracticeTestUnderConstruction(testSlug) && !isAdminEmail(session.email)) {
-    return NextResponse.json({ error: "Practice test is under construction" }, { status: 503 });
+  if (!(await canAccessPracticeTestPublication(testSlug, isAdminEmail(session.email)))) {
+    return NextResponse.json({ error: "Practice test is not published" }, { status: 404 });
   }
 
   try {

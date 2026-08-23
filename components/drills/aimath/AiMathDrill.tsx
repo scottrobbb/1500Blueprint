@@ -16,7 +16,7 @@ import {
 
 type ChoiceId = AiMathChoice["id"];
 
-export function AiMathDrill() {
+export function AiMathDrill({ returnHref = "/drills" }: { returnHref?: string }) {
   const questions = AI_MATH_QUESTIONS;
 
   const [index, setIndex] = useState(0);
@@ -61,7 +61,7 @@ export function AiMathDrill() {
   if (done) {
     const finalAcc = Math.round((correctCount / questions.length) * 100);
     return (
-      <DrillShell title="AI Math Practice" eyebrow="Math" exitHref="/drills">
+      <DrillShell title="AI Math Practice" eyebrow="Math" exitHref={returnHref}>
         <div className={`animate-pop-in mx-auto mt-8 max-w-md ${surface} px-6 py-7 text-center`}>
           <div className={`${label} text-brand-600`}>Session complete</div>
           <h2 className="mt-1 font-display text-2xl font-extrabold text-ink">
@@ -72,7 +72,7 @@ export function AiMathDrill() {
             <button type="button" onClick={restart} className={primaryBtn}>
               Practice again
             </button>
-            <Link href="/drills" className={secondaryBtn}>
+            <Link href={returnHref} className={secondaryBtn}>
               Back to drills
             </Link>
           </div>
@@ -104,7 +104,7 @@ export function AiMathDrill() {
   );
 
   return (
-    <DrillShell title="AI Math Practice" eyebrow="Math" exitHref="/drills" center={center} right={right}>
+    <DrillShell title="AI Math Practice" eyebrow="Math" exitHref={returnHref} center={center} right={right}>
       <div className={`mx-auto max-w-2xl ${surface} p-5 sm:p-7`}>
         <div className="flex items-center gap-2">
           <span className={`${chip} bg-brand/10 text-brand-600`}>

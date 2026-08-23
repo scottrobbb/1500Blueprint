@@ -4,7 +4,7 @@ import { listCoursesForStudentStrict } from "@/lib/courses/queries";
 import type { CompletedTestAttempt } from "@/lib/gamification/state";
 import { getMathBankCatalog } from "@/lib/question-bank/math-queries";
 import { getReadingWritingBankCatalog } from "@/lib/question-bank/reading-writing-queries";
-import { isPracticeTestUnderConstruction } from "@/lib/flags";
+import { listTests } from "@/lib/sat/loadTest";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { StudyPlannerProfile } from "./profile";
 import {
@@ -182,8 +182,7 @@ export async function regenerateStudyPlan(
     readingWritingCatalog,
     courses,
     testAttempts,
-    tests: tests
-      .filter((test) => !isPracticeTestUnderConstruction(test.slug)),
+    tests,
     now,
     planId,
   });
@@ -537,11 +536,5 @@ async function listTestSignals(email: string): Promise<CompletedTestAttempt[]> {
 }
 
 async function listTestCatalog(): Promise<TestCatalogRow[]> {
-  const result = await supabaseAdmin()
-    .from("tests")
-    .select("slug,title")
-    .order("slug")
-    .returns<TestCatalogRow[]>();
-  if (result.error) throw databaseError("Could not load study plan test catalog", result.error);
-  return result.data ?? [];
+  return (await listTests()).map(({ slug, title }) => ({ slug, title }));
 }

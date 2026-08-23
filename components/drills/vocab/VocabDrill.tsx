@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DrillShell } from "../shared/DrillShell";
 import { ProgressBar, formatClock } from "../shared/Hud";
@@ -42,11 +43,13 @@ export function VocabDrill({
   wordBank,
   initialState,
   initialShowProgress = false,
+  returnHref = "/drills",
 }: {
   items?: VocabItem[];
   wordBank?: VocabItem[];
   initialState?: VocabDashboardState;
   initialShowProgress?: boolean;
+  returnHref?: string;
 }) {
   const data = items?.length ? items : vocabItems;
   const allWords = wordBank?.length ? wordBank : data;
@@ -81,6 +84,7 @@ export function VocabDrill({
   const [error, setError] = useState<string | null>(null);
   const [settingsPending, setSettingsPending] = useState(false);
   const sessionTokenRef = useRef(crypto.randomUUID());
+  const answerTokenRef = useRef(crypto.randomUUID());
   const advanceRef = useRef<number | null>(null);
   const total = sessionItems.length;
   const item = sessionItems[index];
@@ -110,15 +114,13 @@ export function VocabDrill({
     });
   }
 
-  async function finishSession(correct: number, durationSeconds: number) {
+  async function finishSession(durationSeconds: number) {
     if (!tracked || total !== 7) return;
     try {
       const response = await fetch("/api/drills/vocab/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          correct,
-          total,
           durationSeconds,
           clientToken: sessionTokenRef.current,
         }),
@@ -141,11 +143,17 @@ export function VocabDrill({
         const response = await fetch("/api/drills/vocab/answer", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ questionId: item.id, selectedWord: word }),
+          body: JSON.stringify({
+            questionId: item.id,
+            selectedWord: word,
+            clientToken: answerTokenRef.current,
+            sessionToken: sessionTokenRef.current,
+          }),
         });
         const body = (await response.json()) as VocabAnswerResult & { error?: string };
         if (!response.ok) throw new Error(body.error || "Could not save this answer.");
         result = body;
+        answerTokenRef.current = crypto.randomUUID();
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Could not save this answer.");
         setSelected(null);
@@ -204,7 +212,7 @@ export function VocabDrill({
     advanceRef.current = window.setTimeout(() => {
       if (index + 1 >= total) {
         setDone(true);
-        void finishSession(nextAnswers.filter((entry) => entry.correct).length, seconds);
+        void finishSession(seconds);
       } else {
         setIndex((value) => value + 1);
         setSelected(null);
@@ -292,6 +300,7 @@ export function VocabDrill({
     setDone(false);
     setError(null);
     sessionTokenRef.current = crypto.randomUUID();
+    answerTokenRef.current = crypto.randomUUID();
   }
 
   const savedByWord = Object.fromEntries(
@@ -303,7 +312,7 @@ export function VocabDrill({
 
   if (showProgress) {
     return (
-      <DrillShell title="Vocab Progress" eyebrow="Vocabulary" exitHref="/drills">
+      <DrillShell title="Vocab Progress" eyebrow="Vocabulary" exitHref={returnHref}>
         <VocabProgressPanel
           totalWords={dashboard.totalWords || data.length}
           masteredCount={masteredCount}
@@ -325,8 +334,8 @@ export function VocabDrill({
       <DrillShell
         title="Vocab Drill"
         eyebrow="Vocabulary"
-        exitHref="/drills"
-        right={<ExitButton href="/drills" />}
+        exitHref={returnHref}
+        right={<ExitButton href={returnHref} />}
       >
         <VocabSummary
           answers={answers}
@@ -334,6 +343,7 @@ export function VocabDrill({
           savedCount={deckCount}
           error={error}
           onPracticeAgain={restart}
+          returnHref={returnHref}
         />
       </DrillShell>
     );
@@ -351,9 +361,9 @@ export function VocabDrill({
     <DrillShell
       title="Vocab Drill"
       eyebrow="Vocabulary"
-      exitHref="/drills"
+      exitHref={returnHref}
       center={center}
-      right={<ExitButton href="/drills" />}
+      right={<ExitButton href={returnHref} />}
     >
       <div className="-mt-2 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -427,13 +437,13 @@ export function VocabDrill({
 
 function ExitButton({ href }: { href: string }) {
   return (
-    <a
+    <Link
       href={href}
       aria-label="Exit drill"
       title="Exit"
       className="inline-flex h-9 w-9 items-center justify-center rounded-card border border-navy/15 text-navy/55 transition-colors hover:bg-navy/5 hover:text-navy"
     >
       <CloseIcon className="h-5 w-5" />
-    </a>
+    </Link>
   );
 }

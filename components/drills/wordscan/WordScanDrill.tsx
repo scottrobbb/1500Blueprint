@@ -21,7 +21,7 @@ type ChoiceId = WordScanChoice["id"];
 type Phase = "playing" | "result";
 type Outcome = "failed" | "complete";
 
-export function WordScanDrill({ mode = "ceased" }: { mode?: WordScanMode }) {
+export function WordScanDrill({ mode = "ceased", returnHref = "/drills" }: { mode?: WordScanMode; returnHref?: string }) {
   const config = WORD_SCAN_MODES[mode];
   const questions = config.questions;
   const verbSet = config.verbs.map((v) => v.toLowerCase());
@@ -85,7 +85,7 @@ export function WordScanDrill({ mode = "ceased" }: { mode?: WordScanMode }) {
 
   if (phase === "result") {
     return (
-      <DrillShell title="Word Scan Drill" eyebrow={config.name} exitHref="/drills">
+      <DrillShell title="Word Scan Drill" eyebrow={config.name} exitHref={returnHref}>
         <ResultScreen
           outcome={outcome}
           questionNumber={completed + 1}
@@ -95,6 +95,7 @@ export function WordScanDrill({ mode = "ceased" }: { mode?: WordScanMode }) {
           flagged={failedFlags}
           verbSet={verbSet}
           onRetry={restart}
+          returnHref={returnHref}
         />
       </DrillShell>
     );
@@ -107,7 +108,7 @@ export function WordScanDrill({ mode = "ceased" }: { mode?: WordScanMode }) {
   );
 
   return (
-    <DrillShell title="Word Scan Drill" eyebrow={config.name} exitHref="/drills" center={center}>
+    <DrillShell title="Word Scan Drill" eyebrow={config.name} exitHref={returnHref} center={center}>
       <div className="mx-auto max-w-3xl">
         <SegmentedProgress total={TOTAL_QUESTIONS} current={completed} />
 
@@ -160,6 +161,7 @@ function ResultScreen({
   flagged,
   verbSet,
   onRetry,
+  returnHref,
 }: {
   outcome: Outcome;
   questionNumber: number;
@@ -169,6 +171,7 @@ function ResultScreen({
   flagged: ChoiceId[];
   verbSet: string[];
   onRetry: () => void;
+  returnHref: string;
 }) {
   const complete = outcome === "complete";
   return (
@@ -226,7 +229,7 @@ function ResultScreen({
         <button type="button" onClick={onRetry} className={primaryBtn}>
           Try again
         </button>
-        <Link href="/drills" className={secondaryBtn}>
+        <Link href={returnHref} className={secondaryBtn}>
           Back to drills
         </Link>
       </div>

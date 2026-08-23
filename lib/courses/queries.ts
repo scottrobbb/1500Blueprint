@@ -1,4 +1,6 @@
+import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import type { SavedCoursePracticeAttempt } from "./practice";
 import type { Course, CourseInput, CourseLesson, CourseModule, CourseStatus, LessonBlock } from "./types";
 
 type CourseRow = {
@@ -131,6 +133,22 @@ export async function createCourse(position: number): Promise<string | null> {
   return error ? null : id;
 }
 
+type IdPage = { data: { id: string }[] | null; error: { message: string } | null };
+
+async function loadAllIds(
+  loadPage: (from: number, to: number) => PromiseLike<IdPage>,
+): Promise<string[] | null> {
+  const ids: string[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const result = await loadPage(from, from + pageSize - 1);
+    if (result.error) return null;
+    const page = result.data ?? [];
+    ids.push(...page.map((row) => row.id));
+    if (page.length < pageSize) return ids;
+  }
+}
+
 export async function saveCourse(input: CourseInput): Promise<boolean> {
   const db = supabaseAdmin();
   const courseResult = await db.from("courses").upsert({
@@ -141,8 +159,15 @@ export async function saveCourse(input: CourseInput): Promise<boolean> {
   });
   if (courseResult.error) return false;
   const moduleIds = input.modules.map((module) => module.id);
-  const existingModules = await db.from("course_modules").select("id").eq("course_id", input.id).returns<{ id: string }[]>();
-  const removedModuleIds = (existingModules.data ?? []).map((row) => row.id).filter((id) => !moduleIds.includes(id));
+  const existingModuleIds = await loadAllIds((from, to) => db
+    .from("course_modules")
+    .select("id")
+    .eq("course_id", input.id)
+    .order("id")
+    .range(from, to)
+    .returns<{ id: string }[]>());
+  if (!existingModuleIds) return false;
+  const removedModuleIds = existingModuleIds.filter((id) => !moduleIds.includes(id));
   if (removedModuleIds.length > 0 && (await db.from("course_modules").delete().in("id", removedModuleIds)).error) return false;
   for (const [moduleIndex, module] of input.modules.entries()) {
     const moduleResult = await db.from("course_modules").upsert({
@@ -151,8 +176,15 @@ export async function saveCourse(input: CourseInput): Promise<boolean> {
     });
     if (moduleResult.error) return false;
     const lessonIds = module.lessons.map((lesson) => lesson.id);
-    const existingLessons = await db.from("course_lessons").select("id").eq("module_id", module.id).returns<{ id: string }[]>();
-    const removedLessonIds = (existingLessons.data ?? []).map((row) => row.id).filter((id) => !lessonIds.includes(id));
+    const existingLessonIds = await loadAllIds((from, to) => db
+      .from("course_lessons")
+      .select("id")
+      .eq("module_id", module.id)
+      .order("id")
+      .range(from, to)
+      .returns<{ id: string }[]>());
+    if (!existingLessonIds) return false;
+    const removedLessonIds = existingLessonIds.filter((id) => !lessonIds.includes(id));
     if (removedLessonIds.length > 0 && (await db.from("course_lessons").delete().in("id", removedLessonIds)).error) return false;
     for (const [lessonIndex, lesson] of module.lessons.entries()) {
       const lessonResult = await db.from("course_lessons").upsert({
@@ -161,12 +193,27 @@ export async function saveCourse(input: CourseInput): Promise<boolean> {
         status: lesson.status,
       });
       if (lessonResult.error) return false;
-      if ((await db.from("course_lesson_blocks").delete().eq("lesson_id", lesson.id)).error) return false;
+      // Preserve stable block rows. Deleting and reinserting every block erased
+      // course_practice_attempts through the block FK's ON DELETE CASCADE.
+      const existingBlockIds = await loadAllIds((from, to) => db
+        .from("course_lesson_blocks")
+        .select("id")
+        .eq("lesson_id", lesson.id)
+        .order("id")
+        .range(from, to)
+        .returns<{ id: string }[]>());
+      if (!existingBlockIds) return false;
       if (lesson.blocks.length > 0) {
-        const blockResult = await db.from("course_lesson_blocks").insert(lesson.blocks.map((block, blockIndex) => ({
+        const blockResult = await db.from("course_lesson_blocks").upsert(lesson.blocks.map((block, blockIndex) => ({
           id: block.id, lesson_id: lesson.id, position: blockIndex + 1, kind: block.kind, content: block.content,
         })));
         if (blockResult.error) return false;
+      }
+      const blockIds = new Set(lesson.blocks.map((block) => block.id));
+      const removedBlockIds = existingBlockIds.filter((id) => !blockIds.has(id));
+      if (removedBlockIds.length > 0) {
+        const removedBlocks = await db.from("course_lesson_blocks").delete().in("id", removedBlockIds);
+        if (removedBlocks.error) return false;
       }
     }
   }
@@ -183,4 +230,91 @@ export async function setLessonComplete(email: string, lessonId: string, complet
     ? await db.from("course_lesson_completions").upsert({ email, lesson_id: lessonId, completed_at: new Date().toISOString() })
     : await db.from("course_lesson_completions").delete().eq("email", email).eq("lesson_id", lessonId);
   return !result.error;
+}
+
+export async function canAccessPublishedCourseLesson(email: string, lessonId: string): Promise<boolean> {
+  const db = supabaseAdmin();
+  const lesson = await db
+    .from("course_lessons")
+    .select("module_id,status")
+    .eq("id", lessonId)
+    .maybeSingle<{ module_id: string; status: string }>();
+  if (lesson.error) throw new Error(`Could not load course lesson [${lesson.error.code}]: ${lesson.error.message}`);
+  if (!lesson.data || lesson.data.status !== "published") return false;
+
+  const courseModule = await db
+    .from("course_modules")
+    .select("course_id,status")
+    .eq("id", lesson.data.module_id)
+    .maybeSingle<{ course_id: string; status: string }>();
+  if (courseModule.error) throw new Error(`Could not load course module [${courseModule.error.code}]: ${courseModule.error.message}`);
+  if (!courseModule.data || courseModule.data.status !== "published") return false;
+
+  const [course, access] = await Promise.all([
+    db
+      .from("courses")
+      .select("slug,status")
+      .eq("id", courseModule.data.course_id)
+      .maybeSingle<{ slug: string; status: string }>(),
+    getStudentAccess(email),
+  ]);
+  if (course.error) throw new Error(`Could not load course [${course.error.code}]: ${course.error.message}`);
+  return Boolean(
+    access.active
+    && course.data
+    && course.data.status === "published"
+    && canAccessCourse(access, course.data.slug),
+  );
+}
+
+type CoursePracticeAttemptRow = {
+  id: string;
+  score: number;
+  correct_count: number;
+  question_count: number;
+  passed: boolean;
+  completed_at: string;
+};
+
+export async function getLatestCoursePracticeAttempts(
+  email: string,
+  blockIds: string[],
+): Promise<Map<string, SavedCoursePracticeAttempt>> {
+  const uniqueBlockIds = [...new Set(blockIds)];
+  const rows = await Promise.all(uniqueBlockIds.map(async (blockId) => {
+    const db = supabaseAdmin();
+    const [latest, count, best] = await Promise.all([
+      db.from("course_practice_attempts")
+        .select("id,score,correct_count,question_count,passed,completed_at")
+        .eq("email", email)
+        .eq("block_id", blockId)
+        .order("completed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle<CoursePracticeAttemptRow>(),
+      db.from("course_practice_attempts")
+        .select("id", { count: "exact", head: true })
+        .eq("email", email)
+        .eq("block_id", blockId),
+      db.from("course_practice_attempts")
+        .select("score")
+        .eq("email", email)
+        .eq("block_id", blockId)
+        .order("score", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ score: number }>(),
+    ]);
+    if (latest.error || count.error || best.error) throw latest.error ?? count.error ?? best.error;
+    return latest.data ? [blockId, latest.data, count.count ?? 1, best.data?.score ?? latest.data.score] as const : null;
+  }));
+
+  return new Map(rows.flatMap((entry) => entry ? [[entry[0], {
+    id: entry[1].id,
+    score: entry[1].score,
+    correctCount: entry[1].correct_count,
+    questionCount: entry[1].question_count,
+    passed: entry[1].passed,
+    completedAt: entry[1].completed_at,
+    attemptCount: entry[2],
+    bestScore: entry[3],
+  }] as const] : []));
 }

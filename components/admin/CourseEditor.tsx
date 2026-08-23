@@ -66,6 +66,20 @@ export function CourseEditor({ initial }: { initial: Course }) {
     updateModule(moduleIndex, { lessons: [...courseModule.lessons, lesson] });
     setSelectedLessonId(id);
   }
+  function removeModule(moduleIndex: number) {
+    const courseModule = course.modules[moduleIndex];
+    if (!courseModule || !window.confirm(
+      `Delete module “${courseModule.title}” and its ${courseModule.lessons.length} lesson${courseModule.lessons.length === 1 ? "" : "s"}? This takes effect when you save the course.`,
+    )) return;
+    const remaining = course.modules.filter((_, index) => index !== moduleIndex);
+    if (courseModule.lessons.some((lesson) => lesson.id === selectedLessonId)) {
+      setSelectedLessonId(remaining.flatMap((item) => item.lessons)[0]?.id ?? null);
+    }
+    setCourse((current) => ({
+      ...current,
+      modules: current.modules.filter((_, index) => index !== moduleIndex),
+    }));
+  }
   function addBlock(moduleIndex: number, lessonIndex: number, kind: LessonBlockKind) {
     const lesson = course.modules[moduleIndex].lessons[lessonIndex];
     const content: LessonBlock["content"] = kind === "text" ? { body: "" } : kind === "practice" ? { practice: emptyCoursePractice(`${lesson.title} practice`) } : { url: "", title: "" };
@@ -77,17 +91,29 @@ export function CourseEditor({ initial }: { initial: Course }) {
     setSaving(true);
     setMessage(null);
     const input: CourseInput = { id: course.id, slug: cleanSlug(course.slug), title: course.title, description: course.description, eyebrow: course.eyebrow, coverUrl: course.coverUrl, position: course.position, estimatedMinutes: course.estimatedMinutes, status: course.status, modules: course.modules };
-    const response = await fetch(`/api/admin/courses/${course.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(input) });
-    const result = (await response.json().catch(() => null)) as { error?: string; detail?: string } | null;
-    setSaving(false);
-    if (response.ok) { setSavedSnapshot(JSON.stringify(course)); setMessage({ tone: "success", text: "Course saved. Student content is up to date." }); router.refresh(); }
-    else setMessage({ tone: "error", text: result?.detail ?? "The course could not be saved. Check the highlighted content and duplicate slugs." });
+    try {
+      const response = await fetch(`/api/admin/courses/${course.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(input) });
+      const result = (await response.json().catch(() => null)) as { error?: string; detail?: string } | null;
+      if (response.ok) { setSavedSnapshot(JSON.stringify(course)); setMessage({ tone: "success", text: "Course saved. Student content is up to date." }); router.refresh(); }
+      else setMessage({ tone: "error", text: result?.detail ?? "The course could not be saved. Check the highlighted content and duplicate slugs." });
+    } catch {
+      setMessage({ tone: "error", text: "The course could not be saved because the server could not be reached." });
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function removeCourse() {
-    if (!window.confirm(`Delete “${course.title}” and every lesson, practice, and student completion inside it?`)) return;
-    const response = await fetch(`/api/admin/courses/${course.id}`, { method: "DELETE" });
-    if (response.ok) router.push("/ultimate/admin/courses");
+    if (!window.confirm(`Delete “${course.title}” and all unused content inside it? Content with student completions or practice attempts must be unpublished instead.`)) return;
+    setMessage(null);
+    try {
+      const response = await fetch(`/api/admin/courses/${course.id}`, { method: "DELETE" });
+      const result = (await response.json().catch(() => null)) as { detail?: string } | null;
+      if (response.ok) router.push("/ultimate/admin/courses");
+      else setMessage({ tone: "error", text: result?.detail ?? "The course could not be deleted." });
+    } catch {
+      setMessage({ tone: "error", text: "The course could not be deleted because the server could not be reached." });
+    }
   }
 
   function focusIssue(issue: CourseAuditIssue) {
@@ -121,7 +147,7 @@ export function CourseEditor({ initial }: { initial: Course }) {
       <section className="mt-6 overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-pop">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-navy/10 bg-haze/50 px-4 py-4 sm:px-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Curriculum builder</p><h3 className="mt-1 font-display text-xl font-extrabold text-navy">Modules, lessons, and content</h3></div><button type="button" onClick={addModule} className="min-h-11 cursor-pointer rounded-xl bg-navy px-4 text-sm font-extrabold text-white transition-colors hover:bg-navy/90">+ Add module</button></header>
         <div className="grid min-h-[640px] lg:grid-cols-[310px_minmax(0,1fr)]">
-          <CurriculumNavigator course={course} selectedLessonId={selectedLessonId} onSelect={setSelectedLessonId} onChange={setCourse} onAddLesson={addLesson} />
+          <CurriculumNavigator course={course} selectedLessonId={selectedLessonId} onSelect={setSelectedLessonId} onChange={setCourse} onAddLesson={addLesson} onRemoveModule={removeModule} />
           <main className="min-w-0 p-4 sm:p-6">
             {selectedLocation ? <LessonWorkspace course={course} module={selectedLocation.module} moduleIndex={selectedLocation.moduleIndex} lesson={selectedLocation.lesson} lessonIndex={selectedLocation.lessonIndex} updateModule={updateModule} updateLesson={updateLesson} updateBlock={updateBlock} addBlock={addBlock} /> : <EmptyLesson onAdd={() => course.modules[0] ? addLesson(0) : addModule()} hasModule={course.modules.length > 0} />}
           </main>
@@ -131,8 +157,8 @@ export function CourseEditor({ initial }: { initial: Course }) {
   );
 }
 
-function CurriculumNavigator({ course, selectedLessonId, onSelect, onChange, onAddLesson }: { course: Course; selectedLessonId: string | null; onSelect: (id: string) => void; onChange: (course: Course) => void; onAddLesson: (moduleIndex: number) => void }) {
-  return <aside className="border-b border-navy/10 bg-haze/35 p-3 lg:border-b-0 lg:border-r"><p className="px-2 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy/35">Course outline</p><div className="space-y-3">{course.modules.map((module, moduleIndex) => <details key={module.id} open className="overflow-hidden rounded-2xl border border-navy/10 bg-white"><summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 bg-navy px-3 py-2 text-white"><span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-white/10 text-[10px] font-extrabold">{moduleIndex + 1}</span><strong className="min-w-0 flex-1 truncate text-xs">{module.title}</strong><OrderButtons inverse onUp={(event) => { event.preventDefault(); onChange({ ...course, modules: move(course.modules, moduleIndex, -1) }); }} onDown={(event) => { event.preventDefault(); onChange({ ...course, modules: move(course.modules, moduleIndex, 1) }); }} /></summary><div className="space-y-1 p-2">{module.lessons.map((lesson, lessonIndex) => <button key={lesson.id} type="button" onClick={() => onSelect(lesson.id)} className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors ${lesson.id === selectedLessonId ? "bg-ice text-brand-700" : "text-navy/60 hover:bg-haze hover:text-navy"}`}><span className={`grid h-6 w-6 flex-none place-items-center rounded-lg text-[9px] font-extrabold ${lesson.status === "published" ? "bg-success-bg text-success-600" : "bg-[#fff4d5] text-[#8a6500]"}`}>{lessonIndex + 1}</span><span className="min-w-0 flex-1 truncate text-xs font-bold">{lesson.title}</span><span className="text-[9px] font-bold text-navy/30">{lesson.blocks.length}</span></button>)}<button type="button" onClick={() => onAddLesson(moduleIndex)} className="min-h-10 w-full cursor-pointer rounded-xl border border-dashed border-brand/25 text-xs font-extrabold text-brand-700 transition-colors hover:bg-ice">+ Add lesson</button></div></details>)}</div></aside>;
+function CurriculumNavigator({ course, selectedLessonId, onSelect, onChange, onAddLesson, onRemoveModule }: { course: Course; selectedLessonId: string | null; onSelect: (id: string) => void; onChange: (course: Course) => void; onAddLesson: (moduleIndex: number) => void; onRemoveModule: (moduleIndex: number) => void }) {
+  return <aside className="border-b border-navy/10 bg-haze/35 p-3 lg:border-b-0 lg:border-r"><p className="px-2 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy/35">Course outline</p><div className="space-y-3">{course.modules.map((module, moduleIndex) => <details key={module.id} open className="overflow-hidden rounded-2xl border border-navy/10 bg-white"><summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 bg-navy px-3 py-2 text-white"><span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-white/10 text-[10px] font-extrabold">{moduleIndex + 1}</span><strong className="min-w-0 flex-1 truncate text-xs">{module.title}</strong><OrderButtons inverse onUp={(event) => { event.preventDefault(); onChange({ ...course, modules: move(course.modules, moduleIndex, -1) }); }} onDown={(event) => { event.preventDefault(); onChange({ ...course, modules: move(course.modules, moduleIndex, 1) }); }} /></summary><div className="space-y-1 p-2">{module.lessons.map((lesson, lessonIndex) => <button key={lesson.id} type="button" onClick={() => onSelect(lesson.id)} className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors ${lesson.id === selectedLessonId ? "bg-ice text-brand-700" : "text-navy/60 hover:bg-haze hover:text-navy"}`}><span className={`grid h-6 w-6 flex-none place-items-center rounded-lg text-[9px] font-extrabold ${lesson.status === "published" ? "bg-success-bg text-success-600" : "bg-[#fff4d5] text-[#8a6500]"}`}>{lessonIndex + 1}</span><span className="min-w-0 flex-1 truncate text-xs font-bold">{lesson.title}</span><span className="text-[9px] font-bold text-navy/30">{lesson.blocks.length}</span></button>)}<div className="grid grid-cols-[1fr_auto] gap-1"><button type="button" onClick={() => onAddLesson(moduleIndex)} className="min-h-10 cursor-pointer rounded-xl border border-dashed border-brand/25 text-xs font-extrabold text-brand-700 transition-colors hover:bg-ice">+ Add lesson</button><button type="button" aria-label={`Delete module ${module.title}`} onClick={() => onRemoveModule(moduleIndex)} className="min-h-10 cursor-pointer rounded-xl px-3 text-xs font-extrabold text-danger-600 transition-colors hover:bg-danger-bg">Delete</button></div></div></details>)}</div></aside>;
 }
 
 function LessonWorkspace({ course, module, moduleIndex, lesson, lessonIndex, updateModule, updateLesson, updateBlock, addBlock }: { course: Course; module: CourseModule; moduleIndex: number; lesson: CourseLesson; lessonIndex: number; updateModule: (moduleIndex: number, update: Partial<CourseModule>) => void; updateLesson: (moduleIndex: number, lessonIndex: number, update: Partial<CourseLesson>) => void; updateBlock: (moduleIndex: number, lessonIndex: number, blockIndex: number, update: Partial<LessonBlock>) => void; addBlock: (moduleIndex: number, lessonIndex: number, kind: LessonBlockKind) => void }) {

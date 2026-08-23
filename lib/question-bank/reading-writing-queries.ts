@@ -14,8 +14,7 @@ import {
 import { calculateAccuracy, prioritizeBoundedQuestions, questionBankLevel } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import { supabaseAdmin } from "@/utils/supabase/admin";
-
-const CREATED_BY = "scott-reading-import";
+import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
 
 type ReadingQuestionRow = {
   id: string;
@@ -38,6 +37,7 @@ type ReadingSkillRow = {
 };
 
 type AttemptRow = {
+  id: string;
   question_id: string;
   correct: boolean;
 };
@@ -138,20 +138,36 @@ export function getReadingWritingCorrectAnswerLabel(
 
 async function loadEligibleReadingRows(questionId?: string): Promise<ReadingQuestionRow[]> {
   const db = supabaseAdmin();
-  let questionQuery = db
-    .from("drill_questions")
-    .select(QUESTION_SELECT)
-    .eq("drill_slug", "grammar")
-    .eq("created_by", CREATED_BY)
-    .eq("status", "published")
-    .eq("section", "rw")
-    .eq("answer_type", "mc_single")
-    .order("created_at");
-  if (questionId) questionQuery = questionQuery.eq("id", questionId);
-  const questions = await questionQuery.returns<ReadingQuestionRow[]>();
-  if (questions.error) throw databaseError("Could not load Reading & Writing bank", questions.error);
+  const catalogIds = await loadEnabledCatalogIds(questionId);
+  if (catalogIds.length === 0) return [];
 
-  return filterByCatalog(questions.data ?? []);
+  const rows: ReadingQuestionRow[] = [];
+  for (const idBatch of chunks(catalogIds, 100)) {
+    const questions = await db
+      .from("drill_questions")
+      .select(QUESTION_SELECT)
+      .in("id", idBatch)
+      .eq("status", "published")
+      .eq("drill_slug", "grammar")
+      .eq("section", "rw")
+      .eq("answer_type", "mc_single")
+      .returns<ReadingQuestionRow[]>();
+    if (questions.error) throw databaseError("Could not load Reading & Writing bank", questions.error);
+    rows.push(...(questions.data ?? []));
+  }
+  return rows
+    .filter((row) => isQuestionBankRuntimeReady({
+      drillSlug: "grammar",
+      section: "rw",
+      answerType: row.answer_type,
+      domain: row.domain,
+      skill: row.skill,
+      difficulty: row.difficulty,
+      stem: row.stem,
+      passage: row.passage,
+      content: row.content,
+    }))
+    .sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
 
 const QUESTION_SELECT =
@@ -167,25 +183,23 @@ async function loadReadingSkills(): Promise<ReadingSkillRow[]> {
   return data ?? [];
 }
 
-async function filterByCatalog(rows: ReadingQuestionRow[]): Promise<ReadingQuestionRow[]> {
-  if (rows.length === 0) return [];
-  const enabledIds = new Set<string>();
-
-  for (const idBatch of chunks(rows.map((row) => row.id), 100)) {
-    const result = await supabaseAdmin()
+async function loadEnabledCatalogIds(questionId?: string): Promise<string[]> {
+  const ids: string[] = [];
+  for (let offset = 0; ; offset += 1000) {
+    let query = supabaseAdmin()
       .from("question_bank_catalog")
       .select("question_id")
       .eq("enabled", true)
-      .in("question_id", idBatch)
-      .returns<{ question_id: string }[]>();
-    if (result.error) {
-      if (isMissingCatalogError(result.error)) return rows;
-      throw databaseError("Could not load Reading & Writing catalog", result.error);
-    }
-    for (const item of result.data ?? []) enabledIds.add(item.question_id);
+      .order("question_id")
+      .range(offset, offset + 999);
+    if (questionId) query = query.eq("question_id", questionId);
+    const result = await query.returns<{ question_id: string }[]>();
+    if (result.error) throw databaseError("Could not load Reading & Writing catalog", result.error);
+    const page = result.data ?? [];
+    ids.push(...page.map((item) => item.question_id));
+    if (page.length < 1000 || questionId) break;
   }
-
-  return rows.filter((row) => enabledIds.has(row.id));
+  return ids;
 }
 
 async function loadQuestionActivity(
@@ -201,9 +215,10 @@ async function loadQuestionActivity(
     while (true) {
       const result = await supabaseAdmin()
         .from("question_bank_attempts")
-        .select("question_id,correct")
+        .select("id,question_id,correct")
         .eq("email", email)
         .in("question_id", questionIdBatch)
+        .order("id")
         .range(offset, offset + 999)
         .returns<AttemptRow[]>();
       if (result.error) {
@@ -336,10 +351,4 @@ function isDifficulty(value: string): value is Difficulty {
 function databaseError(action: string, error: { message: string; code?: string }): Error {
   const code = error.code ? ` [${error.code}]` : "";
   return new Error(`${action}${code}: ${error.message}`);
-}
-
-function isMissingCatalogError(error: { message: string; code?: string }): boolean {
-  return error.code === "42P01"
-    || error.code === "PGRST205"
-    || /question_bank_catalog.*(?:not find|does not exist|schema cache)/i.test(error.message);
 }

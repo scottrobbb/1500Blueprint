@@ -6,6 +6,7 @@ import { label } from "@/components/drills/shared/ui";
 import { FlameIcon } from "@/components/shell/icons";
 import type { StudentRow } from "@/lib/gamification/state";
 import { PlanBadge } from "@/components/account/PlanBadge";
+import { effectivePlan } from "@/lib/auth/plans";
 
 // Drills shown in the per-student mastery breakdown (must match ROSTER_DRILLS
 // in lib/gamification/state.ts).
@@ -33,27 +34,41 @@ function fmtNum(n: number): string {
 }
 
 type SortKey = "name" | "xp" | "streak" | "mastered" | "bestTest" | "lastActive";
+type StudentView = "all" | "complimentary" | "suspended";
 
 export function StudentsTable({ students }: { students: StudentRow[] }) {
+  const [studentRows, setStudentRows] = useState(students);
   const [query, setQuery] = useState("");
+  const [view, setView] = useState<StudentView>("all");
   const [sortKey, setSortKey] = useState<SortKey>("xp");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ tone: "success" | "error"; text: string } | null>(null);
 
   const summary = useMemo(() => {
-    const totalXp = students.reduce((s, r) => s + r.xp, 0);
-    const totalMastered = students.reduce((s, r) => s + r.totalMastered, 0);
+    const totalXp = studentRows.reduce((s, r) => s + r.xp, 0);
+    const totalMastered = studentRows.reduce((s, r) => s + r.totalMastered, 0);
     const avgLevel =
-      students.length > 0
-        ? Math.round(students.reduce((s, r) => s + r.level, 0) / students.length)
+      studentRows.length > 0
+        ? Math.round(studentRows.reduce((s, r) => s + r.level, 0) / studentRows.length)
         : 0;
-    return { count: students.length, totalXp, totalMastered, avgLevel };
-  }, [students]);
+    const complimentary = studentRows.filter((student) => student.isComplimentary).length;
+    const suspended = studentRows.filter(
+      (student) => student.isComplimentary && student.accountStatus === "suspended",
+    ).length;
+    return { count: studentRows.length, totalXp, totalMastered, avgLevel, complimentary, suspended };
+  }, [studentRows]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const inView = studentRows.filter((student) => {
+      if (view === "complimentary") return student.isComplimentary;
+      if (view === "suspended") return student.isComplimentary && student.accountStatus === "suspended";
+      return true;
+    });
     const filtered = q
-      ? students.filter((s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q))
-      : students;
+      ? inView.filter((s) => s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q))
+      : inView;
 
     const dir = sortDir === "asc" ? 1 : -1;
     const get = (s: StudentRow): string | number => {
@@ -79,7 +94,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
       if (av > bv) return 1 * dir;
       return 0;
     });
-  }, [students, query, sortKey, sortDir]);
+  }, [studentRows, query, view, sortKey, sortDir]);
 
   function toggleSort(key: SortKey) {
     if (key === sortKey) {
@@ -87,6 +102,49 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
     } else {
       setSortKey(key);
       setSortDir(key === "name" || key === "lastActive" ? "asc" : "desc");
+    }
+  }
+
+  async function changeComplimentaryAccess(student: StudentRow) {
+    const nextStatus = student.accountStatus === "suspended" ? "active" : "suspended";
+    const verb = nextStatus === "suspended" ? "Suspend" : "Reactivate";
+    const detail = nextStatus === "suspended"
+      ? "Their saved progress will remain intact, but complimentary access will stop immediately."
+      : "Their complimentary access will be restored immediately.";
+    if (!window.confirm(`${verb} ${student.email}?\n\n${detail}`)) return;
+
+    setPendingId(student.id);
+    setNotice(null);
+    try {
+      const response = await fetch(`/admin/api/students/${encodeURIComponent(student.id)}/access`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error ?? "The access change could not be saved.");
+
+      setStudentRows((current) => current.map((row) => {
+        if (row.id !== student.id) return row;
+        const restoredPlan = effectivePlan(row.grantPlan, null, row.legacyPlan);
+        return {
+          ...row,
+          accountStatus: nextStatus,
+          plan: nextStatus === "active" ? restoredPlan : "free",
+          accessSource: nextStatus === "active" ? (row.grantPlan ? "grant" : "legacy") : "free",
+        };
+      }));
+      setNotice({
+        tone: "success",
+        text: `${student.name}'s complimentary access is now ${nextStatus}.`,
+      });
+    } catch (error) {
+      setNotice({
+        tone: "error",
+        text: error instanceof Error ? error.message : "The access change could not be saved.",
+      });
+    } finally {
+      setPendingId(null);
     }
   }
 
@@ -107,8 +165,20 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
       </div>
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex w-full flex-wrap gap-2" role="group" aria-label="Student access filters">
+          <ViewButton active={view === "all"} onClick={() => setView("all")}>
+            All students <CountBadge>{summary.count}</CountBadge>
+          </ViewButton>
+          <ViewButton active={view === "complimentary"} onClick={() => setView("complimentary")}>
+            Complimentary <CountBadge>{summary.complimentary}</CountBadge>
+          </ViewButton>
+          <ViewButton active={view === "suspended"} onClick={() => setView("suspended")}>
+            Suspended <CountBadge>{summary.suspended}</CountBadge>
+          </ViewButton>
+        </div>
         <input
           type="search"
+          aria-label="Search students by name or email"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by name or email…"
@@ -116,21 +186,35 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
         />
         <span className="text-sm text-navy/50">
           {rows.length} {rows.length === 1 ? "student" : "students"}
-          {query ? ` of ${students.length}` : ""}
+          {query || view !== "all" ? ` of ${studentRows.length}` : ""}
         </span>
       </div>
 
-      {students.length === 0 ? (
+      {notice ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`mb-3 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${
+            notice.tone === "success"
+              ? "border-success/25 bg-success-bg text-success-600"
+              : "border-danger/25 bg-danger-bg text-danger-600"
+          }`}
+        >
+          {notice.text}
+        </div>
+      ) : null}
+
+      {studentRows.length === 0 ? (
         <div className="rounded-card border border-dashed border-navy/20 bg-mist px-4 py-16 text-center text-sm text-navy/50">
           No students yet. Accounts appear here after their first login.
         </div>
       ) : (
         <div className="overflow-x-auto rounded-card border border-navy/15 bg-white">
-          <table className="w-full min-w-[880px] border-collapse text-left text-sm">
+          <table className="w-full min-w-[1080px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-navy/10 bg-mist">
                 <SortTh label="Student" active={sortKey === "name"} dir={sortDir} onClick={() => toggleSort("name")} className="w-[26%]" />
-                <Th>Plan</Th>
+                <Th className="w-[22%]">Access</Th>
                 <SortTh label="Level / XP" active={sortKey === "xp"} dir={sortDir} onClick={() => toggleSort("xp")} />
                 <SortTh label="Streak" active={sortKey === "streak"} dir={sortDir} onClick={() => toggleSort("streak")} />
                 <SortTh label="Drill mastery" active={sortKey === "mastered"} dir={sortDir} onClick={() => toggleSort("mastered")} className="w-[22%]" />
@@ -153,7 +237,28 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
                     </div>
                   </Td>
                   <Td>
-                    <div className="flex flex-wrap gap-1.5"><PlanBadge plan={s.plan} suspended={s.accountStatus === "suspended"} test={s.isTestAccount} />{s.accountStatus === "archived" ? <span className="inline-flex rounded-full border border-navy/15 bg-navy/[0.04] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-navy/45">Archived</span> : null}</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <PlanBadge
+                        plan={s.plan}
+                        suspended={s.accountStatus === "suspended"}
+                        test={s.isTestAccount}
+                      />
+                      {s.isComplimentary ? (
+                        <span className="inline-flex rounded-full border border-brand/20 bg-brand/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-brand-600">
+                          Complimentary
+                        </span>
+                      ) : null}
+                      {s.accountStatus === "archived" ? (
+                        <span className="inline-flex rounded-full border border-navy/15 bg-navy/[0.04] px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-navy/45">
+                          Archived
+                        </span>
+                      ) : null}
+                    </div>
+                    <AccessDetails
+                      student={s}
+                      pending={pendingId === s.id}
+                      onChangeAccess={() => changeComplimentaryAccess(s)}
+                    />
                   </Td>
                   <Td className="whitespace-nowrap">
                     <div className="font-semibold text-navy">Lvl {s.level}</div>
@@ -197,11 +302,122 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
                   <Td className="whitespace-nowrap text-navy/60">{fmtDate(s.lastActive)}</Td>
                 </tr>
               ))}
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-navy/50">
+                    {view === "complimentary"
+                      ? "No complimentary students match this search."
+                      : view === "suspended"
+                        ? "No suspended complimentary students match this search."
+                        : "No students match this search."}
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
       )}
     </div>
+  );
+}
+
+function AccessDetails({
+  student,
+  pending,
+  onChangeAccess,
+}: {
+  student: StudentRow;
+  pending: boolean;
+  onChangeAccess: () => void;
+}) {
+  const source = student.isComplimentary ? "Complimentary access"
+    : student.accessSource === "subscription" ? "Stripe subscription"
+    : student.accessSource === "grant" ? `${student.grantSource ?? "Admin"} grant`
+    : student.accessSource === "legacy" ? "Legacy account plan"
+    : "Free plan";
+  const subscriptionStatus = student.subscriptionStatus?.replaceAll("_", " ");
+
+  return (
+    <div className="mt-1.5 space-y-0.5 text-[10px] leading-4 text-navy/50">
+      <p className="font-bold capitalize text-navy/65">{source}</p>
+      {subscriptionStatus ? (
+        <p>
+          Subscription: <span className="font-semibold capitalize">{subscriptionStatus}</span>
+          {student.subscriptionPlan ? ` · ${student.subscriptionPlan.toUpperCase()}` : ""}
+        </p>
+      ) : null}
+      {student.subscriptionPeriodStart || student.subscriptionPeriodEnd ? (
+        <p>
+          Period {fmtDate(student.subscriptionPeriodStart)}–{fmtDate(student.subscriptionPeriodEnd)}
+          {student.subscriptionPeriodEnd
+            ? student.cancelAtPeriodEnd
+              ? ` · cancels ${fmtDate(student.subscriptionPeriodEnd)}`
+              : ` · renews ${fmtDate(student.subscriptionPeriodEnd)}`
+            : ""}
+        </p>
+      ) : null}
+      {student.pendingPlan ? (
+        <p className="font-semibold text-[#8a6500]">
+          Pending {student.pendingPlan.toUpperCase()}{student.pendingChangeEffectiveAt ? ` · ${fmtDate(student.pendingChangeEffectiveAt)}` : ""}
+        </p>
+      ) : null}
+      {student.grantPlan ? (
+        <p>
+          Grant: {student.grantPlan.toUpperCase()}{student.grantExpiresAt ? ` · expires ${fmtDate(student.grantExpiresAt)}` : " · no expiry"}
+        </p>
+      ) : null}
+      {student.isComplimentary && student.accountStatus !== "archived" ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={onChangeAccess}
+          className={`mt-2 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-3 text-xs font-extrabold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-wait disabled:opacity-55 ${
+            student.accountStatus === "suspended"
+              ? "border-success/30 bg-success-bg text-success-600 hover:bg-success/15 focus-visible:outline-success"
+              : "border-danger/25 bg-danger-bg text-danger-600 hover:bg-danger/10 focus-visible:outline-danger"
+          }`}
+        >
+          {pending
+            ? "Saving…"
+            : student.accountStatus === "suspended"
+              ? "Reactivate access"
+              : "Suspend access"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function ViewButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border px-3.5 text-sm font-extrabold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${
+        active
+          ? "border-navy bg-navy text-white"
+          : "border-navy/15 bg-white text-navy/65 hover:border-navy/30 hover:bg-mist"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function CountBadge({ children }: { children: ReactNode }) {
+  return (
+    <span className="rounded-full bg-current/10 px-2 py-0.5 text-[11px] tabular-nums">
+      {children}
+    </span>
   );
 }
 

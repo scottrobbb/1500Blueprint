@@ -39,6 +39,11 @@ export function ModuleResults({
   savedHref,
   attemptDate,
   backHref,
+  modulesHref,
+  testsHref = "/practice-test",
+  saveStatus,
+  saveError,
+  onRetrySave,
 }: {
   meta: PracticeModuleMeta;
   module: TestModule;
@@ -50,6 +55,11 @@ export function ModuleResults({
   savedHref?: string;
   attemptDate?: string;
   backHref?: string;
+  modulesHref?: string;
+  testsHref?: string;
+  saveStatus?: "idle" | "saving" | "saved" | "error";
+  saveError?: string | null;
+  onRetrySave?: () => void;
 }) {
   const [showOnlyWrong, setShowOnlyWrong] = useState(false);
 
@@ -70,7 +80,7 @@ export function ModuleResults({
         <div className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
           <div className="flex items-center justify-between">
             <Logo className="text-white [&_.text-navy]:text-white" />
-            <Link href="/practice-test" className="text-sm text-white/70 hover:text-white">
+            <Link href={testsHref} className="text-sm text-white/70 hover:text-white">
               Practice tests
             </Link>
           </div>
@@ -89,6 +99,21 @@ export function ModuleResults({
       </section>
 
       <div className="mx-auto max-w-4xl px-6 py-10">
+        {saveStatus === "saving" ? (
+          <p role="status" className="mb-5 rounded-xl border border-brand/20 bg-white px-4 py-3 text-sm font-semibold text-navy">
+            Saving this attempt to your history…
+          </p>
+        ) : null}
+        {saveStatus === "error" ? (
+          <div role="alert" className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <span>{saveError ?? "This attempt has not been saved yet."}</span>
+            {onRetrySave ? (
+              <button type="button" onClick={onRetrySave} className="min-h-11 rounded-xl bg-red-700 px-4 font-semibold text-white hover:bg-red-800">
+                Retry save
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-bold text-navy">Review your answers</h2>
           <label className="flex items-center gap-2 text-sm text-ink">
@@ -200,13 +225,13 @@ export function ModuleResults({
             </Link>
           )}
           <Link
-            href={`/practice-test/${slug}/modules`}
+            href={modulesHref ?? `/practice-test/${slug}/modules`}
             className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"
           >
             Other modules
           </Link>
           <Link
-            href="/practice-test"
+            href={testsHref}
             className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"
           >
             Back to tests

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
 import {
   deleteTestQuestion,
+  TestPublicationError,
   updateTestQuestion,
   type ChoiceInput,
   type QuestionInput,
@@ -82,7 +83,11 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     await updateTestQuestion(toQuestionInput(id, body));
   } catch (e) {
     console.error("update test question failed:", e);
-    return NextResponse.json({ error: "save failed" }, { status: 500 });
+    const invalid = e instanceof TestPublicationError;
+    return NextResponse.json(
+      { error: "save failed", detail: invalid ? e.message : "The question could not be saved. No successful save was confirmed." },
+      { status: invalid ? 400 : 500 },
+    );
   }
   return NextResponse.json({ ok: true });
 }
@@ -94,7 +99,11 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
     await deleteTestQuestion(id);
   } catch (e) {
     console.error("delete test question failed:", e);
-    return NextResponse.json({ error: "delete failed" }, { status: 500 });
+    const invalid = e instanceof TestPublicationError;
+    return NextResponse.json(
+      { error: "delete failed", detail: invalid ? e.message : "The question could not be deleted. No deletion was confirmed." },
+      { status: invalid ? 400 : 500 },
+    );
   }
   return NextResponse.json({ ok: true });
 }

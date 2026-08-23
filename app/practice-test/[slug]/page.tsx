@@ -5,6 +5,8 @@ import { loadTestSession } from "@/lib/sat/testSession";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
+import { getNavStats } from "@/lib/gamification/state";
+import { isAdminEmail } from "@/lib/auth/admin";
 
 export const metadata = {
   title: "Practice Test · 1500 SAT Blueprint",
@@ -20,18 +22,22 @@ export default async function RunTestPage({
 }) {
   const { slug } = await params;
   const { workspace } = await searchParams;
-  const test = await loadTest(slug);
-  if (!test) notFound();
   const session = await getSession();
   if (!session || !(await canAccessPracticeTest(session.email, slug))) notFound();
+  const test = await loadTest(slug, { includeDraft: isAdminEmail(session.email) });
+  if (!test) notFound();
   const devMode = process.env.NODE_ENV !== "production" && session?.plan === "dev";
   const returnToUltimate = workspace === "ultimate" && isUltimatePreviewEmail(session?.email);
   // An in-progress session lets the intro offer "Resume where you left off".
-  const resumeState = session ? await loadTestSession(session.email, slug) : null;
+  const [resumeState, nav] = await Promise.all([
+    loadTestSession(session.email, slug),
+    getNavStats(session.email),
+  ]);
   return (
     <TestRunner
       test={test}
       slug={slug}
+      studentName={nav.name}
       devMode={devMode}
       resumeState={resumeState}
       returnToUltimate={returnToUltimate}

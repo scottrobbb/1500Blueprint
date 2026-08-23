@@ -47,6 +47,7 @@ function toQuestionInput(q: DrillQuestion): QuestionInput {
     content: q.content,
     explanation: q.explanation,
     status: q.status,
+    includeInQuestionBank: q.includeInQuestionBank,
   };
 }
 
@@ -76,6 +77,7 @@ export function QuestionEditor({
   const [question, setQuestion] = useState<DrillQuestion>(initialQuestion);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState<Saving>("idle");
+  const [error, setError] = useState<string | null>(null);
 
   const ContentFields = FIELD_EDITORS[question.drillSlug];
   // Critical-path steps apply to AI process-graded drills (grammar) and to math
@@ -87,17 +89,20 @@ export function QuestionEditor({
   function onChange(patch: Partial<DrillQuestion>) {
     setQuestion((prev) => ({ ...prev, ...patch }));
     setDirty(true);
+    setError(null);
   }
 
   function onWalkthroughChange(steps: WalkthroughStep[]) {
     setQuestion((prev) => ({ ...prev, walkthrough: steps }));
     setDirty(true);
+    setError(null);
   }
 
   // Persists the current state. Returns whether the write succeeded so callers
   // (publish toggle) can chain on it.
   async function persist(next: DrillQuestion): Promise<boolean> {
     setSaving("saving");
+    setError(null);
     try {
       const res = await fetch(`/admin/api/questions/${next.id}`, {
         method: "PUT",
@@ -107,10 +112,17 @@ export function QuestionEditor({
           walkthrough: toWalkthroughInput(next.walkthrough ?? []),
         }),
       });
-      if (!res.ok) return false;
+      if (!res.ok) {
+        const result = (await res.json().catch(() => null)) as { error?: string; detail?: string } | null;
+        setError(result?.detail ?? "The question could not be saved. Please try again.");
+        return false;
+      }
       setDirty(false);
       router.refresh();
       return true;
+    } catch {
+      setError("The question could not be saved. Check your connection and retry.");
+      return false;
     } finally {
       setSaving("idle");
     }
@@ -126,11 +138,11 @@ export function QuestionEditor({
       status: published ? "draft" : "published",
     };
     setQuestion(next);
-    await persist(next);
+    if (!(await persist(next))) setQuestion(question);
   }
 
   async function onDelete() {
-    if (!confirm("Delete this question? This cannot be undone.")) return;
+    if (!confirm("Delete this unused question? Questions with student attempt history must be unpublished instead.")) return;
     setSaving("deleting");
     try {
       const res = await fetch(`/admin/api/questions/${question.id}`, { method: "DELETE" });
@@ -138,6 +150,10 @@ export function QuestionEditor({
         router.push(backHref);
         return;
       }
+      const result = (await res.json().catch(() => null)) as { error?: string; detail?: string } | null;
+      setError(result?.detail ?? "The question could not be deleted. Unpublish it if it has student attempt history.");
+    } catch {
+      setError("The question could not be deleted. Check your connection and retry.");
     } finally {
       setSaving("idle");
     }
@@ -205,6 +221,7 @@ export function QuestionEditor({
       </div>
 
       <footer className="sticky bottom-0 z-30 -mx-6 flex flex-wrap items-center gap-3 border-t border-navy/12 bg-white/[0.92] px-6 py-3 backdrop-blur-md">
+        {error ? <span role="alert" className="basis-full text-[12px] font-semibold text-danger-600">{error}</span> : null}
         <button
           type="button"
           onClick={onDelete}

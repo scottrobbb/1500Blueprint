@@ -1,6 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
-import { updateTestSettings, type TestSettingsUpdate } from "@/lib/sat/admin-queries";
+import {
+  TestPublicationError,
+  updateTestSettings,
+  type TestSettingsUpdate,
+} from "@/lib/sat/admin-queries";
+import { isPublicationStatus } from "@/lib/flags";
 
 // Practice-test settings endpoint. Authorizes with getAdminSession() before the
 // service-role write. Next 16: ctx.params is a Promise.
@@ -24,6 +29,12 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   } catch {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
+  if ("status" in body && !isPublicationStatus(body.status)) {
+    return NextResponse.json(
+      { error: "invalid status", detail: "Choose Draft or Published for the test status." },
+      { status: 400 },
+    );
+  }
 
   const patch: TestSettingsUpdate = {};
   if (typeof body.title === "string" && body.title.trim()) patch.title = body.title.trim();
@@ -37,6 +48,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (rw !== undefined) patch.rwThreshold = rw;
   const math = fraction(body.mathThreshold);
   if (math !== undefined) patch.mathThreshold = math;
+  if (isPublicationStatus(body.status)) patch.status = body.status;
 
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "no valid fields" }, { status: 400 });
@@ -46,7 +58,11 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     await updateTestSettings(slug, patch);
   } catch (e) {
     console.error("update test settings failed:", e);
-    return NextResponse.json({ error: "save failed" }, { status: 500 });
+    const invalid = e instanceof TestPublicationError;
+    return NextResponse.json(
+      { error: "save failed", detail: invalid ? e.message : "The test settings could not be saved." },
+      { status: invalid ? 400 : 500 },
+    );
   }
   return NextResponse.json({ ok: true });
 }

@@ -8,11 +8,11 @@ export const COMPLIMENTARY_ACCESS_PLAN = "complimentary";
 export async function hasComplimentaryAccess(email: string): Promise<boolean> {
   const { data, error } = await supabaseAdmin()
     .from("users")
-    .select("plan")
+    .select("plan,account_status")
     .eq("email", email.trim().toLowerCase())
-    .maybeSingle<{ plan: string | null }>();
+    .maybeSingle<{ plan: string | null; account_status: string }>();
   if (error) throw new Error(`failed to check complimentary access: ${error.message}`);
-  return data?.plan === COMPLIMENTARY_ACCESS_PLAN;
+  return data?.plan === COMPLIMENTARY_ACCESS_PLAN && data.account_status === "active";
 }
 
 // Upsert a member record on successful login (see record_login() in

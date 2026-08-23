@@ -90,7 +90,9 @@ export type ReadingContent = {
   keyPoints: string[];
   level?: number;
 };
-export type TargetedMathContent = { accepted: string[] };
+export type TargetedMathContent =
+  | { kind: "mc"; choices: LetteredChoice[]; correct: LetteredChoice["id"] }
+  | { kind: "grid"; accepted: string[] };
 export type AiMathContent =
   | { kind: "mc"; choices: LetteredChoice[]; correct: "A" | "B" | "C" | "D" }
   | { kind: "grid"; accepted: string[] };
@@ -139,6 +141,7 @@ export type DrillQuestion = {
   content: DrillContent;
   explanation: string | null;
   status: QuestionStatus;
+  includeInQuestionBank: boolean;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -159,6 +162,7 @@ export type DrillConfig = {
   answerTypes: AnswerType[];
   gradingPrompt: string | null;
   scoringConfig: Record<string, unknown>;
+  status: QuestionStatus;
 };
 
 // Canonical taxonomy row (matches sat_skills).

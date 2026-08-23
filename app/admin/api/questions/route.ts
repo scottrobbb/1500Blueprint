@@ -13,9 +13,9 @@ function param(params: URLSearchParams, key: string): string | undefined {
   return raw ? raw : undefined;
 }
 
-function toInt(value: string | undefined, fallback: number): number {
+function toInt(value: string | undefined, fallback: number, max = Number.MAX_SAFE_INTEGER): number {
   const n = Number(value);
-  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+  return Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), max) : fallback;
 }
 
 // GET /admin/api/questions — filtered + paginated question bank list.
@@ -36,8 +36,8 @@ export async function GET(req: NextRequest) {
     search: param(params, "search"),
   };
 
-  const page = toInt(param(params, "page"), 1);
-  const pageSize = toInt(param(params, "pageSize"), 25);
+  const page = toInt(param(params, "page"), 1, 100_000);
+  const pageSize = toInt(param(params, "pageSize"), 25, 100);
 
   const { questions, total } = await listQuestions(filters, page, pageSize);
   return NextResponse.json({ questions, total });

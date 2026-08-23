@@ -32,8 +32,6 @@ import { BreakScreen } from "./BreakScreen";
 import { ResultsScreen, type AttemptSaveStatus } from "./ResultsScreen";
 import { DevJumpMenu } from "./DevJumpMenu";
 
-const STUDENT_NAME = "Shouqi Han";
-
 // sessionStorage key marking "this tab was actively mid-module/review/break on
 // this test slug, and hasn't explicitly exited since." Deliberately NOT based
 // on the Performance Navigation Timing API (`performance.getEntriesByType
@@ -88,12 +86,14 @@ function sanitizeResumeState(s: TestState, test: PracticeTest): TestState | null
 export function TestRunner({
   test,
   slug,
+  studentName,
   devMode = false,
   resumeState = null,
   returnToUltimate = false,
 }: {
   test: PracticeTest;
   slug: string;
+  studentName: string;
   devMode?: boolean;
   resumeState?: SavedSession | null;
   returnToUltimate?: boolean;
@@ -391,7 +391,7 @@ export function TestRunner({
     return (
       <BreakScreen
         timeLeft={state.timeLeft}
-        studentName={STUDENT_NAME}
+        studentName={studentName}
         betweenModules={state.breakTarget === "module2"}
         onResume={() => dispatch({ type: "END_BREAK" })}
       />
@@ -418,7 +418,7 @@ export function TestRunner({
           saveStatus={state.completedViaFlow ? attemptSaveStatus : undefined}
           onRetrySave={saveCompletedAttempt}
           savedHref={savedAttemptId ? `/practice-test/${slug}/results/${savedAttemptId}${workspaceQuery}` : undefined}
-          attemptsHref={returnToUltimate ? completedHref : `/practice-test/${slug}/attempts`}
+          attemptsHref={`/practice-test/${slug}/attempts${workspaceQuery}`}
           completedHref={completedHref}
           testsHref={testsHref}
           scorePromptAttemptId={savedAttemptId ?? undefined}
@@ -481,7 +481,7 @@ export function TestRunner({
           onGoto={(i) => dispatch({ type: "GOTO", index: i })}
         />
         <FooterNav
-          studentName={STUDENT_NAME}
+          studentName={studentName}
           showCenter={false}
           canBack
           onBack={() => dispatch({ type: "GOTO", index: state.qIndex })}
@@ -545,7 +545,7 @@ export function TestRunner({
       </div>
 
       <FooterNav
-        studentName={STUDENT_NAME}
+        studentName={studentName}
         questionLabel={`Question ${state.qIndex + 1} of ${mod.questions.length}`}
         canBack={state.qIndex > 0}
         onBack={() => dispatch({ type: "BACK" })}

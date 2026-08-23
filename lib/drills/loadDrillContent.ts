@@ -7,6 +7,13 @@
 
 import type { Difficulty } from "@/lib/sat/types";
 import { supabasePublishable } from "@/utils/supabase/publishable";
+import { supabaseAdmin } from "@/utils/supabase/admin";
+import {
+  canAccessPublication,
+  isMissingPublicationStatusColumn,
+  legacyPublicationStatus,
+  type PublicationStatus,
+} from "@/lib/flags";
 import type {
   AnswerType,
   DrillContent,
@@ -58,6 +65,7 @@ function toQuestion(r: QuestionRow): DrillQuestion {
     content: (r.content ?? {}) as DrillContent,
     explanation: r.explanation,
     status: r.status as QuestionStatus,
+    includeInQuestionBank: false,
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -69,11 +77,15 @@ function toQuestion(r: QuestionRow): DrillQuestion {
 }
 
 // Load all published questions for one drill (with their walkthrough steps).
-export async function loadDrillQuestions(drillSlug: DrillSlug): Promise<DrillQuestion[]> {
+export async function loadDrillQuestions(
+  drillSlug: DrillSlug,
+  options: { includeDraftDrill?: boolean } = {},
+): Promise<DrillQuestion[]> {
   const rows: QuestionRow[] = [];
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
-    const { data, error } = await supabasePublishable()
+    const db = options.includeDraftDrill ? supabaseAdmin() : supabasePublishable();
+    const { data, error } = await db
       .from("drill_questions")
       .select(
         "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_at,updated_at," +
@@ -82,6 +94,7 @@ export async function loadDrillQuestions(drillSlug: DrillSlug): Promise<DrillQue
       .eq("drill_slug", drillSlug)
       .eq("status", "published")
       .order("created_at")
+      .order("id")
       .range(from, from + pageSize - 1);
     if (error) {
       throw new Error(`Could not load ${drillSlug} questions [${error.code}]: ${error.message}`);
@@ -91,4 +104,28 @@ export async function loadDrillQuestions(drillSlug: DrillSlug): Promise<DrillQue
     if (page.length < pageSize) break;
   }
   return rows.map(toQuestion);
+}
+
+export async function canAccessDrillPublication(slug: string, isAdmin: boolean): Promise<boolean> {
+  const db = supabaseAdmin();
+  const result = await db
+    .from("drills")
+    .select("status")
+    .eq("slug", slug)
+    .maybeSingle<{ status: string }>();
+  if (result.error) {
+    if (!isMissingPublicationStatusColumn(result.error)) {
+      throw new Error(`Could not load drill publication status: ${result.error.message}`);
+    }
+    const legacy = await db
+      .from("drills")
+      .select("slug")
+      .eq("slug", slug)
+      .maybeSingle<{ slug: string }>();
+    if (legacy.error) throw new Error(`Could not load legacy drill publication: ${legacy.error.message}`);
+    return Boolean(legacy.data) && canAccessPublication(legacyPublicationStatus("drill", slug), isAdmin);
+  }
+  if (!result.data) return false;
+  const status: PublicationStatus = result.data.status === "published" ? "published" : "draft";
+  return canAccessPublication(status, isAdmin);
 }

@@ -21,6 +21,7 @@ export function DrillSettingsForm({ drill, backHref = "/admin/drills" }: { drill
   const [title, setTitle] = useState(drill.title);
   const [category, setCategory] = useState<DrillCategory>(drill.category);
   const [accent, setAccent] = useState<Accent>(drill.accent);
+  const [status, setStatus] = useState(drill.status);
   const [gradingPrompt, setGradingPrompt] = useState(drill.gradingPrompt ?? "");
   const [scoringText, setScoringText] = useState(() =>
     JSON.stringify(drill.scoringConfig ?? {}, null, 2),
@@ -70,7 +71,7 @@ export function DrillSettingsForm({ drill, backHref = "/admin/drills" }: { drill
       }
     }
 
-    const patch: DrillUpdate = { title, category, accent, scoringConfig };
+    const patch: DrillUpdate = { title, category, accent, status, scoringConfig };
     if (drill.usesAi) patch.gradingPrompt = gradingPrompt.trim() || null;
 
     setSaving("saving");
@@ -82,11 +83,14 @@ export function DrillSettingsForm({ drill, backHref = "/admin/drills" }: { drill
         body: JSON.stringify(patch),
       });
       if (!res.ok) {
-        setSaveError("Save failed. Please try again.");
+        const result = (await res.json().catch(() => null)) as { detail?: string } | null;
+        setSaveError(result?.detail ?? "Save failed. Please try again.");
         return;
       }
       setDirty(false);
       router.refresh();
+    } catch {
+      setSaveError("Save failed. Check your connection and retry.");
     } finally {
       setSaving("idle");
     }
@@ -154,6 +158,20 @@ export function DrillSettingsForm({ drill, backHref = "/admin/drills" }: { drill
                   {capitalize(a)}
                 </option>
               ))}
+            </select>
+          </FormField>
+
+          <FormField labelText="Publication status" className="sm:col-span-2">
+            <select
+              value={status}
+              onChange={(event) => {
+                setStatus(event.target.value === "published" ? "published" : "draft");
+                touch();
+              }}
+              className={selectClass}
+            >
+              <option value="draft">Draft — admin QA only</option>
+              <option value="published">Published — student visible</option>
             </select>
           </FormField>
         </div>

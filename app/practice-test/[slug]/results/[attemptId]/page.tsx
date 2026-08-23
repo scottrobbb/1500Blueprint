@@ -7,6 +7,7 @@ import { getTestAttempt } from "@/lib/gamification/state";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getStudyPlannerProfile } from "@/lib/study-planner/profile";
 import { getStudentAccess } from "@/lib/auth/entitlements";
+import { isAdminEmail } from "@/lib/auth/admin";
 
 export const metadata = {
   title: "Your results · 1500 SAT Blueprint",
@@ -43,13 +44,15 @@ export default async function AttemptResultsPage({
   ]);
   if (!attempt || attempt.testSlug !== slug) notFound();
 
-  const test = await loadTest(slug);
+  // New attempts carry the exact completed form. Legacy attempts fall back to
+  // the current published form until they have a stored snapshot.
+  const test = attempt.testSnapshot ?? await loadTest(slug, {
+    includeDraft: isAdminEmail(session.email),
+  });
   if (!test) notFound();
 
-  // scoreTest is pure, so stored answers + routed variants reproduce the exact
-  // report, assuming the published form is unchanged since the attempt. Editing a
-  // live form in the CMS after attempts exist would shift this recompute; freeze or
-  // version forms that already have attempts if that becomes a real workflow.
+  // scoreTest is pure, so the immutable form + answers + routed variants always
+  // reproduce the report the student originally completed.
   const result = scoreTest(test, attempt.routed, attempt.answers);
 
   return (
@@ -59,8 +62,7 @@ export default async function AttemptResultsPage({
       routed={attempt.routed}
       answers={attempt.answers}
       perQuestionTime={attempt.perQuestionTime}
-      backHref={returnToUltimate ? "/ultimate/tests/completed" : `/practice-test/${slug}/attempts`}
-      backLabel={returnToUltimate ? "Back to completed tests" : undefined}
+      backHref={`/practice-test/${slug}/attempts${returnToUltimate ? "?workspace=ultimate" : ""}`}
       completedHref={returnToUltimate ? "/ultimate/tests/completed" : undefined}
       testsHref={returnToUltimate ? "/ultimate/tests" : undefined}
       attemptDate={formatTaken(attempt.createdAt)}

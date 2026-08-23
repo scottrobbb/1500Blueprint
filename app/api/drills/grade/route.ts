@@ -19,7 +19,6 @@ import type {
   WalkthroughStep,
 } from "@/lib/drills/types";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { isDrillUnderConstruction } from "@/lib/flags";
 import { drillAllowance } from "@/lib/auth/access-control";
 
 // Per-student grading runs on a cheap, fast model (Haiku 4.5) per the cost
@@ -119,12 +118,15 @@ function buildReadingUser(
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const allowance = await drillAllowance(session.email);
-  if (!allowance.allowed) {
-    const error = allowance.limit === null
-      ? "Daily drills are included with Core and Max."
-      : `You have completed all ${allowance.limit} drills included today.`;
-    return NextResponse.json({ error, code: "plan_limit", ...allowance }, { status: 402 });
+  const isAdmin = isAdminEmail(session.email);
+  if (!isAdmin) {
+    const allowance = await drillAllowance(session.email);
+    if (!allowance.allowed) {
+      const error = allowance.limit === null
+        ? "Daily drills are included with Core and Max."
+        : `You have completed all ${allowance.limit} drills included today.`;
+      return NextResponse.json({ error, code: "plan_limit", ...allowance }, { status: 402 });
+    }
   }
 
   let body: GradeBody;
@@ -141,12 +143,11 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (isDrillUnderConstruction(drillSlug) && !isAdminEmail(session.email)) {
-    return NextResponse.json({ error: "This drill is under construction." }, { status: 503 });
-  }
-
   const [question, drill] = await Promise.all([getQuestion(questionId), getDrill(drillSlug)]);
   if (!question || !drill) {
+    return NextResponse.json({ error: "Question or drill not found" }, { status: 404 });
+  }
+  if (drill.status !== "published" && !isAdmin) {
     return NextResponse.json({ error: "Question or drill not found" }, { status: 404 });
   }
   // getQuestion uses the service-role client (no RLS), so enforce here that the
@@ -269,7 +270,12 @@ export async function POST(req: NextRequest) {
   // being re-fed and shows up in History. Non-blocking, like the XP award.
   let questionSaved = false;
   try {
-    await recordProgress(session.email, { drillSlug: drillSlug as DrillSlug, questionId, score });
+    await recordProgress(session.email, {
+      drillSlug: drillSlug as DrillSlug,
+      questionId,
+      score,
+      source: "drill",
+    });
     questionSaved = true;
   } catch (e) {
     console.error("drill progress failed:", e);

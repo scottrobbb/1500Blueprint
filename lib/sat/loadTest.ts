@@ -1,4 +1,11 @@
 import { supabasePublishable } from "@/utils/supabase/publishable";
+import { supabaseAdmin } from "@/utils/supabase/admin";
+import {
+  canAccessPublication,
+  isMissingPublicationStatusColumn,
+  legacyPublicationStatus,
+  type PublicationStatus,
+} from "@/lib/flags";
 import type {
   ChoiceId,
   Difficulty,
@@ -45,12 +52,21 @@ type TestRow = {
   rw_threshold: number;
   math_threshold: number;
   modules: ModuleRow[];
+  status: string;
 };
+
+type TestLoadOptions = { includeDraft?: boolean };
 
 const SECTION_NAME: Record<SectionId, string> = {
   rw: "Reading and Writing",
   math: "Math",
 };
+
+const TEST_CONTENT_SELECT =
+  "id,title,break_minutes,rw_threshold,math_threshold," +
+  "modules(id,section,order,variant,minutes_per_module," +
+  "questions(id,position,type,domain,skill,difficulty,passage,prompt,figure_url,correct,accepted_answers,explanation," +
+  "choices(letter,text,explanation)))";
 
 function buildQuestion(q: QuestionRow): Question {
   const base = {
@@ -88,19 +104,34 @@ function buildModule(m: ModuleRow): TestModule {
 }
 
 /** Load a test by slug from Supabase and assemble it into the runner's PracticeTest shape. */
-export async function loadTest(slug: string): Promise<PracticeTest | null> {
-  const { data, error } = await supabasePublishable()
+export async function loadTest(slug: string, options: TestLoadOptions = {}): Promise<PracticeTest | null> {
+  const db = options.includeDraft ? supabaseAdmin() : supabasePublishable();
+  let query = db
     .from("tests")
-    .select(
-      "id,title,break_minutes,rw_threshold,math_threshold," +
-        "modules(id,section,order,variant,minutes_per_module," +
-        "questions(id,position,type,domain,skill,difficulty,passage,prompt,figure_url,correct,accepted_answers,explanation," +
-        "choices(letter,text,explanation)))",
-    )
-    .eq("slug", slug)
-    .maybeSingle<TestRow>();
+    .select(`${TEST_CONTENT_SELECT},status`)
+    .eq("slug", slug);
+  if (!options.includeDraft) query = query.eq("status", "published");
+  const result = await query.maybeSingle<TestRow>();
+  let data = result.data;
 
-  if (error || !data) return null;
+  if (result.error) {
+    if (!isMissingPublicationStatusColumn(result.error)) {
+      throw new Error(`Could not load practice test [${result.error.code}]: ${result.error.message}`);
+    }
+    const legacyStatus = legacyPublicationStatus("test", slug);
+    if (!canAccessPublication(legacyStatus, Boolean(options.includeDraft))) return null;
+    const legacy = await db
+      .from("tests")
+      .select(TEST_CONTENT_SELECT)
+      .eq("slug", slug)
+      .maybeSingle<Omit<TestRow, "status">>();
+    if (legacy.error) {
+      throw new Error(`Could not load legacy practice test [${legacy.error.code}]: ${legacy.error.message}`);
+    }
+    data = legacy.data ? { ...legacy.data, status: legacyStatus } : null;
+  }
+
+  if (!data) return null;
 
   const sections: Section[] = [];
   for (const sid of ["rw", "math"] as SectionId[]) {
@@ -129,11 +160,57 @@ export async function loadTest(slug: string): Promise<PracticeTest | null> {
 }
 
 /** Lightweight list of all tests for the picker (slug + title only, no questions). */
-export async function listTests(): Promise<{ slug: string; title: string }[]> {
-  const { data, error } = await supabasePublishable()
+export async function listTests(options: TestLoadOptions = {}): Promise<{ slug: string; title: string; status: PublicationStatus }[]> {
+  const db = options.includeDraft ? supabaseAdmin() : supabasePublishable();
+  let query = db
     .from("tests")
-    .select("slug,title")
-    .order("slug");
-  if (error || !data) return [];
-  return data;
+    .select("slug,title,status");
+  if (!options.includeDraft) query = query.eq("status", "published");
+  const result = await query.order("slug").returns<{ slug: string; title: string; status: string }[]>();
+  if (result.error) {
+    if (!isMissingPublicationStatusColumn(result.error)) {
+      throw new Error(`Could not list practice tests [${result.error.code}]: ${result.error.message}`);
+    }
+    const legacy = await db
+      .from("tests")
+      .select("slug,title")
+      .order("slug")
+      .returns<{ slug: string; title: string }[]>();
+    if (legacy.error) {
+      throw new Error(`Could not list legacy practice tests [${legacy.error.code}]: ${legacy.error.message}`);
+    }
+    return (legacy.data ?? [])
+      .map((test) => ({ ...test, status: legacyPublicationStatus("test", test.slug) }))
+      .filter((test) => options.includeDraft || test.status === "published");
+  }
+  return (result.data ?? []).map((test) => ({
+    slug: test.slug,
+    title: test.title,
+    status: test.status === "published" ? "published" : "draft",
+  }));
+}
+
+// Used by mutation routes that do not otherwise load the test. Keep the admin
+// exception explicit so draft QA never weakens the student-facing check.
+export async function canAccessPracticeTestPublication(slug: string, isAdmin: boolean): Promise<boolean> {
+  const result = await supabaseAdmin()
+    .from("tests")
+    .select("status")
+    .eq("slug", slug)
+    .maybeSingle<{ status: string }>();
+  if (result.error) {
+    if (!isMissingPublicationStatusColumn(result.error)) {
+      throw new Error(`Could not load practice-test publication status: ${result.error.message}`);
+    }
+    const legacy = await supabaseAdmin()
+      .from("tests")
+      .select("slug")
+      .eq("slug", slug)
+      .maybeSingle<{ slug: string }>();
+    if (legacy.error) throw new Error(`Could not load legacy practice-test publication: ${legacy.error.message}`);
+    return Boolean(legacy.data) && canAccessPublication(legacyPublicationStatus("test", slug), isAdmin);
+  }
+  if (!result.data) return false;
+  const status: PublicationStatus = result.data.status === "published" ? "published" : "draft";
+  return canAccessPublication(status, isAdmin);
 }

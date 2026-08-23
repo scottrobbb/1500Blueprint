@@ -2,10 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
-import { normalizeCoursePracticeAnswer } from "@/lib/courses/practice";
+import { normalizeCoursePracticeAnswer, type SavedCoursePracticeAttempt } from "@/lib/courses/practice";
 import type { CoursePractice, CoursePracticeQuestion } from "@/lib/courses/types";
 
-type Grade = { score: number; correctCount: number; questionCount: number; passed: boolean; results: Record<string, boolean> };
+type Grade = { score: number; correctCount: number; questionCount: number; passed: boolean; results: Record<string, boolean>; completedAt?: string; attemptCount?: number; bestScore?: number };
 
 function shuffled<T>(items: T[]): T[] {
   const next = [...items];
@@ -16,14 +16,25 @@ function shuffled<T>(items: T[]): T[] {
   return next;
 }
 
-export function CoursePracticeRunner({ lessonId, blockId, practice }: { lessonId: string; blockId: string; practice: CoursePractice }) {
+export function CoursePracticeRunner({
+  lessonId,
+  blockId,
+  practice,
+  initialAttempt,
+}: {
+  lessonId: string;
+  blockId: string;
+  practice: CoursePractice;
+  initialAttempt?: SavedCoursePracticeAttempt;
+}) {
   const [questions, setQuestions] = useState<CoursePracticeQuestion[]>(() => practice.randomizeQuestions ? shuffled(practice.questions) : practice.questions);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState(false);
-  const [grade, setGrade] = useState<Grade | null>(null);
+  const [grade, setGrade] = useState<Grade | null>(() => initialAttempt ? { ...initialAttempt, results: {} } : null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [clientToken, setClientToken] = useState<string | null>(null);
   const question = questions[currentIndex];
   const answer = question ? answers[question.id] ?? "" : "";
   const locallyCorrect = question ? normalizeCoursePracticeAnswer(answer) === normalizeCoursePracticeAnswer(question.correctAnswer) : false;
@@ -36,15 +47,22 @@ export function CoursePracticeRunner({ lessonId, blockId, practice }: { lessonId
   async function finish() {
     setSaving(true);
     setSaveError(false);
-    const response = await fetch("/api/courses/practice-attempts", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ lessonId, blockId, answers: Object.entries(answers).map(([questionId, value]) => ({ questionId, answer: value })) }),
-    });
-    const result = (await response.json().catch(() => null)) as Grade | null;
-    setSaving(false);
-    if (response.ok && result) setGrade(result);
-    else setSaveError(true);
+    const attemptToken = clientToken ?? crypto.randomUUID();
+    if (!clientToken) setClientToken(attemptToken);
+    try {
+      const response = await fetch("/api/courses/practice-attempts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ lessonId, blockId, clientToken: attemptToken, answers: Object.entries(answers).map(([questionId, value]) => ({ questionId, answer: value })) }),
+      });
+      const result = (await response.json().catch(() => null)) as Grade | null;
+      if (!response.ok || !result) throw new Error("save_failed");
+      setGrade(result);
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function nextQuestion() {
@@ -59,16 +77,17 @@ export function CoursePracticeRunner({ lessonId, blockId, practice }: { lessonId
     setChecked(false);
     setGrade(null);
     setSaveError(false);
+    setClientToken(null);
   }
 
   if (grade) {
     return (
       <section className="overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-[0_18px_45px_-34px_rgba(12,35,72,0.55)]">
         <div className={`px-5 py-6 sm:px-7 ${grade.passed ? "bg-success-bg" : "bg-[#fff8e4]"}`}>
-          <p className={`text-[10px] font-extrabold uppercase tracking-[0.15em] ${grade.passed ? "text-success-600" : "text-[#8a6500]"}`}>{grade.passed ? "Practice mastered" : "Keep working"}</p>
+          <p className={`text-[10px] font-extrabold uppercase tracking-[0.15em] ${grade.passed ? "text-success-600" : "text-[#8a6500]"}`}>{grade.completedAt ? "Saved practice result" : grade.passed ? "Practice mastered" : "Keep working"}</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h2 className="font-display text-2xl font-extrabold text-navy">{practice.title}</h2><p className="mt-1 text-sm text-navy/55">{grade.correctCount} of {grade.questionCount} correct</p></div><strong className="font-display text-4xl font-extrabold text-navy">{grade.score}%</strong></div>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-7"><p className="text-sm text-navy/55">Passing score: {practice.passingScore}%</p><button type="button" onClick={retry} className="min-h-11 cursor-pointer rounded-xl bg-navy px-5 text-sm font-extrabold text-white transition-colors hover:bg-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Try again</button></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-7"><p className="text-sm text-navy/55">{grade.attemptCount ? `${grade.attemptCount} saved ${grade.attemptCount === 1 ? "attempt" : "attempts"} · Best ${grade.bestScore}%` : `Passing score: ${practice.passingScore}%`}</p><button type="button" onClick={retry} className="min-h-11 cursor-pointer rounded-xl bg-navy px-5 text-sm font-extrabold text-white transition-colors hover:bg-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Try again</button></div>
       </section>
     );
   }

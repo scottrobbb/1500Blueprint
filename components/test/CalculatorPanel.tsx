@@ -1,14 +1,59 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CloseIcon, ExpandIcon, GripIcon } from "./icons";
+
+const VIEWPORT_GUTTER = 8;
+
+export function clampCalculatorPosition({
+  x,
+  y,
+  panelWidth,
+  panelHeight,
+  viewportWidth,
+  viewportHeight,
+}: {
+  x: number;
+  y: number;
+  panelWidth: number;
+  panelHeight: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}) {
+  const maxX = Math.max(VIEWPORT_GUTTER, viewportWidth - panelWidth - VIEWPORT_GUTTER);
+  const maxY = Math.max(VIEWPORT_GUTTER, viewportHeight - panelHeight - VIEWPORT_GUTTER);
+  return {
+    x: Math.min(Math.max(VIEWPORT_GUTTER, x), maxX),
+    y: Math.min(Math.max(VIEWPORT_GUTTER, y), maxY),
+  };
+}
 
 // Embeds the Desmos graphing calculator (the same tool used in Bluebook),
 // in a draggable, resizable floating panel.
 export function CalculatorPanel({ onClose }: { onClose: () => void }) {
-  const [pos, setPos] = useState({ x: 40, y: 96 });
+  const [pos, setPos] = useState({ x: VIEWPORT_GUTTER, y: VIEWPORT_GUTTER });
   const [big, setBig] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+
+  const clampPosition = useCallback((x: number, y: number) => {
+    const bounds = panel.current?.getBoundingClientRect();
+    return clampCalculatorPosition({
+      x,
+      y,
+      panelWidth: bounds?.width ?? 0,
+      panelHeight: bounds?.height ?? 0,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    });
+  }, []);
+
+  useEffect(() => {
+    const keepInViewport = () => setPos((current) => clampPosition(current.x, current.y));
+    keepInViewport();
+    window.addEventListener("resize", keepInViewport);
+    return () => window.removeEventListener("resize", keepInViewport);
+  }, [big, clampPosition]);
 
   function onPointerDown(e: React.PointerEvent) {
     drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
@@ -16,10 +61,7 @@ export function CalculatorPanel({ onClose }: { onClose: () => void }) {
   }
   function onPointerMove(e: React.PointerEvent) {
     if (!drag.current) return;
-    setPos({
-      x: Math.max(0, e.clientX - drag.current.dx),
-      y: Math.max(0, e.clientY - drag.current.dy),
-    });
+    setPos(clampPosition(e.clientX - drag.current.dx, e.clientY - drag.current.dy));
   }
   function onPointerUp(e: React.PointerEvent) {
     drag.current = null;
@@ -30,11 +72,16 @@ export function CalculatorPanel({ onClose }: { onClose: () => void }) {
 
   return (
     <div
+      ref={panel}
       style={{
         left: pos.x,
         top: pos.y,
-        width: big ? "min(46rem, 92vw)" : "22rem",
-        height: big ? "min(38rem, 80vh)" : "28rem",
+        width: big ? "min(46rem, calc(100vw - 1rem))" : "min(22rem, calc(100vw - 1rem))",
+        maxWidth: "calc(100vw - 1rem)",
+        height: big
+          ? "min(38rem, calc(100dvh - 1rem))"
+          : "min(28rem, calc(100dvh - 1rem))",
+        maxHeight: "calc(100dvh - 1rem)",
       }}
       className="fixed z-40 flex resize flex-col overflow-hidden rounded-lg border border-exam-border bg-white shadow-2xl"
     >
@@ -42,7 +89,8 @@ export function CalculatorPanel({ onClose }: { onClose: () => void }) {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        className="flex cursor-grab items-center justify-between border-b border-exam-border bg-exam-chrome px-2 py-1.5 active:cursor-grabbing"
+        onPointerCancel={onPointerUp}
+        className="flex touch-none cursor-grab select-none items-center justify-between border-b border-exam-border bg-exam-chrome px-2 py-1.5 active:cursor-grabbing"
       >
         <span className="text-exam-muted">
           <GripIcon className="h-5 w-5" />

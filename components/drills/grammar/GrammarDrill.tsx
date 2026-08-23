@@ -40,10 +40,12 @@ export function GrammarDrill({
   questions,
   streak: initialStreak = 0,
   initialMastery = calculateGrammarMastery([]),
+  returnHref = "/drills",
 }: {
   questions?: GrammarQuestion[];
   streak?: number;
   initialMastery?: GrammarMasteryState;
+  returnHref?: string;
 }) {
   // Real DB questions when provided, else the single mock so the UI still runs.
   const items = questions?.length ? questions : [grammarQuestion];
@@ -164,7 +166,7 @@ export function GrammarDrill({
   );
 
   return (
-    <DrillShell title="Grammar Drill" eyebrow="Reading & Writing" exitHref="/drills" right={right}>
+    <DrillShell title="Grammar Drill" eyebrow="Reading & Writing" exitHref={returnHref} right={right}>
       {phase === "question" ? (
         <div className="mx-auto max-w-[760px]">
           <GrammarQuestionView question={q} selected={selected} onSelect={setSelected} />
@@ -237,7 +239,7 @@ export function GrammarDrill({
               Next question →
             </button>
             <Link
-              href="/drills"
+              href={returnHref}
               className="rounded-lg border border-navy/20 bg-white px-[22px] py-3 text-sm font-semibold text-navy transition-colors hover:bg-navy/5"
             >
               Back to drills

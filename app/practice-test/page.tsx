@@ -5,7 +5,6 @@ import { ChevronRightIcon } from "@/components/shell/icons";
 import { listTests } from "@/lib/sat/loadTest";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { isPracticeTestUnderConstruction } from "@/lib/flags";
 import { getNavStats, getTestProgress } from "@/lib/gamification/state";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { PlanBadge } from "@/components/account/PlanBadge";
@@ -43,7 +42,7 @@ export default async function PracticeTestsPage() {
   const isAdmin = isAdminEmail(session.email);
 
   const [tests, nav, progress, access] = await Promise.all([
-    listTests(),
+    listTests({ includeDraft: isAdmin }),
     getNavStats(session.email),
     getTestProgress(session.email),
     getStudentAccess(session.email),
@@ -99,11 +98,11 @@ export default async function PracticeTestsPage() {
 
       <main className="mx-auto w-full max-w-[980px] px-6 pb-12 pt-7">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 bg-ice px-4 py-3"><div className="flex items-center gap-2.5"><PlanBadge plan={access.plan} test={access.isTestAccount} /><span className="text-xs font-semibold text-navy/55">Includes {access.entitlements.fullTestLimit} full-length {access.entitlements.fullTestLimit === 1 ? "test" : "tests"}</span></div>{access.plan !== "max" ? <Link href="/pricing" className="text-xs font-extrabold text-brand-700">Unlock more →</Link> : null}</div>
-        <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-[13px] font-semibold text-navy/70">
-          {isAdmin
-            ? "I am updating tests 3-5 for the fall SATs. It will take 1-2 weeks to update all of them. Tests 1, 2, 6, and 7 are published. You can access every test as an admin."
-            : "I am updating tests 3-5 for the fall SATs. It will take 1-2 weeks to update all of them. Tests 1, 2, 6, and 7 are published."}
-        </div>
+        {isAdmin && tests.some((test) => test.status === "draft") ? (
+          <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-[13px] font-semibold text-navy/70">
+            Draft tests are shown for admin QA. Students only see tests marked Published in the admin editor.
+          </div>
+        ) : null}
         <div className="mb-4 flex items-center gap-3">
           <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-navy/55">Choose a test</h2>
           <span className="h-px flex-1 bg-navy/12" />
@@ -123,7 +122,7 @@ export default async function PracticeTestsPage() {
               const best = progress.bestBySlug[t.slug] ?? null;
               const count = progress.countBySlug[t.slug] ?? 0;
               const planLocked = testIndex >= access.entitlements.fullTestLimit && !isAdmin;
-              const locked = (isPracticeTestUnderConstruction(t.slug) && !isAdmin) || planLocked;
+              const locked = (t.status !== "published" && !isAdmin) || planLocked;
               const cardContent = (
                 <>
                   <div

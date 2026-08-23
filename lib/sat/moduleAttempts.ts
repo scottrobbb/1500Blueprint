@@ -3,6 +3,8 @@
 // Client Component.
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { isMissingModuleSnapshotColumnError } from "@/lib/progress/database";
+import { parseModuleAttemptSnapshot, type ModuleAttemptSnapshot } from "./testSnapshot";
 import type { AnswerMap } from "./types";
 
 export type ModuleAttemptInput = {
@@ -13,6 +15,7 @@ export type ModuleAttemptInput = {
   total: number;
   answers: AnswerMap;
   perQuestionTime: Record<string, number>;
+  moduleSnapshot?: ModuleAttemptSnapshot;
   clientToken?: string;
 };
 
@@ -34,6 +37,7 @@ export type StoredModuleAttempt = {
   total: number;
   answers: AnswerMap;
   perQuestionTime: Record<string, number>;
+  moduleSnapshot: ModuleAttemptSnapshot | null;
   createdAt: string;
 };
 
@@ -61,21 +65,33 @@ export async function saveModuleAttempt(
     return recent.data.id;
   }
 
-  const { data, error } = await db
+  const attemptRow = {
+    email,
+    test_slug: input.testSlug,
+    module_key: input.moduleKey,
+    label: input.label,
+    correct: input.correct,
+    total: input.total,
+    answers: input.answers,
+    per_question_time: input.perQuestionTime,
+    client_token: input.clientToken ?? null,
+  };
+  let insertion = await db
     .from("module_attempts")
     .insert({
-      email,
-      test_slug: input.testSlug,
-      module_key: input.moduleKey,
-      label: input.label,
-      correct: input.correct,
-      total: input.total,
-      answers: input.answers,
-      per_question_time: input.perQuestionTime,
-      client_token: input.clientToken ?? null,
+      ...attemptRow,
+      module_snapshot: input.moduleSnapshot ?? null,
     })
     .select("id")
     .maybeSingle<{ id: string }>();
+  if (isMissingModuleSnapshotColumnError(insertion.error)) {
+    insertion = await db
+      .from("module_attempts")
+      .insert(attemptRow)
+      .select("id")
+      .maybeSingle<{ id: string }>();
+  }
+  const { data, error } = insertion;
 
   // A unique-token collision means it was already recorded: return that row.
   if (error || !data) {
@@ -83,6 +99,7 @@ export async function saveModuleAttempt(
       const { data: existing } = await db
         .from("module_attempts")
         .select("id")
+        .eq("email", email)
         .eq("client_token", input.clientToken)
         .maybeSingle<{ id: string }>();
       if (existing) return existing.id;
@@ -96,7 +113,7 @@ export async function listModuleAttempts(
   email: string,
   slug: string,
 ): Promise<ModuleAttemptSummary[]> {
-  const { data } = await supabaseAdmin()
+  const { data, error } = await supabaseAdmin()
     .from("module_attempts")
     .select("id,module_key,label,correct,total,created_at")
     .eq("email", email)
@@ -105,6 +122,7 @@ export async function listModuleAttempts(
     .returns<
       { id: string; module_key: string; label: string; correct: number; total: number; created_at: string }[]
     >();
+  if (error) throw new Error(`Could not load module attempts [${error.code}]: ${error.message}`);
   return (data ?? []).map((r) => ({
     id: r.id,
     moduleKey: r.module_key,
@@ -119,22 +137,39 @@ export async function getModuleAttempt(
   email: string,
   attemptId: string,
 ): Promise<StoredModuleAttempt | null> {
-  const { data } = await supabaseAdmin()
+  type ModuleAttemptRow = {
+    id: string;
+    test_slug: string;
+    module_key: string;
+    label: string;
+    correct: number;
+    total: number;
+    answers: AnswerMap | null;
+    per_question_time: Record<string, number> | null;
+    module_snapshot: unknown;
+    created_at: string;
+  };
+  const db = supabaseAdmin();
+  const current = await db
     .from("module_attempts")
-    .select("id,test_slug,module_key,label,correct,total,answers,per_question_time,created_at")
+    .select("id,test_slug,module_key,label,correct,total,answers,per_question_time,module_snapshot,created_at")
     .eq("email", email)
     .eq("id", attemptId)
-    .maybeSingle<{
-      id: string;
-      test_slug: string;
-      module_key: string;
-      label: string;
-      correct: number;
-      total: number;
-      answers: AnswerMap | null;
-      per_question_time: Record<string, number> | null;
-      created_at: string;
-    }>();
+    .maybeSingle<ModuleAttemptRow>();
+  let data = current.data;
+  if (current.error) {
+    if (!isMissingModuleSnapshotColumnError(current.error)) {
+      throw new Error(`Could not load module attempt [${current.error.code}]: ${current.error.message}`);
+    }
+    const legacy = await db
+      .from("module_attempts")
+      .select("id,test_slug,module_key,label,correct,total,answers,per_question_time,created_at")
+      .eq("email", email)
+      .eq("id", attemptId)
+      .maybeSingle<Omit<ModuleAttemptRow, "module_snapshot">>();
+    if (legacy.error) throw new Error(`Could not load module attempt [${legacy.error.code}]: ${legacy.error.message}`);
+    data = legacy.data ? { ...legacy.data, module_snapshot: null } : null;
+  }
   if (!data) return null;
   return {
     id: data.id,
@@ -145,6 +180,7 @@ export async function getModuleAttempt(
     total: data.total,
     answers: data.answers ?? {},
     perQuestionTime: data.per_question_time ?? {},
+    moduleSnapshot: parseModuleAttemptSnapshot(data.module_snapshot),
     createdAt: data.created_at,
   };
 }
@@ -154,12 +190,13 @@ export async function bestByModuleKey(
   email: string,
   slug: string,
 ): Promise<Record<string, ModuleBest>> {
-  const { data } = await supabaseAdmin()
+  const { data, error } = await supabaseAdmin()
     .from("module_attempts")
     .select("module_key,correct,total")
     .eq("email", email)
     .eq("test_slug", slug)
     .returns<{ module_key: string; correct: number; total: number }[]>();
+  if (error) throw new Error(`Could not load module bests [${error.code}]: ${error.message}`);
 
   const out: Record<string, ModuleBest> = {};
   for (const r of data ?? []) {

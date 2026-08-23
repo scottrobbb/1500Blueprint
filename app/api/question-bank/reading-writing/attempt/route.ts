@@ -5,15 +5,17 @@ import {
   getReadingWritingCorrectAnswerLabel,
   getReadingWritingQuestionForGrading,
 } from "@/lib/question-bank/reading-writing-queries";
+import { recordQuestionBankAttempt, type QuestionBankAttemptWrite } from "@/lib/question-bank/attempts";
 import { supabaseAdmin } from "@/utils/supabase/admin";
-import { questionBankAllowance } from "@/lib/auth/access-control";
+import { getStudentAccess } from "@/lib/auth/entitlements";
+import { isAdminEmail } from "@/lib/auth/admin";
 
 type AttemptBody = {
   questionId: string;
   response: string;
   durationMs: number;
   sessionId: string | null;
-  clientToken: string | null;
+  clientToken: string;
 };
 
 export async function POST(request: Request) {
@@ -21,13 +23,32 @@ export async function POST(request: Request) {
   if (!session || !isUltimatePreviewEmail(session.email)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  const allowance = await questionBankAllowance(session.email);
-  if (!allowance.allowed) {
-    return NextResponse.json({ error: `You have used all ${allowance.limit} questions included with your plan.`, code: "plan_limit", ...allowance }, { status: 402 });
-  }
 
   const input = parseAttemptBody(await request.json().catch(() => null));
   if (!input) return NextResponse.json({ error: "Invalid attempt" }, { status: 400 });
+
+  const isAdmin = isAdminEmail(session.email);
+  const access = isAdmin ? null : await getStudentAccess(session.email);
+  if (access && !access.active) {
+    return NextResponse.json({ error: "Question Bank access is not active.", code: "plan_limit" }, { status: 402 });
+  }
+
+  const existing = await loadAttemptByToken(session.email, input.clientToken);
+  if (existing.error) {
+    console.error("Reading & Writing Question Bank retry check failed", existing.error);
+    return NextResponse.json({ error: "We could not check that answer." }, { status: 500 });
+  }
+  if (existing.data) {
+    if (!matchesAttempt(existing.data, input)) {
+      return NextResponse.json({ error: "That answer token was already used." }, { status: 409 });
+    }
+    const question = await getReadingWritingQuestionForGrading(input.questionId);
+    return NextResponse.json({
+      correct: existing.data.correct,
+      explanation: question?.explanation ?? "Your answer was already saved.",
+      correctAnswer: question ? getReadingWritingCorrectAnswerLabel(question) : "",
+    });
+  }
 
   const gradingQuestion = await getReadingWritingQuestionForGrading(input.questionId);
   if (!gradingQuestion) {
@@ -35,31 +56,39 @@ export async function POST(request: Request) {
   }
 
   const correct = input.response === gradingQuestion.correctChoice;
-  const { error } = await supabaseAdmin().from("question_bank_attempts").insert({
-    email: session.email,
-    question_id: input.questionId,
-    session_id: input.sessionId,
-    client_token: input.clientToken,
-    mode: "practice",
-    response: { value: input.response },
-    correct,
-    duration_ms: input.durationMs,
-    section: "rw",
-    domain: gradingQuestion.question.domain,
-    skill: gradingQuestion.question.skill,
-    difficulty: gradingQuestion.question.difficulty,
-  });
-
-  if (error && !isToleratedAttemptWriteError(error.code)) {
+  let write: QuestionBankAttemptWrite;
+  try {
+    write = await recordQuestionBankAttempt({
+      email: session.email,
+      questionId: input.questionId,
+      sessionId: input.sessionId,
+      clientToken: input.clientToken,
+      response: input.response,
+      correct,
+      durationMs: input.durationMs,
+      section: "rw",
+      domain: gradingQuestion.question.domain,
+      skill: gradingQuestion.question.skill ?? null,
+      difficulty: gradingQuestion.question.difficulty,
+      limit: access?.entitlements.questionBankLimit ?? null,
+    });
+  } catch (error) {
     console.error("Reading & Writing Question Bank attempt write failed", error);
     return NextResponse.json(
       { error: "Your answer was graded, but its analytics could not be saved." },
       { status: 500 },
     );
   }
+  if (!write.allowed) {
+    const limit = access?.entitlements.questionBankLimit ?? 0;
+    return NextResponse.json({ error: `You have used all ${limit} questions included with your plan.`, code: "plan_limit", used: write.used, limit }, { status: 402 });
+  }
+  if (write.questionId !== input.questionId || write.response !== input.response) {
+    return NextResponse.json({ error: "That answer token was already used." }, { status: 409 });
+  }
 
   return NextResponse.json({
-    correct,
+    correct: write.correct ?? correct,
     explanation: gradingQuestion.explanation,
     correctAnswer: getReadingWritingCorrectAnswerLabel(gradingQuestion),
   });
@@ -70,18 +99,24 @@ function parseAttemptBody(value: unknown): AttemptBody | null {
   if (typeof value.questionId !== "string" || value.questionId.length > 160) return null;
   if (!isChoiceId(value.response)) return null;
   if (typeof value.durationMs !== "number" || !Number.isFinite(value.durationMs)) return null;
+  const clientToken = readRequiredToken(value.clientToken);
+  if (!clientToken) return null;
 
   return {
     questionId: value.questionId,
     response: value.response,
     durationMs: Math.max(0, Math.min(Math.round(value.durationMs), 86_400_000)),
     sessionId: readOptionalToken(value.sessionId),
-    clientToken: readOptionalToken(value.clientToken),
+    clientToken,
   };
 }
 
 function readOptionalToken(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 && value.length <= 160 ? value : null;
+}
+
+function readRequiredToken(value: unknown): string {
+  return typeof value === "string" && value.length > 0 && value.length <= 160 ? value : "";
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -92,6 +127,21 @@ function isChoiceId(value: unknown): value is "A" | "B" | "C" | "D" {
   return value === "A" || value === "B" || value === "C" || value === "D";
 }
 
-function isToleratedAttemptWriteError(code: string | undefined): boolean {
-  return code === "42P01" || code === "PGRST205" || code === "23505";
+type StoredAttempt = {
+  question_id: string;
+  response: { value?: unknown } | null;
+  correct: boolean;
+};
+
+function loadAttemptByToken(email: string, clientToken: string) {
+  return supabaseAdmin()
+    .from("question_bank_attempts")
+    .select("question_id,response,correct")
+    .eq("email", email)
+    .eq("client_token", clientToken)
+    .maybeSingle<StoredAttempt>();
+}
+
+function matchesAttempt(stored: StoredAttempt, input: AttemptBody): boolean {
+  return stored.question_id === input.questionId && stored.response?.value === input.response;
 }

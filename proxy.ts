@@ -4,7 +4,6 @@ import { SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isPasswordAuthEnabled } from "@/lib/auth/password";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
-import { isDrillUnderConstruction, isPracticeTestUnderConstruction } from "@/lib/flags";
 import { updateSession as updatePasswordSession } from "@/utils/supabase/proxy";
 
 // Paths reachable without a session.
@@ -84,31 +83,6 @@ export async function proxy(request: NextRequest) {
       // Signed-in non-admin (a student): bounce to the drills hub.
       const url = request.nextUrl.clone();
       url.pathname = "/drills";
-      url.search = "";
-      return redirectWithCookies(url, passwordResponse);
-    }
-  }
-
-  // Keep unfinished drill players behind the hub's under-construction state
-  // while preserving admin QA access.
-  if (!isAdmin && pathname.startsWith("/drills/")) {
-    const drillSlug = pathname.split("/")[2] ?? "";
-    if (isDrillUnderConstruction(drillSlug)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/drills";
-      url.search = "";
-      return redirectWithCookies(url, passwordResponse);
-    }
-  }
-
-  // Practice Tests 1-5 are under construction; Tests 6 and 7 are public to students.
-  // API bodies are checked inside their route handlers because Proxy cannot
-  // determine the requested test slug without consuming the request body.
-  if (!isAdmin && pathname.startsWith("/practice-test/")) {
-    const testSlug = pathname.split("/")[2] ?? "";
-    if (isPracticeTestUnderConstruction(testSlug)) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/practice-test";
       url.search = "";
       return redirectWithCookies(url, passwordResponse);
     }

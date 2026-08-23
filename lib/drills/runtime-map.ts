@@ -53,7 +53,8 @@ export function toGrammarQuestions(qs: DrillQuestion[]): GrammarQuestion[] {
 export function toMathQuestions(qs: DrillQuestion[]): MathQuestion[] {
   const out: MathQuestion[] = [];
   for (const q of qs) {
-    const c = q.content as TargetedMathContent;
+    if (q.answerType !== "grid_in") continue;
+    const c = q.content as Extract<TargetedMathContent, { kind: "grid" }>;
     if (!Array.isArray(c.accepted) || c.accepted.length === 0) continue;
     out.push({
       id: q.id,

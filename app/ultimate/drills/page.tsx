@@ -13,22 +13,25 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { loadGrammarMastery } from "@/lib/drills/progress";
 import { loadVocabDashboard } from "@/lib/drills/vocab.server";
 import { getHubState, needsOnboarding } from "@/lib/gamification/state";
+import { listDrills } from "@/lib/drills/admin-queries";
 
 export const metadata = { title: "Drills" };
 
 export default async function UltimateDrillsPage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
+  const isAdmin = isAdminEmail(session.email);
   const access = await getStudentAccess(session.email);
-  if (access.entitlements.dailyDrillLimit === null) {
+  if (!isAdmin && access.entitlements.dailyDrillLimit === null) {
     return <AccessGate title="Unlock daily skill drills" description="Core includes up to 20 completed drills per day. Max removes the daily limit." currentPlan={access.plan} requiredPlan="core" />;
   }
 
-  const [hub, showOnboarding, grammarMastery, vocabState] = await Promise.all([
+  const [hub, showOnboarding, grammarMastery, vocabState, drills] = await Promise.all([
     getHubState(session.email),
     needsOnboarding(session.email),
     loadGrammarMastery(session.email),
     loadVocabDashboard(session.email),
+    listDrills(),
   ]);
 
   return (
@@ -55,7 +58,9 @@ export default async function UltimateDrillsPage() {
           flashcards: vocabState.flashcardCount,
         }}
         streak={hub.player.streak}
-        isAdmin={isAdminEmail(session.email)}
+        isAdmin={isAdmin}
+        publication={Object.fromEntries(drills.map((drill) => [drill.slug, drill.status]))}
+        workspace="ultimate"
       />
 
       {showOnboarding && <OnboardingTour firstName={hub.player.firstName} dailyTarget={hub.dailyGoal.total} />}

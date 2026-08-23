@@ -13,7 +13,6 @@ import { clearTestSession } from "@/lib/sat/testSession";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { AnswerMap, ModuleVariant, SectionId } from "@/lib/sat/types";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { isPracticeTestUnderConstruction } from "@/lib/flags";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 
@@ -45,17 +44,15 @@ export async function POST(req: NextRequest) {
   if (!testSlug) {
     return NextResponse.json({ error: "testSlug is required" }, { status: 400 });
   }
-  if (!(await canAccessPracticeTest(session.email, testSlug))) {
+  const isAdmin = isAdminEmail(session.email);
+  if (!isAdmin && !(await canAccessPracticeTest(session.email, testSlug))) {
     return NextResponse.json({ error: "This practice test is not included with your plan.", code: "plan_limit" }, { status: 402 });
-  }
-  if (isPracticeTestUnderConstruction(testSlug) && !isAdminEmail(session.email)) {
-    return NextResponse.json({ error: "Practice test is under construction" }, { status: 503 });
   }
   const answers = body.answers ?? {};
   const routed = body.routed ?? {};
   const perQuestionTime = body.perQuestionTime ?? {};
 
-  const test = await loadTest(testSlug);
+  const test = await loadTest(testSlug, { includeDraft: isAdmin });
   if (!test) return NextResponse.json({ error: "Test not found" }, { status: 404 });
 
   // Idempotency guard against a rapid double-submit (returns the existing attempt).
@@ -90,6 +87,7 @@ export async function POST(req: NextRequest) {
       answers,
       routed,
       perQuestionTime,
+      testSnapshot: test,
       clientToken: body.clientToken,
     });
     attemptId = award.attemptId;

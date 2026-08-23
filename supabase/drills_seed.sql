@@ -76,7 +76,7 @@ insert into public.drills (slug, title, category, accent, uses_ai, ai_role, answ
   ),
   (
     'targeted-math','Targeted Math Practice','Math','gold', false,'none',
-    array['grid_in'],
+    array['mc_single','grid_in'],
     null,
     '{"lives":2,"winTarget":10,"secondsPerQuestion":90,"showReference":true}'::jsonb,
     4

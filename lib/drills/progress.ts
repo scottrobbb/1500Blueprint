@@ -9,10 +9,12 @@ import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { Difficulty } from "@/lib/sat/types";
 import {
   calculateGrammarMastery,
+  GRAMMAR_MASTERY_MIN_SCORE,
   type GrammarMasteryState,
 } from "./mastery";
 import {
   calculateReadingProgress,
+  READING_PASS_SCORE,
   type ReadingProgressState,
 } from "./readingProgress";
 import type {
@@ -40,6 +42,117 @@ export function isMastered(
   if (drillSlug === "grammar" || drillSlug === "reading") return (result.score ?? 0) >= 100;
   if (drillSlug === "targeted-math" || drillSlug === "vocab") return result.correct === true;
   return false;
+}
+
+// "Correct" in progress analytics means an exact correct answer for objective
+// drills and meeting the drill's configured passing score for AI evaluations.
+// This is deliberately separate from per-question mastery, which still requires
+// a perfect AI score before a question leaves the active pool.
+export function isPassingDrillAttempt(
+  drillSlug: DrillSlug,
+  result: { score?: number | null; correct?: boolean | null },
+): boolean {
+  if (typeof result.correct === "boolean") return result.correct;
+  if (drillSlug === "grammar") return (result.score ?? 0) >= GRAMMAR_MASTERY_MIN_SCORE;
+  if (drillSlug === "reading") return (result.score ?? 0) >= READING_PASS_SCORE;
+  return (result.score ?? 0) >= 100;
+}
+
+export async function recordDrillQuestionAttempt(
+  email: string,
+  input: {
+    drillSlug: DrillSlug;
+    questionId: string;
+    score?: number | null;
+    correct?: boolean | null;
+    clientToken?: string | null;
+    sessionToken?: string | null;
+  },
+): Promise<void> {
+  const { error } = await supabaseAdmin().from("drill_question_attempts").insert({
+    email,
+    question_id: input.questionId,
+    drill_slug: input.drillSlug,
+    source: "drill",
+    correct: isPassingDrillAttempt(input.drillSlug, input),
+    score: typeof input.score === "number" ? input.score : null,
+    client_token: input.clientToken ?? null,
+    session_token: input.sessionToken ?? null,
+  });
+  if (error?.code === "23505" && input.clientToken) return;
+  if (error) throw progressDatabaseError("Could not save drill answer history", error);
+}
+
+export async function hasRecordedDrillQuestionAttempt(
+  email: string,
+  clientToken: string,
+): Promise<boolean> {
+  const result = await supabaseAdmin()
+    .from("drill_question_attempts")
+    .select("id")
+    .eq("email", email)
+    .eq("client_token", clientToken)
+    .maybeSingle<{ id: string }>();
+  if (result.error) {
+    throw progressDatabaseError("Could not verify drill answer history", result.error);
+  }
+  return Boolean(result.data);
+}
+
+export type DrillQuestionSessionSummary = { correct: number; total: number };
+
+export async function summarizeDrillQuestionSession(
+  email: string,
+  drillSlug: DrillSlug,
+  sessionToken: string,
+): Promise<DrillQuestionSessionSummary> {
+  const rows: { id: string; correct: boolean }[] = [];
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const result = await supabaseAdmin()
+      .from("drill_question_attempts")
+      .select("id,correct")
+      .eq("email", email)
+      .eq("drill_slug", drillSlug)
+      .eq("source", "drill")
+      .eq("session_token", sessionToken)
+      .order("id")
+      .range(from, from + pageSize - 1)
+      .returns<{ id: string; correct: boolean }[]>();
+    if (result.error) {
+      throw progressDatabaseError("Could not verify the completed drill session", result.error);
+    }
+    rows.push(...(result.data ?? []));
+    if ((result.data?.length ?? 0) < pageSize) break;
+  }
+  return {
+    correct: rows.filter((row) => row.correct).length,
+    total: rows.length,
+  };
+}
+
+export async function recordObjectiveProgress(
+  email: string,
+  input: {
+    drillSlug: "targeted-math" | "vocab";
+    questionId: string;
+    correct: boolean;
+    clientToken: string;
+    sessionToken: string;
+  },
+): Promise<boolean> {
+  const result = await supabaseAdmin().rpc("record_objective_drill_answer", {
+    p_email: email,
+    p_question_id: input.questionId,
+    p_drill_slug: input.drillSlug,
+    p_correct: input.correct,
+    p_client_token: input.clientToken,
+    p_session_token: input.sessionToken,
+  });
+  if (result.error) {
+    throw progressDatabaseError("Could not save objective drill progress", result.error);
+  }
+  return result.data === true;
 }
 
 export type ProgressRow = {
@@ -152,10 +265,25 @@ export async function selectForStudent(
 // Read-then-upsert is fine here — a single student answers sequentially.
 export async function recordProgress(
   email: string,
-  input: { drillSlug: DrillSlug; questionId: string; score?: number | null; correct?: boolean | null },
+  input: {
+    drillSlug: DrillSlug;
+    questionId: string;
+    score?: number | null;
+    correct?: boolean | null;
+    source?: "drill" | "question_bank";
+    clientToken?: string | null;
+    sessionToken?: string | null;
+  },
 ): Promise<void> {
   if (!isTracked(input.drillSlug)) return;
   const db = supabaseAdmin();
+
+  // A browser may retry after losing the response to a successful write. Keep
+  // that retry from incrementing mastery twice when the caller supplied a token.
+  if (input.source === "drill" && input.clientToken) {
+    if (await hasRecordedDrillQuestionAttempt(email, input.clientToken)) return;
+  }
+
   const nowIso = new Date().toISOString();
   const score = typeof input.score === "number" ? input.score : null;
   const mastered = isMastered(input.drillSlug, input);
@@ -186,6 +314,13 @@ export async function recordProgress(
     { onConflict: "email,question_id" },
   );
   if (writeError) throw progressDatabaseError("Could not save drill progress", writeError);
+
+  // Question Bank Math also updates the shared mastery row. Its authoritative
+  // append-only event already lives in question_bank_attempts, so only explicit
+  // drill calls write this ledger and dashboard totals never double-count it.
+  if (input.source === "drill") {
+    await recordDrillQuestionAttempt(email, input);
+  }
 }
 
 // ---- History --------------------------------------------------------------
@@ -232,6 +367,7 @@ function toQuestion(r: DbQuestionRow): DrillQuestion {
     content: (r.content ?? {}) as DrillContent,
     explanation: r.explanation,
     status: r.status as QuestionStatus,
+    includeInQuestionBank: false,
     createdBy: null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,

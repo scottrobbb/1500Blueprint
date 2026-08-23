@@ -22,12 +22,14 @@ export function VocabSummary({
   savedCount,
   error,
   onPracticeAgain,
+  returnHref = "/drills",
 }: {
   answers: VocabSessionAnswer[];
   seconds: number;
   savedCount: number;
   error: string | null;
   onPracticeAgain: () => void;
+  returnHref?: string;
 }) {
   const correct = answers.filter((answer) => answer.correct).length;
   const total = answers.length;
@@ -95,7 +97,9 @@ export function VocabSummary({
 
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <button type="button" onClick={onPracticeAgain} className={primaryBtn}>Practice again</button>
-        <Link href="/drills" className={secondaryBtn}>Back to drills</Link>
+        <Link href={returnHref} className={secondaryBtn}>
+          Back to drills
+        </Link>
       </div>
     </div>
   );

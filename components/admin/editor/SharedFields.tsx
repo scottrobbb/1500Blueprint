@@ -2,6 +2,7 @@
 
 import type { DrillQuestion } from "@/lib/drills/types";
 import { label } from "@/components/drills/shared/ui";
+import { FigureUploadField } from "@/components/admin/editor/FigureUploadField";
 
 // Editor fields owned by the shared shell (not the per-drill Fields editors):
 // the question's stem, passage/context, figure URL, and explanation. Every
@@ -63,15 +64,10 @@ export function SharedFields({ question, onChange }: Props) {
         />
       </Field>
 
-      <Field title="Figure URL" helper="Optional image (graph, diagram) shown with the question.">
-        <input
-          type="url"
-          value={question.figureUrl ?? ""}
-          onChange={(e) => onChange({ figureUrl: e.target.value || null })}
-          placeholder="https://..."
-          className={`mt-1.5 ${fieldClass}`}
-        />
-      </Field>
+      <FigureUploadField
+        value={question.figureUrl ?? ""}
+        onChange={(figureUrl) => onChange({ figureUrl: figureUrl || null })}
+      />
 
       <Field
         title="Explanation"

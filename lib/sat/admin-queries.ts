@@ -10,6 +10,11 @@
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { ChoiceId, Difficulty, SectionId } from "./types";
+import {
+  isMissingPublicationStatusColumn,
+  legacyPublicationStatus,
+  type PublicationStatus,
+} from "@/lib/flags";
 
 // The two practice-test question kinds (types.ts uses these as inline literals
 // on its Question union; named here so the admin shapes can reference it).
@@ -26,6 +31,7 @@ type TestRow = {
   rw_threshold: number;
   math_threshold: number;
   source_file: string | null;
+  status?: string;
 };
 
 type ModuleRow = {
@@ -110,6 +116,7 @@ export type AdminTest = {
   rwThreshold: number;
   mathThreshold: number;
   sourceFile: string | null;
+  status: PublicationStatus;
   modules: AdminModule[]; // ordered rw-1, rw-2-easy, rw-2-hard, math-1, math-2-easy, math-2-hard
 };
 
@@ -119,6 +126,7 @@ export type AdminTestSummary = {
   moduleCount: number;
   questionCount: number;
   needsReviewCount: number;
+  status: PublicationStatus;
 };
 
 /* --------------------------------- Helpers ------------------------------- */
@@ -171,45 +179,90 @@ function toQuestion(r: QuestionRow, choices: ChoiceRow[] = []): AdminQuestion {
 
 /* ----------------------------- Test list + read -------------------------- */
 
+type AdminTestSummaryRow = {
+  slug: string;
+  title: string;
+  status?: string;
+  modules: { id: string; questions: { id: string; needs_review: boolean }[] }[];
+};
+
+const ADMIN_TEST_SUMMARY_SELECT = "slug,title,modules(id,questions(id,needs_review))";
+const ADMIN_TEST_MODULES_SELECT =
+  "modules(id,test_id,section,order,variant,minutes_per_module,label," +
+  "questions(id,module_id,position,type,domain,skill,difficulty,passage,prompt,figure_url,correct,accepted_answers,explanation,explanation_source,needs_review," +
+  "choices(id,question_id,letter,text,explanation)))";
+const ADMIN_TEST_DETAIL_SELECT =
+  "id,slug,title,break_minutes,rw_threshold,math_threshold,source_file," + ADMIN_TEST_MODULES_SELECT;
+
+function toAdminTestSummary(row: AdminTestSummaryRow): AdminTestSummary {
+  const questions = row.modules.flatMap((module) => module.questions ?? []);
+  return {
+    slug: row.slug,
+    title: row.title,
+    moduleCount: row.modules.length,
+    questionCount: questions.length,
+    needsReviewCount: questions.filter((question) => question.needs_review).length,
+    status: row.status === "published" || row.status === "draft"
+      ? row.status
+      : legacyPublicationStatus("test", row.slug),
+  };
+}
+
 // Lightweight list for the tests index, with per-test question + flagged counts.
 export async function listAdminTests(): Promise<AdminTestSummary[]> {
-  const { data, error } = await supabaseAdmin()
+  const admin = supabaseAdmin();
+  const result = await admin
     .from("tests")
-    .select("slug,title,modules(id,questions(id,needs_review))")
+    .select(`slug,title,status,modules(id,questions(id,needs_review))`)
     .order("slug")
-    .returns<
-      { slug: string; title: string; modules: { id: string; questions: { id: string; needs_review: boolean }[] }[] }[]
-    >();
-  if (error || !data) return [];
+    .returns<AdminTestSummaryRow[]>();
 
-  return data.map((t) => {
-    const questions = t.modules.flatMap((m) => m.questions ?? []);
-    return {
-      slug: t.slug,
-      title: t.title,
-      moduleCount: t.modules.length,
-      questionCount: questions.length,
-      needsReviewCount: questions.filter((q) => q.needs_review).length,
-    };
-  });
+  if (!result.error) return (result.data ?? []).map(toAdminTestSummary);
+  if (!isMissingPublicationStatusColumn(result.error)) {
+    throw new Error(`listAdminTests failed: ${result.error.message}`);
+  }
+
+  const legacyResult = await admin
+    .from("tests")
+    .select(ADMIN_TEST_SUMMARY_SELECT)
+    .order("slug")
+    .returns<AdminTestSummaryRow[]>();
+  if (legacyResult.error) {
+    throw new Error(`listAdminTests legacy fallback failed: ${legacyResult.error.message}`);
+  }
+  return (legacyResult.data ?? []).map(toAdminTestSummary);
 }
 
 // Full test with every module + question + choice, assembled + sorted for the
 // admin outline. Mirrors the nested select in loadTest.ts but reads ALL fields
 // (needs_review, explanations, etc.) via the service-role client.
 export async function getAdminTest(slug: string): Promise<AdminTest | null> {
-  const { data, error } = await supabaseAdmin()
+  const admin = supabaseAdmin();
+  const result = await admin
     .from("tests")
-    .select(
-      "id,slug,title,break_minutes,rw_threshold,math_threshold,source_file," +
-        "modules(id,test_id,section,order,variant,minutes_per_module,label," +
-        "questions(id,module_id,position,type,domain,skill,difficulty,passage,prompt,figure_url,correct,accepted_answers,explanation,explanation_source,needs_review," +
-        "choices(id,question_id,letter,text,explanation)))",
-    )
+    .select(`id,slug,title,break_minutes,rw_threshold,math_threshold,source_file,status,${ADMIN_TEST_MODULES_SELECT}`)
     .eq("slug", slug)
     .maybeSingle<TestRow & { modules: (ModuleRow & { questions: (QuestionRow & { choices: ChoiceRow[] })[] })[] }>();
 
-  if (error || !data) return null;
+  let data = result.data;
+  if (result.error) {
+    if (!isMissingPublicationStatusColumn(result.error)) {
+      throw new Error(`getAdminTest failed: ${result.error.message}`);
+    }
+
+    const legacyResult = await admin
+      .from("tests")
+      .select(ADMIN_TEST_DETAIL_SELECT)
+      .eq("slug", slug)
+      .maybeSingle<TestRow & { modules: (ModuleRow & { questions: (QuestionRow & { choices: ChoiceRow[] })[] })[] }>();
+    if (legacyResult.error) {
+      throw new Error(`getAdminTest legacy fallback failed: ${legacyResult.error.message}`);
+    }
+    data = legacyResult.data
+      ? { ...legacyResult.data, status: legacyPublicationStatus("test", legacyResult.data.slug) }
+      : null;
+  }
+  if (!data) return null;
 
   const modules: AdminModule[] = (data.modules ?? [])
     .map((m) => ({
@@ -233,6 +286,9 @@ export async function getAdminTest(slug: string): Promise<AdminTest | null> {
     rwThreshold: data.rw_threshold,
     mathThreshold: data.math_threshold,
     sourceFile: data.source_file,
+    status: data.status === "published" || data.status === "draft"
+      ? data.status
+      : legacyPublicationStatus("test", data.slug),
     modules,
   };
 }
@@ -244,16 +300,99 @@ export type TestSettingsUpdate = {
   breakMinutes?: number;
   rwThreshold?: number;
   mathThreshold?: number;
+  status?: PublicationStatus;
 };
 
+export class TestPublicationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TestPublicationError";
+  }
+}
+
 export async function updateTestSettings(slug: string, patch: TestSettingsUpdate): Promise<void> {
+  if (patch.status === "published") await validateTestForPublication(slug);
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.title !== undefined) row.title = patch.title;
   if (patch.breakMinutes !== undefined) row.break_minutes = patch.breakMinutes;
   if (patch.rwThreshold !== undefined) row.rw_threshold = patch.rwThreshold;
   if (patch.mathThreshold !== undefined) row.math_threshold = patch.mathThreshold;
+  if (patch.status !== undefined) row.status = patch.status;
   const { error } = await supabaseAdmin().from("tests").update(row).eq("slug", slug);
   if (error) throw new Error(`updateTestSettings failed: ${error.message}`);
+}
+
+export function testQuestionPublicationIssue(
+  question: Pick<AdminQuestion, "type" | "prompt" | "correct" | "acceptedAnswers" | "choices" | "needsReview">,
+): string | null {
+  if (question.needsReview) return "Clear the Needs review flag.";
+  if (!question.prompt.trim()) return "Add a question prompt.";
+  if (question.type === "grid") {
+    return question.acceptedAnswers.some((answer) => answer.trim() !== "")
+      ? null
+      : "Add at least one accepted grid-in answer.";
+  }
+  const choices = question.choices.filter((choice) => choice.text.trim() !== "");
+  const letters = new Set(choices.map((choice) => choice.letter));
+  if (choices.length !== 4 || letters.size !== 4) return "Add four nonblank choices (A–D).";
+  return question.correct && letters.has(question.correct) ? null : "Select a valid correct answer.";
+}
+
+export async function validateTestForPublication(slug: string): Promise<void> {
+  const test = await getAdminTest(slug);
+  if (!test) throw new TestPublicationError("This test no longer exists.");
+  const required = [
+    ["rw", 1, "m1"],
+    ["rw", 2, "easy"],
+    ["rw", 2, "hard"],
+    ["math", 1, "m1"],
+    ["math", 2, "easy"],
+    ["math", 2, "hard"],
+  ] as const;
+  for (const [section, order, variant] of required) {
+    const testModule = test.modules.find((candidate) => (
+      candidate.section === section
+      && candidate.order === order
+      && (order === 1 || candidate.variant === variant)
+    ));
+    const label = `${section === "rw" ? "Reading & Writing" : "Math"} Module ${order}${order === 2 ? ` (${variant})` : ""}`;
+    if (!testModule) throw new TestPublicationError(`Cannot publish: ${label} is missing.`);
+    if (testModule.questions.length === 0) {
+      throw new TestPublicationError(`Cannot publish: ${label} has no questions.`);
+    }
+    const invalid = testModule.questions.find((question) => testQuestionPublicationIssue(question));
+    if (invalid) {
+      throw new TestPublicationError(
+        `Cannot publish: ${label}, question ${invalid.position}: ${testQuestionPublicationIssue(invalid)}`,
+      );
+    }
+  }
+}
+
+async function testStatusForQuestion(questionId: string): Promise<PublicationStatus | null> {
+  const admin = supabaseAdmin();
+  const result = await admin
+    .from("questions")
+    .select("modules(tests(slug,status))")
+    .eq("id", questionId)
+    .maybeSingle<{
+      modules: { tests: { slug: string; status: string } | null } | null;
+    }>();
+  if (!result.error) {
+    const status = result.data?.modules?.tests?.status;
+    return status === "published" ? "published" : status === "draft" ? "draft" : null;
+  }
+  if (!isMissingPublicationStatusColumn(result.error)) {
+    throw new Error(`Could not validate parent test publication: ${result.error.message}`);
+  }
+  const legacy = await admin
+    .from("questions")
+    .select("modules(tests(slug))")
+    .eq("id", questionId)
+    .maybeSingle<{ modules: { tests: { slug: string } | null } | null }>();
+  if (legacy.error) throw new Error(`Could not validate legacy parent test: ${legacy.error.message}`);
+  const slug = legacy.data?.modules?.tests?.slug;
+  return slug ? legacyPublicationStatus("test", slug) : null;
 }
 
 /* ------------------------------ Single question -------------------------- */
@@ -398,6 +537,10 @@ export type QuestionInput = {
 // the runtime simply ignores choices on a grid question.
 export async function updateTestQuestion(input: QuestionInput): Promise<void> {
   const admin = supabaseAdmin();
+  if ((await testStatusForQuestion(input.id)) === "published") {
+    const issue = testQuestionPublicationIssue({ ...input, choices: input.choices.map((choice) => ({ id: "", ...choice })) });
+    if (issue) throw new TestPublicationError(`Draft the test before saving this incomplete question: ${issue}`);
+  }
 
   const { error: qErr } = await admin
     .from("questions")
@@ -436,6 +579,9 @@ export async function updateTestQuestion(input: QuestionInput): Promise<void> {
 }
 
 export async function deleteTestQuestion(id: string): Promise<void> {
+  if ((await testStatusForQuestion(id)) === "published") {
+    throw new TestPublicationError("Draft the test before deleting one of its questions.");
+  }
   const { error } = await supabaseAdmin().from("questions").delete().eq("id", id);
   if (error) throw new Error(`deleteTestQuestion failed: ${error.message}`);
 }

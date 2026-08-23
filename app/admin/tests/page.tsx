@@ -18,7 +18,7 @@ export default async function AdminTestsPage() {
         <div>
           <h1 className="font-display text-xl font-extrabold tracking-tight text-navy">Practice Tests</h1>
           <p className="mt-0.5 text-sm text-navy/55">
-            Edit test settings and every question, choice, and explanation. Changes go live immediately.
+            Edit test settings and every question, choice, and explanation. Publish when a test is student-ready.
           </p>
         </div>
 
@@ -45,6 +45,9 @@ export default async function AdminTestsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <span className={`inline-flex items-center rounded-chip px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${t.status === "published" ? "bg-success-bg text-success-600" : "bg-navy/8 text-navy/55"}`}>
+                      {t.status}
+                    </span>
                     {t.needsReviewCount > 0 ? (
                       <span className="inline-flex items-center rounded-chip bg-gold/15 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-gold-600">
                         {t.needsReviewCount} to review

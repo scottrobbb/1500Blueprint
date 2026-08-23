@@ -11,7 +11,7 @@ import { isCorrect } from "@/lib/sat/scoring";
 import { saveModuleAttempt } from "@/lib/sat/moduleAttempts";
 import type { AnswerMap } from "@/lib/sat/types";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { isPracticeTestUnderConstruction } from "@/lib/flags";
+import { canAccessPracticeTest } from "@/lib/auth/access-control";
 
 type Body = {
   testSlug?: string;
@@ -36,11 +36,11 @@ export async function POST(req: NextRequest) {
   if (!testSlug || !moduleKey) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
-  if (isPracticeTestUnderConstruction(testSlug) && !isAdminEmail(session.email)) {
-    return NextResponse.json({ error: "test_under_construction" }, { status: 503 });
+  const isAdmin = isAdminEmail(session.email);
+  if (!isAdmin && !(await canAccessPracticeTest(session.email, testSlug))) {
+    return NextResponse.json({ error: "plan_limit" }, { status: 402 });
   }
-
-  const test = await loadTest(testSlug);
+  const test = await loadTest(testSlug, { includeDraft: isAdmin });
   if (!test) return NextResponse.json({ error: "test_not_found" }, { status: 404 });
   const found = getModuleByKey(test, moduleKey);
   if (!found) return NextResponse.json({ error: "module_not_found" }, { status: 404 });
@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       total,
       answers,
       perQuestionTime: body.perQuestionTime ?? {},
+      moduleSnapshot: { meta: found.meta, module: found.module },
       clientToken: body.clientToken,
     });
     return NextResponse.json({ attemptId: id, correct, total });

@@ -1,22 +1,36 @@
-// Practice Tests 3-5 remain student-locked while Tests 1, 2, 6, and 7 are public. Admins
-// keep access to every test for QA. Pure + edge-safe for proxy and server routes.
-export const LOCKED_PRACTICE_TEST_SLUGS = [
-  "practice-test-3",
-  "practice-test-4",
-  "practice-test-5",
-] as const;
+// Publication is stored on each content row. These helpers stay pure and
+// edge-safe; database access belongs in the server query modules.
+export type PublicationStatus = "draft" | "published";
 
-export function isPracticeTestUnderConstruction(slug: string): boolean {
-  return (LOCKED_PRACTICE_TEST_SLUGS as readonly string[]).includes(slug);
+const LEGACY_DRAFT_DRILLS = new Set(["targeted-math", "word-scan", "ai-math"]);
+const LEGACY_DRAFT_TESTS = new Set(["practice-test-3", "practice-test-4", "practice-test-5"]);
+
+export function isPublicationStatus(value: unknown): value is PublicationStatus {
+  return value === "draft" || value === "published";
 }
 
-// Student-facing drill locks. Admins retain access for QA.
-const LOCKED_DRILL_SLUGS = [
-  "targeted-math",
-  "word-scan",
-  "ai-math",
-] as const;
+export function canAccessPublication(status: PublicationStatus, isAdmin: boolean): boolean {
+  return status === "published" || isAdmin;
+}
 
-export function isDrillUnderConstruction(slug: string): boolean {
-  return (LOCKED_DRILL_SLUGS as readonly string[]).includes(slug);
+// Code can be deployed before the status-column migration. This compatibility
+// path mirrors the last hardcoded availability only for that narrow rollout
+// window; database values remain authoritative as soon as the column exists.
+export function legacyPublicationStatus(
+  kind: "drill" | "test",
+  slug: string,
+): PublicationStatus {
+  const drafts = kind === "drill" ? LEGACY_DRAFT_DRILLS : LEGACY_DRAFT_TESTS;
+  return drafts.has(slug) ? "draft" : "published";
+}
+
+export function isMissingPublicationStatusColumn(error: {
+  code?: string;
+  message?: string;
+} | null | undefined): boolean {
+  return Boolean(
+    error
+    && (error.code === "42703" || error.code === "PGRST204")
+    && /\bstatus\b/i.test(error.message ?? ""),
+  );
 }

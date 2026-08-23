@@ -8,6 +8,10 @@ import { bestByModuleKey } from "@/lib/sat/moduleAttempts";
 import { getSession } from "@/lib/auth/session";
 import { getNavStats } from "@/lib/gamification/state";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
+import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { getStudentAccess } from "@/lib/auth/entitlements";
+import { UltimateShell } from "@/components/ultimate/UltimateShell";
 
 export const metadata = {
   title: "Practice a module · 1500 SAT Blueprint",
@@ -22,18 +26,27 @@ function tone(meta: PracticeModuleMeta): { chip: string; badge: string } {
 
 export default async function ModulesPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ workspace?: string }>;
 }) {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const { slug } = await params;
-  if (!(await canAccessPracticeTest(session.email, slug))) redirect("/ultimate/tests?upgrade=1");
-  const [test, nav, best] = await Promise.all([
-    loadTest(slug),
+  const { workspace } = await searchParams;
+  const returnToUltimate = workspace === "ultimate" && isUltimatePreviewEmail(session.email);
+  const workspaceQuery = returnToUltimate ? "?workspace=ultimate" : "";
+  const testsHref = returnToUltimate ? "/ultimate/tests" : "/practice-test";
+  if (!(await canAccessPracticeTest(session.email, slug))) {
+    redirect(returnToUltimate ? "/ultimate/tests?upgrade=1" : "/practice-test");
+  }
+  const [test, nav, best, access] = await Promise.all([
+    loadTest(slug, { includeDraft: isAdminEmail(session.email) }),
     getNavStats(session.email),
     bestByModuleKey(session.email, slug),
+    getStudentAccess(session.email),
   ]);
   if (!test) notFound();
 
@@ -43,13 +56,10 @@ export default async function ModulesPage({
     mods: modules.filter((m) => m.sectionId === s.id),
   }));
 
-  return (
-    <div className="min-h-dvh bg-haze text-ink">
-      <AppNav activePage="tests" stats={nav} />
-
-      <main className="mx-auto w-full max-w-[820px] px-5 py-8 sm:px-6">
+  const content = (
+    <div className="mx-auto w-full max-w-[820px] px-5 py-8 sm:px-6">
         <Link
-          href="/practice-test"
+          href={testsHref}
           className="inline-flex items-center gap-1 text-sm font-semibold text-navy/55 hover:text-navy"
         >
           <ChevronRightIcon className="h-3.5 w-3.5 rotate-180" />
@@ -79,7 +89,7 @@ export default async function ModulesPage({
                 return (
                   <li key={m.key}>
                     <Link
-                      href={`/practice-test/${slug}/module/${m.key}`}
+                      href={`/practice-test/${slug}/module/${m.key}${workspaceQuery}`}
                       className="group flex h-full flex-col rounded-xl border border-navy/15 bg-white p-4 transition-colors hover:border-navy/30"
                     >
                       <span
@@ -109,7 +119,7 @@ export default async function ModulesPage({
         ))}
 
         <Link
-          href={`/practice-test/${slug}`}
+          href={`/practice-test/${slug}${workspaceQuery}`}
           className="mt-8 flex items-center gap-3 rounded-xl border border-navy/15 bg-white p-4 transition-colors hover:border-navy/30"
         >
           <span className="min-w-0 flex-1">
@@ -124,7 +134,21 @@ export default async function ModulesPage({
             Full test →
           </span>
         </Link>
-      </main>
+    </div>
+  );
+
+  if (returnToUltimate) {
+    return (
+      <UltimateShell stats={{ ...nav, plan: access.plan }} access={access}>
+        {content}
+      </UltimateShell>
+    );
+  }
+
+  return (
+    <div className="min-h-dvh bg-haze text-ink">
+      <AppNav activePage="tests" stats={nav} />
+      <main>{content}</main>
     </div>
   );
 }

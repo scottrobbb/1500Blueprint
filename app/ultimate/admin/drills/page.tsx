@@ -20,7 +20,7 @@ export default async function UltimateAdminDrillsPage() {
               <span className="grid h-10 w-10 place-items-center rounded-xl bg-navy text-sm font-extrabold uppercase text-sky">{drill.title.slice(0, 1)}</span>
               <span className="min-w-0 flex-1">
                 <strong className="block truncate font-display text-base text-navy">{drill.title}</strong>
-                <span className="mt-0.5 block text-xs text-navy/45">{drill.category}{drill.usesAi ? " · AI graded" : ""}</span>
+                <span className="mt-0.5 block text-xs text-navy/45">{drill.category}{drill.usesAi ? " · AI graded" : ""} · {drill.status}</span>
               </span>
               <span className="text-xs font-bold text-brand-600">Edit →</span>
             </Link>

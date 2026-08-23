@@ -39,6 +39,8 @@ export default async function DrillSettingsIndexPage() {
                     <span className="font-mono">{drill.slug}</span>
                     <span aria-hidden="true">·</span>
                     <span>{drill.category}</span>
+                    <span aria-hidden="true">·</span>
+                    <span className={drill.status === "published" ? "text-success-600" : "text-gold-600"}>{drill.status}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

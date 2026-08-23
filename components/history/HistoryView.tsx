@@ -6,7 +6,9 @@ import { MathText } from "@/components/test/MathText";
 import { CloseIcon } from "@/components/test/icons";
 import { drillTitle } from "@/lib/drills/registry";
 import { chip, label, secondaryBtn, surface } from "@/components/drills/shared/ui";
+import { ProgressOverview } from "@/components/history/ProgressOverview";
 import type { HistoryEntry } from "@/lib/drills/progress";
+import type { StudentProgress } from "@/lib/progress/types";
 import type {
   DrillSlug,
   GrammarContent,
@@ -48,17 +50,27 @@ function preview(e: HistoryEntry): string {
 
 export function HistoryView({
   entries,
+  progress,
   variant = "default",
   drillsHref = "/drills",
 }: {
   entries: HistoryEntry[];
+  progress?: StudentProgress;
   variant?: "default" | "ultimate";
   drillsHref?: string;
 }) {
   const [filter, setFilter] = useState<string>(ALL);
   const [open, setOpen] = useState<HistoryEntry | null>(null);
 
-  if (entries.length === 0) {
+  const hasSavedActivity = Boolean(progress && (
+    progress.questions.attempted > 0
+    || progress.tests.count > 0
+    || progress.lessons.completed > 0
+    || progress.drills.sessions > 0
+    || progress.drills.uniqueQuestions > 0
+  ));
+
+  if (entries.length === 0 && !hasSavedActivity) {
     return (
       <main className={`mx-auto w-full max-w-[1120px] px-6 py-16 text-center ${variant === "ultimate" ? "min-h-[70dvh]" : ""}`}>
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-ice text-brand">
@@ -68,7 +80,7 @@ export function HistoryView({
         </span>
         <h1 className="mt-4 font-display text-2xl font-extrabold text-navy">No history yet</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-navy/60">
-          Questions you work on in the drills show up here so you can revisit them anytime.
+          Questions you work on in drills, courses, the Question Bank, and tests show up here after you finish them.
         </p>
         <Link href={drillsHref} className={`${secondaryBtn} mt-6 ${variant === "ultimate" ? "min-h-11 rounded-xl" : ""}`}>
           Go to drills
@@ -82,7 +94,7 @@ export function HistoryView({
   const present = order.filter((slug) => entries.some((e) => e.drillSlug === slug));
   const shown = filter === ALL ? entries : entries.filter((e) => e.drillSlug === filter);
   const mastered = entries.filter((entry) => entry.mastered).length;
-  const masteryRate = Math.round((mastered / entries.length) * 100);
+  const masteryRate = entries.length > 0 ? Math.round((mastered / entries.length) * 100) : 0;
 
   return (
     <main className="mx-auto w-full max-w-[1120px] px-4 py-8 sm:px-7">
@@ -90,20 +102,22 @@ export function HistoryView({
         {variant === "ultimate" && <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-brand-600">Practice analytics</p>}
         <h1 className={`font-display font-extrabold tracking-tight text-navy ${variant === "ultimate" ? "mt-1 text-[32px]" : "text-2xl"}`}>Your history</h1>
         <p className="mt-1 text-sm text-navy/60">
-          {entries.length} question{entries.length === 1 ? "" : "s"} practiced. Tap any to review it.
+          {entries.length} unique drill question{entries.length === 1 ? "" : "s"} practiced. Tap any to review it.
         </p>
       </header>
 
+      {variant === "ultimate" && progress ? <ProgressOverview progress={progress} variant="history" /> : null}
+
       {variant === "ultimate" && (
         <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <HistoryMetric label="Questions attempted" value={entries.length} />
-          <HistoryMetric label="Skills mastered" value={mastered} />
-          <HistoryMetric label="Mastery rate" value={`${masteryRate}%`} wide />
+          <HistoryMetric label="Unique drill questions" value={entries.length} />
+          <HistoryMetric label="Unique questions mastered" value={mastered} />
+          <HistoryMetric label="Unique mastery rate" value={`${masteryRate}%`} wide />
         </div>
       )}
 
       <div className={`mb-5 flex flex-wrap gap-2 ${variant === "ultimate" ? "rounded-2xl border border-navy/10 bg-white p-3 shadow-pop" : ""}`}>
-        <FilterChip active={filter === ALL} text={`All (${entries.length})`} onClick={() => setFilter(ALL)} />
+        <FilterChip active={filter === ALL} text={`All unique (${entries.length})`} onClick={() => setFilter(ALL)} />
         {present.map((slug) => (
           <FilterChip
             key={slug}
@@ -114,7 +128,7 @@ export function HistoryView({
         ))}
       </div>
 
-      <ul className="space-y-2.5">
+      {shown.length > 0 ? <ul className="space-y-2.5">
         {shown.map((e) => (
           <li key={e.question.id}>
             <button
@@ -129,7 +143,7 @@ export function HistoryView({
             </button>
           </li>
         ))}
-      </ul>
+      </ul> : <div className="rounded-2xl border border-dashed border-navy/15 bg-white p-7 text-center"><h2 className="font-display text-lg font-extrabold text-navy">No drill questions yet</h2><p className="mt-1 text-sm text-navy/50">Your other saved activity is summarized above. Complete a drill answer to add a reviewable question here.</p></div>}
 
       {open ? <DetailModal entry={open} onClose={() => setOpen(null)} /> : null}
     </main>
@@ -255,7 +269,6 @@ function QuestionReview({ entry }: { entry: HistoryEntry }) {
     }
     case "targeted-math": {
       const c = q.content as TargetedMathContent;
-      const accepted = c.accepted ?? [];
       return (
         <div className="space-y-4">
           <div>
@@ -264,10 +277,14 @@ function QuestionReview({ entry }: { entry: HistoryEntry }) {
               <MathText>{q.stem || q.passage || ""}</MathText>
             </p>
           </div>
-          <div>
-            <SectionLabel>Accepted answer{accepted.length > 1 ? "s" : ""}</SectionLabel>
-            <p className="mt-1 font-serif text-[15px] font-semibold text-success-600">{accepted.join("   ·   ")}</p>
-          </div>
+          {q.answerType === "mc_single" && c.kind === "mc" ? (
+            <Choices choices={c.choices} correct={c.correct} />
+          ) : c.kind === "grid" ? (
+            <div>
+              <SectionLabel>Accepted answer{c.accepted.length > 1 ? "s" : ""}</SectionLabel>
+              <p className="mt-1 font-serif text-[15px] font-semibold text-success-600">{c.accepted.join("   ·   ")}</p>
+            </div>
+          ) : null}
           {q.explanation ? <Explanation text={q.explanation} /> : null}
         </div>
       );
