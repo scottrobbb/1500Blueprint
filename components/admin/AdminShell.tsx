@@ -8,7 +8,7 @@ import { Logo } from "@/components/Logo";
 // no client interactivity is required.
 
 export type AdminShellProps = {
-  active: "bank" | "tests" | "students" | "settings" | "sets" | "community";
+  active: "bank" | "tests" | "students" | "access" | "settings" | "sets" | "community";
   email: string;
   children: ReactNode;
 };
@@ -19,6 +19,7 @@ const tabs = [
   { key: "sets", label: "Flashcard Sets", href: "/admin/sets" },
   { key: "community", label: "Community", href: "/admin/community" },
   { key: "students", label: "Students", href: "/admin/students" },
+  { key: "access", label: "Complimentary", href: "/admin/access" },
   { key: "settings", label: "Drill Settings", href: "/admin/drills" },
 ] as const;
 
@@ -39,7 +40,10 @@ export function AdminShell({ active, email, children }: AdminShellProps) {
             </div>
           </div>
 
-          <nav className="flex items-center gap-1" aria-label="Admin sections">
+          <nav
+            className="order-3 flex w-full items-center gap-1 overflow-x-auto pb-1 lg:order-none lg:w-auto lg:pb-0"
+            aria-label="Admin sections"
+          >
             {tabs.map((tab) => {
               const isActive = tab.key === active;
               return (

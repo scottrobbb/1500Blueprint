@@ -3,6 +3,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { createClient as createSupabaseServerClient } from "@/utils/supabase/server";
 import { SESSION_COOKIE, SESSION_MAX_AGE } from "./config";
 import { isPasswordAuthEnabled } from "./password";
+import { COMPLIMENTARY_ACCESS_PLAN, hasComplimentaryAccess } from "./users";
 
 export type AuthMethod = "legacy" | "password";
 export type Session = {
@@ -47,9 +48,13 @@ export async function getLegacySession(): Promise<Session | null> {
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
     if (typeof payload.sub !== "string") return null;
+    const plan = (payload.plan as string | null) ?? null;
+    if (plan === COMPLIMENTARY_ACCESS_PLAN && !(await hasComplimentaryAccess(payload.sub))) {
+      return null;
+    }
     return {
       email: payload.sub,
-      plan: (payload.plan as string | null) ?? null,
+      plan,
       userId: null,
       authMethod: "legacy",
     };
