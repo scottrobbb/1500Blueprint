@@ -27,6 +27,9 @@
 # design references (Bluebook + brand screenshots — not part of the shipped app)
 /design-refs
 
+# unrelated local workspace (separate Git repository)
+/Geometric Shape Project/
+
 # playwright MCP verification artifacts (screenshots, snapshots, console logs)
 /.playwright-mcp/
 
