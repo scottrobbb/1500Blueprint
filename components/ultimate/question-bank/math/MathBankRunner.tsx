@@ -18,7 +18,7 @@ import {
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 
 type RunnerResult = MathAttemptResult & { response: string };
-type ToolPanel = "calculator" | "reference" | "directions" | "more" | "note" | "report" | null;
+type ToolPanel = "calculator" | "reference" | "directions" | null;
 type BankSubject = "math" | "reading-writing";
 type BankRunnerQuestion = Omit<MathRunnerQuestion, "domain"> & { domain: string };
 type BankRunnerProps = {
@@ -67,7 +67,6 @@ function ObjectiveBankRunner({
   const [explanationOpen, setExplanationOpen] = useState(false);
   const [eliminatorOn, setEliminatorOn] = useState(false);
   const [eliminated, setEliminated] = useState<Record<string, string[]>>({});
-  const [notes, setNotes] = useState<Record<string, string>>({});
   const enteredQuestionAt = useRef(0);
   const sessionId = useRef<string | null>(null);
   const attemptTokens = useRef<Record<string, { response: string; token: string }>>({});
@@ -179,7 +178,7 @@ function ObjectiveBankRunner({
         ...current,
         [question.id]: nextQuestionBankAttemptState(current[question.id], correct, answer),
       }));
-      setExplanationOpen(false);
+      setExplanationOpen(true);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "We could not check that answer.");
     } finally {
@@ -201,8 +200,6 @@ function ObjectiveBankRunner({
       eliminatorOn={eliminatorOn}
       onToggleMarked={() => void toggleMarked()}
       onToggleEliminator={() => setEliminatorOn((value) => !value)}
-      onOpenNote={() => setToolPanel((current) => current === "note" ? null : "note")}
-      onOpenReport={() => setToolPanel((current) => current === "report" ? null : "report")}
     />
   );
   const answerArea = (
@@ -313,7 +310,6 @@ function ObjectiveBankRunner({
       )}
 
       <RunnerFooter
-        subject={subject}
         currentIndex={currentIndex}
         total={questions.length}
         canGoPrevious={!finished && currentIndex > 0}
@@ -323,10 +319,6 @@ function ObjectiveBankRunner({
         onPrevious={() => goTo(currentIndex - 1)}
         onNext={goNext}
         onToggleNavigator={() => setNavigatorOpen((value) => !value)}
-        explanationAvailable={Boolean(result)}
-        explanationOpen={explanationOpen}
-        onOpenInfo={() => setToolPanel("directions")}
-        onToggleExplanation={() => setExplanationOpen((value) => !value)}
       />
 
       {navigatorOpen && (
@@ -343,22 +335,6 @@ function ObjectiveBankRunner({
       {toolPanel === "calculator" && <CalculatorPanel onClose={() => setToolPanel(null)} />}
       {toolPanel === "reference" && <ReferenceModal onClose={() => setToolPanel(null)} />}
       {toolPanel === "directions" && <DirectionsPanel subject={subject} onClose={() => setToolPanel(null)} />}
-      {toolPanel === "note" && question && (
-        <NotePanel
-          value={notes[question.id] ?? ""}
-          onChange={(value) => setNotes((current) => ({ ...current, [question.id]: value }))}
-          onClose={() => setToolPanel(null)}
-        />
-      )}
-      {toolPanel === "report" && <ReportPanel onClose={() => setToolPanel(null)} />}
-      {toolPanel === "more" && (
-        <MoreMenu
-          subject={subject}
-          timerHidden={timerHidden}
-          onToggleTimer={() => setTimerHidden((value) => !value)}
-          onClose={() => setToolPanel(null)}
-        />
-      )}
     </div>
   );
 }
@@ -419,13 +395,6 @@ function RunnerHeader({
           <ToolButton label="Highlight" active={highlightOn} onClick={onToggleHighlight}><HighlightIcon className="h-5 w-5" /></ToolButton>
           {subject === "math" && <ToolButton label="Calculator" active={toolPanel === "calculator"} onClick={() => onOpenTool("calculator")}><CalculatorIcon className="h-5 w-5" /></ToolButton>}
           {subject === "math" && <ToolButton label="Reference" active={toolPanel === "reference"} onClick={() => onOpenTool("reference")}><ReferenceIcon className="h-5 w-5" /></ToolButton>}
-          <ToolButton label="More" active={toolPanel === "more"} onClick={() => onOpenTool("more")}><MoreIcon className="h-5 w-5" /></ToolButton>
-          <Link href="/ultimate/community" aria-label="Community" title="Community" className="hidden h-11 w-11 items-center justify-center rounded-lg text-[#888] hover:bg-[#f5f5f5] hover:text-[#333] xl:inline-flex">
-            <UsersIcon className="h-5 w-5" />
-          </Link>
-          <button type="button" onClick={onTogglePause} aria-label="Pause practice" title="Pause practice" className="hidden h-11 w-11 items-center justify-center rounded-lg text-[#888] hover:bg-[#f5f5f5] hover:text-[#333] xl:inline-flex">
-            <TimerIcon className="h-5 w-5" />
-          </button>
         </nav>
       </div>
     </header>
@@ -440,7 +409,7 @@ function ToolButton({ label, active, onClick, children }: { label: string; activ
   );
 }
 
-function QuestionStrip({ index, marked, saving, saveError, eliminatorOn, onToggleMarked, onToggleEliminator, onOpenNote, onOpenReport }: { index: number; marked: boolean; saving: boolean; saveError: string | null; eliminatorOn: boolean; onToggleMarked: () => void; onToggleEliminator: () => void; onOpenNote: () => void; onOpenReport: () => void }) {
+function QuestionStrip({ index, marked, saving, saveError, eliminatorOn, onToggleMarked, onToggleEliminator }: { index: number; marked: boolean; saving: boolean; saveError: string | null; eliminatorOn: boolean; onToggleMarked: () => void; onToggleEliminator: () => void }) {
   return (
     <div className="flex min-h-[52px] overflow-hidden rounded-[9px] bg-[#f3f3f3]">
       <span className="grid w-[52px] flex-none place-items-center bg-black text-xl font-semibold text-white">{index + 1}</span>
@@ -448,13 +417,11 @@ function QuestionStrip({ index, marked, saving, saveError, eliminatorOn, onToggl
         <div className="min-w-0">
           <button type="button" onClick={onToggleMarked} disabled={saving} aria-pressed={marked} className={`inline-flex min-h-11 min-w-0 cursor-pointer items-center gap-2 rounded-md px-1 text-left text-sm font-semibold disabled:cursor-wait disabled:opacity-60 sm:text-base ${marked ? "text-[#d97706]" : "text-[#222] hover:text-black"}`}>
             <BookmarkIcon filled={marked} className="h-5 w-5 flex-none" />
-            <span className="truncate">{saving ? "Saving…" : marked ? "Saved for Review" : "Save for Review"}</span>
+            <span className="truncate">{saving ? "Saving…" : "Mark for Review"}</span>
           </button>
           {saveError && <p role="alert" className="-mt-1 text-[11px] font-semibold text-[#dc2626]">{saveError}</p>}
         </div>
         <div className="flex items-center gap-1 text-[#777]">
-          <button type="button" onClick={onOpenNote} aria-label="Question notes" title="Question notes" className="hidden h-10 w-10 place-items-center rounded-md hover:bg-black/5 hover:text-black sm:grid"><NoteIcon className="h-5 w-5" /></button>
-          <button type="button" onClick={onOpenReport} className="hidden min-h-10 items-center gap-1 rounded-md px-2 text-xs font-semibold hover:bg-black/5 hover:text-black sm:inline-flex"><FlagIcon className="h-4 w-4" /> Report</button>
           <button type="button" onClick={onToggleEliminator} aria-pressed={eliminatorOn} aria-label="Toggle answer eliminator" title="Answer eliminator" className={`grid h-10 w-10 place-items-center rounded-[9px] ${eliminatorOn ? "bg-[#161616] text-white" : "bg-black text-white hover:bg-[#333]"}`}><EliminateIcon className="h-5 w-5" /></button>
         </div>
       </div>
@@ -474,7 +441,6 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
             const selected = answer === choice.id;
             const correctSelected = selected && resultForAnswer?.correct;
             const incorrectSelected = attempt?.incorrectResponses.includes(choice.id) === true;
-            const choiceResult = result?.response === choice.id ? result : undefined;
             const eliminated = eliminatedChoices.includes(choice.id);
             return (
               <li key={choice.id} className="flex items-center gap-3">
@@ -487,9 +453,6 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
                   </button>
                   {selected && !resultForAnswer && !result?.correct && (
                     <button type="button" onClick={() => void onCheck()} disabled={submitting} className="mr-1 rounded-lg bg-[#1aa8ef] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1096d8] disabled:opacity-60">{submitting ? "Checking…" : "Check"}</button>
-                  )}
-                  {choiceResult && (
-                    <button type="button" onClick={onToggleExplanation} className="mr-1 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-black">Explain</button>
                   )}
                 </div>
                 {eliminatorOn && (
@@ -521,9 +484,7 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
             />
             {!resultForAnswer && !result?.correct ? (
               <button type="button" disabled={!answer.trim() || submitting} onClick={() => void onCheck()} className="min-h-10 rounded-lg bg-[#1aa8ef] px-4 text-sm font-semibold text-white hover:bg-[#1096d8] disabled:cursor-not-allowed disabled:bg-[#d6dae1] disabled:text-[#929db0]">{submitting ? "Checking…" : "Check"}</button>
-            ) : (
-              <button type="button" onClick={onToggleExplanation} className="min-h-10 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-black">Explain</button>
-            )}
+            ) : null}
           </div>
           <p className="mt-2 text-xs leading-5 text-[#888]">Use a decimal or fraction. Do not enter commas, symbols, or units.</p>
         </div>
@@ -547,23 +508,14 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
   );
 }
 
-function RunnerFooter({ subject, currentIndex, total, canGoPrevious, nextLabel, finished, navigatorOpen, explanationAvailable, explanationOpen, onPrevious, onNext, onToggleNavigator, onOpenInfo, onToggleExplanation }: { subject: BankSubject; currentIndex: number; total: number; canGoPrevious: boolean; nextLabel: string; finished: boolean; navigatorOpen: boolean; explanationAvailable: boolean; explanationOpen: boolean; onPrevious: () => void; onNext: () => void; onToggleNavigator: () => void; onOpenInfo: () => void; onToggleExplanation: () => void }) {
-  const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
-  const lessonsLabel = subject === "math" ? "Math lessons" : "Reading lessons";
-
+function RunnerFooter({ currentIndex, total, canGoPrevious, nextLabel, finished, navigatorOpen, onPrevious, onNext, onToggleNavigator }: { currentIndex: number; total: number; canGoPrevious: boolean; nextLabel: string; finished: boolean; navigatorOpen: boolean; onPrevious: () => void; onNext: () => void; onToggleNavigator: () => void }) {
   return (
     <footer className="relative z-20 border-t border-[#e8e8e8] bg-white px-3 py-3 sm:px-6">
       <div className="mx-auto grid max-w-[1170px] grid-cols-[auto_1fr_auto] items-center gap-3">
         <button type="button" onClick={onToggleNavigator} aria-expanded={navigatorOpen} className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-[#171717] px-4 text-xs font-semibold text-white hover:bg-black sm:min-w-[150px] sm:justify-center sm:text-sm">
           {finished ? "Review" : `${currentIndex + 1} of ${total}`} <ChevronUpIcon className={`h-4 w-4 transition-transform ${navigatorOpen ? "rotate-180" : ""}`} />
         </button>
-        <div className="hidden items-center justify-center gap-2 lg:flex">
-          <button type="button" onClick={onOpenInfo} aria-label="Question information" title="Question information" className="grid h-11 w-11 place-items-center rounded-[10px] border border-[#dedede] text-[#777] hover:bg-[#f5f5f5] hover:text-black"><InfoIcon className="h-5 w-5" /></button>
-          <Link href="/ultimate/courses" className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-600"><SparkIcon className="h-4 w-4" /> Math lessons</Link>
-          <Link href="/ultimate/drills" className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-brand/10 px-4 text-sm font-semibold text-brand-600 hover:bg-brand/15"><PlayCircleIcon className="h-4 w-4" /> {lessonsLabel}</Link>
-          <Link href={catalogHref} className="inline-flex min-h-11 items-center gap-2 rounded-[10px] bg-[#ffedf5] px-4 text-sm font-semibold text-[#de367b] hover:bg-[#ffe2ef]"><RemixIcon className="h-4 w-4" /> Remix</Link>
-          <button type="button" onClick={onToggleExplanation} disabled={!explanationAvailable} aria-pressed={explanationOpen} className={`inline-flex min-h-11 items-center gap-2 rounded-[10px] px-4 text-sm font-semibold ${explanationAvailable ? "bg-[#f2f2f2] text-[#555] hover:bg-[#e9e9e9]" : "cursor-not-allowed bg-[#f6f6f6] text-[#b9b9b9]"}`}><ListCheckIcon className="h-4 w-4" /> Explanation</button>
-        </div>
+        <p className="hidden text-center text-xs font-medium text-[#777] sm:block">Use the question menu to jump or review marked items.</p>
         <div className="flex items-center gap-2">
           <button type="button" onClick={onPrevious} disabled={!canGoPrevious} className="min-h-11 rounded-[10px] border border-[#d6d6d6] px-4 text-sm font-semibold text-[#555] hover:bg-[#f7f7f7] disabled:cursor-not-allowed disabled:text-[#c8c8c8] sm:px-6">Previous</button>
           {!finished && <button type="button" onClick={onNext} className="min-h-11 rounded-[10px] border border-[#d6d6d6] bg-white px-5 text-sm font-semibold text-[#555] hover:bg-[#f7f7f7] sm:px-7">{nextLabel}</button>}
@@ -688,44 +640,6 @@ function DirectionsPanel({ subject, onClose }: { subject: BankSubject; onClose: 
   return <div className="fixed inset-0 z-50"><button type="button" aria-label="Close directions" onClick={onClose} className="absolute inset-0 bg-navy/30" /><section role="dialog" aria-modal="true" aria-labelledby="directions-title" className="absolute left-0 top-0 flex h-full w-full max-w-md flex-col bg-white shadow-2xl"><div className="flex-1 overflow-y-auto p-7"><p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-600">1500 Blueprint</p><h2 id="directions-title" className="mt-1 font-display text-2xl font-extrabold text-navy">{isMath ? "Math" : "Reading & Writing"} directions</h2><div className="mt-5 space-y-4 text-sm leading-7 text-navy/65">{isMath ? <><p>Use the calculator and reference sheet whenever they help. You can move between questions at any time.</p><p>For multiple-choice questions, select one answer and check it. For student-produced responses, enter a decimal or fraction without symbols or units.</p></> : <><p>Read the passage in the left panel, then choose the answer that best responds to the question on the right.</p><p>Select one answer and check it. You can highlight text, eliminate choices, move between questions, and mark questions for review.</p></>}<p>Checked answers are saved to your Question Bank analytics. Mark any item you want to revisit before ending the session.</p></div></div><div className="border-t border-navy/10 p-5"><button type="button" onClick={onClose} className="min-h-11 w-full rounded-xl bg-brand text-sm font-extrabold text-white hover:bg-brand-600">Return to practice</button></div></section></div>;
 }
 
-function NotePanel({ value, onChange, onClose }: { value: string; onChange: (value: string) => void; onClose: () => void }) {
-  return (
-    <>
-      <button type="button" aria-label="Close notes" onClick={onClose} className="fixed inset-0 z-30 bg-black/5" />
-      <section role="dialog" aria-modal="true" aria-labelledby="note-title" className="fixed right-4 top-[84px] z-40 w-[min(360px,calc(100vw-32px))] rounded-[12px] border border-[#dedede] bg-white p-5 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <h2 id="note-title" className="text-lg font-semibold">Question notes</h2>
-          <button type="button" onClick={onClose} aria-label="Close notes" className="grid h-9 w-9 place-items-center rounded-md text-[#777] hover:bg-[#f2f2f2] hover:text-black"><CloseIcon className="h-4 w-4" /></button>
-        </div>
-        <textarea value={value} onChange={(event) => onChange(event.target.value)} placeholder="Write a note for this question…" className="mt-4 min-h-40 w-full resize-y rounded-[9px] border border-[#cfcfcf] p-3 text-sm leading-6 outline-none focus:border-[#777]" />
-        <p className="mt-2 text-xs text-[#888]">Saved for this practice session.</p>
-      </section>
-    </>
-  );
-}
-
-function ReportPanel({ onClose }: { onClose: () => void }) {
-  return (
-    <>
-      <button type="button" aria-label="Close report dialog" onClick={onClose} className="fixed inset-0 z-30 bg-black/10" />
-      <section role="dialog" aria-modal="true" aria-labelledby="report-title" className="fixed left-1/2 top-1/2 z-40 w-[min(420px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2 rounded-[12px] border border-[#dedede] bg-white p-6 shadow-2xl">
-        <div className="flex items-start justify-between gap-4">
-          <div><h2 id="report-title" className="text-lg font-semibold">Report a question</h2><p className="mt-1 text-sm text-[#777]">Flag content that needs review before the full bank is published.</p></div>
-          <button type="button" onClick={onClose} aria-label="Close report dialog" className="grid h-9 w-9 flex-none place-items-center rounded-md text-[#777] hover:bg-[#f2f2f2] hover:text-black"><CloseIcon className="h-4 w-4" /></button>
-        </div>
-        <div className="mt-5 grid gap-2">
-          {["Incorrect answer", "Unclear wording", "Broken figure or formatting"].map((reason) => <button key={reason} type="button" onClick={onClose} className="min-h-11 rounded-[9px] border border-[#d8d8d8] px-3 text-left text-sm font-medium hover:bg-[#f6f6f6]">{reason}</button>)}
-        </div>
-      </section>
-    </>
-  );
-}
-
-function MoreMenu({ subject, timerHidden, onToggleTimer, onClose }: { subject: BankSubject; timerHidden: boolean; onToggleTimer: () => void; onClose: () => void }) {
-  const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
-  return <><button type="button" aria-label="Close more menu" onClick={onClose} className="fixed inset-0 z-30" /><div className="fixed right-4 top-[116px] z-40 w-64 rounded-2xl border border-navy/10 bg-white p-2 shadow-2xl lg:top-[76px]"><button type="button" onClick={onToggleTimer} className="flex min-h-11 w-full items-center justify-between rounded-xl px-3 text-left text-sm font-bold text-navy hover:bg-navy/5"><span>{timerHidden ? "Show timer" : "Hide timer"}</span><TimerIcon className="h-5 w-5 text-navy/40" /></button><Link href={catalogHref} className="flex min-h-11 items-center justify-between rounded-xl px-3 text-sm font-bold text-navy hover:bg-navy/5"><span>End session</span><ArrowRightIcon className="h-4 w-4 text-navy/40" /></Link></div></>;
-}
-
 function Legend({ color, label }: { color: string; label: string }) {
   return <span className="inline-flex items-center gap-1.5"><span className={`h-2.5 w-2.5 rounded-full ${color}`} />{label}</span>;
 }
@@ -763,7 +677,6 @@ function createToken(): string {
 type IconProps = { className?: string };
 
 function ArrowLeftIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-function ArrowRightIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function ChevronDownIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m7 10 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function ChevronUpIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m7 14 5-5 5 5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function PauseIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" /></svg>; }
@@ -773,16 +686,6 @@ function CloseIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" c
 function HighlightIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m4 16 8.5-8.5 4 4L8 20H4v-4Z" strokeLinejoin="round" /><path d="m14.5 5.5 2-2 4 4-2 2M12 20h9" strokeLinecap="round" /></svg>; }
 function CalculatorIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 7h8v3H8zM8.5 14h.01M12 14h.01M15.5 14h.01M8.5 17.5h.01M12 17.5h.01M15.5 17.5h.01" strokeLinecap="round" /></svg>; }
 function ReferenceIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M6 3h9l3 3v15H6V3Z" strokeLinejoin="round" /><path d="M14 3v4h4M9 12h6M9 16h6" strokeLinecap="round" /></svg>; }
-function MoreIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="12" cy="19" r="1.8" /></svg>; }
-function TimerIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="13" r="8" /><path d="M12 9v4l3 2M9 2h6" strokeLinecap="round" /></svg>; }
 function FilterIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" /></svg>; }
 function BookmarkIcon({ className, filled }: IconProps & { filled: boolean }) { return <svg viewBox="0 0 24 24" className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M7 4h10v16l-5-3-5 3V4Z" strokeLinejoin="round" /></svg>; }
-function NoteIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2" /><path d="M8 8h8M8 12h5M15 16l3-3" strokeLinecap="round" /></svg>; }
-function FlagIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true"><path d="M6 3.5a1 1 0 0 1 1-1h10.8a1 1 0 0 1 .78 1.63L16 7.35l2.58 3.22a1 1 0 0 1-.78 1.63H8V21H6V3.5Z" /></svg>; }
 function EliminateIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M7 12a5 5 0 0 1 9-3M17 12a5 5 0 0 1-9 3M4 12h16" strokeLinecap="round" /><path d="m14 5 2 4-4 1M10 19l-2-4 4-1" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-function UsersIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true"><circle cx="9" cy="8" r="3" /><circle cx="16.5" cy="9" r="2.5" /><path d="M3.5 19c.2-4 2.1-6 5.5-6s5.3 2 5.5 6h-11ZM14.5 19c0-2.2-.6-4-1.7-5.2 3.9-.9 6.9 1 7.2 5.2h-5.5Z" /></svg>; }
-function InfoIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 10v6M12 7h.01" strokeLinecap="round" /></svg>; }
-function SparkIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true"><path d="M12 2 14 8l6 2-6 2-2 6-2-6-6-2 6-2 2-6Z" /></svg>; }
-function PlayCircleIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m10 8 6 4-6 4V8Z" fill="currentColor" stroke="none" /></svg>; }
-function RemixIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 7h3c5 0 5 10 10 10h3M17 4l3 3-3 3M4 17h3c2 0 3-1.5 4-3M14 7c1-1 2-1 3-1h3M17 14l3 3-3 3" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-function ListCheckIcon({ className }: IconProps) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m4 7 2 2 3-4M11 7h9M4 16l2 2 3-4M11 16h9" strokeLinecap="round" strokeLinejoin="round" /></svg>; }

@@ -12,19 +12,24 @@ import { parseUnderlineMarkup } from "@/lib/sat/formattedText";
 // handles exponents itself, so the fallback only touches non-math text.
 
 const EXPONENT_RE = /\^(\([^)]*\)|[+−-]?[A-Za-z0-9]+)/g;
-const INLINE_MATH_RE = /(?<!\\)\$([^$]+?)(?<!\\)\$/g;
+// Accept the delimiters used across both imported question banks and the
+// hand-authored CMS. Display math must be matched before inline dollars so a
+// `$$...$$` block is not misread as stray literal dollar signs.
+const MATH_RE = /(?<!\\)\$\$([\s\S]+?)(?<!\\)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(?<!\\)\$([^$\n]+?)(?<!\\)\$/g;
 
-export type MathSegment = { type: "text" | "math"; value: string };
+export type MathSegment = { type: "text" | "math"; value: string; display?: boolean };
 
 export function parseMathSegments(text: string): MathSegment[] {
   const segments: MathSegment[] = [];
   let last = 0;
-  for (const match of text.matchAll(INLINE_MATH_RE)) {
+  for (const match of text.matchAll(MATH_RE)) {
     const index = match.index ?? 0;
     if (index > last) {
       segments.push({ type: "text", value: text.slice(last, index).replace(/\\\$/g, "$") });
     }
-    segments.push({ type: "math", value: match[1] });
+    const display = match[1] !== undefined || match[2] !== undefined;
+    const value = match[1] ?? match[2] ?? match[3] ?? match[4] ?? "";
+    segments.push({ type: "math", value: value.trim(), ...(display ? { display: true } : {}) });
     last = index + match[0].length;
   }
   if (last < text.length) {
@@ -66,10 +71,14 @@ function renderMath(text: string, keyPrefix: string): ReactNode[] {
       return (
         <span
           key={`${keyPrefix}-math-${index}`}
+          className={segment.display ? "my-3 block max-w-full overflow-x-auto py-1 text-center" : undefined}
           // KaTeX output is safe, sanitized HTML. throwOnError:false degrades
           // a malformed expression to its raw source instead of crashing.
           dangerouslySetInnerHTML={{
-            __html: katex.renderToString(segment.value, { throwOnError: false }),
+            __html: katex.renderToString(segment.value, {
+              throwOnError: false,
+              displayMode: segment.display === true,
+            }),
           }}
         />
       );

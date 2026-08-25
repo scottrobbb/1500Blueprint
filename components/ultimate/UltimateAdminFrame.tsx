@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ShieldIcon } from "@/components/shell/icons";
 
-export type UltimateAdminSection = "courses" | "bank" | "tests" | "sets" | "community" | "students" | "drills";
+export type UltimateAdminSection = "courses" | "bank" | "tests" | "sets" | "community" | "calls" | "students" | "staff" | "drills";
 
 const sections: { key: UltimateAdminSection; label: string; href: string }[] = [
   { key: "courses", label: "Courses", href: "/ultimate/admin/courses" },
@@ -10,7 +10,9 @@ const sections: { key: UltimateAdminSection; label: string; href: string }[] = [
   { key: "tests", label: "Practice Tests", href: "/ultimate/admin/tests" },
   { key: "sets", label: "Flashcards", href: "/ultimate/admin/sets" },
   { key: "community", label: "Community", href: "/ultimate/admin/community" },
+  { key: "calls", label: "Weekly Calls", href: "/ultimate/admin/calls" },
   { key: "students", label: "Students", href: "/ultimate/admin/students" },
+  { key: "staff", label: "Staff Roles", href: "/ultimate/admin/staff" },
   { key: "drills", label: "Drill Settings", href: "/ultimate/admin/drills" },
 ];
 

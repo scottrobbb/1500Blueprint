@@ -20,6 +20,24 @@ test("renders escaped currency dollars as literal text", () => {
   ]);
 });
 
+test("supports display and parenthesized LaTeX delimiters used by imported questions", () => {
+  assert.deepEqual(parseMathSegments("Use $$x^2+1$$ and \\(y=2\\)."), [
+    { type: "text", value: "Use " },
+    { type: "math", value: "x^2+1", display: true },
+    { type: "text", value: " and " },
+    { type: "math", value: "y=2" },
+    { type: "text", value: "." },
+  ]);
+});
+
+test("supports bracketed display equations", () => {
+  assert.deepEqual(parseMathSegments("Solve \\[17x-24y=41\\] next."), [
+    { type: "text", value: "Solve " },
+    { type: "math", value: "17x-24y=41", display: true },
+    { type: "text", value: " next." },
+  ]);
+});
+
 test("does not treat an unmatched dollar as math", () => {
   assert.deepEqual(parseMathSegments("The price is $5."), [{ type: "text", value: "The price is $5." }]);
 });

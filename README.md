@@ -38,6 +38,37 @@ can be enabled independently for existing students without opening Free signup.
 Both flows are available by default during local development and can be forced
 off there by setting either flag to `false`.
 
+## Weekly Calls and Google Calendar
+
+Weekly Calls are stored in Supabase and managed at `/ultimate/admin/calls`.
+Published calls appear at `/ultimate/live-calls` for Max students. Every call
+gets a no-auth “Add to Google Calendar” link, even when server sync is not set
+up.
+
+For automatic Google event creation and Google Meet links, enable the Calendar
+API for a Google Cloud service account, share the target calendar with that
+account as an editor, and configure:
+
+```text
+GOOGLE_CALENDAR_ID=
+GOOGLE_CALENDAR_SERVICE_ACCOUNT_EMAIL=
+GOOGLE_CALENDAR_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+GOOGLE_CALENDAR_CREATE_MEET=true
+```
+
+For Google Workspace domain-wide delegation, also set
+`GOOGLE_CALENDAR_IMPERSONATE_USER` to the calendar owner. Calendar failures do
+not discard the Supabase call record; the admin UI surfaces the sync warning so
+the Meet link can be supplied manually.
+
+## Explanation editors
+
+Admins manage scoped explanation access at `/ultimate/admin/staff`.
+Explanation editors work at `/manager`; they can update only student-facing
+explanations. Correct answers, prompts, publication controls, billing, and the
+admin panel remain inaccessible. Every saved explanation is recorded in
+`explanation_edit_log`.
+
 Existing students can continue signing in through `/login`. Once password auth
 is enabled, an already signed-in legacy student can visit `/account/claim` to
 create a password without losing any email-owned progress.

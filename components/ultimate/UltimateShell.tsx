@@ -37,6 +37,7 @@ const navigation: { title?: string; items: NavItem[] }[] = [
     title: "Learning",
     items: [
       { href: "/ultimate/planner", label: "Study Planner", Icon: CalendarIcon, requires: "planner" },
+      { href: "/ultimate/live-calls", label: "Weekly Calls", Icon: VideoIcon, requires: "live" },
       { href: "/ultimate/courses", label: "Courses", Icon: CoursesIcon },
     ],
   },
@@ -271,6 +272,15 @@ function CalendarIcon({ className }: IconProps) {
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
       <rect x="4" y="5.5" width="16" height="14" rx="2" />
       <path d="M8 3.5v4M16 3.5v4M4 10h16M8 14h2M14 14h2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function VideoIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="3.5" y="6" width="13" height="12" rx="2" />
+      <path d="m16.5 10 4-2.5v9l-4-2.5" strokeLinejoin="round" />
     </svg>
   );
 }
