@@ -51,7 +51,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
   },
   max: {
     questionBankLimit: 3000,
-    fullTestLimit: 10,
+    fullTestLimit: 4,
     dailyDrillLimit: "unlimited",
     desmos101: true,
     readingWriting101: true,
