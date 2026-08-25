@@ -6,7 +6,6 @@ import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { listCoursesForStudent } from "@/lib/courses/queries";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
-import { PlanBadge } from "@/components/account/PlanBadge";
 
 export const metadata = { title: "Courses" };
 export const dynamic = "force-dynamic";
@@ -29,7 +28,6 @@ export default async function UltimateCoursesPage() {
             <Metric label="Lessons complete" value={`${completedLessons}/${totalLessons}`} />
             <Metric label="Overall progress" value={totalLessons ? `${Math.round((completedLessons / totalLessons) * 100)}%` : "0%"} />
           </section>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 bg-ice/60 px-4 py-3"><div className="flex items-center gap-2.5"><PlanBadge plan={access.plan} test={access.isTestAccount} /><span className="text-xs font-semibold text-navy/55">{access.entitlements.allCourses ? "All published courses are unlocked." : "Blueprint Foundations is included. Advanced subtopic courses require Max."}</span></div>{!access.entitlements.allCourses ? <Link href="/pricing" className="text-xs font-extrabold text-brand-700 hover:text-navy">Unlock every course →</Link> : null}</div>
           <section className="grid gap-5 md:grid-cols-2">
             {courses.map((course) => {
               const locked = !canAccessCourse(access, course.slug);
