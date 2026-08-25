@@ -21,7 +21,7 @@ const LESSON_COLUMNS = "id,month_id,call_date,title,vimeo_url,status,created_at,
 export async function listRecordingLibraryForAdmin(): Promise<CallRecordingMonth[]> {
   const [months, lessons] = await Promise.all([
     supabaseAdmin().from("call_recording_months").select(MONTH_COLUMNS).order("month_date", { ascending: false }).returns<MonthRow[]>(),
-    supabaseAdmin().from("call_recording_lessons").select(LESSON_COLUMNS).order("call_date").returns<LessonRow[]>(),
+    supabaseAdmin().from("call_recording_lessons").select(LESSON_COLUMNS).order("call_date", { ascending: false }).returns<LessonRow[]>(),
   ]);
   if (months.error) throw new Error(`failed to load recording months: ${months.error.message}`);
   if (lessons.error) throw new Error(`failed to load recording lessons: ${lessons.error.message}`);

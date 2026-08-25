@@ -69,7 +69,7 @@ export function CallRecordingsManager({ initialMonths }: { initialMonths: CallRe
       return;
     }
     setMonths((current) => current.map((item) => item.id === month.id
-      ? { ...item, lessons: [...item.lessons, body.lesson as CallRecordingLesson].sort((a, b) => a.callDate.localeCompare(b.callDate)) }
+      ? { ...item, lessons: [...item.lessons, body.lesson as CallRecordingLesson].sort((a, b) => b.callDate.localeCompare(a.callDate)) }
       : item));
     setLessonDrafts((current) => ({ ...current, [month.id]: emptyLessonDraft(month.monthDate) }));
     setAddingLessonFor(null);
@@ -95,7 +95,7 @@ export function CallRecordingsManager({ initialMonths }: { initialMonths: CallRe
       return;
     }
     setMonths((current) => current.map((month) => month.id === monthId
-      ? { ...month, lessons: month.lessons.map((lesson) => lesson.id === lessonId ? (body.lesson as CallRecordingLesson) : lesson) }
+      ? { ...month, lessons: month.lessons.map((lesson) => lesson.id === lessonId ? (body.lesson as CallRecordingLesson) : lesson).sort((a, b) => b.callDate.localeCompare(a.callDate)) }
       : month));
     setEditingLessonId(null);
   }
