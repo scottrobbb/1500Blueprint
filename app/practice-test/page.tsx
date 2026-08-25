@@ -7,7 +7,6 @@ import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getNavStats, getTestProgress } from "@/lib/gamification/state";
 import { getStudentAccess } from "@/lib/auth/entitlements";
-import { PlanBadge } from "@/components/account/PlanBadge";
 
 export const metadata = {
   title: "Practice Tests · 1500 SAT Blueprint",
@@ -97,7 +96,6 @@ export default async function PracticeTestsPage() {
       </div>
 
       <main className="mx-auto w-full max-w-[980px] px-6 pb-12 pt-7">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 bg-ice px-4 py-3"><div className="flex items-center gap-2.5"><PlanBadge plan={access.plan} test={access.isTestAccount} /><span className="text-xs font-semibold text-navy/55">Includes {access.entitlements.fullTestLimit} full-length {access.entitlements.fullTestLimit === 1 ? "test" : "tests"}</span></div>{access.plan !== "max" ? <Link href="/pricing" className="text-xs font-extrabold text-brand-700">Unlock more →</Link> : null}</div>
         {isAdmin && tests.some((test) => test.status === "draft") ? (
           <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-[13px] font-semibold text-navy/70">
             Draft tests are shown for admin QA. Students only see tests marked Published in the admin editor.

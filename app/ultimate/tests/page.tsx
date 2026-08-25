@@ -7,7 +7,6 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getTestProgress } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
 import { getStudentAccess } from "@/lib/auth/entitlements";
-import { PlanBadge } from "@/components/account/PlanBadge";
 
 export const metadata = { title: "Full-Length Tests" };
 
@@ -98,11 +97,6 @@ export default async function UltimateTestsPage() {
             All completed tests <ChevronRightIcon className="h-4 w-4" />
           </Link>
         ) : null}
-      </div>
-
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-brand/20 bg-ice/60 px-4 py-3">
-        <div className="flex items-center gap-2.5"><PlanBadge plan={access.plan} test={access.isTestAccount} /><span className="text-xs font-semibold text-navy/55">Your plan includes {access.entitlements.fullTestLimit} full-length {access.entitlements.fullTestLimit === 1 ? "test" : "tests"}.</span></div>
-        {access.plan !== "max" ? <Link href="/pricing" className="text-xs font-extrabold text-brand-700 hover:text-navy">Unlock more tests →</Link> : null}
       </div>
 
       {isAdmin ? (
