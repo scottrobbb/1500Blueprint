@@ -87,7 +87,7 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
           : "inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"}
       >
         <Avatar src={avatarUrl} initials={initials} alt={name} className={wide ? `h-10 w-10 flex-none border-2 text-[13px] ${tone === "dark" ? "border-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]" : "border-white shadow-[0_0_0_1px_rgba(11,42,91,0.15)]"}` : "h-[34px] w-[34px] border-2 border-white text-[13px] shadow-[0_0_0_1px_rgba(11,42,91,0.15)]"} />
-        {wide ? <><span className="min-w-0 flex-1"><strong className={`block truncate text-xs font-extrabold ${tone === "dark" ? "text-white/90" : "text-navy"}`}>{name}</strong><span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.1em] ${planTone(plan, tone)}`}>{plan}{test ? " · Test" : ""}</span></span><ChevronIcon className={`h-4 w-4 flex-none transition-transform duration-200 motion-reduce:transition-none ${tone === "dark" ? "text-white/40" : "text-navy/35"} ${open ? "rotate-180" : ""}`} /></> : null}
+        {wide ? <><span className="min-w-0 flex-1"><strong className={`block truncate text-xs font-extrabold ${tone === "dark" ? "text-white/90" : "text-navy"}`}>{name}</strong><span className="mt-1 inline-flex rounded-full bg-gold px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.1em] text-white shadow-sm">{plan}{test ? " · Test" : ""}</span></span><ChevronIcon className={`h-4 w-4 flex-none transition-transform duration-200 motion-reduce:transition-none ${tone === "dark" ? "text-white/40" : "text-navy/35"} ${open ? "rotate-180" : ""}`} /></> : null}
       </button>
 
       {open && typeof document !== "undefined" ? createPortal(
@@ -179,18 +179,6 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
       )}
     </div>
   );
-}
-
-function planTone(plan: string, tone: "light" | "dark"): string {
-  const normalized = plan.toLowerCase();
-  if (tone === "dark") {
-    if (normalized === "max") return "border-gold/35 bg-gold/15 text-gold";
-    if (normalized === "core") return "border-sky/30 bg-sky/10 text-sky";
-    return "border-white/15 bg-white/[0.07] text-white/65";
-  }
-  if (normalized === "max") return "border-gold/35 bg-[#fff7db] text-[#7b5900]";
-  if (normalized === "core") return "border-brand/25 bg-ice text-brand-700";
-  return "border-navy/15 bg-navy/[0.05] text-navy/55";
 }
 
 function ChevronIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m7 10 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
