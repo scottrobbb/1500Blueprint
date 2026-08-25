@@ -1,7 +1,7 @@
 import type { PlanCode } from "@/lib/auth/plans";
 
 const bgByPlan: Record<PlanCode, string> = {
-  free: "bg-gold",
+  free: "bg-gray-500",
   core: "bg-sky",
   max: "bg-gold",
 };
