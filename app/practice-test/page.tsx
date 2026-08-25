@@ -122,7 +122,8 @@ export default async function PracticeTestsPage() {
               const best = progress.bestBySlug[t.slug] ?? null;
               const count = progress.countBySlug[t.slug] ?? 0;
               const planLocked = testIndex >= access.entitlements.fullTestLimit && !isAdmin;
-              const locked = (t.status !== "published" && !isAdmin) || planLocked;
+              const constructionLocked = t.status !== "published" && !isAdmin;
+              const locked = constructionLocked || planLocked;
               const cardContent = (
                 <>
                   <div
@@ -140,7 +141,7 @@ export default async function PracticeTestsPage() {
                       <Chip>~2h 14m</Chip>
                       {locked ? (
                         <span className="rounded-md bg-navy/10 px-2 py-[3px] text-[11px] font-bold text-navy/50">
-                          Locked
+                          {constructionLocked ? "Coming soon" : "Locked"}
                         </span>
                       ) : best ? (
                         <span className="rounded-md bg-success-bg px-2 py-[3px] text-[11px] font-bold text-success-600">
@@ -160,7 +161,7 @@ export default async function PracticeTestsPage() {
                         : "bg-navy text-white transition-colors group-hover:bg-navy-700"
                     }`}
                   >
-                    {locked ? "Locked" : best ? "Retake" : "Start"}
+                    {locked ? (constructionLocked ? "Coming soon" : "Locked") : best ? "Retake" : "Start"}
                     {!locked && <ChevronRightIcon className="h-3.5 w-3.5" />}
                   </span>
                 </>
@@ -183,7 +184,7 @@ export default async function PracticeTestsPage() {
                     </Link>
                   )}
                   {locked ? (
-                    <div className="mt-1.5 px-1 text-xs font-semibold text-navy/40">{planLocked ? "Upgrade your plan to unlock" : "Available soon"}</div>
+                    <div className="mt-1.5 px-1 text-xs font-semibold text-navy/40">{planLocked ? "Upgrade your plan to unlock" : "Coming soon"}</div>
                   ) : (
                     <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 px-1">
                       <Link

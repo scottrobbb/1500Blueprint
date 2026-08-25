@@ -159,7 +159,7 @@ export default async function UltimateTestsPage() {
 
                   {locked ? (
                     <div className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-navy/[0.05] px-4 text-center text-sm font-bold text-navy/40">
-                      {planLocked ? `Upgrade to unlock test ${testIndex + 1}` : "Available after Scott publishes it"}
+                      {planLocked ? `Upgrade to unlock test ${testIndex + 1}` : "Coming soon"}
                     </div>
                   ) : (
                     <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
