@@ -23,3 +23,27 @@ export type WeeklyCallInput = Pick<
   WeeklyCall,
   "title" | "description" | "focusTopic" | "hostName" | "startsAt" | "endsAt" | "timezone" | "meetingUrl" | "recordingUrl" | "status"
 >;
+
+export type RecordingLessonStatus = "draft" | "published";
+
+export type CallRecordingLesson = {
+  id: string;
+  monthId: string;
+  title: string;
+  vimeoUrl: string;
+  status: RecordingLessonStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CallRecordingLessonInput = Pick<CallRecordingLesson, "monthId" | "title" | "vimeoUrl" | "status">;
+
+export type CallRecordingMonth = {
+  id: string;
+  monthDate: string;
+  label: string;
+  createdAt: string;
+  lessons: CallRecordingLesson[];
+};
+
+export type CallRecordingMonthInput = { monthDate: string; label: string };

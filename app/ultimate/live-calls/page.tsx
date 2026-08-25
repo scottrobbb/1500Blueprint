@@ -7,7 +7,8 @@ import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { googleCalendarTemplateUrl } from "@/lib/calls/google";
 import { getPublishedWeeklyCallSchedule } from "@/lib/calls/queries";
-import type { WeeklyCall } from "@/lib/calls/types";
+import { getPublishedRecordingLibrary } from "@/lib/calls/recordings";
+import type { CallRecordingMonth, WeeklyCall } from "@/lib/calls/types";
 
 export const metadata = { title: "Weekly Calls" };
 export const dynamic = "force-dynamic";
@@ -20,7 +21,10 @@ export default async function UltimateLiveCallsPage() {
     return <AccessGate title="Join Scott's weekly calls" description="Weekly group classes and their recordings are included with Max." currentPlan={access.plan} />;
   }
 
-  const { upcoming, recordings } = await getPublishedWeeklyCallSchedule();
+  const [{ upcoming, recordings }, recordingMonths] = await Promise.all([
+    getPublishedWeeklyCallSchedule(),
+    getPublishedRecordingLibrary(),
+  ]);
   const nextCall = upcoming[0] ?? null;
 
   return (
@@ -39,6 +43,34 @@ export default async function UltimateLiveCallsPage() {
           {recordings.length ? recordings.slice(0, 8).map((call) => <a key={call.id} href={call.recordingUrl as string} target="_blank" rel="noreferrer" className="group flex min-h-[78px] items-center gap-3 border-b border-navy/10 px-4 py-3 last:border-b-0 hover:bg-ice/35"><span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-navy text-white"><PlayIcon className="h-4 w-4" /></span><span className="min-w-0 flex-1"><strong className="line-clamp-1 block text-sm text-navy">{call.title}</strong><span className="mt-1 block text-[11px] text-navy/40">{formatDate(call.startsAt)} · Watch recording</span></span><span className="text-brand-600 transition-transform group-hover:translate-x-0.5">→</span></a>) : <p className="p-6 text-sm leading-6 text-navy/45">Recordings will collect here after each session.</p>}
         </aside>
       </div>
+
+      {recordingMonths.length ? (
+        <section className="mt-8">
+          <div className="mb-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">By month</p><h2 className="mt-1 font-display text-2xl font-extrabold text-ink">Recordings library</h2></div>
+          <div className="space-y-6">
+            {recordingMonths.map((month) => <RecordingMonthSection key={month.id} month={month} />)}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function RecordingMonthSection({ month }: { month: CallRecordingMonth }) {
+  return (
+    <div>
+      <h3 className="mb-3 font-display text-lg font-extrabold text-navy">{month.label}</h3>
+      <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {month.lessons.map((lesson) => (
+          <li key={lesson.id}>
+            <a href={lesson.vimeoUrl} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-[16px] border border-navy/10 bg-white p-4 shadow-pop transition-colors hover:border-brand/35">
+              <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-navy text-white"><PlayIcon className="h-4 w-4" /></span>
+              <span className="min-w-0 flex-1"><strong className="line-clamp-2 block text-sm text-navy">{lesson.title}</strong><span className="mt-1 block text-[11px] text-navy/40">Watch on Vimeo</span></span>
+              <span className="flex-none text-brand-600 transition-transform group-hover:translate-x-0.5">→</span>
+            </a>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
