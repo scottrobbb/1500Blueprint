@@ -11,14 +11,17 @@ export function parseRecordingMonthInput(value: unknown): CallRecordingMonthInpu
   return { monthDate, label };
 }
 
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
 export function parseRecordingLessonInput(value: unknown): CallRecordingLessonInput | null {
   if (!isRecord(value)) return null;
   const monthId = string(value.monthId, 160);
-  const title = string(value.title, 160);
+  const callDate = typeof value.callDate === "string" && DATE_PATTERN.test(value.callDate) ? value.callDate : "";
+  const title = optionalString(value.title, 160);
   const vimeoUrl = vimeoLink(value.vimeoUrl);
   const status = recordingStatus(value.status);
-  if (!monthId || !title || !vimeoUrl || !status) return null;
-  return { monthId, title, vimeoUrl, status };
+  if (!monthId || !callDate || !vimeoUrl || !status) return null;
+  return { monthId, callDate, title, vimeoUrl, status };
 }
 
 function vimeoLink(value: unknown): string | null {

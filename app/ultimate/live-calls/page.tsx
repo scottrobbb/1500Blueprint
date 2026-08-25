@@ -65,7 +65,7 @@ function RecordingMonthSection({ month }: { month: CallRecordingMonth }) {
           <li key={lesson.id}>
             <a href={lesson.vimeoUrl} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-[16px] border border-navy/10 bg-white p-4 shadow-pop transition-colors hover:border-brand/35">
               <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-navy text-white"><PlayIcon className="h-4 w-4" /></span>
-              <span className="min-w-0 flex-1"><strong className="line-clamp-2 block text-sm text-navy">{lesson.title}</strong><span className="mt-1 block text-[11px] text-navy/40">Watch on Vimeo</span></span>
+              <span className="min-w-0 flex-1"><strong className="line-clamp-2 block text-sm text-navy">{lesson.title || formatRecordingDate(lesson.callDate)}</strong><span className="mt-1 block text-[11px] text-navy/40">{lesson.title ? formatRecordingDate(lesson.callDate) + " · " : ""}Watch on Vimeo</span></span>
               <span className="flex-none text-brand-600 transition-transform group-hover:translate-x-0.5">→</span>
             </a>
           </li>
@@ -116,6 +116,7 @@ function EmptySchedule() { return <section className="mt-7 rounded-[20px] border
 
 function formatDate(value: string): string { return new Date(value).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" }); }
 function formatTime(value: string): string { return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
+function formatRecordingDate(value: string): string { return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }); }
 function CalendarIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="2" /><path d="M8 3.5v4M16 3.5v4M4 10h16M8 14h2M14 14h2" strokeLinecap="round" /></svg>; }
 function VideoIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2" /><path d="m16 10 5-3v10l-5-3" strokeLinejoin="round" /></svg>; }
 function PlayIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true"><path d="m9 7 9 5-9 5V7Z" /></svg>; }

@@ -29,14 +29,15 @@ export type RecordingLessonStatus = "draft" | "published";
 export type CallRecordingLesson = {
   id: string;
   monthId: string;
-  title: string;
+  callDate: string;
+  title: string | null;
   vimeoUrl: string;
   status: RecordingLessonStatus;
   createdAt: string;
   updatedAt: string;
 };
 
-export type CallRecordingLessonInput = Pick<CallRecordingLesson, "monthId" | "title" | "vimeoUrl" | "status">;
+export type CallRecordingLessonInput = Pick<CallRecordingLesson, "monthId" | "callDate" | "title" | "vimeoUrl" | "status">;
 
 export type CallRecordingMonth = {
   id: string;
