@@ -27,7 +27,7 @@ const freeFeatures: PlanFeature[] = [
 ];
 
 const blueprintFeatures: PlanFeature[] = [
-  { label: "3,000+ questions, including Challenge", icon: "grid" },
+  { label: "1,250+ questions, including Challenge", icon: "grid" },
   { label: "2 full-length practice tests", icon: "file" },
   { label: "Up to 20 drills per day", icon: "bolt" },
   { label: "Desmos 101 and R&W 101 courses", icon: "play" },
@@ -36,7 +36,7 @@ const blueprintFeatures: PlanFeature[] = [
 
 const proFeatures: PlanFeature[] = [
   { label: "Everything in Core", icon: "check" },
-  { label: "10 tests with Desmos explanations", icon: "target" },
+  { label: "4 tests with explanations", icon: "target" },
   { label: "Unlimited daily drills", icon: "bolt" },
   { label: "Every course and advanced track", icon: "play" },
   { label: "Weekly live group classes and recordings", icon: "star" },
