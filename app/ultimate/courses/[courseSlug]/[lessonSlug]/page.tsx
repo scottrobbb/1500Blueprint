@@ -85,7 +85,7 @@ function LessonContent({ block, lessonId, initialAttempt }: { block: LessonBlock
         <div className="mb-4"><StepHeading block={block} description={block.content.description} /></div>
         {embedUrl ? (
           <div className="aspect-video overflow-hidden rounded-2xl bg-navy shadow-[0_14px_35px_-24px_rgba(12,35,72,0.6)]">
-            <iframe src={embedUrl} title={block.content.title ?? "Lesson video"} loading="lazy" className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+            <iframe src={embedUrl} title={block.content.title ?? "Lesson video"} loading="lazy" className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen sandbox="allow-scripts allow-same-origin allow-fullscreen" />
           </div>
         ) : (
           <div className="flex aspect-video w-full items-center justify-center rounded-2xl bg-navy px-6 text-center text-sm text-white/60">This video isn&rsquo;t available yet.</div>

@@ -40,6 +40,7 @@ export default async function RecordingPlayerPage({ params }: Params) {
               className="absolute inset-0 h-full w-full"
               allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
               allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-fullscreen"
             />
           </div>
         ) : (
