@@ -33,6 +33,17 @@ function move<T>(items: T[], index: number, direction: -1 | 1): T[] {
 export function PracticeBuilder({ value, onChange }: { value: CoursePractice; onChange: (practice: CoursePractice) => void }) {
   const [pastingId, setPastingId] = useState<string | null>(null);
   const [pasteErrorId, setPasteErrorId] = useState<string | null>(null);
+  // Tracks which questions are expanded, independent of completeness, so
+  // typing a valid answer never auto-collapses the question mid-edit.
+  const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(value.questions.filter((question, index) => index === 0 || !isCoursePracticeQuestionComplete(question)).map((question) => question.id)));
+
+  function setQuestionOpen(questionId: string, open: boolean) {
+    setOpenIds((current) => {
+      const next = new Set(current);
+      if (open) next.add(questionId); else next.delete(questionId);
+      return next;
+    });
+  }
 
   function updateQuestion(questionIndex: number, update: Partial<CoursePracticeQuestion>) {
     onChange({ ...value, questions: value.questions.map((question, index) => index === questionIndex ? { ...question, ...update } : question) });
@@ -56,7 +67,9 @@ export function PracticeBuilder({ value, onChange }: { value: CoursePractice; on
   }
 
   function addQuestion(type: CoursePracticeQuestionType) {
-    onChange({ ...value, questions: [...value.questions, emptyCoursePracticeQuestion(type)] });
+    const question = emptyCoursePracticeQuestion(type);
+    setQuestionOpen(question.id, true);
+    onChange({ ...value, questions: [...value.questions, question] });
   }
 
   const completeCount = value.questions.filter(isCoursePracticeQuestionComplete).length;
@@ -76,7 +89,7 @@ export function PracticeBuilder({ value, onChange }: { value: CoursePractice; on
         {value.questions.map((question, questionIndex) => {
           const complete = isCoursePracticeQuestionComplete(question);
           return (
-            <details key={question.id} open={!complete || questionIndex === 0} className="group overflow-hidden rounded-2xl border border-navy/10 bg-white">
+            <details key={question.id} open={openIds.has(question.id)} onToggle={(event) => setQuestionOpen(question.id, event.currentTarget.open)} className="group overflow-hidden rounded-2xl border border-navy/10 bg-white">
               <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 bg-haze/45 px-3 py-2 sm:px-4"><span className={`grid h-8 w-8 flex-none place-items-center rounded-xl text-xs font-extrabold ${complete ? "bg-success-bg text-success-600" : "bg-[#fff4d5] text-[#8a6500]"}`}>{questionIndex + 1}</span><span className="min-w-0 flex-1"><strong className="block truncate text-sm text-navy">{question.prompt || "Untitled question"}</strong><span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[0.1em] text-navy/35">{question.type === "multiple_choice" ? "Multiple choice" : "Free response"} · {complete ? "Ready" : "Needs attention"}</span></span><OrderButtons onUp={(event) => { event.preventDefault(); onChange({ ...value, questions: move(value.questions, questionIndex, -1) }); }} onDown={(event) => { event.preventDefault(); onChange({ ...value, questions: move(value.questions, questionIndex, 1) }); }} /></summary>
               <div className="border-t border-navy/10 p-4 sm:p-5">
                 <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]"><Field label="Question type"><select value={question.type} onChange={(event) => { const type = event.target.value as CoursePracticeQuestionType; updateQuestion(questionIndex, { type, choices: type === "multiple_choice" && question.choices.length < 2 ? ["", "", "", ""] : type === "free_response" ? [] : question.choices, correctAnswer: "" }); }} className={inputClass}><option value="multiple_choice">Multiple choice</option><option value="free_response">Free response</option></select></Field><Field label="Question prompt"><textarea rows={3} value={question.prompt} onChange={(event) => updateQuestion(questionIndex, { prompt: event.target.value })} className={inputClass} /></Field></div>
