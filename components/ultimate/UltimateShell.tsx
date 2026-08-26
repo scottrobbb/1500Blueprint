@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactElement } from "react";
 import { Logo } from "@/components/Logo";
+import { LockIcon } from "@/components/account/UpgradePrompt";
 import { CommunityIcon } from "@/components/community/icons";
 import { LayersIcon } from "@/components/flashcards/icons";
 import { AccountMenu } from "@/components/shell/AccountMenu";
@@ -127,6 +128,13 @@ export function UltimateShell({
       </nav>
 
       <div className="mt-3 border-t border-white/10 pt-3">
+        {access.plan !== "max" ? (
+          <Link href="/pricing" onClick={() => setMenuOpen(false)} className="mb-2.5 flex min-h-14 items-center gap-3 rounded-xl border border-sky/15 bg-sky/[0.08] px-3 py-2.5 text-white transition-colors hover:border-sky/30 hover:bg-sky/[0.13]">
+            <span className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-gold/15 text-gold"><LockIcon className="h-4 w-4" /></span>
+            <span className="min-w-0 flex-1"><strong className="block text-xs font-extrabold">{access.plan === "free" ? "Unlock Core" : "Go Max"}</strong><span className="mt-0.5 block truncate text-[10px] text-white/50">{access.plan === "free" ? "Drills, Challenge sets, more tests" : "Planner, courses, weekly calls"}</span></span>
+            <span className="text-sm text-sky">→</span>
+          </Link>
+        ) : null}
         <div className="mb-2 grid grid-cols-2 divide-x divide-white/10 rounded-xl bg-white/[0.06] py-2.5">
           <div className="px-3">
             <span className="flex items-center gap-1 text-xs font-bold text-gold">
@@ -230,7 +238,7 @@ function RailLink({ item, active, locked = false, onNavigate }: { item: NavItem;
     >
       <Icon className={`h-[18px] w-[18px] flex-none ${active ? "text-sky" : "text-white/55"}`} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      {locked ? <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white/65">{item.requires === "drills" ? "Core" : "Max"}</span> : null}
+      {locked ? <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white/65"><LockIcon className="h-2.5 w-2.5" />{item.requires === "drills" ? "Core" : "Max"}</span> : null}
       {item.chip && (
         <span className="rounded-full bg-brand/20 px-1.5 py-0.5 text-[9px] font-bold text-sky">{item.chip}</span>
       )}

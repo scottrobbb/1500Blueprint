@@ -7,6 +7,8 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getTestProgress } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
 import { getStudentAccess } from "@/lib/auth/entitlements";
+import { LockedBadge, LockIcon, UpgradePrompt } from "@/components/account/UpgradePrompt";
+import { PLAN_ENTITLEMENTS } from "@/lib/auth/plans";
 
 export const metadata = { title: "Full-Length Tests" };
 
@@ -86,6 +88,12 @@ export default async function UltimateTestsPage() {
         </div>
       </section>
 
+      {access.plan === "free" ? (
+        <UpgradePrompt currentPlan="free" requiredPlan="core" title="Unlock your next full-length test" description="Use the free test as your baseline, then compare a second adaptive score and add daily drills between attempts." features={["2 full-length tests", "Daily skill drills", "Challenge Question sets"]} className="mb-8" />
+      ) : access.plan === "core" ? (
+        <UpgradePrompt currentPlan="core" requiredPlan="max" title="Measure every stage of your score climb" description="Max opens the complete test library, every explanation, and the planner that turns each score report into next-week assignments." features={["Complete test library", "All advanced courses", "Personal study planner"]} className="mb-8" />
+      ) : null}
+
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">Test library</p>
@@ -119,10 +127,11 @@ export default async function UltimateTestsPage() {
             const constructionLocked = test.status !== "published" && !isAdmin;
             const planLocked = testIndex >= access.entitlements.fullTestLimit && !isAdmin;
             const locked = constructionLocked || planLocked;
+            const requiredPlan = testIndex < PLAN_ENTITLEMENTS.core.fullTestLimit ? "core" : "max";
 
             return (
               <li key={test.slug}>
-                <article className={`group relative h-full overflow-hidden rounded-[18px] border bg-white transition-[transform,border-color,box-shadow] duration-200 motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-dashed border-navy/15 opacity-65" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_14px_36px_-24px_rgba(11,42,91,0.55)]"}`}>
+                <article className={`group relative h-full overflow-hidden rounded-[18px] border bg-white transition-[transform,border-color,box-shadow] duration-200 motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_14px_36px_-24px_rgba(11,42,91,0.55)]"}`}>
                   <div className={`h-1 w-full ${best != null ? "bg-success" : locked ? "bg-navy/15" : "bg-brand"}`} />
                   <div className="p-5 sm:p-6">
                     <div className="flex items-start gap-4">
@@ -140,7 +149,7 @@ export default async function UltimateTestsPage() {
                             <strong className="block font-display text-xl font-extrabold leading-none text-success-600">{best}</strong>
                             <span className="mt-1 block text-[9px] font-bold uppercase tracking-wide text-navy/35">Personal best</span>
                           </div>
-                        ) : null}
+                        ) : planLocked ? <LockedBadge plan={requiredPlan} /> : null}
                       </div>
                     </div>
                   </div>
@@ -152,9 +161,7 @@ export default async function UltimateTestsPage() {
                   </div>
 
                   {locked ? (
-                    <div className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-navy/[0.05] px-4 text-center text-sm font-bold text-navy/40">
-                      {planLocked ? `Upgrade to unlock test ${testIndex + 1}` : "Coming soon"}
-                    </div>
+                    planLocked ? <Link href="/pricing" className="mt-4 flex min-h-11 items-center justify-center gap-2 rounded-xl border border-brand/20 bg-ice/70 px-4 text-center text-sm font-extrabold text-navy transition-colors hover:border-brand/40 hover:bg-ice"><LockIcon className="h-4 w-4 text-[#7a5900]" />Unlock with {requiredPlan === "core" ? "Core" : "Max"}</Link> : <div className="mt-4 flex min-h-11 items-center justify-center rounded-xl bg-navy/[0.05] px-4 text-center text-sm font-bold text-navy/40">Coming soon</div>
                   ) : (
                     <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
                       <Link
@@ -185,13 +192,13 @@ export default async function UltimateTestsPage() {
         </ul>
       )}
 
-      <Link href="/ultimate/drills" className="group mt-6 flex items-center gap-4 rounded-[18px] border border-brand/20 bg-ice/50 p-4 text-navy transition-colors hover:border-brand/40 hover:bg-ice sm:p-5">
+      <Link href={access.entitlements.dailyDrillLimit === null ? "/pricing" : "/ultimate/drills"} className="group mt-6 flex items-center gap-4 rounded-[18px] border border-brand/20 bg-ice/50 p-4 text-navy transition-colors hover:border-brand/40 hover:bg-ice sm:p-5">
         <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-white text-brand-600 shadow-sm">
           <TestsIcon className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1">
-          <strong className="block font-display text-sm">Not ready for a full test?</strong>
-          <span className="mt-0.5 block text-xs leading-5 text-navy/50">Practice one skill at a time and come back when you have a full testing window.</span>
+          <strong className="block font-display text-sm">{access.entitlements.dailyDrillLimit === null ? "Unlock daily drills with Core" : "Not ready for a full test?"}</strong>
+          <span className="mt-0.5 block text-xs leading-5 text-navy/50">{access.entitlements.dailyDrillLimit === null ? "Build one SAT pattern at a time between full-test checkpoints." : "Practice one skill at a time and come back when you have a full testing window."}</span>
         </span>
         <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
       </Link>

@@ -10,6 +10,7 @@ import { recordQuestionBankAttempt, type QuestionBankAttemptWrite } from "@/lib/
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { canAccessQuestionBankLevel } from "@/lib/question-bank/math";
 
 type AttemptBody = {
   questionId: string;
@@ -46,6 +47,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "That answer token was already used." }, { status: 409 });
     }
     const question = await getMathQuestionForGrading(input.questionId);
+    if (question && access && !canAccessQuestionBankLevel(question.question.level, access.entitlements.challengeQuestions)) {
+      return challengeUpgrade();
+    }
     return NextResponse.json({
       correct: existing.data.correct,
       explanation: question?.explanation ?? "Your answer was already saved.",
@@ -56,6 +60,9 @@ export async function POST(request: Request) {
   const gradingQuestion = await getMathQuestionForGrading(input.questionId);
   if (!gradingQuestion) {
     return NextResponse.json({ error: "Question is not available" }, { status: 404 });
+  }
+  if (access && !canAccessQuestionBankLevel(gradingQuestion.question.level, access.entitlements.challengeQuestions)) {
+    return challengeUpgrade();
   }
 
   const correct = gradeMathResponse(gradingQuestion, input.response);
@@ -140,4 +147,8 @@ function loadAttemptByToken(email: string, clientToken: string) {
 
 function matchesAttempt(stored: StoredAttempt, input: AttemptBody): boolean {
   return stored.question_id === input.questionId && stored.response?.value === input.response;
+}
+
+function challengeUpgrade() {
+  return NextResponse.json({ error: "Challenge questions are included with Core and Max.", code: "plan_limit" }, { status: 402 });
 }

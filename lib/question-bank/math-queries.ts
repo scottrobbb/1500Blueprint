@@ -4,6 +4,7 @@ import type { ChoiceId, Difficulty } from "@/lib/sat/types";
 import {
   MATH_DOMAINS,
   calculateAccuracy,
+  canAccessQuestionBankLevel,
   isMathDomain,
   normalizeMathResponse,
   prioritizeBoundedQuestions,
@@ -73,9 +74,10 @@ export type MathQuestionForGrading = {
 
 export async function getMathBankCatalog(
   email: string,
-  options: { strictActivity?: boolean } = {},
+  options: { strictActivity?: boolean; includeChallenge?: boolean } = {},
 ): Promise<MathBankCatalog> {
-  const [questions, skills] = await Promise.all([loadEligibleMathRows(), loadMathSkills()]);
+  const [loadedQuestions, skills] = await Promise.all([loadEligibleMathRows(), loadMathSkills()]);
+  const questions = filterChallengeRows(loadedQuestions, options.includeChallenge ?? true);
   const activity = await loadQuestionActivity(
     email,
     questions.map((question) => question.id),
@@ -94,8 +96,9 @@ export async function getMathRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
   limit: number | null = null,
+  options: { includeChallenge?: boolean } = {},
 ): Promise<MathRunnerQuestion[]> {
-  const rows = await loadEligibleMathRows();
+  const rows = filterChallengeRows(await loadEligibleMathRows(), options.includeChallenge ?? true);
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
   const skillRows = rows.filter((row) => (
@@ -122,6 +125,14 @@ function matchesCompletion(
   if (completion === "all") return true;
   const attempted = activity.attemptedIds.has(questionId);
   return completion === "attempted" ? attempted : !attempted;
+}
+
+function filterChallengeRows(rows: MathQuestionRow[], includeChallenge: boolean): MathQuestionRow[] {
+  if (includeChallenge) return rows;
+  return rows.filter((row) => {
+    const difficulty = isDifficulty(row.difficulty) ? row.difficulty : "medium";
+    return canAccessQuestionBankLevel(questionBankLevel(difficulty, row.content), false);
+  });
 }
 
 function toMathRunnerQuestions(rows: MathQuestionRow[]): MathRunnerQuestion[] {

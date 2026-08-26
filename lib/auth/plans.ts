@@ -107,3 +107,14 @@ export function accessForPlan(
     entitlements: PLAN_ENTITLEMENTS[plan],
   };
 }
+
+export function accessForTestPersona(
+  persona: string | null | undefined,
+  accountId: string,
+): StudentAccess | null {
+  if (persona === "suspended") return accessForPlan("free", "legacy", accountId, false, "suspended", true);
+  if (persona === "free" || persona === "core" || persona === "max") {
+    return accessForPlan(persona, "legacy", accountId, true, "active", true);
+  }
+  return null;
+}

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accessForPlan, effectivePlan, highestPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
+import { accessForPlan, accessForTestPersona, effectivePlan, highestPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
 
 test("legacy Stripe labels normalize to stable plan codes", () => {
   assert.equal(normalizePlanCode("Core monthly"), "core");
@@ -43,4 +43,12 @@ test("explicit persona grants replace stale legacy labels", () => {
   assert.equal(effectivePlan("free", null, "max"), "free");
   assert.equal(effectivePlan("core", "max", "free"), "max");
   assert.equal(effectivePlan(null, null, "max"), "max");
+});
+
+test("QA personas override stale legacy testing access", () => {
+  assert.equal(accessForTestPersona("free", "qa-free")?.plan, "free");
+  assert.equal(accessForTestPersona("core", "qa-core")?.plan, "core");
+  assert.equal(accessForTestPersona("max", "qa-max")?.plan, "max");
+  assert.equal(accessForTestPersona("suspended", "qa-suspended")?.active, false);
+  assert.equal(accessForTestPersona(null, "qa-unknown"), null);
 });

@@ -12,5 +12,5 @@ export default async function UltimateQuestionBankPage() {
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
   const [dashboard, access, used] = await Promise.all([getQuestionBankDashboard(session.email), getStudentAccess(session.email), getQuestionBankUsage(session.email)]);
-  return <QuestionBankDashboardView dashboard={dashboard} access={{ plan: access.plan, test: access.isTestAccount, used, limit: access.entitlements.questionBankLimit }} />;
+  return <QuestionBankDashboardView dashboard={dashboard} access={{ plan: access.plan, test: access.isTestAccount, used, limit: access.entitlements.questionBankLimit, challengeQuestions: access.entitlements.challengeQuestions }} />;
 }

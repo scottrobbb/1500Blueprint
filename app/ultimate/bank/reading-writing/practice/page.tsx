@@ -10,6 +10,7 @@ import {
 } from "@/lib/question-bank/math";
 import { getReadingWritingRunnerQuestions } from "@/lib/question-bank/reading-writing-queries";
 import { getQuestionBankRunnerState } from "@/lib/question-bank/runner-state";
+import { getStudentAccess } from "@/lib/auth/entitlements";
 
 export const metadata = { title: "Reading & Writing Practice" };
 
@@ -27,7 +28,8 @@ export default async function UltimateReadingWritingPracticePage({ searchParams 
     completion: parseCompletionFilter(readParam(params.completion)),
   };
   const limit = parseQuestionLimit(readParam(params.limit));
-  const questions = await getReadingWritingRunnerQuestions(session.email, filters, limit);
+  const access = await getStudentAccess(session.email);
+  const questions = await getReadingWritingRunnerQuestions(session.email, filters, limit, { includeChallenge: access.entitlements.challengeQuestions });
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
   return <ReadingWritingBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined} />;

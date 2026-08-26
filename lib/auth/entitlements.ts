@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import {
   accessForPlan,
+  accessForTestPersona,
   effectivePlan,
   normalizeLegacyPlanCode,
   normalizePlanCode,
@@ -19,6 +20,7 @@ type AccountRow = {
   plan: string | null;
   account_status: "active" | "suspended" | "archived";
   is_test_account: boolean;
+  test_persona: string | null;
 };
 
 type PlanRow = { plan_code: string };
@@ -27,12 +29,16 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
   const admin = supabaseAdmin();
   const { data: account, error: accountError } = await admin
     .from("users")
-    .select("id,plan,account_status,is_test_account")
+    .select("id,plan,account_status,is_test_account,test_persona")
     .eq("email", email.trim().toLowerCase())
     .maybeSingle<AccountRow>();
 
   if (accountError) throw new Error(`failed to load student access: ${accountError.message}`);
   if (!account) return accessForPlan("free", "free", null);
+  if (account.is_test_account) {
+    const personaAccess = accessForTestPersona(account.test_persona, account.id);
+    if (personaAccess) return personaAccess;
+  }
   if (account.account_status !== "active") {
     return accessForPlan("free", "free", account.id, false, account.account_status, account.is_test_account);
   }
