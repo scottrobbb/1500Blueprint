@@ -3,13 +3,14 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { createClient } from "@/utils/supabase/client";
 
-const ACCEPT: Record<"video" | "image" | "file", string> = {
+const ACCEPT: Record<"video" | "image" | "audio" | "file", string> = {
   video: "video/mp4,video/webm,video/quicktime",
   image: "image/png,image/jpeg,image/gif,image/webp",
+  audio: "audio/mpeg,audio/mp4,audio/wav",
   file: ".pdf,.zip,.txt,.docx,.pptx,.xlsx,image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime,audio/mpeg,audio/mp4,audio/wav",
 };
 
-export function CourseAssetUpload({ kind, onUploaded, compact = false }: { kind: "video" | "image" | "file"; onUploaded: (url: string, name: string) => void; compact?: boolean }) {
+export function CourseAssetUpload({ kind, onUploaded, compact = false }: { kind: "video" | "image" | "audio" | "file"; onUploaded: (url: string, name: string) => void; compact?: boolean }) {
   const input = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
