@@ -27,10 +27,10 @@ export default async function UltimateCoursePage({ params }: Props) {
             <img
               src={course.coverUrl}
               alt=""
-              className="absolute inset-y-0 right-0 hidden w-[380px] object-cover opacity-80 sm:block"
+              className="absolute inset-y-0 right-0 hidden w-[460px] object-cover opacity-85 sm:block"
               style={{
-                maskImage: "linear-gradient(to left, black 55%, transparent 100%)",
-                WebkitMaskImage: "linear-gradient(to left, black 55%, transparent 100%)",
+                maskImage: "radial-gradient(60% 60% at 62% 50%, black 30%, transparent 85%)",
+                WebkitMaskImage: "radial-gradient(60% 60% at 62% 50%, black 30%, transparent 85%)",
               }}
             />
           ) : null}
