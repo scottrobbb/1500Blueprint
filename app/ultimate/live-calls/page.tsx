@@ -63,11 +63,11 @@ function RecordingMonthSection({ month }: { month: CallRecordingMonth }) {
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {month.lessons.map((lesson) => (
           <li key={lesson.id}>
-            <a href={lesson.vimeoUrl} target="_blank" rel="noreferrer" className="group flex items-center gap-3 rounded-[16px] border border-navy/10 bg-white p-4 shadow-pop transition-colors hover:border-brand/35">
+            <Link href={`/ultimate/live-calls/recordings/${lesson.id}`} className="group flex items-center gap-3 rounded-[16px] border border-navy/10 bg-white p-4 shadow-pop transition-colors hover:border-brand/35">
               <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-navy text-white"><PlayIcon className="h-4 w-4" /></span>
-              <span className="min-w-0 flex-1"><strong className="line-clamp-2 block text-sm text-navy">{lesson.title || formatRecordingDate(lesson.callDate)}</strong><span className="mt-1 block text-[11px] text-navy/40">{lesson.title ? formatRecordingDate(lesson.callDate) + " · " : ""}Watch on Vimeo</span></span>
+              <span className="min-w-0 flex-1"><strong className="line-clamp-2 block text-sm text-navy">{lesson.title || formatRecordingDate(lesson.callDate)}</strong><span className="mt-1 block text-[11px] text-navy/40">{lesson.title ? formatRecordingDate(lesson.callDate) + " · " : ""}Watch recording</span></span>
               <span className="flex-none text-brand-600 transition-transform group-hover:translate-x-0.5">→</span>
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

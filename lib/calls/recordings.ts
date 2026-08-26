@@ -35,6 +35,17 @@ export async function getPublishedRecordingLibrary(): Promise<CallRecordingMonth
     .filter((month) => month.lessons.length > 0);
 }
 
+export async function getPublishedRecordingLesson(id: string): Promise<CallRecordingLesson | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("call_recording_lessons")
+    .select(LESSON_COLUMNS)
+    .eq("id", id)
+    .eq("status", "published")
+    .maybeSingle<LessonRow>();
+  if (error) throw new Error(`failed to load recording: ${error.message}`);
+  return data ? lessonFromRow(data) : null;
+}
+
 export async function createRecordingMonth(input: CallRecordingMonthInput): Promise<CallRecordingMonth> {
   const { data, error } = await supabaseAdmin()
     .from("call_recording_months")
