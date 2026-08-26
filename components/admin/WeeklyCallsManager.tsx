@@ -118,7 +118,7 @@ export function WeeklyCallsManager({ initialCalls, calendarConfigured }: { initi
           {calls.length ? calls.map((call) => (
             <article key={call.id} className={`rounded-2xl border p-4 ${editingId === call.id ? "border-brand/40 bg-ice/45" : "border-navy/10 bg-white"}`}>
               <div className="flex items-start justify-between gap-3"><div><span className={`text-[9px] font-extrabold uppercase tracking-wide ${call.status === "published" ? "text-success-600" : call.status === "cancelled" ? "text-danger-600" : "text-gold-600"}`}>{call.status}</span><h3 className="mt-1 font-display text-base font-extrabold text-navy">{call.title}</h3></div>{call.googleEventId ? <span title="Synced with Google Calendar" className="grid h-8 w-8 place-items-center rounded-lg bg-white text-brand-700 shadow-sm">G</span> : null}</div>
-              <p className="mt-2 text-xs font-semibold text-navy/45">{formatCallDate(call.startsAt)} · {formatCallTime(call.startsAt)}–{formatCallTime(call.endsAt)}</p>
+              <p className="mt-2 text-xs font-semibold text-navy/45">{formatCallDate(call.startsAt, call.timezone)} · {formatCallTime(call.startsAt, call.timezone)}–{formatCallTime(call.endsAt, call.timezone)}</p>
               <div className="mt-4 flex gap-2"><button type="button" onClick={() => edit(call)} className="min-h-10 flex-1 cursor-pointer rounded-xl bg-navy px-3 text-xs font-extrabold text-white hover:bg-brand-600">Edit</button><button type="button" onClick={() => void remove(call)} className="min-h-10 cursor-pointer rounded-xl border border-danger/20 px-3 text-xs font-extrabold text-danger-600 hover:bg-danger-bg">Delete</button></div>
             </article>
           )) : <div className="rounded-2xl border border-dashed border-navy/15 bg-white p-8 text-center text-sm text-navy/45">No calls scheduled yet.</div>}
@@ -148,5 +148,5 @@ function localDateTime(value: string): string {
   return new Date(date.getTime() - offset).toISOString().slice(0, 16);
 }
 
-function formatCallDate(value: string): string { return new Date(value).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }); }
-function formatCallTime(value: string): string { return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }); }
+function formatCallDate(value: string, timeZone: string): string { return new Date(value).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone }); }
+function formatCallTime(value: string, timeZone: string): string { return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone }); }
