@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   calculateAccuracy,
+  canAccessQuestionBankLevel,
   nextQuestionBankAttemptState,
   normalizeMathResponse,
   parseCompletionFilter,
@@ -68,4 +69,10 @@ test("challenge source metadata gets its own navigator level", () => {
   assert.equal(questionBankLevel("hard", {
     source: { document: "Hard Questions.docx" },
   }), "hard");
+});
+
+test("free access excludes Challenge questions while paid access includes them", () => {
+  assert.equal(canAccessQuestionBankLevel("challenge", false), false);
+  assert.equal(canAccessQuestionBankLevel("challenge", true), true);
+  assert.equal(canAccessQuestionBankLevel("hard", false), true);
 });

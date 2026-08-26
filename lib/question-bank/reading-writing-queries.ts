@@ -11,7 +11,7 @@ import {
   type ReadingWritingRunnerQuestion,
   type ReadingWritingSkillMetric,
 } from "@/lib/question-bank/reading-writing";
-import { calculateAccuracy, prioritizeBoundedQuestions, questionBankLevel } from "@/lib/question-bank/math";
+import { calculateAccuracy, canAccessQuestionBankLevel, prioritizeBoundedQuestions, questionBankLevel } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
@@ -56,12 +56,13 @@ export type ReadingWritingQuestionForGrading = {
 
 export async function getReadingWritingBankCatalog(
   email: string,
-  options: { strictActivity?: boolean } = {},
+  options: { strictActivity?: boolean; includeChallenge?: boolean } = {},
 ): Promise<ReadingWritingBankCatalog> {
-  const [questions, skills] = await Promise.all([
+  const [loadedQuestions, skills] = await Promise.all([
     loadEligibleReadingRows(),
     loadReadingSkills(),
   ]);
+  const questions = filterChallengeRows(loadedQuestions, options.includeChallenge ?? true);
   const activity = await loadQuestionActivity(
     email,
     questions.map((question) => question.id),
@@ -79,8 +80,9 @@ export async function getReadingWritingRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
   limit: number | null = null,
+  options: { includeChallenge?: boolean } = {},
 ): Promise<ReadingWritingRunnerQuestion[]> {
-  const rows = await loadEligibleReadingRows();
+  const rows = filterChallengeRows(await loadEligibleReadingRows(), options.includeChallenge ?? true);
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
   const skillRows = rows.filter((row) => (
@@ -107,6 +109,14 @@ function matchesCompletion(
   if (completion === "all") return true;
   const attempted = activity.attemptedIds.has(questionId);
   return completion === "attempted" ? attempted : !attempted;
+}
+
+function filterChallengeRows(rows: ReadingQuestionRow[], includeChallenge: boolean): ReadingQuestionRow[] {
+  if (includeChallenge) return rows;
+  return rows.filter((row) => {
+    const difficulty = isDifficulty(row.difficulty) ? row.difficulty : "medium";
+    return canAccessQuestionBankLevel(questionBankLevel(difficulty, row.content), false);
+  });
 }
 
 function toReadingWritingRunnerQuestions(rows: ReadingQuestionRow[]): ReadingWritingRunnerQuestion[] {

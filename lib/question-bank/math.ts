@@ -146,6 +146,10 @@ export function questionBankLevel(
   return /challenge/i.test(sourceLabel) ? "challenge" : difficulty;
 }
 
+export function canAccessQuestionBankLevel(level: QuestionBankLevel, challengeQuestions: boolean): boolean {
+  return level !== "challenge" || challengeQuestions;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { gradeCoursePractice, isCoursePracticeQuestionComplete, normalizeCoursePracticeAnswer } from "./practice";
+import { gradeCoursePractice, isCoursePracticeAnswerCorrect, isCoursePracticeQuestionComplete, normalizeCoursePracticeAnswer } from "./practice";
 import type { CoursePractice } from "./types";
 
 const practice: CoursePractice = {
@@ -10,7 +10,7 @@ const practice: CoursePractice = {
   randomizeQuestions: false,
   questions: [
     { id: "mcq", type: "multiple_choice", prompt: "2 + 2?", choices: ["3", "4"], correctAnswer: "4", explanation: "Two pairs make four." },
-    { id: "free", type: "free_response", prompt: "Half of 10?", choices: [], correctAnswer: "5", explanation: "10 / 2 = 5." },
+    { id: "free", type: "free_response", prompt: "Half of 10?", choices: [], correctAnswer: "1/2", acceptedAnswers: ["0.5"], explanation: "10 / 2 = 5, and 5/10 reduces to 1/2." },
   ],
 };
 
@@ -22,9 +22,19 @@ test("course practice grading normalizes answers and calculates pass state", () 
   assert.deepEqual(result.results, { mcq: true, free: false });
 });
 
-test("course practice completeness validates MCQ options and explanations", () => {
+test("course practice free-response grading accepts alternate answer forms", () => {
+  assert.equal(isCoursePracticeAnswerCorrect(practice.questions[1], "1/2"), true);
+  assert.equal(isCoursePracticeAnswerCorrect(practice.questions[1], "0.5"), true);
+  assert.equal(isCoursePracticeAnswerCorrect(practice.questions[1], " 0.5 "), true);
+  assert.equal(isCoursePracticeAnswerCorrect(practice.questions[1], "0.6"), false);
+  const legacyQuestion = { ...practice.questions[0], acceptedAnswers: undefined };
+  assert.equal(isCoursePracticeAnswerCorrect(legacyQuestion, "4"), true);
+});
+
+test("course practice completeness validates MCQ options and the correct answer", () => {
   assert.equal(isCoursePracticeQuestionComplete(practice.questions[0]), true);
   assert.equal(isCoursePracticeQuestionComplete({ ...practice.questions[0], correctAnswer: "missing" }), false);
-  assert.equal(isCoursePracticeQuestionComplete({ ...practice.questions[1], explanation: "" }), false);
+  assert.equal(isCoursePracticeQuestionComplete({ ...practice.questions[1], explanation: "" }), true);
+  assert.equal(isCoursePracticeQuestionComplete({ ...practice.questions[1], prompt: "" }), true);
   assert.equal(normalizeCoursePracticeAnswer("  A   B "), "a b");
 });

@@ -10,6 +10,7 @@ import {
 } from "@/lib/question-bank/math";
 import { getMathRunnerQuestions } from "@/lib/question-bank/math-queries";
 import { getQuestionBankRunnerState } from "@/lib/question-bank/runner-state";
+import { getStudentAccess } from "@/lib/auth/entitlements";
 
 export const metadata = { title: "Math Practice" };
 
@@ -27,7 +28,8 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
     completion: parseCompletionFilter(readParam(params.completion)),
   };
   const limit = parseQuestionLimit(readParam(params.limit));
-  const questions = await getMathRunnerQuestions(session.email, filters, limit);
+  const access = await getStudentAccess(session.email);
+  const questions = await getMathRunnerQuestions(session.email, filters, limit, { includeChallenge: access.entitlements.challengeQuestions });
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
   return <MathBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined} />;

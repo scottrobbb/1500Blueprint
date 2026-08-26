@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { FlameIcon } from "@/components/shell/icons";
 import { PlanBadge } from "@/components/account/PlanBadge";
+import { UpgradePrompt } from "@/components/account/UpgradePrompt";
 import type { PlanCode } from "@/lib/auth/plans";
 import type {
   QuestionBankActivity,
@@ -40,7 +41,7 @@ const DOMAINS: Record<QuestionBankSection, string[]> = {
   ],
 };
 
-type QuestionBankAccess = { plan: PlanCode; test: boolean; used: number; limit: number };
+type QuestionBankAccess = { plan: PlanCode; test: boolean; used: number; limit: number; challengeQuestions: boolean };
 
 export function QuestionBankDashboardView({ dashboard, access }: { dashboard: QuestionBankDashboard; access: QuestionBankAccess }) {
   const totalActivity = dashboard.activity.reduce(
@@ -82,11 +83,22 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
           </div>
         </header>
 
+        {!access.challengeQuestions ? (
+          <UpgradePrompt
+            currentPlan={access.plan}
+            requiredPlan="core"
+            title="Challenge sets unlock with Core"
+            description="Keep practicing the full Free bank, then add Scott's hardest transfer questions when you are ready to push beyond routine patterns."
+            features={["Challenge Question access", "3,000 included submissions", "Daily skill drills"]}
+            className="mb-6"
+          />
+        ) : null}
+
         <section aria-labelledby="subject-heading">
           <h2 id="subject-heading" className="sr-only">Question Bank subjects</h2>
           <div className="grid gap-4 md:grid-cols-2">
             {dashboard.subjects.map((subject) => (
-              <SubjectCard key={subject.section} subject={subject} />
+              <SubjectCard key={subject.section} subject={subject} challengeLocked={!access.challengeQuestions} />
             ))}
           </div>
         </section>
@@ -128,7 +140,7 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
               Where to focus next
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-navy/45">
-              Every SAT domain and difficulty is covered, including accuracy, volume, and average time per answer.
+              Every SAT domain and difficulty is covered, including accuracy, volume, and average time per answer.{!access.challengeQuestions ? " Inventory totals include Challenge sets that unlock with Core." : ""}
             </p>
           </div>
 
@@ -166,7 +178,7 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
   );
 }
 
-function SubjectCard({ subject }: { subject: QuestionBankSubject }) {
+function SubjectCard({ subject, challengeLocked }: { subject: QuestionBankSubject; challengeLocked: boolean }) {
   const copy = SECTION_COPY[subject.section];
   const progress = subject.available > 0 ? Math.round((subject.solved / subject.available) * 100) : 0;
   const isMath = subject.section === "math";
@@ -185,17 +197,15 @@ function SubjectCard({ subject }: { subject: QuestionBankSubject }) {
       </div>
       <div className="relative z-10 max-w-[68%] sm:max-w-[62%]">
         <span className="inline-flex rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-white/85">
-          Ready to practice
+          {challengeLocked ? "Free bank ready" : "Ready to practice"}
         </span>
         <h3 className="mt-3 font-display text-2xl font-extrabold tracking-[-0.025em]">{copy.title}</h3>
         <p className="mt-1 text-xs leading-5 text-white/70">{copy.description}</p>
         <div className="mt-5 flex items-center justify-between gap-3 text-xs font-semibold text-white/80">
-          <span>{subject.solved.toLocaleString()} of {subject.available.toLocaleString()} solved</span>
-          <span>{progress}%</span>
+          <span>{challengeLocked ? `${subject.solved.toLocaleString()} questions solved` : `${subject.solved.toLocaleString()} of ${subject.available.toLocaleString()} solved`}</span>
+          <span>{challengeLocked ? "Core adds Challenge" : `${progress}%`}</span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20" aria-label={`${progress}% solved`}>
-          <div className="h-full rounded-full bg-white transition-[width] duration-300" style={{ width: `${progress}%` }} />
-        </div>
+        {!challengeLocked ? <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20" aria-label={`${progress}% solved`}><div className="h-full rounded-full bg-white transition-[width] duration-300" style={{ width: `${progress}%` }} /></div> : null}
         <Link href={isMath ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing"} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-navy shadow-sm transition-transform hover:-translate-y-0.5">
           Open {copy.shortTitle} <ArrowRightIcon className="h-4 w-4" />
         </Link>

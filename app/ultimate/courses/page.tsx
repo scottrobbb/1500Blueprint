@@ -6,6 +6,7 @@ import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { listCoursesForStudent } from "@/lib/courses/queries";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
+import { LockedBadge, UpgradePrompt } from "@/components/account/UpgradePrompt";
 
 export const metadata = { title: "Courses" };
 export const dynamic = "force-dynamic";
@@ -28,17 +29,27 @@ export default async function UltimateCoursesPage() {
             <Metric label="Lessons complete" value={`${completedLessons}/${totalLessons}`} />
             <Metric label="Overall progress" value={totalLessons ? `${Math.round((completedLessons / totalLessons) * 100)}%` : "0%"} />
           </section>
+          {!access.entitlements.allCourses ? (
+            <UpgradePrompt
+              currentPlan={access.plan}
+              requiredPlan="max"
+              title="The advanced curriculum is ready when you are"
+              description="Your included Foundations course stays open. Max adds every Math and Reading & Writing subtopic course without resetting progress."
+              features={["All advanced courses", "Embedded lesson practice", "Planner-linked assignments"]}
+              className="mb-6"
+            />
+          ) : null}
           <section className="grid gap-5 md:grid-cols-2">
             {courses.map((course) => {
               const locked = !canAccessCourse(access, course.slug);
               return (
-              <Link key={course.id} href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group relative overflow-hidden rounded-[20px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-navy/10 opacity-75" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35"}`}>
+              <Link key={course.id} href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group relative overflow-hidden rounded-[20px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25 hover:border-gold/45" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35"}`}>
                 <div className="relative min-h-60 overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
                   {course.coverUrl ? <img src={course.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" /> : null}
                   <div className="relative">
                     <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-sky">{course.eyebrow ?? "1500 Blueprint course"}</p>
                     <h2 className="mt-2 max-w-lg font-display text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{course.title}</h2>
-                    <p className="mt-3 text-xs font-semibold text-white/60">{course.modules.length} modules · {course.totalLessons} lessons</p>{locked ? <span className="mt-4 inline-flex rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-wide text-white">Max course</span> : null}
+                    <p className="mt-3 text-xs font-semibold text-white/60">{course.modules.length} modules · {course.totalLessons} lessons</p>{locked ? <span className="mt-4 inline-flex"><LockedBadge plan="max" dark /></span> : null}
                   </div>
                 </div>
                 <div className="p-5">

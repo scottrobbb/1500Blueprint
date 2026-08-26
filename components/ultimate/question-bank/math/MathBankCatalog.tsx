@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { UpgradePrompt } from "@/components/account/UpgradePrompt";
+import type { PlanCode } from "@/lib/auth/plans";
 import {
   MATH_DOMAINS,
   type MathBankCatalog,
@@ -10,7 +12,7 @@ import {
   type MathSkillMetric,
 } from "@/lib/question-bank/math";
 
-export function MathBankCatalogView({ catalog }: { catalog: MathBankCatalog }) {
+export function MathBankCatalogView({ catalog, challengeLocked, currentPlan }: { catalog: MathBankCatalog; challengeLocked: boolean; currentPlan: PlanCode }) {
   return (
     <SubjectBankCatalogView
       catalog={catalog}
@@ -18,6 +20,8 @@ export function MathBankCatalogView({ catalog }: { catalog: MathBankCatalog }) {
       subjectTitle="Math"
       skillCount={19}
       basePath="/ultimate/bank/math"
+      challengeLocked={challengeLocked}
+      currentPlan={currentPlan}
     />
   );
 }
@@ -31,12 +35,16 @@ export function SubjectBankCatalogView({
   subjectTitle,
   skillCount,
   basePath,
+  challengeLocked,
+  currentPlan,
 }: {
   catalog: BankCatalog;
   domains: readonly string[];
   subjectTitle: string;
   skillCount: number;
   basePath: string;
+  challengeLocked: boolean;
+  currentPlan: PlanCode;
 }) {
   const [difficulty, setDifficulty] = useState<MathDifficultyFilter>("all");
   const [completion, setCompletion] = useState<MathCompletionFilter>("all");
@@ -86,6 +94,10 @@ export function SubjectBankCatalogView({
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-navy/40">questions available</p>
           </div>
         </header>
+
+        {challengeLocked ? (
+          <UpgradePrompt currentPlan={currentPlan} requiredPlan="core" title="Challenge questions are locked" description={`Your Free ${subjectTitle} bank stays available. Core adds Scott's hardest transfer sets when you are ready for less predictable questions.`} features={["Challenge-level questions", "3,000 included submissions", "Daily drills"]} className="mt-6" />
+        ) : null}
 
         <section aria-label="Practice filters" className="mt-7 flex flex-wrap gap-3">
           <FilterSelect

@@ -5,11 +5,16 @@ import {
   READING_WRITING_DOMAINS,
   type ReadingWritingBankCatalog,
 } from "@/lib/question-bank/reading-writing";
+import type { PlanCode } from "@/lib/auth/plans";
 
 export function ReadingWritingBankCatalogView({
   catalog,
+  challengeLocked,
+  currentPlan,
 }: {
   catalog: ReadingWritingBankCatalog;
+  challengeLocked: boolean;
+  currentPlan: PlanCode;
 }) {
   return (
     <SubjectBankCatalogView
@@ -18,6 +23,8 @@ export function ReadingWritingBankCatalogView({
       subjectTitle="Reading & Writing"
       skillCount={10}
       basePath="/ultimate/bank/reading-writing"
+      challengeLocked={challengeLocked}
+      currentPlan={currentPlan}
     />
   );
 }
