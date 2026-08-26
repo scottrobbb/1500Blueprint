@@ -14,6 +14,9 @@ const DURATION_OVERRIDE_MINUTES: Record<string, Record<string, number>> = {
     "Linear Equations in Two Variables": 19,
     "Systems of Two Linear Equations in Two Variables": 12,
     "Linear Inequalities in One or Two Variables": 18,
+    "Equivalent Expressions": 15,
+    "Nonlinear Equations in One Variable and Systems of Equations in Two Variables": 6,
+    "Nonlinear Functions": 23,
   },
 };
 
