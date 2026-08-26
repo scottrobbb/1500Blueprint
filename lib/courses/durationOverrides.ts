@@ -24,6 +24,10 @@ const DURATION_OVERRIDE_MINUTES: Record<string, Record<string, number>> = {
     "Probability and Conditional Probability": 10,
     "Inference from Sample Statistics and Margin of Error": 10,
     "Evaluating Statistical Claims: Observational Studies and Experiments": 8,
+    "Area and Volume": 19,
+    "Lines, Angles, and Triangles": 19,
+    "Right Triangles and Trigonometry": 16,
+    "Circles": 13,
   },
 };
 
