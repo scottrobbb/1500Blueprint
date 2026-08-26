@@ -17,6 +17,13 @@ const DURATION_OVERRIDE_MINUTES: Record<string, Record<string, number>> = {
     "Equivalent Expressions": 15,
     "Nonlinear Equations in One Variable and Systems of Equations in Two Variables": 6,
     "Nonlinear Functions": 23,
+    "Ratios, Rates, Proportional Relationships, and Units": 23,
+    "Percentages": 21,
+    "One-Variable Data: Distributions and Measures of Center and Spread": 21,
+    "Two-Variable Data: Models and Scatterplots": 10,
+    "Probability and Conditional Probability": 10,
+    "Inference from Sample Statistics and Margin of Error": 10,
+    "Evaluating Statistical Claims: Observational Studies and Experiments": 8,
   },
 };
 
