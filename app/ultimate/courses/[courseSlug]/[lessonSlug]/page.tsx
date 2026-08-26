@@ -5,6 +5,7 @@ import { CoursePracticeRunner } from "@/components/ultimate/courses/CoursePracti
 import { CourseProgress } from "@/components/ultimate/courses/CourseProgress";
 import { getSession } from "@/lib/auth/session";
 import { getCourseForStudent, getLatestCoursePracticeAttempts } from "@/lib/courses/queries";
+import { lessonDurationMinutes } from "@/lib/courses/durationOverrides";
 import type { SavedCoursePracticeAttempt } from "@/lib/courses/practice";
 import type { LessonBlock } from "@/lib/courses/types";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
@@ -55,7 +56,7 @@ export default async function UltimateLessonPage({ params }: Props) {
 
       <main className="min-w-0">
         <div className="overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-pop">
-          <header className="border-b border-navy/10 px-5 py-6 sm:px-8 sm:py-8"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600">{module.title} · {lesson.estimatedMinutes || 5} min</p><h1 className="mt-2 font-display text-[30px] font-extrabold leading-tight tracking-[-0.035em] text-ink sm:text-[38px]">{lesson.title}</h1>{lesson.summary ? <p className="mt-3 max-w-2xl text-sm leading-6 text-navy/50">{lesson.summary}</p> : null}</header>
+          <header className="border-b border-navy/10 px-5 py-6 sm:px-8 sm:py-8"><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-brand-600">{module.title} · {lessonDurationMinutes(course.slug, lesson)} min</p><h1 className="mt-2 font-display text-[30px] font-extrabold leading-tight tracking-[-0.035em] text-ink sm:text-[38px]">{lesson.title}</h1>{lesson.summary ? <p className="mt-3 max-w-2xl text-sm leading-6 text-navy/50">{lesson.summary}</p> : null}</header>
           <article className="space-y-7 px-5 py-7 sm:px-8 sm:py-9">
             {lesson.blocks.length > 0 ? lesson.blocks.map((block) => <LessonContent key={block.id} block={block} lessonId={lesson.id} initialAttempt={practiceAttempts.get(block.id)} />) : <p className="rounded-2xl bg-haze p-5 text-sm text-navy/50">Lesson content is being formatted.</p>}
           </article>

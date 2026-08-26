@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { getCourseForStudent } from "@/lib/courses/queries";
+import { lessonDurationMinutes } from "@/lib/courses/durationOverrides";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { AccessGate } from "@/components/account/AccessGate";
 
@@ -67,7 +68,7 @@ export default async function UltimateCoursePage({ params }: Props) {
                   <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-navy/[0.07]" aria-label={`${weekProgress}% of this week complete`}><div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${weekProgress}%` }} /></div>
                 </header>
                 <ol className="divide-y divide-navy/10">
-                  {module.lessons.map((lesson, lessonIndex) => <li key={lesson.id}><Link href={`/ultimate/courses/${course.slug}/${lesson.slug}`} className="group flex min-h-[82px] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-ice/50 focus-visible:bg-ice/50 focus-visible:outline-none sm:px-6"><span className={`grid h-9 w-9 flex-none place-items-center rounded-xl text-xs font-extrabold ${lesson.completed ? "bg-success text-white" : "bg-navy/7 text-navy/45"}`}>{lesson.completed ? "✓" : lessonIndex + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-navy sm:text-[15px]">{lesson.title}</strong><span className="mt-1 line-clamp-2 block text-xs leading-5 text-navy/40">{lesson.estimatedMinutes || 5} min{lesson.summary ? ` · ${lesson.summary}` : ""}</span></span><span className="text-brand transition-transform group-hover:translate-x-1">→</span></Link></li>)}
+                  {module.lessons.map((lesson, lessonIndex) => <li key={lesson.id}><Link href={`/ultimate/courses/${course.slug}/${lesson.slug}`} className="group flex min-h-[82px] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-ice/50 focus-visible:bg-ice/50 focus-visible:outline-none sm:px-6"><span className={`grid h-9 w-9 flex-none place-items-center rounded-xl text-xs font-extrabold ${lesson.completed ? "bg-success text-white" : "bg-navy/7 text-navy/45"}`}>{lesson.completed ? "✓" : lessonIndex + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-navy sm:text-[15px]">{lesson.title}</strong><span className="mt-1 line-clamp-2 block text-xs leading-5 text-navy/40">{lessonDurationMinutes(course.slug, lesson)} min{lesson.summary ? ` · ${lesson.summary}` : ""}</span></span><span className="text-brand transition-transform group-hover:translate-x-1">→</span></Link></li>)}
                 </ol>
               </section>
             );
