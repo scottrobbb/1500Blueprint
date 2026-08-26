@@ -21,7 +21,7 @@ export default async function UltimateLiveCallsPage() {
     return <AccessGate title="Join Scott's weekly calls" description="Weekly group classes and their recordings are included with Max." currentPlan={access.plan} />;
   }
 
-  const [{ upcoming, recordings }, recordingMonths] = await Promise.all([
+  const [{ upcoming }, recordingMonths] = await Promise.all([
     getPublishedWeeklyCallSchedule(),
     getPublishedRecordingLibrary(),
   ]);
@@ -32,17 +32,10 @@ export default async function UltimateLiveCallsPage() {
       <PageHeader eyebrow="Live with Scott" title="Weekly Calls" description="Bring the questions that slowed you down. Leave with a clear move for the next week." />
       {nextCall ? <NextCall call={nextCall} /> : <EmptySchedule />}
 
-      <div className="mt-8 grid items-start gap-7 xl:grid-cols-[minmax(0,1fr)_330px]">
-        <section>
-          <div className="mb-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Coming up</p><h2 className="mt-1 font-display text-2xl font-extrabold text-ink">Your call schedule</h2></div>
-          {upcoming.length ? <ol className="space-y-3">{upcoming.map((call, index) => <CallRow key={call.id} call={call} next={index === 0} />)}</ol> : <div className="rounded-[18px] border border-dashed border-navy/15 bg-white p-8 text-center text-sm text-navy/45">The next call will appear here as soon as Scott publishes it.</div>}
-        </section>
-
-        <aside className="overflow-hidden rounded-[18px] border border-navy/10 bg-white shadow-pop">
-          <div className="border-b border-navy/10 bg-haze/55 p-5"><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Replay library</p><h2 className="mt-1 font-display text-xl font-extrabold text-navy">Recent recordings</h2></div>
-          {recordings.length ? recordings.slice(0, 8).map((call) => <a key={call.id} href={call.recordingUrl as string} target="_blank" rel="noreferrer" className="group flex min-h-[78px] items-center gap-3 border-b border-navy/10 px-4 py-3 last:border-b-0 hover:bg-ice/35"><span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-navy text-white"><PlayIcon className="h-4 w-4" /></span><span className="min-w-0 flex-1"><strong className="line-clamp-1 block text-sm text-navy">{call.title}</strong><span className="mt-1 block text-[11px] text-navy/40">{formatDate(call.startsAt)} · Watch recording</span></span><span className="text-brand-600 transition-transform group-hover:translate-x-0.5">→</span></a>) : <p className="p-6 text-sm leading-6 text-navy/45">Recordings will collect here after each session.</p>}
-        </aside>
-      </div>
+      <section className="mt-8">
+        <div className="mb-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Coming up</p><h2 className="mt-1 font-display text-2xl font-extrabold text-ink">Your call schedule</h2></div>
+        {upcoming.length ? <ol className="space-y-3">{upcoming.map((call, index) => <CallRow key={call.id} call={call} next={index === 0} />)}</ol> : <div className="rounded-[18px] border border-dashed border-navy/15 bg-white p-8 text-center text-sm text-navy/45">The next call will appear here as soon as Scott publishes it.</div>}
+      </section>
 
       {recordingMonths.length ? (
         <section className="mt-8">
