@@ -30,7 +30,7 @@ export default async function UltimateLiveCallsPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-4 py-7 sm:px-7 sm:py-10">
-      <PageHeader eyebrow="Live with Scott" title="Weekly Calls" description="Bring the questions that slowed you down. Leave with a clear move for the next week." />
+      <PageHeader eyebrow="Live with Scott" title="Weekly Calls" description="Join Scott's weekly group sessions with all Blueprint Max members" />
       {nextCall ? <NextCall call={nextCall} /> : <EmptySchedule />}
 
       <section className="mt-8">
