@@ -282,7 +282,7 @@ function CsvImportPanel() {
           disabled={pending}
           className="rounded-card bg-navy px-5 py-3 text-sm font-bold text-white shadow-[0_2px_0_#07193b] transition-transform active:translate-y-px disabled:cursor-wait disabled:opacity-50"
         >
-          {pending ? "Importing..." : "Import cards"}
+          {pending ? "Importing…" : "Import cards"}
         </button>
       </form>
       {result?.ok ? (

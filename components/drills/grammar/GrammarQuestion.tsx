@@ -46,7 +46,7 @@ export function GrammarQuestionView({
               type="button"
               onClick={() => onSelect(c.id)}
               aria-pressed={isSelected}
-              className={`flex w-full items-start gap-3.5 rounded-[10px] border-[1.5px] px-[17px] py-[15px] text-left font-serif text-base text-exam-ink transition-all ${
+              className={`flex w-full items-start gap-3.5 rounded-[10px] border-[1.5px] px-[17px] py-[15px] text-left font-serif text-base text-exam-ink transition-[background-color,border-color,box-shadow] ${
                 isSelected
                   ? "border-brand-600 bg-exam-tint shadow-[0_0_0_3px_rgba(63,169,245,0.14)]"
                   : "border-navy/15 bg-white hover:border-navy/30"

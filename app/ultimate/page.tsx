@@ -24,7 +24,7 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
-  const [hub, history, flashcards, courses, access, savedProgress, liveCall] = await Promise.all([
+  const [hub, history, flashcards, courses, access, savedProgress, liveCall, { billing }] = await Promise.all([
     getHubState(session.email),
     loadHistory(session.email),
     listStudentLibrary(session.email),
@@ -32,6 +32,7 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
     getStudentAccess(session.email),
     getStudentProgress(session.email),
     getLiveWeeklyCall(),
+    searchParams,
   ]);
   const availableCourses = courses.filter((course) => canAccessCourse(access, course.slug));
   const showLiveBanner = liveCall && access.entitlements.liveGroupClasses;
@@ -55,8 +56,6 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
     && progress.drills.sessions === 0
     && progress.drills.uniqueQuestions === 0
     && completedLessons === 0;
-  const { billing } = await searchParams;
-
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
       {showLiveBanner && liveCall ? <LiveCallBanner call={liveCall} /> : null}
@@ -201,7 +200,7 @@ function CourseCard({ course }: { course: Course }) {
   const nextLesson = course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed);
   const href = nextLesson ? `/ultimate/courses/${course.slug}/${nextLesson.slug}` : `/ultimate/courses/${course.slug}`;
   return (
-    <Link href={href} className="group rounded-[18px] border border-navy/10 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_12px_30px_-24px_rgba(11,42,91,0.5)] motion-reduce:transition-none">
+    <Link href={href} className="group rounded-[18px] border border-navy/10 bg-white p-5 transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_12px_30px_-24px_rgba(11,42,91,0.5)] motion-reduce:transform-none motion-reduce:transition-none">
       <div className="flex items-start justify-between gap-4"><span className="grid h-10 w-10 place-items-center rounded-xl bg-navy text-white"><BookIcon className="h-5 w-5" /></span><span className="text-xs font-extrabold tabular-nums text-navy/40">{course.progress}%</span></div>
       <p className="mt-4 text-[9px] font-extrabold uppercase tracking-[0.15em] text-brand-600">{course.eyebrow ?? "1500 Blueprint course"}</p>
       <h3 className="mt-1 line-clamp-2 font-display text-lg font-extrabold leading-tight text-ink">{course.title}</h3>

@@ -134,11 +134,12 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
               id="email"
               name="email"
               type="email"
+              inputMode="email"
               autoComplete="email"
+              spellCheck={false}
               required
-              autoFocus
               disabled={pending}
-              placeholder="student@example.com"
+              placeholder="student@example.com…"
               className={inputClass(state.field === "email")}
             />
           </Field>

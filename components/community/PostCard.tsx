@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { Author, CommunityPost } from "@/lib/community/types";
 import { CATEGORY } from "@/lib/community/types";
 import { CommentIcon, HeartIcon, PinIcon } from "./icons";
@@ -27,7 +26,6 @@ export function PostCard({
   onDelete?: (id: string) => void;
   onPinChange?: (id: string, pinned: boolean) => void;
 }) {
-  const router = useRouter();
   const [liked, setLiked] = useState(post.liked);
   const [likes, setLikes] = useState(post.likes);
   const [pinned, setPinned] = useState(post.pinned);
@@ -112,14 +110,21 @@ export function PostCard({
           </div>
         </div>
 
-        {/* Clicking navigates to the thread; inner links stopPropagation, so a
-            URL in a post opens the URL, not the thread. */}
-        <div
-          onClick={() => router.push(`${threadHrefBase}/${post.id}`)}
-          className="mt-2.5 flex cursor-pointer items-start gap-3"
-        >
-          <RichText text={post.body} className="line-clamp-2 min-w-0 flex-1 text-[14px] leading-[1.6] text-ink/85" />
-          {post.shot && <Attachment shot={post.shot} variant="thumb" />}
+        <div className="relative mt-2.5">
+          <Link
+            href={`${threadHrefBase}/${post.id}`}
+            aria-label={`Open discussion by ${post.author.name}`}
+            className="absolute inset-0 rounded-lg"
+          >
+            <span className="sr-only">Open discussion</span>
+          </Link>
+          <div className="pointer-events-none relative flex items-start gap-3">
+            <RichText
+              text={post.body}
+              className="line-clamp-2 min-w-0 flex-1 text-[14px] leading-[1.6] text-ink/85 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10"
+            />
+            {post.shot ? <Attachment shot={post.shot} variant="thumb" /> : null}
+          </div>
         </div>
       </div>
 

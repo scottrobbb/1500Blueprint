@@ -63,7 +63,7 @@ export function SetCard({
   return (
     <Link
       href={href}
-      className={`group flex flex-col border bg-white p-5 shadow-pop transition-all duration-200 hover:-translate-y-0.5 ${variant === "ultimate" ? "min-h-[210px] rounded-2xl" : "rounded-card"} ${
+      className={`group flex flex-col border bg-white p-5 shadow-pop transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none ${variant === "ultimate" ? "min-h-[210px] rounded-2xl" : "rounded-card"} ${
         featured
           ? "border-navy/15 border-t-2 border-t-gold hover:border-gold/50"
           : "border-navy/15 hover:border-brand/40"

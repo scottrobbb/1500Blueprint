@@ -8,7 +8,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
   const [email, setEmail] = useState("");
   const [key, setKey] = useState("");
   const [adminMode, setAdminMode] = useState(false);
-  const [status, setStatus] = useState<Status>("idle");
+  const [status, setStatus] = useState<Status>(initialError ? "error" : "idle");
   const [message, setMessage] = useState(errorMessage(initialError));
 
   async function onSubmit(e: FormEvent) {
@@ -64,7 +64,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
   return (
     <form onSubmit={onSubmit} className="w-full">
-      <h1 className="font-display text-2xl font-extrabold tracking-[-0.01em] text-navy">Sign in</h1>
+      <h1 className="text-balance font-display text-2xl font-extrabold tracking-[-0.01em] text-navy">Sign in</h1>
       <p className="mt-2 text-sm leading-6 text-navy/60">
         Enter the email on your 1500 membership and we&rsquo;ll send you a login link.
       </p>
@@ -74,13 +74,15 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       </label>
       <input
         id="email"
+        name="email"
         type="email"
+        inputMode="email"
         required
-        autoFocus
         autoComplete="email"
+        spellCheck={false}
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@example.com"
+        placeholder="you@example.com…"
         className="mt-6 w-full rounded-[10px] border-[1.5px] border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
       />
 
@@ -91,11 +93,13 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           </label>
           <input
             id="admin-key"
+            name="key"
             type="password"
             autoComplete="current-password"
+            spellCheck={false}
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            placeholder="Admin access key"
+            placeholder="Admin access key…"
             className="mt-3 w-full rounded-[10px] border-[1.5px] border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
           />
         </>
@@ -115,9 +119,15 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             : "Send me a login link"}
       </button>
 
-      {message && (
-        <p className={`mt-4 text-sm ${status === "error" ? "text-danger" : "text-navy/60"}`}>{message}</p>
-      )}
+      {message ? (
+        <p
+          role={status === "error" ? "alert" : "status"}
+          aria-live="polite"
+          className={`mt-4 text-sm ${status === "error" ? "text-danger" : "text-navy/60"}`}
+        >
+          {message}
+        </p>
+      ) : null}
 
       <button
         type="button"
@@ -137,6 +147,6 @@ function errorMessage(code?: string): string {
   if (code === "expired") {
     return "That link expired or was already used. Enter your email for a fresh one.";
   }
-  if (code === "invalid") return "That link wasn't valid. Enter your email to try again.";
+  if (code === "invalid") return "That link wasn’t valid. Enter your email to try again.";
   return "";
 }

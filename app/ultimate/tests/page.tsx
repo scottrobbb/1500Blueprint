@@ -122,7 +122,7 @@ export default async function UltimateTestsPage() {
 
             return (
               <li key={test.slug}>
-                <article className={`group relative h-full overflow-hidden rounded-[18px] border bg-white transition-all duration-200 motion-reduce:transition-none ${locked ? "border-dashed border-navy/15 opacity-65" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_14px_36px_-24px_rgba(11,42,91,0.55)]"}`}>
+                <article className={`group relative h-full overflow-hidden rounded-[18px] border bg-white transition-[transform,border-color,box-shadow] duration-200 motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-dashed border-navy/15 opacity-65" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_14px_36px_-24px_rgba(11,42,91,0.55)]"}`}>
                   <div className={`h-1 w-full ${best != null ? "bg-success" : locked ? "bg-navy/15" : "bg-brand"}`} />
                   <div className="p-5 sm:p-6">
                     <div className="flex items-start gap-4">

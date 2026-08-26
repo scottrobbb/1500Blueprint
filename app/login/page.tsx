@@ -12,8 +12,8 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  if (await getSession()) redirect("/drills");
-  const { error } = await searchParams;
+  const [session, { error }] = await Promise.all([getSession(), searchParams]);
+  if (session) redirect("/drills");
 
   return (
     <div

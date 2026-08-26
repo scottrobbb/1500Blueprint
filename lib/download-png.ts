@@ -1,5 +1,3 @@
-import { toBlob, toPng } from "html-to-image";
-
 const pngOptions = {
   pixelRatio: 2,
   cacheBust: true,
@@ -8,7 +6,9 @@ const pngOptions = {
 };
 
 export async function renderNodeToPngBlob(node: HTMLElement): Promise<Blob> {
+  const libraryPromise = import("html-to-image");
   await document.fonts.ready;
+  const { toBlob, toPng } = await libraryPromise;
   await toPng(node, pngOptions);
   const blob = await toBlob(node, pngOptions);
   if (!blob) throw new Error("PNG rendering returned no image");
@@ -27,9 +27,11 @@ export async function downloadNodeAsPng(
   node: HTMLElement,
   fileName = "question.png",
 ): Promise<void> {
+  const libraryPromise = import("html-to-image");
   // First call can drop just-loaded web fonts (a known html-to-image timing
   // quirk); render once to warm the font cache, then capture for real.
   await document.fonts.ready;
+  const { toPng } = await libraryPromise;
   await toPng(node, pngOptions);
   const dataUrl = await toPng(node, pngOptions);
 

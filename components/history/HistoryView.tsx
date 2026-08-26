@@ -134,7 +134,7 @@ export function HistoryView({
             <button
               type="button"
               onClick={() => setOpen(e)}
-              className={`${variant === "ultimate" ? "rounded-2xl border border-navy/10 bg-white shadow-pop" : surface} flex min-h-16 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-all hover:border-brand/30 hover:bg-ice/20`}
+              className={`${variant === "ultimate" ? "rounded-2xl border border-navy/10 bg-white shadow-pop" : surface} flex min-h-16 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-[background-color,border-color] hover:border-brand/30 hover:bg-ice/20`}
             >
               <span className={`${chip} shrink-0 bg-brand/10 text-brand-600`}>{drillTitle(e.drillSlug)}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-navy/80">{preview(e)}</span>

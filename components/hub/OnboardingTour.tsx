@@ -69,7 +69,7 @@ export function OnboardingTour({ firstName, dailyTarget }: { firstName: string; 
             {steps.map((_, i) => (
               <span
                 key={i}
-                className="h-1.5 rounded-full transition-all"
+                className="h-1.5 rounded-full"
                 style={{
                   width: i === step ? 22 : 7,
                   background: i === step ? "#3fa9f5" : "rgba(11,42,91,0.18)",
