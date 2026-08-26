@@ -65,6 +65,19 @@ export async function loadTestSession(
     : null;
 }
 
+export async function listResumableTestSlugs(email: string, slugs: string[]): Promise<Set<string>> {
+  const uniqueSlugs = [...new Set(slugs)];
+  if (uniqueSlugs.length === 0) return new Set();
+  const { data, error } = await supabaseAdmin()
+    .from("test_sessions")
+    .select("test_slug")
+    .eq("email", email)
+    .in("test_slug", uniqueSlugs)
+    .returns<{ test_slug: string }[]>();
+  if (error) throw new Error(`listResumableTestSlugs failed: ${error.message}`);
+  return new Set((data ?? []).map((row) => row.test_slug));
+}
+
 export async function clearTestSession(email: string, slug: string): Promise<void> {
   const { error } = await supabaseAdmin()
     .from("test_sessions")
