@@ -80,7 +80,18 @@ function LessonContent({ block, lessonId, initialAttempt }: { block: LessonBlock
   if (block.kind === "image" && block.content.url) return <figure className="overflow-hidden rounded-2xl border border-navy/10 bg-haze p-2"><img src={block.content.url} alt={block.content.alt ?? "Lesson illustration"} className="mx-auto max-h-[620px] w-auto rounded-xl object-contain" />{block.content.caption ? <figcaption className="px-3 py-2 text-center text-xs text-navy/45">{block.content.caption}</figcaption> : null}</figure>;
   if (block.kind === "video" && block.content.url) {
     const embedUrl = videoEmbed(block.content.url);
-    return <section className="scroll-mt-6"><div className="mb-4 flex flex-wrap items-start justify-between gap-3"><StepHeading block={block} description={block.content.description} /><a href={block.content.url} target="_blank" rel="noreferrer" className="inline-flex min-h-10 cursor-pointer items-center rounded-xl border border-brand/20 bg-ice px-3 text-xs font-extrabold text-brand-700 transition-colors hover:border-brand/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Open video source ↗</a></div>{embedUrl ? <div className="aspect-video overflow-hidden rounded-2xl bg-navy shadow-[0_14px_35px_-24px_rgba(12,35,72,0.6)]"><iframe src={embedUrl} title={block.content.title ?? "Lesson video"} loading="lazy" className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div> : <video controls src={block.content.url} className="aspect-video w-full rounded-2xl bg-navy" />}</section>;
+    return (
+      <section className="scroll-mt-6">
+        <div className="mb-4"><StepHeading block={block} description={block.content.description} /></div>
+        {embedUrl ? (
+          <div className="aspect-video overflow-hidden rounded-2xl bg-navy shadow-[0_14px_35px_-24px_rgba(12,35,72,0.6)]">
+            <iframe src={embedUrl} title={block.content.title ?? "Lesson video"} loading="lazy" className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+          </div>
+        ) : (
+          <div className="flex aspect-video w-full items-center justify-center rounded-2xl bg-navy px-6 text-center text-sm text-white/60">This video isn&rsquo;t available yet.</div>
+        )}
+      </section>
+    );
   }
   if (block.kind === "file" && block.content.url) {
     const embedUrl = driveResourceEmbed(block.content.url);
@@ -132,6 +143,10 @@ function videoEmbed(url: string): string | null {
     if (parsed.hostname === "drive.google.com") {
       const id = parsed.pathname.match(/\/file\/d\/([^/]+)/)?.[1];
       return id ? `https://drive.google.com/file/d/${id}/preview` : null;
+    }
+    if (parsed.hostname === "www.loom.com" || parsed.hostname === "loom.com") {
+      const id = parsed.pathname.match(/\/(?:share|embed)\/([a-zA-Z0-9]+)/)?.[1];
+      return id ? `https://www.loom.com/embed/${id}` : null;
     }
   } catch { return null; }
   return null;
