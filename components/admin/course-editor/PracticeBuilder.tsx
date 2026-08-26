@@ -31,8 +31,10 @@ function move<T>(items: T[], index: number, direction: -1 | 1): T[] {
 }
 
 export function PracticeBuilder({ value, onChange }: { value: CoursePractice; onChange: (practice: CoursePractice) => void }) {
-  const [pastingId, setPastingId] = useState<string | null>(null);
-  const [pasteErrorId, setPasteErrorId] = useState<string | null>(null);
+  const [explanationPastingId, setExplanationPastingId] = useState<string | null>(null);
+  const [explanationPasteErrorId, setExplanationPasteErrorId] = useState<string | null>(null);
+  const [imagePastingId, setImagePastingId] = useState<string | null>(null);
+  const [imagePasteErrorId, setImagePasteErrorId] = useState<string | null>(null);
   // Tracks which questions are expanded, independent of completeness, so
   // typing a valid answer never auto-collapses the question mid-edit.
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set(value.questions.filter((question, index) => index === 0 || !isCoursePracticeQuestionComplete(question)).map((question) => question.id)));
@@ -56,14 +58,28 @@ export function PracticeBuilder({ value, onChange }: { value: CoursePractice; on
     const file = item.getAsFile();
     if (!file) return;
     const cursor = event.currentTarget.selectionStart;
-    setPastingId(question.id);
-    setPasteErrorId(null);
+    setExplanationPastingId(question.id);
+    setExplanationPasteErrorId(null);
     const url = await uploadPastedImage(file);
-    setPastingId(null);
-    if (!url) { setPasteErrorId(question.id); return; }
+    setExplanationPastingId(null);
+    if (!url) { setExplanationPasteErrorId(question.id); return; }
     const before = question.explanation.slice(0, cursor);
     const after = question.explanation.slice(cursor);
     updateQuestion(questionIndex, { explanation: `${before}\n![](${url})\n${after}` });
+  }
+
+  async function handleImageUrlPaste(event: React.ClipboardEvent<HTMLInputElement>, questionIndex: number, question: CoursePracticeQuestion) {
+    const item = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
+    if (!item) return;
+    event.preventDefault();
+    const file = item.getAsFile();
+    if (!file) return;
+    setImagePastingId(question.id);
+    setImagePasteErrorId(null);
+    const url = await uploadPastedImage(file);
+    setImagePastingId(null);
+    if (!url) { setImagePasteErrorId(question.id); return; }
+    updateQuestion(questionIndex, { imageUrl: url });
   }
 
   function addQuestion(type: CoursePracticeQuestionType) {
@@ -93,7 +109,7 @@ export function PracticeBuilder({ value, onChange }: { value: CoursePractice; on
               <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 bg-haze/45 px-3 py-2 sm:px-4"><span className={`grid h-8 w-8 flex-none place-items-center rounded-xl text-xs font-extrabold ${complete ? "bg-success-bg text-success-600" : "bg-[#fff4d5] text-[#8a6500]"}`}>{questionIndex + 1}</span><span className="min-w-0 flex-1"><strong className="block truncate text-sm text-navy">{question.prompt || "Untitled question"}</strong><span className="mt-0.5 block text-[10px] font-bold uppercase tracking-[0.1em] text-navy/35">{question.type === "multiple_choice" ? "Multiple choice" : "Free response"} · {complete ? "Ready" : "Needs attention"}</span></span><OrderButtons onUp={(event) => { event.preventDefault(); onChange({ ...value, questions: move(value.questions, questionIndex, -1) }); }} onDown={(event) => { event.preventDefault(); onChange({ ...value, questions: move(value.questions, questionIndex, 1) }); }} /></summary>
               <div className="border-t border-navy/10 p-4 sm:p-5">
                 <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]"><Field label="Question type"><select value={question.type} onChange={(event) => { const type = event.target.value as CoursePracticeQuestionType; updateQuestion(questionIndex, { type, choices: type === "multiple_choice" && question.choices.length < 2 ? ["", "", "", ""] : type === "free_response" ? [] : question.choices, correctAnswer: "" }); }} className={inputClass}><option value="multiple_choice">Multiple choice</option><option value="free_response">Free response</option></select></Field><Field label="Question prompt"><textarea rows={3} value={question.prompt} onChange={(event) => updateQuestion(questionIndex, { prompt: event.target.value })} className={inputClass} /></Field></div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Optional image URL"><input type="url" value={question.imageUrl ?? ""} onChange={(event) => updateQuestion(questionIndex, { imageUrl: event.target.value })} placeholder="https://…" className={inputClass} /><CourseAssetUpload kind="image" compact onUploaded={(url) => updateQuestion(questionIndex, { imageUrl: url })} /></Field><Field label="Answer explanation"><textarea rows={4} value={question.explanation} onChange={(event) => updateQuestion(questionIndex, { explanation: event.target.value })} onPaste={(event) => void handleExplanationPaste(event, questionIndex, question)} placeholder="Explain why the answer is correct and the trap to avoid. Paste an image to drop it in." className={inputClass} />{pastingId === question.id ? <p className="mt-1.5 text-xs font-semibold text-brand-700">Uploading pasted image…</p> : null}{pasteErrorId === question.id ? <p role="alert" className="mt-1.5 text-xs font-semibold text-danger-600">That image could not be uploaded.</p> : null}</Field></div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Optional image URL"><input type="url" value={question.imageUrl ?? ""} onChange={(event) => updateQuestion(questionIndex, { imageUrl: event.target.value })} onPaste={(event) => void handleImageUrlPaste(event, questionIndex, question)} placeholder="https://… or paste an image" className={inputClass} /><CourseAssetUpload kind="image" compact onUploaded={(url) => updateQuestion(questionIndex, { imageUrl: url })} />{imagePastingId === question.id ? <p className="mt-1.5 text-xs font-semibold text-brand-700">Uploading pasted image…</p> : null}{imagePasteErrorId === question.id ? <p role="alert" className="mt-1.5 text-xs font-semibold text-danger-600">That image could not be uploaded.</p> : null}</Field><Field label="Answer explanation"><textarea rows={4} value={question.explanation} onChange={(event) => updateQuestion(questionIndex, { explanation: event.target.value })} onPaste={(event) => void handleExplanationPaste(event, questionIndex, question)} placeholder="Explain why the answer is correct and the trap to avoid. Paste an image to drop it in." className={inputClass} />{explanationPastingId === question.id ? <p className="mt-1.5 text-xs font-semibold text-brand-700">Uploading pasted image…</p> : null}{explanationPasteErrorId === question.id ? <p role="alert" className="mt-1.5 text-xs font-semibold text-danger-600">That image could not be uploaded.</p> : null}</Field></div>
                 {question.type === "multiple_choice" ? <ChoiceEditor question={question} onChange={(update) => updateQuestion(questionIndex, update)} /> : <div className="mt-4"><Field label="Accepted answer"><input value={question.correctAnswer} onChange={(event) => updateQuestion(questionIndex, { correctAnswer: event.target.value })} placeholder="Exact answer; capitalization and extra spaces are ignored" className={inputClass} /></Field><AcceptedAnswersEditor question={question} onChange={(update) => updateQuestion(questionIndex, update)} /></div>}
                 <div className="mt-4 flex justify-end"><button type="button" onClick={() => onChange({ ...value, questions: value.questions.filter((_, index) => index !== questionIndex) })} className="min-h-10 cursor-pointer rounded-xl px-3 text-xs font-extrabold text-danger-600 transition-colors hover:bg-danger-bg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger">Delete question</button></div>
               </div>
