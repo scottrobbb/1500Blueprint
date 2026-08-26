@@ -29,7 +29,7 @@ export function normalizeCoursePracticeAnswer(value: string): string {
 }
 
 export function isCoursePracticeQuestionComplete(question: CoursePracticeQuestion): boolean {
-  if (!question.prompt.trim() || !question.correctAnswer.trim() || !question.explanation.trim()) return false;
+  if (!question.correctAnswer.trim()) return false;
   if (question.type === "multiple_choice") {
     const choices = question.choices.map((choice) => choice.trim()).filter(Boolean);
     return choices.length >= 2 && choices.some((choice) => normalizeCoursePracticeAnswer(choice) === normalizeCoursePracticeAnswer(question.correctAnswer));

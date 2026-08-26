@@ -111,7 +111,7 @@ export function CoursePracticeRunner({
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-navy/[0.08]"><div className="h-full rounded-full bg-brand transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }} /></div>
       </header>
       <div className="px-5 py-6 sm:px-7 sm:py-7">
-        <p className="max-w-[72ch] whitespace-pre-wrap text-base font-semibold leading-7 text-ink sm:text-lg">{question.prompt}</p>
+        {question.prompt ? <p className="max-w-[72ch] whitespace-pre-wrap text-base font-semibold leading-7 text-ink sm:text-lg">{question.prompt}</p> : null}
         {question.imageUrl ? <img src={question.imageUrl} alt="Question figure" className="mt-5 max-h-[420px] w-auto max-w-full rounded-2xl border border-navy/10 object-contain" /> : null}
         {question.type === "multiple_choice" ? (
           <div className="mt-6 grid gap-3">
@@ -125,7 +125,7 @@ export function CoursePracticeRunner({
         ) : (
           <label className="mt-6 block"><span className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-navy/45">Your answer</span><input value={answer} onChange={(event) => setAnswer(event.target.value)} disabled={checked} className="mt-2 min-h-14 w-full rounded-2xl border border-navy/20 bg-white px-4 text-base font-semibold text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/15 disabled:bg-haze" /></label>
         )}
-        {checked ? <div role="status" className={`mt-5 rounded-2xl border px-4 py-4 ${locallyCorrect ? "border-success/25 bg-success-bg" : "border-danger/25 bg-danger-bg"}`}><strong className={`block text-sm ${locallyCorrect ? "text-success-600" : "text-danger-600"}`}>{locallyCorrect ? "Correct" : `Correct answer: ${question.correctAnswer}`}</strong><div className="mt-1.5 text-sm leading-6 text-navy/65">{renderExplanation(question.explanation)}</div></div> : null}
+        {checked ? <div role="status" className={`mt-5 rounded-2xl border px-4 py-4 ${locallyCorrect ? "border-success/25 bg-success-bg" : "border-danger/25 bg-danger-bg"}`}><strong className={`block text-sm ${locallyCorrect ? "text-success-600" : "text-danger-600"}`}>{locallyCorrect ? "Correct" : `Correct answer: ${question.correctAnswer}`}</strong>{question.explanation ? <div className="mt-1.5 text-sm leading-6 text-navy/65">{renderExplanation(question.explanation)}</div> : null}</div> : null}
         {saveError ? <p role="alert" className="mt-4 rounded-xl bg-danger-bg px-4 py-3 text-sm font-semibold text-danger-600">Your score could not be saved. Try finishing again.</p> : null}
         <div className="mt-6 flex justify-end"><button type="button" disabled={!answer.trim() || saving} onClick={checked ? nextQuestion : () => setChecked(true)} className="min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-navy/15 disabled:text-navy/35">{saving ? "Saving…" : checked ? currentIndex === questions.length - 1 ? "Finish practice" : "Next question" : "Check answer"}</button></div>
       </div>

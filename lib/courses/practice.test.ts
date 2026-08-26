@@ -22,9 +22,10 @@ test("course practice grading normalizes answers and calculates pass state", () 
   assert.deepEqual(result.results, { mcq: true, free: false });
 });
 
-test("course practice completeness validates MCQ options and explanations", () => {
+test("course practice completeness validates MCQ options and the correct answer", () => {
   assert.equal(isCoursePracticeQuestionComplete(practice.questions[0]), true);
   assert.equal(isCoursePracticeQuestionComplete({ ...practice.questions[0], correctAnswer: "missing" }), false);
-  assert.equal(isCoursePracticeQuestionComplete({ ...practice.questions[1], explanation: "" }), false);
+  assert.equal(isCoursePracticeQuestionComplete({ ...practice.questions[1], explanation: "" }), true);
+  assert.equal(isCoursePracticeQuestionComplete({ ...practice.questions[1], prompt: "" }), true);
   assert.equal(normalizeCoursePracticeAnswer("  A   B "), "a b");
 });
