@@ -6,6 +6,7 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import type { PlanCode } from "@/lib/auth/plans";
 import { getSession } from "@/lib/auth/session";
 import styles from "./pricing.module.css";
+import { TestimonialVideos } from "./TestimonialVideos";
 
 export const metadata: Metadata = {
   title: "Pricing | 1500 SAT Blueprint",
@@ -92,17 +93,61 @@ const productFeatures: Array<{
   },
 ];
 
-const videoStorySlots = [
-  { id: "01", focus: "A student's score journey" },
-  { id: "02", focus: "Preparing for test day" },
-  { id: "03", focus: "Finding a study routine" },
+const videoStories = [
+  {
+    name: "Annie",
+    src: "/testimonials/annie.mp4",
+    poster: "/testimonials/annie-poster.jpg",
+    quote: "I was able to get my score from a 1220 to a 1350 in a little over two months.",
+  },
+  {
+    name: "Felix",
+    src: "/testimonials/felix.mp4",
+    poster: "/testimonials/felix-poster.jpg",
+    quote: "I went from a 1190 to a 1480 on the May SAT, all thanks to the Blueprint.",
+  },
+  {
+    name: "Michael",
+    src: "/testimonials/michael.mp4",
+    poster: "/testimonials/michael-poster.jpg",
+    quote: "I started at an 830, and I came out with a 1330.",
+  },
 ] as const;
 
-const writtenStorySlots = [
-  { label: "Score improvement", accent: "blue" },
-  { label: "A clearer study plan", accent: "gold" },
-  { label: "Confidence under time", accent: "sky" },
-  { label: "A better weekly routine", accent: "navy" },
+const writtenStories = [
+  {
+    student: "Tara",
+    before: "",
+    highlight:
+      "I went up 110 points since September. I got my score back this morning and I got a 1490.",
+    after: " I just wanted to say thank you for all the help!",
+    result: "1490 SAT, up 110 points",
+    source: "IMG_0237.PNG",
+  },
+  {
+    student: "@ut.4392",
+    before: "Bro I just wanted to hit u up and say thank u so much for all the math tips. ",
+    highlight: "I went from 1260 to 1480 with 790 on math.",
+    after: "",
+    result: "1260 to 1480, 790 Math",
+    source: "IMG_8598.PNG",
+  },
+  {
+    student: "@rushanthg",
+    before: "Yo I just wanted to let you know ",
+    highlight: "I went from a 1300 to a 1480 in 3 weeks",
+    after: " because of you on June SAT and I appreciate your help.",
+    result: "1300 to 1480 in 3 weeks",
+    source: "IMG_8604.PNG",
+  },
+  {
+    student: "plushy",
+    before: "",
+    highlight: "1280 to 1410 thanks to you bro.",
+    after: " I know it's not amazing, but I'm really proud of it.",
+    result: "1280 to 1410",
+    source: "IMG_0962.PNG",
+  },
 ] as const;
 
 const faqItems = [
@@ -210,6 +255,10 @@ export default async function PricingPage({
           <div className={`${styles.heroBadge} ${styles.callsBadge}`} aria-hidden="true">
             <span><FeatureGlyph name="star" /></span>
             Weekly Max calls
+          </div>
+          <div className={`${styles.heroBadge} ${styles.plannerBadge}`} aria-hidden="true">
+            <span><FeatureGlyph name="calendar" /></span>
+            Personal study plan
           </div>
           <Image
             className={styles.heroBlu}
@@ -340,21 +389,7 @@ export default async function PricingPage({
             dark
           />
         </div>
-        <div className={styles.videoGrid}>
-          {videoStorySlots.map((story, index) => (
-            <article className={styles.videoCard} key={story.id}>
-              <div className={`${styles.videoFrame} ${styles[`videoFrame${index + 1}`]}`}>
-                <div className={styles.playButton} aria-hidden="true"><PlayIcon /></div>
-                <div className={styles.videoPlaceholderCopy}>
-                  <strong>Student video</strong>
-                </div>
-              </div>
-              <div className={styles.videoMeta}>
-                <h3>{story.focus}</h3>
-              </div>
-            </article>
-          ))}
-        </div>
+        <TestimonialVideos stories={videoStories} />
       </section>
 
       <section className={styles.writtenStoriesSection}>
@@ -362,20 +397,22 @@ export default async function PricingPage({
           <h2>More from students</h2>
         </div>
         <div className={styles.writtenStoryGrid}>
-          {writtenStorySlots.map((story, index) => (
+          {writtenStories.map((story) => (
             <article
-              className={`${styles.writtenStory} ${styles[`story${index + 1}`]}`}
-              key={story.label}
+              className={styles.writtenStory}
+              key={story.result}
             >
-              <div className={styles.quoteMark}>“</div>
-              <p>A student quote will appear here.</p>
               <div className={styles.storyAuthor}>
-                <span className={`${styles.storyAvatar} ${styles[`avatar${story.accent}`]}`} />
                 <div>
-                  <strong>{story.label}</strong>
-                  <span>Student name and result</span>
+                  <strong>{story.student}</strong>
+                  <span>{story.result}</span>
                 </div>
               </div>
+              <p>
+                {story.before}
+                <span>{story.highlight}</span>
+                {story.after}
+              </p>
             </article>
           ))}
         </div>
@@ -591,10 +628,6 @@ function FeatureGlyph({ name }: { name: FeatureIcon }) {
 
 function ArrowIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5" /></svg>;
-}
-
-function PlayIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 9 6-9 6Z" /></svg>;
 }
 
 function PlanCheckIcon() {
