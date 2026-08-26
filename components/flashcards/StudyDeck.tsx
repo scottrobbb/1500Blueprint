@@ -215,7 +215,7 @@ export function StudyDeck({
                 )}
                 {(card.term || !card.termImageUrl) && (
                   <span className="font-serif text-2xl font-semibold leading-snug text-exam-ink sm:text-[2rem]">
-                    <MathText>{card.term || "—"}</MathText>
+                    <MathText>{card.term || "-"}</MathText>
                   </span>
                 )}
               </span>
@@ -244,7 +244,7 @@ export function StudyDeck({
                 )}
                 {(card.definition || !card.definitionImageUrl) && (
                   <span className="font-serif text-xl leading-relaxed text-exam-ink sm:text-2xl">
-                    <MathText>{card.definition || "—"}</MathText>
+                    <MathText>{card.definition || "-"}</MathText>
                   </span>
                 )}
               </span>

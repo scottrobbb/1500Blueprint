@@ -90,7 +90,7 @@ export function SetLibrary({
                 From your tutor
               </h2>
               <p className="text-xs text-navy/55">
-                Curated sets shared by Scott — a great place to start.
+                Curated sets shared by Scott. A great place to start.
               </p>
             </div>
             <span className="ml-auto rounded-chip bg-gold/20 px-2 py-0.5 text-[11px] font-bold tabular-nums text-gold-600">

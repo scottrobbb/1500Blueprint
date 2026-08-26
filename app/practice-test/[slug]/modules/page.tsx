@@ -15,7 +15,7 @@ import { UltimateShell } from "@/components/ultimate/UltimateShell";
 
 export const metadata = {
   title: "Practice a module · 1500 SAT Blueprint",
-  description: "Drill a single SAT module on its own — timed, with full review.",
+  description: "Drill a single SAT module on its own, timed and with full review.",
 };
 
 function tone(meta: PracticeModuleMeta): { chip: string; badge: string } {
@@ -70,7 +70,7 @@ export default async function ModulesPage({
           Practice a single module
         </h1>
         <p className="mt-1.5 max-w-[560px] text-sm leading-relaxed text-navy/60">
-          From {test.title}. Pick one module to drill on its own — fully timed, with the same
+          From {test.title}. Pick one module to drill on its own. It is fully timed, with the same
           Bluebook tools and a full answer review at the end. No adaptive routing.
         </p>
 

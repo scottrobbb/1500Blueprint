@@ -23,7 +23,7 @@ const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "
 // Deterministic formatting (no locale / Date.now) so server and client markup
 // match — avoids hydration mismatches in the table.
 function fmtDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const [y, m, d] = iso.slice(0, 10).split("-");
   const mi = Number(m) - 1;
   if (!y || Number.isNaN(mi) || mi < 0 || mi > 11) return iso.slice(0, 10);
@@ -296,7 +296,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
                     {s.bestTest != null ? (
                       <span className="font-semibold text-success-600">{s.bestTest}</span>
                     ) : (
-                      <span className="text-navy/35">—</span>
+                      <span className="text-navy/35">-</span>
                     )}
                   </Td>
                   <Td className="whitespace-nowrap text-navy/60">{fmtDate(s.lastActive)}</Td>

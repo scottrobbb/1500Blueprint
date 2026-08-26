@@ -23,7 +23,7 @@ const notoSerif = Noto_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "1500 SAT Blueprint — Practice",
+  title: "1500 SAT Blueprint | Practice",
   description:
     "Full-length, Bluebook-style digital SAT practice tests from the 1500 SAT Blueprint.",
 };

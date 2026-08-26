@@ -6,13 +6,26 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import type { PlanCode } from "@/lib/auth/plans";
 import { getSession } from "@/lib/auth/session";
 import styles from "./pricing.module.css";
+import { TestimonialVideos } from "./TestimonialVideos";
 
 export const metadata: Metadata = {
-  title: "Pricing — 1500 SAT Blueprint",
-  description: "Compare Free, Core, and Max access for 1500 SAT Blueprint.",
+  title: "Pricing | 1500 SAT Blueprint",
+  description:
+    "Compare Hobby, Core, and Max SAT prep plans, including practice tests, targeted drills, courses, weekly calls, and study planning.",
 };
 
-type FeatureIcon = "target" | "grid" | "chat" | "bolt" | "file" | "calendar" | "play" | "star" | "check";
+type FeatureIcon =
+  | "target"
+  | "grid"
+  | "chat"
+  | "bolt"
+  | "file"
+  | "calendar"
+  | "play"
+  | "star"
+  | "check"
+  | "chart"
+  | "book";
 
 type PlanFeature = {
   label: string;
@@ -20,29 +33,160 @@ type PlanFeature = {
 };
 
 const freeFeatures: PlanFeature[] = [
-  { label: "300 Question Bank questions", icon: "grid" },
-  { label: "1 full-length practice test", icon: "file" },
-  { label: "Desmos 101 course", icon: "target" },
-  { label: "Reading & Writing 101 course", icon: "play" },
+  { label: "300 Question Bank attempts", icon: "grid" },
+  { label: "1 full-length digital SAT", icon: "file" },
+  { label: "Blueprint Foundation course", icon: "book" },
+  { label: "Flashcards, progress history, and community", icon: "chart" },
 ];
 
-const blueprintFeatures: PlanFeature[] = [
-  { label: "1,250+ questions, including Challenge", icon: "grid" },
-  { label: "2 full-length practice tests", icon: "file" },
-  { label: "Up to 20 drills per day", icon: "bolt" },
-  { label: "Desmos 101 and R&W 101 courses", icon: "play" },
-  { label: "Discord Core role", icon: "chat" },
+const coreFeatures: PlanFeature[] = [
+  { label: "Up to 3,000 Question Bank attempts", icon: "grid" },
+  { label: "2 full-length digital SATs", icon: "file" },
+  { label: "20 practice drills each day", icon: "bolt" },
+  { label: "Blueprint Foundation course", icon: "book" },
+  { label: "Challenge questions", icon: "target" },
 ];
 
-const proFeatures: PlanFeature[] = [
+const maxFeatures: PlanFeature[] = [
   { label: "Everything in Core", icon: "check" },
-  { label: "4 tests with explanations", icon: "target" },
+  { label: "4 full-length digital SATs", icon: "file" },
   { label: "Unlimited daily drills", icon: "bolt" },
-  { label: "Every course and advanced track", icon: "play" },
-  { label: "Weekly live group classes and recordings", icon: "star" },
+  { label: "All 3 courses and 41 lessons", icon: "play" },
   { label: "Personal study planner", icon: "calendar" },
-  { label: "Discord Max role", icon: "chat" },
+  { label: "Weekly calls with Scott and recordings", icon: "star" },
 ];
+
+const productFeatures: Array<{
+  icon: FeatureIcon;
+  title: string;
+  description: string;
+}> = [
+  {
+    icon: "grid",
+    title: "Question Banks",
+    description: "Math and Reading & Writing practice on every plan",
+  },
+  {
+    icon: "file",
+    title: "Full-length digital SATs",
+    description: "1 on Hobby, 2 on Core, 4 on Max",
+  },
+  {
+    icon: "bolt",
+    title: "Daily practice drills",
+    description: "20 a day on Core, unlimited on Max",
+  },
+  {
+    icon: "book",
+    title: "Courses and lessons",
+    description: "Foundation for everyone, all 41 lessons on Max",
+  },
+  {
+    icon: "calendar",
+    title: "Personal study planner",
+    description: "Max only, built around your test date and score goal",
+  },
+  {
+    icon: "star",
+    title: "Weekly calls and recordings",
+    description: "Max only, live with Scott plus recordings",
+  },
+];
+
+const videoStories = [
+  {
+    name: "Annie",
+    src: "/testimonials/annie.mp4",
+    poster: "/testimonials/annie-poster.jpg",
+    quote: "I was able to get my score from a 1220 to a 1350 in a little over two months.",
+  },
+  {
+    name: "Felix",
+    src: "/testimonials/felix.mp4",
+    poster: "/testimonials/felix-poster.jpg",
+    quote: "I went from a 1190 to a 1480 on the May SAT, all thanks to the Blueprint.",
+  },
+  {
+    name: "Michael",
+    src: "/testimonials/michael.mp4",
+    poster: "/testimonials/michael-poster.jpg",
+    quote: "I started at an 830, and I came out with a 1330.",
+  },
+] as const;
+
+const writtenStories = [
+  {
+    student: "Tara",
+    before: "",
+    highlight:
+      "I went up 110 points since September. I got my score back this morning and I got a 1490.",
+    after: " I just wanted to say thank you for all the help!",
+    result: "1490 SAT, up 110 points",
+    source: "IMG_0237.PNG",
+  },
+  {
+    student: "@ut.4392",
+    before: "Bro I just wanted to hit u up and say thank u so much for all the math tips. ",
+    highlight: "I went from 1260 to 1480 with 790 on math.",
+    after: "",
+    result: "1260 to 1480, 790 Math",
+    source: "IMG_8598.PNG",
+  },
+  {
+    student: "@rushanthg",
+    before: "Yo I just wanted to let you know ",
+    highlight: "I went from a 1300 to a 1480 in 3 weeks",
+    after: " because of you on June SAT and I appreciate your help.",
+    result: "1300 to 1480 in 3 weeks",
+    source: "IMG_8604.PNG",
+  },
+  {
+    student: "plushy",
+    before: "",
+    highlight: "1280 to 1410 thanks to you bro.",
+    after: " I know it's not amazing, but I'm really proud of it.",
+    result: "1280 to 1410",
+    source: "IMG_0962.PNG",
+  },
+] as const;
+
+const faqItems = [
+  {
+    question: "Which plan should I choose?",
+    answer:
+      "Hobby is a good place to take your first test and try the Foundation course. Core adds more Question Bank work, a second test, and daily drills. Max is for students who also want every course, four tests, a personal study plan, and Scott's weekly calls.",
+  },
+  {
+    question: "Are Core and Max billed monthly?",
+    answer:
+      "Yes. Core is $39 per month and Max is $80 per month. You can cancel at any time, and your access continues through the end of the paid billing period.",
+  },
+  {
+    question: "Can I change plans later?",
+    answer:
+      "Yes. You can upgrade when you need more support or schedule a downgrade for your next renewal. Your practice history, scores, and course progress stay with your account.",
+  },
+  {
+    question: "What is covered by the refund policy?",
+    answer:
+      "Your first purchase is covered by a 24-hour refund window. Contact support within that window if the plan is not the right fit.",
+  },
+  {
+    question: "Do I need a card to start?",
+    answer:
+      "No. The Hobby plan does not require a card. You only enter payment details when you choose Core or Max.",
+  },
+  {
+    question: "What happens on the weekly Max calls?",
+    answer:
+      "Max members can join Scott's weekly group call and watch the recording afterward. The library also includes recordings from earlier calls on Reading & Writing, math, Desmos, vocabulary, and recent SATs.",
+  },
+  {
+    question: "Will I lose progress if I cancel?",
+    answer:
+      "No. Your account keeps its course progress, attempts, scores, and study history. Paid features change with your plan, but the work you completed stays attached to your account.",
+  },
+] as const;
 
 export default async function PricingPage({
   searchParams,
@@ -52,170 +196,398 @@ export default async function PricingPage({
   const session = await getSession();
   const access = session ? await getStudentAccess(session.email) : null;
   const { billing } = await searchParams;
-  const billingEnabled = Boolean(process.env.STRIPE_CORE_PRICE_ID && process.env.STRIPE_MAX_PRICE_ID);
+  const billingEnabled = Boolean(
+    process.env.STRIPE_CORE_PRICE_ID && process.env.STRIPE_MAX_PRICE_ID,
+  );
 
   return (
     <main className={styles.page}>
-      <div className={styles.saleBar}>
-        <LockIcon />
-        <strong>Choose the access that fits your prep</strong>
-        <span aria-hidden="true" />
-        <em>Upgrade anytime</em>
+      <div className={styles.announcement}>
+        <strong>Everything you need for the SAT in one membership</strong>
+        <a href="#plans">Start free today</a>
       </div>
 
       <header className={styles.header}>
         <Link href="/" className={styles.brand} aria-label="1500 SAT Blueprint home">
           <Logo withWordmark={false} className={styles.logoMark} />
-          <strong>1500 SAT Blueprint</strong>
+          <span>1500 SAT Blueprint</span>
         </Link>
         <nav aria-label="Pricing navigation">
-          <Link href="/practice-test">Practice tests</Link>
-          <Link href="/pricing" aria-current="page">Pricing</Link>
+          <a href="#inside">What you get</a>
+          <a href="#stories">Student stories</a>
+          <a href="#faq">FAQ</a>
         </nav>
-        <Link href="/login" className={styles.openApp}>Open app</Link>
+        <Link href="/login" className={styles.openApp}>
+          Open app <ArrowIcon />
+        </Link>
       </header>
 
-      <section className={styles.content}>
-        {billing ? <BillingNotice state={billing} /> : null}
-        <div className={styles.hero}>
-          <p className={styles.eyebrow}>Simple monthly pricing</p>
-          <h1>All plans</h1>
-          <div className={styles.accessOptions} aria-label="Plan terms">
-            <span>Start free</span>
-            <span>Upgrade anytime</span>
-            <strong>Keep your progress when plans change</strong>
-          </div>
-          <p className={styles.included}>
-            Every account keeps its course progress, attempts, scores, and study history.
+      <section className={styles.hero}>
+        <div className={styles.heroGrid} aria-hidden="true" />
+        <div className={styles.heroGlow} aria-hidden="true" />
+        <div className={styles.heroCopy}>
+          <h1>
+            A clearer path to your <em>1500.</em>
+          </h1>
+          <p className={styles.heroDescription}>
+            Start with a full test, see where you are losing points, and use the
+            courses, Question Bank, and drills to work on the right things.
           </p>
+          <div className={styles.heroActions}>
+            <a href="#plans" className={styles.heroPrimary}>
+              See plans <ArrowIcon />
+            </a>
+            <Link href="/practice-test" className={styles.heroSecondary}>
+              Try a practice test
+            </Link>
+          </div>
         </div>
+
+        <div className={styles.heroVisual} aria-label="Blu, the 1500 SAT Blueprint mascot">
+          <div className={`${styles.heroBadge} ${styles.testsBadge}`} aria-hidden="true">
+            <span><FeatureGlyph name="file" /></span>
+            1–4 full tests
+          </div>
+          <div className={`${styles.heroBadge} ${styles.bankBadge}`} aria-hidden="true">
+            <span><FeatureGlyph name="grid" /></span>
+            Math + R&amp;W Question Bank
+          </div>
+          <div className={`${styles.heroBadge} ${styles.callsBadge}`} aria-hidden="true">
+            <span><FeatureGlyph name="star" /></span>
+            Weekly Max calls
+          </div>
+          <div className={`${styles.heroBadge} ${styles.plannerBadge}`} aria-hidden="true">
+            <span><FeatureGlyph name="calendar" /></span>
+            Personal study plan
+          </div>
+          <Image
+            className={styles.heroBlu}
+            src="/images/blu.png"
+            alt="Blu, the 1500 SAT Blueprint mascot"
+            width={500}
+            height={500}
+            priority
+          />
+        </div>
+      </section>
+
+      <section className={styles.planSection} id="plans">
+        {billing ? <BillingNotice state={billing} /> : null}
+        <SectionHeading title="Pricing" />
 
         <div className={styles.planGrid}>
           <PriceCard
             tier="free"
-            name="Free"
-            description="Start with a real diagnostic and find your weak spots."
+            name="Hobby"
+            description="Take your first test, learn the foundations, and get a feel for the app."
             features={freeFeatures}
-            cta="Get started"
+            cta="Start for free"
             currentPlan={access?.plan ?? null}
             billingEnabled={billingEnabled}
           />
           <PriceCard
-            tier="blueprint"
+            tier="core"
             name="Core"
             price="39"
-            description="Daily structured practice and the complete Core question library."
-            features={blueprintFeatures}
-            cta="Get Core"
+            description="Get more Question Bank practice, daily drills, and a second full test."
+            features={coreFeatures}
+            cta="Choose Core"
             currentPlan={access?.plan ?? null}
             billingEnabled={billingEnabled}
           />
           <PriceCard
-            tier="pro"
+            tier="max"
             name="Max"
             price="80"
-            description="Scott’s complete system, every test, every course, and live support."
-            features={proFeatures}
-            cta="Get Max"
-            popular
+            description="Use every course and test, plus a personal plan and Scott's weekly calls."
+            features={maxFeatures}
+            cta="Choose Max"
             currentPlan={access?.plan ?? null}
             billingEnabled={billingEnabled}
           />
         </div>
 
-        <p className={styles.bottomLink}>
-          Already have access? <Link href="/login">Open the app <ArrowIcon /></Link>
+        <p className={styles.planFootnote}>
+          Paid plans are billed monthly and can be cancelled anytime. Your first
+          purchase has a 24-hour refund window.
         </p>
-        <p className={styles.refundPolicy}>First purchase covered by a 24-hour refund window.</p>
       </section>
+
+      <section className={styles.includedSection} id="inside">
+        <SectionHeading
+          title="Inside 1500 Blueprint"
+        />
+        <div className={styles.featurePanel}>
+          <aside className={styles.featurePanelIntro}>
+            <div className={styles.featurePanelIcon}>
+              <FeatureGlyph name="target" />
+            </div>
+            <h3>Study tools</h3>
+          </aside>
+          <div className={styles.featureList}>
+            {productFeatures.map((feature) => (
+              <article className={styles.featureRow} key={feature.title}>
+                <div className={styles.featureIcon}>
+                  <FeatureGlyph name={feature.icon} />
+                </div>
+                <div className={styles.featureRowCopy}>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.savingsSection}>
+        <div className={styles.savingsPanel}>
+          <div className={styles.savingsCopy}>
+            <h2>
+              You could save <em>$240 a month</em> compared with tutoring.
+            </h2>
+            <p>Based on one $80 tutoring session each week.</p>
+            <a href="#plans" className={styles.savingsAction}>
+              See Max <ArrowIcon />
+            </a>
+          </div>
+          <div className={styles.costCard}>
+            <div className={styles.costHeader}>
+              <span>Monthly comparison</span>
+            </div>
+            <div className={styles.costRow}>
+              <div>
+                <strong>Private tutoring</strong>
+              </div>
+              <b>$320</b>
+            </div>
+            <div className={styles.costBar} aria-hidden="true"><span /></div>
+            <div className={`${styles.costRow} ${styles.maxCostRow}`}>
+              <div>
+                <strong>1500 Blueprint Max</strong>
+              </div>
+              <b>$80</b>
+            </div>
+            <div className={`${styles.costBar} ${styles.maxCostBar}`} aria-hidden="true"><span /></div>
+            <div className={styles.savingsTotal}>
+              <div>
+                <span>You save</span>
+                <strong>$240 / month</strong>
+              </div>
+              <b>75% less</b>
+            </div>
+            <p>Example only. Tutor rates vary.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.videoSection} id="stories">
+        <div className={styles.storyHeading}>
+          <SectionHeading
+            title="Hear from students who used the Blueprint."
+            description="Students share what helped them prepare, improve, and feel ready for test day."
+            dark
+          />
+        </div>
+        <TestimonialVideos stories={videoStories} />
+      </section>
+
+      <section className={styles.writtenStoriesSection}>
+        <div className={styles.writtenStoriesIntro}>
+          <h2>More from students</h2>
+        </div>
+        <div className={styles.writtenStoryGrid}>
+          {writtenStories.map((story) => (
+            <article
+              className={styles.writtenStory}
+              key={story.result}
+            >
+              <div className={styles.storyAuthor}>
+                <div>
+                  <strong>{story.student}</strong>
+                  <span>{story.result}</span>
+                </div>
+              </div>
+              <p>
+                {story.before}
+                <span>{story.highlight}</span>
+                {story.after}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className={styles.faqSection} id="faq">
+        <div className={styles.faqLayout}>
+          <div className={styles.faqIntro}>
+            <h2>A few things to know before you choose.</h2>
+            <Link href="/login" className={styles.faqLink}>
+              Already a member? Open the app <ArrowIcon />
+            </Link>
+          </div>
+          <div className={styles.faqList}>
+            {faqItems.map((item, index) => (
+              <details key={item.question} open={index === 0}>
+                <summary>
+                  <span>{item.question}</span>
+                  <i aria-hidden="true" />
+                </summary>
+                <p>{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.finalCta}>
+        <div className={styles.finalGrid} aria-hidden="true" />
+        <div>
+          <h2>Start with Hobby.</h2>
+          <p>Take your first full-length test and try the Foundation course for free.</p>
+        </div>
+        <a href="#plans" className={styles.finalButton}>
+          See plans <ArrowIcon />
+        </a>
+      </section>
+
+      <footer className={styles.footer}>
+        <div className={styles.footerMain}>
+          <div className={styles.footerIdentity}>
+            <Link href="/" className={styles.footerBrand}>
+              <Logo withWordmark={false} className={styles.logoMark} />
+              <span>1500 SAT Blueprint</span>
+            </Link>
+            <p>Focused prep for the digital SAT.</p>
+          </div>
+
+          <nav className={styles.footerLinks} aria-label="Footer navigation">
+            <div className={styles.footerColumn}>
+              <h3>Explore</h3>
+              <Link href="/">Home</Link>
+              <a href="#plans">Pricing</a>
+              <Link href="/practice-test">Practice tests</Link>
+              <a href="#stories">Student stories</a>
+            </div>
+            <div className={styles.footerColumn}>
+              <h3>Study tools</h3>
+              <Link href="/ultimate/bank">Question Bank</Link>
+              <Link href="/drills">Practice drills</Link>
+              <Link href="/ultimate/courses">Courses</Link>
+              <Link href="/flashcards">Flashcards</Link>
+            </div>
+            <div className={styles.footerColumn}>
+              <h3>Account</h3>
+              <Link href="/account/sign-up">Create account</Link>
+              <Link href="/login">Log in</Link>
+              <Link href="/ultimate">Open app</Link>
+              <Link href="/history">Progress history</Link>
+            </div>
+            <div className={styles.footerColumn}>
+              <h3>More</h3>
+              <a href="#faq">FAQ</a>
+              <Link href="/community">Community</Link>
+              <Link href="/ultimate/planner">Study planner</Link>
+              <Link href="/ultimate/live-calls">Weekly calls</Link>
+            </div>
+          </nav>
+        </div>
+
+        <div className={styles.footerBottom}>
+          <p>© 2026 1500 SAT Blueprint. All rights reserved.</p>
+          <p>
+            SAT is a registered trademark of College Board. 1500 SAT Blueprint
+            is not affiliated with or endorsed by College Board.
+          </p>
+        </div>
+      </footer>
     </main>
+  );
+}
+
+function SectionHeading({
+  title,
+  description,
+  dark = false,
+}: {
+  title: string;
+  description?: string;
+  dark?: boolean;
+}) {
+  return (
+    <div className={`${styles.sectionHeading} ${dark ? styles.sectionHeadingDark : ""}`}>
+      <h2>{title}</h2>
+      {description ? <p>{description}</p> : null}
+    </div>
   );
 }
 
 function PriceCard({
   tier,
   name,
-  oldPrice,
   price,
   description,
   features,
   cta,
-  popular = false,
   currentPlan,
   billingEnabled,
 }: {
-  tier: "free" | "blueprint" | "pro";
+  tier: "free" | "core" | "max";
   name: string;
-  oldPrice?: string;
   price?: string;
   description: string;
   features: PlanFeature[];
   cta: string;
-  popular?: boolean;
   currentPlan: PlanCode | null;
   billingEnabled: boolean;
 }) {
   const paid = tier !== "free";
-  const plan = tier === "blueprint" ? "core" : tier === "pro" ? "max" : "free";
+  const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
   const current = currentPlan === plan;
 
   return (
-    <article className={`${styles.card} ${styles[tier]}`}>
-      {popular && (
-        <div className={styles.popularBadge}>
-          <SparkIcon /> Most popular <SparkIcon />
-        </div>
-      )}
-
-      <PlanArt tier={tier} />
-
-      <div className={styles.planTitle}>
-        <h2>{name}</h2>
-        {paid && <span>Exam pass</span>}
+    <article className={`${styles.priceCard} ${styles[tier]}`}>
+      <div className={styles.planName}>
+        <h3>{name}</h3>
       </div>
-
       <div className={styles.priceRow}>
-        {paid && billingEnabled ? (
+        {paid ? (
           <>
-            {oldPrice ? <s>${oldPrice}</s> : null}
-            <strong>${price}</strong>
-            <span className={styles.saleChip}>/ month</span>
+            <span>$</span><strong>{price}</strong><em>/ month</em>
           </>
-        ) : paid ? (
-          <span className={`${styles.primaryAction} ${styles.disabledAction}`}>Billing opens soon</span>
         ) : (
-          <strong>Free</strong>
+          <><strong>Free</strong><em>forever</em></>
         )}
       </div>
-
-      <p className={styles.paymentNote}>{paid ? "Monthly access · cancel anytime · 24-hour refunds" : "No card required"}</p>
-      <p className={styles.description}>{description}</p>
-
+      <p className={styles.planDescription}>{description}</p>
+      <div className={styles.cardRule} />
+      <p className={styles.includesLabel}>Includes</p>
       <ul className={styles.features}>
         {features.map((feature) => (
           <li key={feature.label}>
-            <FeatureGlyph name={feature.icon} />
+            <PlanCheckIcon />
             <span>{feature.label}</span>
           </li>
         ))}
       </ul>
-
       <div className={styles.actions}>
         {paid ? (
-          <form action="/api/billing/checkout" method="post">
-            <input type="hidden" name="plan" value={plan} />
-            <button type="submit" className={styles.primaryAction}>{current ? "Manage plan" : cta}</button>
-          </form>
+          billingEnabled ? (
+            <form action="/api/billing/checkout" method="post">
+              <input type="hidden" name="plan" value={plan} />
+              <button type="submit" className={styles.primaryAction}>
+                {current ? "Manage plan" : cta} <ArrowIcon />
+              </button>
+            </form>
+          ) : (
+            <button type="button" className={styles.disabledAction} disabled>
+              Billing opens soon
+            </button>
+          )
         ) : (
-          <Link href={currentPlan ? "/ultimate" : "/account/login"} className={styles.primaryAction}>{currentPlan ? "Open app" : cta}</Link>
-        )}
-        {paid && (
-          <a
-            className={styles.secondaryAction}
-            href={`mailto:?subject=${encodeURIComponent(`1500 SAT ${name}`)}&body=${encodeURIComponent(`Can you help me get the ${name} exam pass?`)}`}
-          >
-            Ask a parent to pay
-          </a>
+          <Link href={currentPlan ? "/ultimate" : "/account/sign-up"} className={styles.primaryAction}>
+            {currentPlan ? "Open app" : cta} <ArrowIcon />
+          </Link>
         )}
       </div>
     </article>
@@ -237,54 +609,6 @@ function BillingNotice({ state }: { state: string }) {
   return <div className={styles.billingNotice} role="status">{message}</div>;
 }
 
-function PlanArt({ tier }: { tier: "free" | "blueprint" | "pro" }) {
-  if (tier === "free") {
-    return (
-      <div className={`${styles.planArt} ${styles.freeArt}`} aria-hidden="true">
-        <span />
-      </div>
-    );
-  }
-
-  if (tier === "blueprint") {
-    return (
-      <div className={`${styles.planArt} ${styles.blueprintArt}`} aria-hidden="true">
-        <svg viewBox="0 0 170 170">
-          <circle cx="85" cy="85" r="58" />
-          <circle cx="85" cy="85" r="38" />
-          <circle cx="85" cy="85" r="16" />
-          <path d="M85 8 92 69 154 85 92 101 85 162 78 101 16 85 78 69Z" />
-        </svg>
-        <SparkIcon />
-      </div>
-    );
-  }
-
-  return (
-    <div className={`${styles.planArt} ${styles.proArt}`}>
-      <span className={styles.bluLabel}>Blu&apos;s pick</span>
-      <BluMascot />
-    </div>
-  );
-}
-
-function BluMascot() {
-  return (
-    <div className={styles.bluMascot}>
-      <Image
-        className={styles.bluImage}
-        src="/images/blu.png"
-        alt="Blu, the 1500 mascot"
-        width={500}
-        height={500}
-        priority
-      />
-      <span className={styles.bluSparkOne} aria-hidden="true" />
-      <span className={styles.bluSparkTwo} aria-hidden="true" />
-    </div>
-  );
-}
-
 function FeatureGlyph({ name }: { name: FeatureIcon }) {
   const paths: Record<FeatureIcon, React.ReactNode> = {
     target: <><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="3" /></>,
@@ -296,19 +620,16 @@ function FeatureGlyph({ name }: { name: FeatureIcon }) {
     play: <path d="m9 6 9 6-9 6Z" />,
     star: <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z" />,
     check: <path d="m5 12 4 4L19 6" />,
+    chart: <><path d="M4 19V9M10 19V5M16 19v-7M22 19V2" /><path d="M2 19h21" /></>,
+    book: <><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H12v18H7.5A3.5 3.5 0 0 0 4 23Z" /><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H12v18h4.5A3.5 3.5 0 0 1 20 23Z" /></>,
   };
-
   return <svg viewBox="0 0 24 24" aria-hidden="true">{paths[name]}</svg>;
-}
-
-function LockIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2" /><path d="M8 10V7a4 4 0 0 1 8 0v3" /></svg>;
-}
-
-function SparkIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.3 6.7L21 11l-6.7 2.3L12 20l-2.3-6.7L3 11l6.7-2.3Z" /></svg>;
 }
 
 function ArrowIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M14 7l5 5-5 5" /></svg>;
+}
+
+function PlanCheckIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>;
 }

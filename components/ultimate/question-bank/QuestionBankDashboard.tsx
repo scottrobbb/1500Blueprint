@@ -220,7 +220,7 @@ function SubjectCard({ subject, challengeLocked }: { subject: QuestionBankSubjec
 function SummaryStrip({ dashboard }: { dashboard: QuestionBankDashboard }) {
   const items = [
     { label: "Questions attempted", value: dashboard.summary.attempted.toLocaleString(), Icon: AttemptIcon },
-    { label: "Current accuracy", value: dashboard.summary.attempted > 0 ? `${dashboard.summary.accuracy}%` : "—", Icon: AccuracyIcon },
+    { label: "Current accuracy", value: dashboard.summary.attempted > 0 ? `${dashboard.summary.accuracy}%` : "-", Icon: AccuracyIcon },
     { label: "Saved questions", value: dashboard.summary.saved.toLocaleString(), Icon: BookmarkIcon },
     { label: "Study streak", value: `${dashboard.summary.streak} ${dashboard.summary.streak === 1 ? "day" : "days"}`, Icon: FlameIcon },
   ];
@@ -350,7 +350,7 @@ function SubjectAnalytics({
                   </p>
                 </div>
                 <strong className={`text-sm ${topic.attempts > 0 ? accuracyColor(topic.accuracy) : "text-navy/30"}`}>
-                  {topic.attempts > 0 ? `${topic.accuracy}%` : "—"}
+                  {topic.attempts > 0 ? `${topic.accuracy}%` : "-"}
                 </strong>
               </div>
               <Meter value={topic.attempts > 0 ? topic.accuracy : 0} />
@@ -376,7 +376,7 @@ function SubjectAnalytics({
                     </div>
                   </div>
                   <div className="text-right">
-                    <strong className="block text-sm text-ink">{metric && metric.attempts > 0 ? `${metric.accuracy}%` : "—"}</strong>
+                    <strong className="block text-sm text-ink">{metric && metric.attempts > 0 ? `${metric.accuracy}%` : "-"}</strong>
                     <span className="text-[10px] text-navy/35">accuracy</span>
                   </div>
                   <div className="min-w-[62px] text-right">
@@ -427,7 +427,7 @@ function formatWeek(value: string): string {
 }
 
 function formatDuration(milliseconds: number): string {
-  if (milliseconds <= 0) return "—";
+  if (milliseconds <= 0) return "-";
   const seconds = Math.round(milliseconds / 1000);
   if (seconds < 60) return `${seconds}s`;
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;

@@ -170,8 +170,8 @@ export function DrillSettingsForm({ drill, backHref = "/admin/drills" }: { drill
               }}
               className={selectClass}
             >
-              <option value="draft">Draft — admin QA only</option>
-              <option value="published">Published — student visible</option>
+              <option value="draft">Draft (admin QA only)</option>
+              <option value="published">Published (student visible)</option>
             </select>
           </FormField>
         </div>

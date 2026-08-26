@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata = {
-  title: "Sign in — 1500 SAT Blueprint",
+  title: "Sign in | 1500 SAT Blueprint",
 };
 
 export default async function LoginPage({

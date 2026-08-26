@@ -4,8 +4,8 @@ import { Logo } from "@/components/Logo";
 
 export const metadata: Metadata = {
   title: {
-    default: "Student account — 1500 SAT Blueprint",
-    template: "%s — 1500 SAT Blueprint",
+    default: "Student account | 1500 SAT Blueprint",
+    template: "%s | 1500 SAT Blueprint",
   },
   robots: { index: false, follow: false },
 };

@@ -145,8 +145,8 @@ function moduleRank(section: string, order: number, variant: string): number {
 // import header like "RW 2A", which is less clear than this derived label).
 function moduleLabel(section: string, order: number, variant: string): string {
   const name = SECTION_NAME[(section as SectionId)] ?? section;
-  if (order === 1) return `${name} — Module 1`;
-  return `${name} — Module 2 (${variant === "hard" ? "Hard" : "Easy"})`;
+  if (order === 1) return `${name}: Module 1`;
+  return `${name}: Module 2 (${variant === "hard" ? "Hard" : "Easy"})`;
 }
 
 function toChoice(r: ChoiceRow): AdminChoice {

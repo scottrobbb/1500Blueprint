@@ -19,7 +19,7 @@ export function OnboardingTour({ firstName, dailyTarget }: { firstName: string; 
     {
       emoji: "⚡",
       title: "Earn XP on everything",
-      body: "Every drill and practice test you finish earns XP. XP fills your level bar up top — the more you practice, the higher your level climbs.",
+      body: "Every drill and practice test you finish earns XP. As your XP fills the level bar, your level climbs.",
     },
     {
       emoji: "🔥",

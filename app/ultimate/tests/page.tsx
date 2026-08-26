@@ -67,7 +67,7 @@ export default async function UltimateTestsPage() {
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Your best score</p>
                 <strong className="mt-1 block font-display text-5xl font-extrabold tracking-[-0.05em]">
-                  {progress.bestScore?.toLocaleString() ?? "—"}
+                  {progress.bestScore?.toLocaleString() ?? "-"}
                 </strong>
               </div>
               {progress.improvement != null ? (

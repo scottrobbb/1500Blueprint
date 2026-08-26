@@ -113,7 +113,7 @@ function MultipleChoiceFields({
 
   return (
     <div className="space-y-2.5">
-      <div className={`${label} text-navy/50`}>Choices — select the correct answer</div>
+      <div className={`${label} text-navy/50`}>Choices: select the correct answer</div>
       {content.choices.map((choice) => {
         const correct = content.correct === choice.id;
         return (
@@ -208,7 +208,7 @@ export function Preview({ question }: { question: DrillQuestion }) {
           {content.choices.map((choice) => (
             <div key={choice.id} className={`flex items-center gap-3 rounded-card border px-4 py-3 ${choice.id === content.correct ? "border-success bg-success-bg" : "border-navy/15 bg-white"}`}>
               <span className="font-semibold text-navy">{choice.id}.</span>
-              <span className="font-serif text-[16px] text-exam-ink">{choice.text ? <MathText>{choice.text}</MathText> : "—"}</span>
+              <span className="font-serif text-[16px] text-exam-ink">{choice.text ? <MathText>{choice.text}</MathText> : "-"}</span>
             </div>
           ))}
         </div>

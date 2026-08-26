@@ -42,8 +42,8 @@ function metaFor(section: Section, order: 1 | 2, variant?: ModuleVariant): Pract
     label: order === 1 ? "Module 1" : `Module 2 · ${variantLabel}`,
     fullLabel:
       order === 1
-        ? `${section.name} — Module 1`
-        : `${section.name} — Module 2 (${variantLabel})`,
+        ? `${section.name}: Module 1`
+        : `${section.name}: Module 2 (${variantLabel})`,
     questionCount: mod.questions.length,
     minutes: section.minutesPerModule,
   };

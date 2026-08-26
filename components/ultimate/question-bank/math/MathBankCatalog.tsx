@@ -251,7 +251,7 @@ function SkillRow({
         </span>
         <span className="flex items-center gap-2 pl-8 text-sm font-extrabold tabular-nums text-navy md:pl-0">
           <span className={`h-2 w-2 rounded-full ${accuracyTone(skill.accuracy)}`} />
-          {skill.accuracy == null ? "—" : `${skill.accuracy}%`}
+          {skill.accuracy == null ? "-" : `${skill.accuracy}%`}
         </span>
       </label>
     </li>
