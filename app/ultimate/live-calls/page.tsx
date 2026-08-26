@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AccessGate } from "@/components/account/AccessGate";
+import { LocalCallTime } from "@/components/calls/LocalCallTime";
 import { PageHeader } from "@/components/ultimate/PageHeader";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
@@ -87,8 +88,9 @@ function NextCall({ call }: { call: WeeklyCall }) {
         <div className="rounded-[18px] border border-white/10 bg-white/[0.08] p-5 backdrop-blur-sm">
           <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-sky">When</p>
           <strong className="mt-2 block font-display text-2xl font-extrabold">{formatDate(call.startsAt, call.timezone)}</strong>
-          <span className="mt-1 block text-sm font-semibold text-white/65">{formatTime(call.startsAt, call.timezone)}–{formatTime(call.endsAt, call.timezone)}</span>
-          <div className="mt-5 border-t border-white/10 pt-4 text-xs leading-5 text-white/48">Times display in {call.timezone.replace(/_/g, " ")}. Google Calendar will preserve the exact event time.</div>
+          <span className="mt-1 block text-sm font-semibold text-white/65">{formatTime(call.startsAt, call.timezone)}–{formatTime(call.endsAt, call.timezone)} {zoneAbbreviation(call.startsAt, call.timezone)}</span>
+          <LocalCallTime startsAt={call.startsAt} endsAt={call.endsAt} sourceTimeZone={call.timezone} className="mt-1 block text-sm font-semibold text-sky" />
+          <div className="mt-5 border-t border-white/10 pt-4 text-xs leading-5 text-white/48">Google Calendar will preserve the exact event time.</div>
         </div>
       </div>
     </section>
@@ -99,7 +101,7 @@ function CallRow({ call, next }: { call: WeeklyCall; next: boolean }) {
   return (
     <li className={`grid gap-4 rounded-[18px] border bg-white p-4 shadow-pop sm:grid-cols-[90px_minmax(0,1fr)_auto] sm:items-center sm:p-5 ${next ? "border-brand/30" : "border-navy/10"}`}>
       <div className="rounded-xl bg-haze/70 px-3 py-2.5 text-center"><span className="block text-[10px] font-extrabold uppercase tracking-wide text-brand-600">{new Date(call.startsAt).toLocaleDateString("en-US", { month: "short", timeZone: call.timezone })}</span><strong className="font-display text-2xl font-extrabold text-navy">{new Date(call.startsAt).toLocaleDateString("en-US", { day: "numeric", timeZone: call.timezone })}</strong></div>
-      <div className="min-w-0"><div className="flex items-center gap-2">{next ? <span className="h-2 w-2 rounded-full bg-success" /> : null}<h3 className="truncate font-display text-base font-extrabold text-navy">{call.title}</h3></div><p className="mt-1 text-xs text-navy/45">{formatTime(call.startsAt, call.timezone)}–{formatTime(call.endsAt, call.timezone)} · {call.hostName}</p>{call.focusTopic ? <p className="mt-1 line-clamp-1 text-xs font-semibold text-brand-700">{call.focusTopic}</p> : null}</div>
+      <div className="min-w-0"><div className="flex items-center gap-2">{next ? <span className="h-2 w-2 rounded-full bg-success" /> : null}<h3 className="truncate font-display text-base font-extrabold text-navy">{call.title}</h3></div><p className="mt-1 text-xs text-navy/45">{formatTime(call.startsAt, call.timezone)}–{formatTime(call.endsAt, call.timezone)} {zoneAbbreviation(call.startsAt, call.timezone)} · {call.hostName}</p><LocalCallTime startsAt={call.startsAt} endsAt={call.endsAt} sourceTimeZone={call.timezone} className="mt-0.5 block text-xs font-semibold text-brand-600" />{call.focusTopic ? <p className="mt-1 line-clamp-1 text-xs font-semibold text-brand-700">{call.focusTopic}</p> : null}</div>
       <div className="flex gap-2"><a href={googleCalendarTemplateUrl(call)} target="_blank" rel="noreferrer" aria-label={`Add ${call.title} to Google Calendar`} className="grid h-11 w-11 place-items-center rounded-xl border border-navy/10 text-navy hover:border-brand/35 hover:text-brand-600"><CalendarIcon className="h-5 w-5" /></a>{call.meetingUrl ? <a href={call.meetingUrl} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center rounded-xl bg-navy px-4 text-sm font-extrabold text-white hover:bg-brand-600">Join</a> : null}</div>
     </li>
   );
@@ -109,6 +111,10 @@ function EmptySchedule() { return <section className="mt-7 rounded-[20px] border
 
 function formatDate(value: string, timeZone: string): string { return new Date(value).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone }); }
 function formatTime(value: string, timeZone: string): string { return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone }); }
+function zoneAbbreviation(value: string, timeZone: string): string {
+  const parts = new Date(value).toLocaleTimeString("en-US", { timeZoneName: "short", timeZone }).split(" ");
+  return parts[parts.length - 1];
+}
 function formatRecordingDate(value: string): string { return new Date(`${value}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }); }
 function CalendarIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="4" y="5.5" width="16" height="14" rx="2" /><path d="M8 3.5v4M16 3.5v4M4 10h16M8 14h2M14 14h2" strokeLinecap="round" /></svg>; }
 function VideoIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2" /><path d="m16 10 5-3v10l-5-3" strokeLinejoin="round" /></svg>; }
