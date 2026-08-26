@@ -91,7 +91,7 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
         </h1>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-navy/60">{state.message}</p>
         <Link
-          href="/account/login"
+          href={`/account/login?next=${encodeURIComponent(next)}`}
           className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl border border-navy/15 px-5 text-sm font-bold text-navy transition-colors hover:border-brand/40 hover:text-brand-600"
         >
           Back to sign in
@@ -105,7 +105,7 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
   const needsConfirmation = mode === "signup" || mode === "reset" || mode === "claim";
 
   return (
-    <form action={formAction} className="w-full" noValidate>
+    <form action={formAction} className="w-full">
       <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand-600">{copy.eyebrow}</p>
       <h1 className="mt-2 font-display text-[30px] font-extrabold tracking-[-0.035em] text-navy">{copy.title}</h1>
       <p className="mt-2 text-sm leading-6 text-navy/58">{copy.description}</p>
@@ -216,7 +216,7 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
         {pending ? copy.pending : copy.submit}
       </button>
 
-      <Footer mode={mode} />
+      <Footer mode={mode} next={next} />
     </form>
   );
 }
@@ -248,17 +248,18 @@ function inputClass(error: boolean): string {
   }`;
 }
 
-function Footer({ mode }: { mode: Mode }) {
+function Footer({ mode, next }: { mode: Mode; next: string }) {
+  const nextQuery = `?next=${encodeURIComponent(next)}`;
   if (mode === "login") {
     return (
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm">
         <Link href="/account/forgot-password" className="font-semibold text-brand-600 hover:text-navy">Forgot password?</Link>
-        <Link href="/account/sign-up" className="font-semibold text-navy/55 hover:text-navy">Create an account</Link>
+        <Link href={`/account/sign-up${nextQuery}`} className="font-semibold text-navy/55 hover:text-navy">Create an account</Link>
       </div>
     );
   }
   if (mode === "signup") {
-    return <p className="mt-5 text-center text-sm text-navy/50">Already have an account? <Link href="/account/login" className="font-bold text-brand-600 hover:text-navy">Sign in</Link></p>;
+    return <p className="mt-5 text-center text-sm text-navy/50">Already have an account? <Link href={`/account/login${nextQuery}`} className="font-bold text-brand-600 hover:text-navy">Sign in</Link></p>;
   }
   if (mode === "forgot") {
     return <p className="mt-5 text-center text-sm"><Link href="/account/login" className="font-bold text-brand-600 hover:text-navy">Back to sign in</Link></p>;

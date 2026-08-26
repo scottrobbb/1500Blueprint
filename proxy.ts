@@ -3,14 +3,12 @@ import { jwtVerify, type JWTPayload } from "jose";
 import { SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isPasswordAuthEnabled } from "@/lib/auth/password";
-import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { updateSession as updatePasswordSession } from "@/utils/supabase/proxy";
 
 // Paths reachable without a session.
 const PUBLIC_PATHS = ["/login", "/pricing", "/account"];
 // The admin CMS is gated to allowlisted admin emails (ADMIN_EMAILS).
 const ADMIN_PREFIX = "/admin";
-const ULTIMATE_PREFIX = "/ultimate";
 
 function isPublic(pathname: string): boolean {
   if (pathname.startsWith("/api/auth")) return true;
@@ -20,10 +18,6 @@ function isPublic(pathname: string): boolean {
 
 function isAdminPath(pathname: string): boolean {
   return pathname === ADMIN_PREFIX || pathname.startsWith(`${ADMIN_PREFIX}/`);
-}
-
-function isUltimatePath(pathname: string): boolean {
-  return pathname === ULTIMATE_PREFIX || pathname.startsWith(`${ULTIMATE_PREFIX}/`);
 }
 
 // Verify the session JWT and return its payload, or null if absent/invalid.
@@ -64,19 +58,19 @@ export async function proxy(request: NextRequest) {
 
   if (!email) {
     const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.search = "";
+    if (isPasswordAuthEnabled()) {
+      const next = `${request.nextUrl.pathname}${request.nextUrl.search}`;
+      loginUrl.pathname = "/account/login";
+      loginUrl.search = "";
+      loginUrl.searchParams.set("next", next);
+    } else {
+      loginUrl.pathname = "/login";
+      loginUrl.search = "";
+    }
     return redirectWithCookies(loginUrl, passwordResponse);
   }
 
   const isAdmin = isAdminEmail(email);
-
-  if (isUltimatePath(pathname) && !isUltimatePreviewEmail(email)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/drills";
-    url.search = "";
-    return redirectWithCookies(url, passwordResponse);
-  }
 
   if (isAdminPath(pathname)) {
     if (!isAdmin) {

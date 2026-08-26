@@ -5,6 +5,8 @@ import { Logo } from "@/components/Logo";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import type { PlanCode } from "@/lib/auth/plans";
 import { getSession } from "@/lib/auth/session";
+import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
+import { CorePricingPanel } from "./CorePricingPanel";
 import styles from "./pricing.module.css";
 import { TestimonialVideos } from "./TestimonialVideos";
 
@@ -159,7 +161,7 @@ const faqItems = [
   {
     question: "Are Core and Max billed monthly?",
     answer:
-      "Yes. Core is $39 per month and Max is $80 per month. You can cancel at any time, and your access continues through the end of the paid billing period.",
+      "Core is $50 month to month or $120 billed every three months, which works out to $40 per month. Max is $80 per month. You can cancel at any time, and your access continues through the end of the paid billing period.",
   },
   {
     question: "Can I change plans later?",
@@ -191,14 +193,19 @@ const faqItems = [
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing?: string }>;
+  searchParams: Promise<{ billing?: string; plan?: string; cadence?: string }>;
 }) {
   const session = await getSession();
   const access = session ? await getStudentAccess(session.email) : null;
-  const { billing } = await searchParams;
+  const { billing, plan, cadence } = await searchParams;
   const billingEnabled = Boolean(
-    process.env.STRIPE_CORE_PRICE_ID && process.env.STRIPE_MAX_PRICE_ID,
+    process.env.STRIPE_BILLING_KEY
+      && process.env.STRIPE_CORE_PRICE_ID
+      && process.env.STRIPE_MAX_PRICE_ID,
   );
+  const initialCoreCadence: BillingCadence = plan === "core" && isBillingCadence(cadence)
+    ? cadence
+    : "monthly";
 
   return (
     <main className={styles.page}>
@@ -217,7 +224,7 @@ export default async function PricingPage({
           <a href="#stories">Student stories</a>
           <a href="#faq">FAQ</a>
         </nav>
-        <Link href="/login" className={styles.openApp}>
+        <Link href="/account/login?next=/ultimate" className={styles.openApp}>
           Open app <ArrowIcon />
         </Link>
       </header>
@@ -288,12 +295,12 @@ export default async function PricingPage({
           <PriceCard
             tier="core"
             name="Core"
-            price="39"
             description="Get more Question Bank practice, daily drills, and a second full test."
             features={coreFeatures}
             cta="Choose Core"
             currentPlan={access?.plan ?? null}
             billingEnabled={billingEnabled}
+            initialCadence={initialCoreCadence}
           />
           <PriceCard
             tier="max"
@@ -308,8 +315,8 @@ export default async function PricingPage({
         </div>
 
         <p className={styles.planFootnote}>
-          Paid plans are billed monthly and can be cancelled anytime. Your first
-          purchase has a 24-hour refund window.
+          Core is billed monthly or every three months. Max is billed monthly.
+          Both can be cancelled anytime, and your first purchase has a 24-hour refund window.
         </p>
       </section>
 
@@ -531,6 +538,7 @@ function PriceCard({
   cta,
   currentPlan,
   billingEnabled,
+  initialCadence = "monthly",
 }: {
   tier: "free" | "core" | "max";
   name: string;
@@ -540,6 +548,7 @@ function PriceCard({
   cta: string;
   currentPlan: PlanCode | null;
   billingEnabled: boolean;
+  initialCadence?: BillingCadence;
 }) {
   const paid = tier !== "free";
   const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
@@ -550,15 +559,59 @@ function PriceCard({
       <div className={styles.planName}>
         <h3>{name}</h3>
       </div>
-      <div className={styles.priceRow}>
-        {paid ? (
-          <>
-            <span>$</span><strong>{price}</strong><em>/ month</em>
-          </>
-        ) : (
-          <><strong>Free</strong><em>forever</em></>
-        )}
-      </div>
+      {tier === "core" ? (
+        <CorePricingPanel
+          billingEnabled={billingEnabled}
+          current={current}
+          initialCadence={initialCadence}
+        >
+          <PlanDetails description={description} features={features} />
+        </CorePricingPanel>
+      ) : (
+        <>
+          <div className={styles.priceRow}>
+            {paid ? (
+              <>
+                <span>$</span><strong>{price}</strong><em>/ month</em>
+              </>
+            ) : (
+              <><strong>Free</strong><em>forever</em></>
+            )}
+          </div>
+          <PlanDetails description={description} features={features} />
+          <div className={styles.actions}>
+            {paid ? (
+              billingEnabled ? (
+                <form action="/api/billing/checkout" method="post">
+                  <input type="hidden" name="plan" value={plan} />
+                  <input type="hidden" name="cadence" value="monthly" />
+                  <button type="submit" className={styles.primaryAction}>
+                    {current ? "Manage plan" : cta} <ArrowIcon />
+                  </button>
+                </form>
+              ) : (
+                <button type="button" className={styles.disabledAction} disabled>
+                  Billing opens soon
+                </button>
+              )
+            ) : (
+              <Link
+                href={currentPlan ? "/ultimate" : "/account/sign-up?next=/ultimate"}
+                className={styles.primaryAction}
+              >
+                {currentPlan ? "Open app" : cta} <ArrowIcon />
+              </Link>
+            )}
+          </div>
+        </>
+      )}
+    </article>
+  );
+}
+
+function PlanDetails({ description, features }: { description: string; features: PlanFeature[] }) {
+  return (
+    <>
       <p className={styles.planDescription}>{description}</p>
       <div className={styles.cardRule} />
       <p className={styles.includesLabel}>Includes</p>
@@ -570,27 +623,7 @@ function PriceCard({
           </li>
         ))}
       </ul>
-      <div className={styles.actions}>
-        {paid ? (
-          billingEnabled ? (
-            <form action="/api/billing/checkout" method="post">
-              <input type="hidden" name="plan" value={plan} />
-              <button type="submit" className={styles.primaryAction}>
-                {current ? "Manage plan" : cta} <ArrowIcon />
-              </button>
-            </form>
-          ) : (
-            <button type="button" className={styles.disabledAction} disabled>
-              Billing opens soon
-            </button>
-          )
-        ) : (
-          <Link href={currentPlan ? "/ultimate" : "/account/sign-up"} className={styles.primaryAction}>
-            {currentPlan ? "Open app" : cta} <ArrowIcon />
-          </Link>
-        )}
-      </div>
-    </article>
+    </>
   );
 }
 
@@ -604,6 +637,7 @@ function BillingNotice({ state }: { state: string }) {
     "change-cancelled": "The scheduled plan change was removed. Your current plan will continue.",
     payment: "Stripe could not collect the prorated upgrade charge, so your current plan was not changed.",
     managed: "Your subscription is already on that plan.",
+    ready: "You’re signed in. Your selected Core term is ready below.",
   };
   const message = messages[state] ?? "Billing could not be opened. Please try again.";
   return <div className={styles.billingNotice} role="status">{message}</div>;

@@ -11,14 +11,14 @@ export default async function AccountLoginPage({
   searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   if (!isPasswordAuthEnabled()) notFound();
-  if (await getSession()) redirect("/drills");
-
   const params = await searchParams;
+  const next = safeNextPath(params.next ?? null);
+  if (await getSession()) redirect(next);
   const message = params.error === "confirmation"
     ? "That confirmation link is invalid or expired."
     : params.error === "account"
       ? "Your email was verified, but the student account could not be linked."
       : "";
 
-  return <PasswordAuthForm mode="login" next={safeNextPath(params.next ?? null)} initialMessage={message} />;
+  return <PasswordAuthForm mode="login" next={next} initialMessage={message} />;
 }

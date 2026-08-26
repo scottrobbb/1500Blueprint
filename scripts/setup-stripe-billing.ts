@@ -10,8 +10,13 @@ const stripe = new Stripe(stripeKey, { maxNetworkRetries: 2 });
 async function main() {
   const configured = await setupStripeBilling(stripe);
   for (const [plan, values] of Object.entries(configured)) {
-    console.log(`${plan.toUpperCase()}_PRODUCT_ID=${values.productId}`);
-    console.log(`${plan.toUpperCase()}_PRICE_ID=${values.priceId}`);
+    console.log(`STRIPE_${plan.toUpperCase()}_PRODUCT_ID=${values.productId}`);
+    for (const [cadence, priceId] of Object.entries(values.prices)) {
+      const variable = cadence === "three_month"
+        ? `STRIPE_${plan.toUpperCase()}_THREE_MONTH_PRICE_ID`
+        : `STRIPE_${plan.toUpperCase()}_PRICE_ID`;
+      console.log(`${variable}=${priceId}`);
+    }
   }
 }
 

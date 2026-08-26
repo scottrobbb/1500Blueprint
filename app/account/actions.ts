@@ -170,6 +170,7 @@ async function createPasswordAccount(
   const email = lockedEmail?.trim().toLowerCase() ?? normalizeEmail(formData.get("email"));
   const password = stringValue(formData.get("password"));
   const confirmPassword = stringValue(formData.get("confirmPassword"));
+  const next = safeNextPath(formData.get("next"));
 
   if (!lockedEmail && name.length < 2) {
     return fieldError("name", "Enter the student's name.");
@@ -213,7 +214,7 @@ async function createPasswordAccount(
         message: "We could not link that existing login. Please try again.",
       };
     }
-    if (claimedExistingUser) redirect("/drills");
+    if (claimedExistingUser) redirect(next);
   }
 
   const { data, error } = await admin.auth.admin.generateLink({
@@ -222,7 +223,7 @@ async function createPasswordAccount(
     password,
     options: {
       data: name ? { display_name: name } : undefined,
-      redirectTo: `${accountBaseUrl()}/drills`,
+      redirectTo: `${accountBaseUrl()}${next}`,
     },
   });
 
@@ -241,7 +242,7 @@ async function createPasswordAccount(
   try {
     await sendAccountVerification(
       email,
-      accountConfirmationUrl(data.properties.hashed_token, "signup", "/drills"),
+      accountConfirmationUrl(data.properties.hashed_token, "signup", next),
     );
   } catch (sendError) {
     console.error("password verification email failed:", sendError);
@@ -292,6 +293,9 @@ function unavailableState(): AuthActionState {
 
 function friendlyPasswordError(message: string): string {
   const normalized = message.toLowerCase();
+  if (normalized.includes("already") || normalized.includes("registered")) {
+    return "An account already exists for that email. Sign in or reset the password.";
+  }
   if (normalized.includes("password") && normalized.includes("weak")) {
     return "Choose a stronger password with a mix of letters and numbers.";
   }

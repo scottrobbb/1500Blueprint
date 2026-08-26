@@ -2,10 +2,16 @@ import "server-only";
 
 import type Stripe from "stripe";
 import { supabaseAdmin } from "@/utils/supabase/admin";
-import { billingLivemode, priceIdForPlan, type BillablePlan } from "./config";
+import { billingLivemode, type BillablePlan } from "./config";
+import { billingOffer, type BillingCadence } from "./offers";
 import { planChangeDirection } from "./policy";
+import { resolveBillingPriceId } from "./prices";
 import { billingStripe } from "./stripe";
-import { stripeSubscriptionPlan, syncStripeSubscription } from "./subscriptions";
+import {
+  stripeSubscriptionCadence,
+  stripeSubscriptionPlan,
+  syncStripeSubscription,
+} from "./subscriptions";
 
 type SubscriptionRow = {
   stripe_subscription_id: string;
@@ -23,6 +29,7 @@ export type PlanChangeResult = {
 export async function changeBillingPlan(
   userId: string,
   targetPlan: BillablePlan,
+  targetCadence: BillingCadence,
 ): Promise<PlanChangeResult> {
   const row = await activeSubscriptionForUser(userId);
   if (!row) throw new Error("No active Stripe subscription was found");
@@ -30,9 +37,10 @@ export async function changeBillingPlan(
   let subscription: Stripe.Subscription = await billingStripe().subscriptions.retrieve(row.stripe_subscription_id);
   const currentPlan = stripeSubscriptionPlan(subscription);
   if (!currentPlan) throw new Error("The current Stripe price is not mapped to a Blueprint plan");
+  const currentCadence = stripeSubscriptionCadence(subscription);
 
   const direction = planChangeDirection(currentPlan, targetPlan);
-  if (direction === "same") {
+  if (direction === "same" && currentCadence === targetCadence) {
     if (row.pending_plan_code || subscription.schedule) {
       subscription = await releaseSchedule(subscription);
       await clearPendingChange(subscription.id);
@@ -42,20 +50,32 @@ export async function changeBillingPlan(
     return { kind: "unchanged", plan: currentPlan, effectiveAt: null };
   }
 
-  if (direction === "upgrade") {
+  const immediateChange = direction === "upgrade"
+    || (direction === "same" && currentCadence === "monthly" && targetCadence === "three_month");
+
+  if (immediateChange) {
     subscription = await releaseSchedule(subscription);
     const item = subscription.items.data[0];
     if (!item) throw new Error("The Stripe subscription has no billable item");
+    const targetPriceId = await resolveBillingPriceId(targetPlan, targetCadence);
 
     const updated = await billingStripe().subscriptions.update(
       subscription.id,
       {
-        items: [{ id: item.id, price: priceIdForPlan(targetPlan), quantity: item.quantity ?? 1 }],
-        metadata: { ...subscription.metadata, plan_code: targetPlan, user_id: userId },
+        items: [{ id: item.id, price: targetPriceId, quantity: item.quantity ?? 1 }],
+        metadata: {
+          ...subscription.metadata,
+          plan_code: targetPlan,
+          billing_cadence: targetCadence,
+          user_id: userId,
+        },
         payment_behavior: "error_if_incomplete",
         proration_behavior: "always_invoice",
       },
-      { idempotencyKey: `blueprint-upgrade-${subscription.id}-${item.current_period_end}-${targetPlan}` },
+      {
+        idempotencyKey:
+          `blueprint-upgrade-${subscription.id}-${item.current_period_end}-${targetPlan}-${targetCadence}`,
+      },
     );
     await clearPendingChange(subscription.id);
     await syncStripeSubscription(updated, userId);
@@ -69,13 +89,15 @@ export async function changeBillingPlan(
   const periodEnd = Math.max(...items.map((item) => item.current_period_end));
   const customerId = stripeId(subscription.customer);
   if (!customerId) throw new Error("The Stripe subscription has no customer");
+  const targetOffer = billingOffer(targetPlan, targetCadence);
+  const targetPriceId = await resolveBillingPriceId(targetPlan, targetCadence);
   const priorSchedules = await billingStripe().subscriptionSchedules.list({ customer: customerId, limit: 100 });
   const scheduleGeneration = priorSchedules.data.length + 1;
   const schedule = await billingStripe().subscriptionSchedules.create(
     { from_subscription: subscription.id },
     {
       idempotencyKey:
-        `blueprint-downgrade-schedule-${subscription.id}-${periodEnd}-${targetPlan}-${scheduleGeneration}`,
+        `blueprint-downgrade-schedule-${subscription.id}-${periodEnd}-${targetPlan}-${targetCadence}-${scheduleGeneration}`,
     },
   );
 
@@ -86,6 +108,7 @@ export async function changeBillingPlan(
       user_id: userId,
       subscription_id: subscription.id,
       target_plan: targetPlan,
+      target_cadence: targetCadence,
     },
     proration_behavior: "none",
     phases: [
@@ -101,9 +124,14 @@ export async function changeBillingPlan(
       },
       {
         start_date: periodEnd,
-        duration: { interval: "month", interval_count: 1 },
-        items: [{ price: priceIdForPlan(targetPlan), quantity: 1 }],
-        metadata: { ...subscription.metadata, plan_code: targetPlan, user_id: userId },
+        duration: { interval: "month", interval_count: targetOffer.intervalCount },
+        items: [{ price: targetPriceId, quantity: 1 }],
+        metadata: {
+          ...subscription.metadata,
+          plan_code: targetPlan,
+          billing_cadence: targetCadence,
+          user_id: userId,
+        },
         proration_behavior: "none",
       },
     ],
