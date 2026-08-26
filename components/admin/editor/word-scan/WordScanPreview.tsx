@@ -43,7 +43,7 @@ export function Preview({ question }: { question: DrillQuestion }) {
       <div className="text-center">
         <p className="text-sm text-navy/65">
           Tap choices that START with a{" "}
-          <span className="font-semibold text-navy">{mode || "—"}</span> verb
+          <span className="font-semibold text-navy">{mode || "-"}</span> verb
           {verbSet.length ? <span className="text-navy/45"> ({verbs.join(", ")})</span> : null}
         </p>
       </div>

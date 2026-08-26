@@ -184,7 +184,7 @@ export function ReadingDrill({
       {phase === "read" ? (
         <>
           <PhaseNote
-            kicker="Phase 1 — Timed Reading"
+            kicker="Phase 1: Timed Reading"
             text="Read closely. The passage disappears when the timer ends or you finish."
           />
           <ReadingCard passage={passageForCard} onDone={() => setPhase("recall")} />
@@ -194,7 +194,7 @@ export function ReadingDrill({
       {phase === "recall" ? (
         <div className="mx-auto max-w-3xl space-y-4">
           <PhaseNote
-            kicker="Phase 2 — Recall"
+            kicker="Phase 2: Recall"
             text="From memory only. Capture the main idea and every supporting detail you can."
           />
           <RecallHeading />

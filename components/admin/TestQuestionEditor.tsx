@@ -474,7 +474,7 @@ function Preview({ draft }: { draft: Draft }) {
               >
                 <span className="font-display font-bold">{c.letter}.</span>
                 <span className="min-w-0 whitespace-pre-line">
-                  {c.text.trim() ? <MathText>{c.text}</MathText> : <span className="text-navy/35">—</span>}
+                  {c.text.trim() ? <MathText>{c.text}</MathText> : <span className="text-navy/35">-</span>}
                 </span>
               </li>
             );
@@ -490,7 +490,7 @@ function Preview({ draft }: { draft: Draft }) {
                   .map((s) => s.trim())
                   .filter(Boolean)
                   .join("  ·  ")
-              : "—"}
+              : "-"}
           </div>
         </div>
       )}

@@ -101,7 +101,7 @@ function McFields({
 
   return (
     <div className="space-y-2.5">
-      <div className={labelMuted}>Choices — select the correct answer</div>
+      <div className={labelMuted}>Choices: select the correct answer</div>
       {content.choices.map((c) => {
         const isCorrect = content.correct === c.id;
         return (
@@ -166,7 +166,7 @@ function GridFields({
 
   return (
     <div className="space-y-2.5">
-      <div className={labelMuted}>Accepted answers — any exact match is correct</div>
+      <div className={labelMuted}>Accepted answers: any exact match is correct</div>
       {accepted.map((a, i) => (
         <div key={i} className="flex items-center gap-2">
           <input
@@ -244,7 +244,7 @@ export function Preview({ question }: { question: DrillQuestion }) {
                   {c.id}
                 </span>
                 <span className="font-serif text-[16px] text-exam-ink">
-                  {c.text ? <MathText>{c.text}</MathText> : <span className="text-navy/30">—</span>}
+                  {c.text ? <MathText>{c.text}</MathText> : <span className="text-navy/30">-</span>}
                 </span>
               </div>
             );
@@ -257,7 +257,7 @@ export function Preview({ question }: { question: DrillQuestion }) {
             answer
           </div>
           <p className="mt-2 text-xs text-navy/45">
-            Accepts: <span className="font-medium text-navy/65">{content.accepted.filter(Boolean).join(", ") || "—"}</span>
+            Accepts: <span className="font-medium text-navy/65">{content.accepted.filter(Boolean).join(", ") || "-"}</span>
           </p>
         </div>
       )}

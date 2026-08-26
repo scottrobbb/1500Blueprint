@@ -564,7 +564,7 @@ export async function completeVocabSession(
     email,
     test_slug: "vocab",
     module_key: "vocab-drill",
-    label: "Vocab Drill — 7 words",
+    label: "Vocab Drill: 7 words",
     correct: summary.correct,
     total: summary.total,
     per_question_time: { durationSeconds: input.durationSeconds },

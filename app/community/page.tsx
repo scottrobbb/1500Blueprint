@@ -8,7 +8,7 @@ import { getHubState } from "@/lib/gamification/state";
 import { listPosts, listTopMembers } from "@/lib/community/queries";
 
 export const metadata = {
-  title: "Community — 1500 SAT Blueprint",
+  title: "Community | 1500 SAT Blueprint",
   description:
     "Share score drops, wins, and questions with other 1500 SAT Blueprint students.",
 };

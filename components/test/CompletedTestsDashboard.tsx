@@ -20,7 +20,7 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 function scoreChange(value: number | null): string {
-  if (value == null) return "—";
+  if (value == null) return "-";
   return `${value >= 0 ? "+" : ""}${value}`;
 }
 
@@ -116,7 +116,7 @@ export function CompletedTestsDashboard({ attempts, testTitles, variant = "defau
                         <div>
                           <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">Total score</p>
                           <div className="mt-1 flex items-baseline gap-2">
-                            <p className="font-display text-4xl font-black text-navy">{attempt.totalScore ?? "—"}</p>
+                            <p className="font-display text-4xl font-black text-navy">{attempt.totalScore ?? "-"}</p>
                             {change != null ? <span className={`text-xs font-extrabold ${change >= 0 ? "text-brand-600" : "text-slate-500"}`}>{scoreChange(change)}</span> : null}
                           </div>
                         </div>
@@ -168,7 +168,7 @@ function KpiCard({
   return (
     <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
-      <p className={`mt-2 font-display text-3xl font-black ${accent ? "text-brand-600" : "text-navy"}`}>{value ?? "—"}</p>
+      <p className={`mt-2 font-display text-3xl font-black ${accent ? "text-brand-600" : "text-navy"}`}>{value ?? "-"}</p>
       <p className="mt-1 text-xs text-slate-500">{detail}</p>
     </article>
   );
@@ -178,7 +178,7 @@ function SmallScore({ label, value }: { label: string; value: number | null }) {
   return (
     <div className="min-w-16 px-3">
       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">{label}</p>
-      <p className="mt-1 font-display text-lg font-black text-ink">{value ?? "—"}</p>
+      <p className="mt-1 font-display text-lg font-black text-ink">{value ?? "-"}</p>
     </div>
   );
 }

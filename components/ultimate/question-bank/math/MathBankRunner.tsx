@@ -379,7 +379,7 @@ function RunnerHeader({
 
         <div className="flex flex-col items-center">
           <span className="text-lg font-bold tabular-nums text-[#111] sm:text-xl">
-            {timerHidden ? "—:—" : formatTime(elapsedSeconds)}
+            {timerHidden ? "--:--" : formatTime(elapsedSeconds)}
           </span>
           <span className="flex items-center gap-1">
             <button type="button" onClick={onTogglePause} aria-label={paused ? "Resume timer" : "Pause timer"} className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#dedede] text-[#8b8b8b] hover:border-[#9b9b9b] hover:text-[#333]">

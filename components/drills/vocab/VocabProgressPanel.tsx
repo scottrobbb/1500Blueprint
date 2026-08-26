@@ -112,7 +112,7 @@ function AttemptWindow({ label, accuracy, seconds }: { label: string; accuracy: 
   return (
     <div className="px-3 py-5 text-center sm:px-5">
       <div className="text-xs font-bold uppercase tracking-wide text-navy/40">{label}</div>
-      <div className="mt-2 font-display text-xl font-bold text-navy">{accuracy == null ? "—" : `${accuracy}%`}</div>
+      <div className="mt-2 font-display text-xl font-bold text-navy">{accuracy == null ? "-" : `${accuracy}%`}</div>
       <div className="mt-1 text-xs text-navy/45">{seconds == null ? "No sessions" : `${formatClock(seconds)} avg`}</div>
     </div>
   );

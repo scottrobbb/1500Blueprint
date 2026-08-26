@@ -178,7 +178,7 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
           className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-navy/20 bg-haze/60 py-2.5 text-[13px] font-semibold text-navy/55 transition-colors hover:border-brand/50 hover:text-navy"
         >
           <ImageIcon className="h-[18px] w-[18px]" />
-          Add a screenshot — or paste / drop it in
+          Add a screenshot, or paste or drop it in
         </button>
       )}
 

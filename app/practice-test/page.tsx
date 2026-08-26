@@ -47,9 +47,9 @@ export default async function PracticeTestsPage() {
     getStudentAccess(session.email),
   ]);
 
-  const bestScore = progress.bestScore != null ? progress.bestScore.toLocaleString() : "—";
+  const bestScore = progress.bestScore != null ? progress.bestScore.toLocaleString() : "-";
   const sinceFirst =
-    progress.improvement != null ? `${progress.improvement >= 0 ? "+" : ""}${progress.improvement}` : "—";
+    progress.improvement != null ? `${progress.improvement >= 0 ? "+" : ""}${progress.improvement}` : "-";
 
   return (
     <div className="min-h-dvh bg-haze text-ink">

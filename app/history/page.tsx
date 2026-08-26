@@ -6,7 +6,7 @@ import { getNavStats } from "@/lib/gamification/state";
 import { loadHistory } from "@/lib/drills/progress";
 
 export const metadata = {
-  title: "History — 1500 SAT Blueprint",
+  title: "History | 1500 SAT Blueprint",
   description: "Browse every drill question you've worked on and review how you did.",
 };
 

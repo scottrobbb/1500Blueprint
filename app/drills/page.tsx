@@ -14,7 +14,7 @@ import { loadVocabDashboard } from "@/lib/drills/vocab.server";
 import { listDrills } from "@/lib/drills/admin-queries";
 
 export const metadata = {
-  title: "Practice Drills — 1500 SAT Blueprint",
+  title: "Practice Drills | 1500 SAT Blueprint",
   description:
     "Earn XP, build streaks, and master one SAT skill at a time with short drills graded on your reasoning, not just your answer.",
 };

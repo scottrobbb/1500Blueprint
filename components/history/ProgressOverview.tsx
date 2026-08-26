@@ -9,11 +9,11 @@ const dateFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 function percent(value: number | null): string {
-  return value == null ? "—" : `${value}%`;
+  return value == null ? "-" : `${value}%`;
 }
 
 function signed(value: number | null): string {
-  if (value == null) return "—";
+  if (value == null) return "-";
   return `${value >= 0 ? "+" : ""}${value}`;
 }
 
@@ -47,7 +47,7 @@ export function ProgressOverview({
         <MetricCard label="Lessons completed" value={lessonValue} detail={progress.lessons.total > 0 ? `${Math.max(0, progress.lessons.total - progress.lessons.completed)} remaining` : "Saved completions"} />
         <MetricCard label="Questions attempted" value={progress.questions.attempted.toLocaleString()} detail={`${progress.questions.correct} correct · ${progress.questions.incorrect} incorrect`} />
         <MetricCard label="Answer accuracy" value={percent(progress.questions.accuracy)} detail="Across the sources below" />
-        <MetricCard label="Latest test score" value={progress.tests.latestScore?.toLocaleString() ?? "—"} detail={progress.tests.count > 0 ? `${progress.tests.count} completed ${progress.tests.count === 1 ? "test" : "tests"}` : "No completed test yet"} />
+        <MetricCard label="Latest test score" value={progress.tests.latestScore?.toLocaleString() ?? "-"} detail={progress.tests.count > 0 ? `${progress.tests.count} completed ${progress.tests.count === 1 ? "test" : "tests"}` : "No completed test yet"} />
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3" aria-label="Question progress by source">
@@ -61,8 +61,8 @@ export function ProgressOverview({
             <Link href="/ultimate/tests/completed" className="inline-flex min-h-11 items-center text-xs font-bold text-brand-700 hover:text-navy">Reports →</Link>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
-            <SmallMetric label="Latest" value={progress.tests.latestScore?.toLocaleString() ?? "—"} />
-            <SmallMetric label="Best" value={progress.tests.bestScore?.toLocaleString() ?? "—"} />
+            <SmallMetric label="Latest" value={progress.tests.latestScore?.toLocaleString() ?? "-"} />
+            <SmallMetric label="Best" value={progress.tests.bestScore?.toLocaleString() ?? "-"} />
             <SmallMetric label="Completed" value={progress.tests.count.toLocaleString()} />
             <SmallMetric label="Improvement" value={signed(progress.tests.improvement)} suffix={progress.tests.improvement == null ? undefined : " pts"} />
           </dl>

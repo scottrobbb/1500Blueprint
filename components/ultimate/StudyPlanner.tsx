@@ -113,7 +113,7 @@ function ExpiredPlan({ profile, onEdit }: { profile: StudyPlannerProfile; onEdit
         <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-sky"><CalendarIcon className="h-6 w-6" /></span>
         <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.17em] text-sky">Plan complete</p>
         <h2 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.035em]">Choose the next test day.</h2>
-        <p className="mt-3 text-sm leading-6 text-white/62">Your {formatDate(profile.testDate)} SAT date has passed. Add the next date and the planner will rebuild from everything you learned—not start you over.</p>
+        <p className="mt-3 text-sm leading-6 text-white/62">Your {formatDate(profile.testDate)} SAT date has passed. Add the next date and the planner will rebuild from everything you learned instead of starting over.</p>
         <button type="button" onClick={onEdit} className="mt-6 min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white shadow-[0_2px_0_#2b8fe0] hover:bg-[#4db2f8]">Set my next SAT date</button>
       </div>
     </section>
@@ -218,7 +218,7 @@ function PlanSchedule({ plan, today }: { plan: StudyPlan; today: string }) {
                 </div>
               ) : (
                 <div className="flex min-h-16 items-center rounded-xl border border-dashed border-navy/10 px-4 text-sm font-medium text-navy/35">
-                  {date === plan.testDate ? "SAT test day — trust the system you built." : "Recovery day — let the work stick."}
+                  {date === plan.testDate ? "SAT test day. Trust the system you built." : "Recovery day. Let the work stick."}
                 </div>
               )}
             </li>

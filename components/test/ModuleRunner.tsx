@@ -229,7 +229,7 @@ export function ModuleRunner({
         {header}
         <PracticeBanner />
         <ReviewPage
-          title={`${moduleLabel} — Questions`}
+          title={`${moduleLabel}: Questions`}
           module={module}
           answers={answers}
           marked={marked}
@@ -287,7 +287,7 @@ export function ModuleRunner({
 
         {navOpen && (
           <QuestionNavigator
-            title={`${moduleLabel} — Questions`}
+            title={`${moduleLabel}: Questions`}
             module={module}
             currentIndex={qIndex}
             answers={answers}

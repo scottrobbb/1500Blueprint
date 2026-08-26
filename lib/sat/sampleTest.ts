@@ -24,7 +24,7 @@ const rwModule1: Question[] = [
     ],
     correct: "B",
     explanation:
-      "The proposal covers many areas (budget, staffing, facilities, outreach), so its scope is broad — 'comprehensive.'",
+      "The proposal covers many areas (budget, staffing, facilities, outreach), so its scope is broad: 'comprehensive.'",
     choiceExplanations: {
       A: "'Narrow' contradicts the many areas the proposal covers.",
       C: "'Tedious' describes tone, not the breadth of the scope.",
@@ -50,7 +50,7 @@ const rwModule1: Question[] = [
     ],
     correct: "B",
     explanation:
-      "The text describes the rise of urban beekeeping and the variety of plants cities offer bees — B captures both points.",
+      "The text describes the rise of urban beekeeping and the variety of plants cities offer bees. B captures both points.",
     choiceExplanations: {
       A: "The amount of honey is never discussed.",
       C: "Restaurants are mentioned only as one example of keepers, not the primary ones.",
@@ -164,7 +164,7 @@ const rwModule2Easy: Question[] = [
     ],
     correct: "A",
     explanation:
-      "The text links grooming to trapping insulating air because otters lack body fat — so grooming helps keep them warm.",
+      "The text links grooming to trapping insulating air because otters lack body fat, so grooming helps keep them warm.",
   },
   {
     id: "rw2e-3",
@@ -234,7 +234,7 @@ const rwModule2Hard: Question[] = [
     domain: "Craft and Structure",
     difficulty: "hard",
     passage:
-      "In the opening of her memoir, the author lingers on small sensory details of her childhood kitchen — the hiss of the kettle, the worn linoleum, the smell of cardamom — before introducing any people.",
+      "In the opening of her memoir, the author lingers on small sensory details of her childhood kitchen, including the hiss of the kettle, the worn linoleum, and the smell of cardamom, before introducing any people.",
     prompt:
       "Which choice best describes the rhetorical effect of beginning with sensory details rather than characters?",
     choices: [

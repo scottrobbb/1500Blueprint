@@ -25,7 +25,7 @@ export function GridIn({ value, onChange }: Props) {
       />
       <div className="mt-3 text-[15px] text-exam-muted">
         Answer Preview:{" "}
-        <span className="font-serif text-exam-ink">{value.trim() || "—"}</span>
+        <span className="font-serif text-exam-ink">{value.trim() || "-"}</span>
       </div>
       <p id="grid-in-limit" className="mt-1 text-[13px] text-exam-muted">
         Up to 5 characters, plus an optional leading minus sign. Decimal points and fraction bars

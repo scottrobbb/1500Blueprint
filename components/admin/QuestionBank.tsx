@@ -420,7 +420,7 @@ function ResultsTable({
               <Td className="whitespace-nowrap text-navy/70">
                 {drillTitleBySlug.get(q.drillSlug) ?? q.drillSlug}
               </Td>
-              <Td className="text-navy/60">{q.skill ?? "—"}</Td>
+              <Td className="text-navy/60">{q.skill ?? "-"}</Td>
               <Td className="whitespace-nowrap text-navy/60">{capitalize(q.difficulty)}</Td>
               <Td className="whitespace-nowrap text-navy/60">
                 {ANSWER_TYPE_LABELS[q.answerType]}
@@ -545,7 +545,7 @@ function contentLabel(content: DrillContent): string | null {
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "—";
+  if (Number.isNaN(d.getTime())) return "-";
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
