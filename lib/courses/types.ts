@@ -8,6 +8,7 @@ export type CoursePracticeQuestion = {
   prompt: string;
   choices: string[];
   correctAnswer: string;
+  acceptedAnswers?: string[];
   explanation: string;
   imageUrl?: string;
 };

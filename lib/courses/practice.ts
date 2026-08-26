@@ -28,6 +28,11 @@ export function normalizeCoursePracticeAnswer(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+export function isCoursePracticeAnswerCorrect(question: CoursePracticeQuestion, given: string): boolean {
+  const normalizedGiven = normalizeCoursePracticeAnswer(given);
+  return [question.correctAnswer, ...(question.acceptedAnswers ?? [])].some((accepted) => normalizeCoursePracticeAnswer(accepted) === normalizedGiven);
+}
+
 export function isCoursePracticeQuestionComplete(question: CoursePracticeQuestion): boolean {
   if (!question.correctAnswer.trim()) return false;
   if (question.type === "multiple_choice") {
@@ -42,7 +47,7 @@ export function gradeCoursePractice(practice: CoursePractice, answers: CoursePra
   const results: Record<string, boolean> = {};
   let correctCount = 0;
   for (const question of practice.questions) {
-    const correct = normalizeCoursePracticeAnswer(answerMap.get(question.id) ?? "") === normalizeCoursePracticeAnswer(question.correctAnswer);
+    const correct = isCoursePracticeAnswerCorrect(question, answerMap.get(question.id) ?? "");
     results[question.id] = correct;
     if (correct) correctCount += 1;
   }
@@ -68,6 +73,7 @@ export function emptyCoursePracticeQuestion(type: CoursePracticeQuestion["type"]
     prompt: "",
     choices: type === "multiple_choice" ? ["", "", "", ""] : [],
     correctAnswer: "",
+    acceptedAnswers: [],
     explanation: "",
   };
 }

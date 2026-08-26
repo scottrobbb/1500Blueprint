@@ -81,7 +81,7 @@ export function PracticeBuilder({ value, onChange }: { value: CoursePractice; on
               <div className="border-t border-navy/10 p-4 sm:p-5">
                 <div className="grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]"><Field label="Question type"><select value={question.type} onChange={(event) => { const type = event.target.value as CoursePracticeQuestionType; updateQuestion(questionIndex, { type, choices: type === "multiple_choice" && question.choices.length < 2 ? ["", "", "", ""] : type === "free_response" ? [] : question.choices, correctAnswer: "" }); }} className={inputClass}><option value="multiple_choice">Multiple choice</option><option value="free_response">Free response</option></select></Field><Field label="Question prompt"><textarea rows={3} value={question.prompt} onChange={(event) => updateQuestion(questionIndex, { prompt: event.target.value })} className={inputClass} /></Field></div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Optional image URL"><input type="url" value={question.imageUrl ?? ""} onChange={(event) => updateQuestion(questionIndex, { imageUrl: event.target.value })} placeholder="https://…" className={inputClass} /><CourseAssetUpload kind="image" compact onUploaded={(url) => updateQuestion(questionIndex, { imageUrl: url })} /></Field><Field label="Answer explanation"><textarea rows={4} value={question.explanation} onChange={(event) => updateQuestion(questionIndex, { explanation: event.target.value })} onPaste={(event) => void handleExplanationPaste(event, questionIndex, question)} placeholder="Explain why the answer is correct and the trap to avoid. Paste an image to drop it in." className={inputClass} />{pastingId === question.id ? <p className="mt-1.5 text-xs font-semibold text-brand-700">Uploading pasted image…</p> : null}{pasteErrorId === question.id ? <p role="alert" className="mt-1.5 text-xs font-semibold text-danger-600">That image could not be uploaded.</p> : null}</Field></div>
-                {question.type === "multiple_choice" ? <ChoiceEditor question={question} onChange={(update) => updateQuestion(questionIndex, update)} /> : <div className="mt-4"><Field label="Accepted answer"><input value={question.correctAnswer} onChange={(event) => updateQuestion(questionIndex, { correctAnswer: event.target.value })} placeholder="Exact answer; capitalization and extra spaces are ignored" className={inputClass} /></Field></div>}
+                {question.type === "multiple_choice" ? <ChoiceEditor question={question} onChange={(update) => updateQuestion(questionIndex, update)} /> : <div className="mt-4"><Field label="Accepted answer"><input value={question.correctAnswer} onChange={(event) => updateQuestion(questionIndex, { correctAnswer: event.target.value })} placeholder="Exact answer; capitalization and extra spaces are ignored" className={inputClass} /></Field><AcceptedAnswersEditor question={question} onChange={(update) => updateQuestion(questionIndex, update)} /></div>}
                 <div className="mt-4 flex justify-end"><button type="button" onClick={() => onChange({ ...value, questions: value.questions.filter((_, index) => index !== questionIndex) })} className="min-h-10 cursor-pointer rounded-xl px-3 text-xs font-extrabold text-danger-600 transition-colors hover:bg-danger-bg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger">Delete question</button></div>
               </div>
             </details>
@@ -101,6 +101,28 @@ function ChoiceEditor({ question, onChange }: { question: CoursePracticeQuestion
   }
   return (
     <fieldset className="mt-4 rounded-2xl border border-navy/10 bg-haze/35 p-3 sm:p-4"><legend className="px-1 text-[10px] font-extrabold uppercase tracking-[0.11em] text-navy/45">Answer choices · select the correct one</legend><div className="mt-2 space-y-2">{question.choices.map((choice, choiceIndex) => <div key={choiceIndex} className="flex items-center gap-2"><label className="grid h-11 w-11 flex-none cursor-pointer place-items-center rounded-xl border border-navy/10 bg-white" title="Mark as correct"><input type="radio" name={`correct-${question.id}`} checked={Boolean(choice) && question.correctAnswer === choice} onChange={() => onChange({ correctAnswer: choice })} className="h-4 w-4 accent-[#35a7f2]" aria-label={`Mark choice ${choiceIndex + 1} correct`} /></label><input value={choice} onChange={(event) => updateChoice(choiceIndex, event.target.value)} placeholder={`Choice ${String.fromCharCode(65 + choiceIndex)}`} className="min-h-11 min-w-0 flex-1 rounded-xl border border-navy/15 bg-white px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/15" /><button type="button" aria-label={`Delete choice ${choiceIndex + 1}`} disabled={question.choices.length <= 2} onClick={() => onChange({ choices: question.choices.filter((_, index) => index !== choiceIndex), correctAnswer: question.correctAnswer === choice ? "" : question.correctAnswer })} className="grid h-11 w-11 flex-none cursor-pointer place-items-center rounded-xl text-lg text-danger-600 transition-colors hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-25">×</button></div>)}</div><button type="button" onClick={() => onChange({ choices: [...question.choices, ""] })} className="mt-3 min-h-10 cursor-pointer rounded-xl border border-navy/10 bg-white px-3 text-xs font-extrabold text-navy/55 transition-colors hover:border-brand/30 hover:text-brand-700">+ Add choice</button></fieldset>
+  );
+}
+
+function AcceptedAnswersEditor({ question, onChange }: { question: CoursePracticeQuestion; onChange: (update: Partial<CoursePracticeQuestion>) => void }) {
+  const acceptedAnswers = question.acceptedAnswers ?? [];
+  function updateAlternate(index: number, nextValue: string) {
+    onChange({ acceptedAnswers: acceptedAnswers.map((answer, i) => i === index ? nextValue : answer) });
+  }
+  return (
+    <div className="mt-3">
+      <span className={labelClass}>Alternate accepted forms (optional)</span>
+      <p className="mt-1 text-xs text-navy/45">Add other forms that also count as correct, e.g. a fraction and its decimal equivalent.</p>
+      <div className="mt-2 space-y-2">
+        {acceptedAnswers.map((answer, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <input value={answer} onChange={(event) => updateAlternate(index, event.target.value)} placeholder="e.g. 0.5" className="min-h-11 min-w-0 flex-1 rounded-xl border border-navy/15 bg-white px-3.5 text-sm text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/15" />
+            <button type="button" aria-label={`Delete alternate answer ${index + 1}`} onClick={() => onChange({ acceptedAnswers: acceptedAnswers.filter((_, i) => i !== index) })} className="grid h-11 w-11 flex-none cursor-pointer place-items-center rounded-xl text-lg text-danger-600 transition-colors hover:bg-danger-bg">×</button>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={() => onChange({ acceptedAnswers: [...acceptedAnswers, ""] })} className="mt-2 min-h-10 cursor-pointer rounded-xl border border-navy/10 bg-white px-3 text-xs font-extrabold text-navy/55 transition-colors hover:border-brand/30 hover:text-brand-700">+ Add alternate answer</button>
+    </div>
   );
 }
 
