@@ -29,8 +29,8 @@ export default async function UltimateCoursePage({ params }: Props) {
               alt=""
               className="absolute inset-y-0 right-0 hidden w-[460px] object-cover opacity-85 sm:block"
               style={{
-                maskImage: "radial-gradient(60% 60% at 62% 50%, black 30%, transparent 85%)",
-                WebkitMaskImage: "radial-gradient(60% 60% at 62% 50%, black 30%, transparent 85%)",
+                maskImage: "radial-gradient(75% 75% at 50% 50%, black 45%, transparent 62%)",
+                WebkitMaskImage: "radial-gradient(75% 75% at 50% 50%, black 45%, transparent 62%)",
               }}
             />
           ) : null}
