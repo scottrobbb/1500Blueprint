@@ -47,6 +47,16 @@ export async function getPublishedWeeklyCallSchedule(): Promise<{
   };
 }
 
+export function isCallLiveNow(call: Pick<WeeklyCall, "startsAt" | "endsAt">, now = Date.now()): boolean {
+  return Date.parse(call.startsAt) <= now && now <= Date.parse(call.endsAt);
+}
+
+export async function getLiveWeeklyCall(): Promise<WeeklyCall | null> {
+  const { upcoming } = await getPublishedWeeklyCallSchedule();
+  const call = upcoming[0];
+  return call && isCallLiveNow(call) ? call : null;
+}
+
 export async function listAllWeeklyCalls(): Promise<WeeklyCall[]> {
   const { data, error } = await supabaseAdmin().from("weekly_calls").select(COLUMNS).order("starts_at", { ascending: false }).returns<WeeklyCallRow[]>();
   if (error) throw new Error(`failed to load admin weekly calls: ${error.message}`);

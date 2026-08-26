@@ -5,6 +5,8 @@ import { LayersIcon } from "@/components/flashcards/icons";
 import { ChevronRightIcon, DrillsIcon, FlameIcon, HistoryIcon, TestsIcon } from "@/components/shell/icons";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
+import { getLiveWeeklyCall } from "@/lib/calls/queries";
+import type { WeeklyCall } from "@/lib/calls/types";
 import { listCoursesForStudent } from "@/lib/courses/queries";
 import type { Course } from "@/lib/courses/types";
 import { loadHistory } from "@/lib/drills/progress";
@@ -22,15 +24,17 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
-  const [hub, history, flashcards, courses, access, savedProgress] = await Promise.all([
+  const [hub, history, flashcards, courses, access, savedProgress, liveCall] = await Promise.all([
     getHubState(session.email),
     loadHistory(session.email),
     listStudentLibrary(session.email),
     listCoursesForStudent(session.email),
     getStudentAccess(session.email),
     getStudentProgress(session.email),
+    getLiveWeeklyCall(),
   ]);
   const availableCourses = courses.filter((course) => canAccessCourse(access, course.slug));
+  const showLiveBanner = liveCall && access.entitlements.liveGroupClasses;
 
   const mastered = history.filter((entry) => entry.mastered).length;
   const masteryRate = history.length > 0 ? Math.round((mastered / history.length) * 100) : 0;
@@ -55,6 +59,7 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
+      {showLiveBanner && liveCall ? <LiveCallBanner call={liveCall} /> : null}
       {billing === "success" ? (
         <div className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status">
           Your subscription is active. Your new plan access is ready.
@@ -163,6 +168,22 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
       </div>
     </div>
   );
+}
+
+function LiveCallBanner({ call }: { call: WeeklyCall }) {
+  const content = (
+    <>
+      <span className="flex items-center gap-2.5">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-red-600"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-600" />Live now</span>
+        <span className="text-sm font-bold">{call.title} is happening right now</span>
+      </span>
+      <span className="inline-flex items-center gap-1 text-sm font-extrabold">Join call <ChevronRightIcon className="h-4 w-4" /></span>
+    </>
+  );
+  const className = "mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[linear-gradient(110deg,#7a1414_0%,#b8261f_60%,#e0432b_100%)] px-4 py-3 text-white shadow-[0_10px_28px_-16px_rgba(184,38,31,0.7)] transition-opacity hover:opacity-95";
+  return call.meetingUrl
+    ? <a href={call.meetingUrl} target="_blank" rel="noreferrer" className={className}>{content}</a>
+    : <Link href="/ultimate/live-calls" className={className}>{content}</Link>;
 }
 
 function PathCard({ step, href, title, detail, Icon }: { step: string; href: string; title: string; detail: string; Icon: (props: { className?: string }) => React.ReactElement }) {

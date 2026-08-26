@@ -7,7 +7,7 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { googleCalendarTemplateUrl } from "@/lib/calls/google";
-import { getPublishedWeeklyCallSchedule } from "@/lib/calls/queries";
+import { getPublishedWeeklyCallSchedule, isCallLiveNow } from "@/lib/calls/queries";
 import { getPublishedRecordingLibrary } from "@/lib/calls/recordings";
 import type { CallRecordingMonth, WeeklyCall } from "@/lib/calls/types";
 
@@ -71,17 +71,25 @@ function RecordingMonthSection({ month }: { month: CallRecordingMonth }) {
 
 function NextCall({ call }: { call: WeeklyCall }) {
   const joinable = Boolean(call.meetingUrl);
+  const live = isCallLiveNow(call);
   return (
-    <section className="relative mt-7 overflow-hidden rounded-[22px] bg-[linear-gradient(125deg,#0b2a5b_0%,#164b87_64%,#248fd1_100%)] text-white shadow-[0_22px_60px_-38px_rgba(11,42,91,0.95)]">
+    <section className={`relative mt-7 overflow-hidden rounded-[22px] text-white shadow-[0_22px_60px_-38px_rgba(11,42,91,0.95)] ${live ? "bg-[linear-gradient(125deg,#7a1414_0%,#b8261f_64%,#e0432b_100%)]" : "bg-[linear-gradient(125deg,#0b2a5b_0%,#164b87_64%,#248fd1_100%)]"}`}>
       <div aria-hidden="true" className="absolute -right-24 -top-32 h-96 w-96 rounded-full border-[54px] border-sky/[0.09]" />
       <div className="relative grid gap-7 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center lg:p-10">
         <div>
-          <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-gold px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy">Next live call</span><span className="text-xs font-semibold text-white/55">Hosted by {call.hostName}</span></div>
+          <div className="flex flex-wrap items-center gap-2">
+            {live ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-red-600"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-600" />Happening now</span>
+            ) : (
+              <span className="rounded-full bg-gold px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy">Next live call</span>
+            )}
+            <span className="text-xs font-semibold text-white/55">Hosted by {call.hostName}</span>
+          </div>
           <h2 className="mt-4 max-w-3xl font-display text-[31px] font-extrabold leading-tight tracking-[-0.035em] sm:text-[40px]">{call.title}</h2>
           {call.focusTopic ? <p className="mt-2 text-sm font-bold text-sky">Focus: {call.focusTopic}</p> : null}
           {call.description ? <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">{call.description}</p> : null}
           <div className="mt-6 flex flex-wrap gap-3">
-            {joinable ? <a href={call.meetingUrl as string} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-extrabold text-white shadow-[0_2px_0_#1879c4] hover:bg-[#50b5fb]"><VideoIcon className="h-4 w-4" /> Join call</a> : <span className="inline-flex min-h-11 items-center rounded-xl bg-white/10 px-5 text-sm font-bold text-white/60">Meet link publishes before the call</span>}
+            {joinable ? <a href={call.meetingUrl as string} target="_blank" rel="noreferrer" className={`inline-flex min-h-11 items-center gap-2 rounded-xl px-5 text-sm font-extrabold text-white ${live ? "bg-white/15 shadow-[0_2px_0_rgba(255,255,255,0.25)] hover:bg-white/25" : "bg-brand shadow-[0_2px_0_#1879c4] hover:bg-[#50b5fb]"}`}><VideoIcon className="h-4 w-4" /> {live ? "Join now" : "Join call"}</a> : <span className="inline-flex min-h-11 items-center rounded-xl bg-white/10 px-5 text-sm font-bold text-white/60">Meet link publishes before the call</span>}
             <a href={googleCalendarTemplateUrl(call)} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-5 text-sm font-bold text-white hover:bg-white/[0.14]"><CalendarIcon className="h-4 w-4" /> Add to Google Calendar</a>
           </div>
         </div>
