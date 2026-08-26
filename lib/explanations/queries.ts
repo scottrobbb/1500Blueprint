@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { isAdminEmail } from "@/lib/auth/admin";
 
 export type ExplanationTargetType = "question_bank" | "practice_test";
 
@@ -21,6 +22,16 @@ export type ExplanationQueueItem = {
   published: boolean;
 };
 
+export type ExplanationEditorStats = {
+  email: string;
+  name: string | null;
+  completedTotal: number;
+  completedLast7Days: number;
+  completedToday: number;
+  lastCompletedAt: string | null;
+  currentStaff: boolean;
+};
+
 type ExplanationQueueRow = {
   id: string;
   target_type: ExplanationTargetType;
@@ -38,7 +49,17 @@ type ExplanationQueueRow = {
   published: boolean;
 };
 
-export async function listExplanationQueue(limit = 250): Promise<ExplanationQueueItem[]> {
+type ExplanationEditorStatsRow = {
+  editor_email: string;
+  editor_name: string | null;
+  completed_total: number | string;
+  completed_last_7_days: number | string;
+  completed_today: number | string;
+  last_completed_at: string | null;
+  current_staff: boolean;
+};
+
+export async function listExplanationQueue(limit = 500): Promise<ExplanationQueueItem[]> {
   const { data, error } = await supabaseAdmin()
     .rpc("get_explanation_queue", { p_limit: Math.max(1, Math.min(limit, 500)) });
   if (error) throw new Error(`failed to load explanation queue: ${error.message}`);
@@ -58,6 +79,21 @@ export async function listExplanationQueue(limit = 250): Promise<ExplanationQueu
     correctAnswer: row.correct_answer,
     explanation: row.explanation,
     published: row.published,
+  }));
+}
+
+export async function listExplanationEditorStats(): Promise<ExplanationEditorStats[]> {
+  const { data, error } = await supabaseAdmin().rpc("get_explanation_editor_stats");
+  if (error) throw new Error(`failed to load explanation editor stats: ${error.message}`);
+
+  return ((data ?? []) as unknown as ExplanationEditorStatsRow[]).map((row) => ({
+    email: row.editor_email,
+    name: row.editor_name,
+    completedTotal: numberValue(row.completed_total),
+    completedLast7Days: numberValue(row.completed_last_7_days),
+    completedToday: numberValue(row.completed_today),
+    lastCompletedAt: row.last_completed_at,
+    currentStaff: row.current_staff || isAdminEmail(row.editor_email),
   }));
 }
 
@@ -86,4 +122,9 @@ function parseChoices(value: unknown): { id: string; text: string }[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function numberValue(value: number | string): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
