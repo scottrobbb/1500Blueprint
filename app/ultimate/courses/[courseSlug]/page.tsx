@@ -5,6 +5,7 @@ import { getCourseForStudent } from "@/lib/courses/queries";
 import { lessonDurationMinutes } from "@/lib/courses/durationOverrides";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { AccessGate } from "@/components/account/AccessGate";
+import { CourseCover } from "@/components/ultimate/courses/CourseCover";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ courseSlug: string }> };
@@ -23,7 +24,8 @@ export default async function UltimateCoursePage({ params }: Props) {
     <div className="min-h-dvh bg-[#f7f8fa]">
       <header className="border-b border-navy/10 bg-white px-4 py-8 sm:px-7 sm:py-10">
         <div className="mx-auto max-w-[1120px]">
-          <div>
+          <div className="grid gap-7 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+            <div>
             <Link href="/ultimate/courses" aria-label="Back to all courses" className="group inline-flex min-h-11 cursor-pointer items-center gap-2 text-[13px] font-semibold text-navy/55 transition-colors hover:text-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5"><path d="m15 18-6-6 6-6" /></svg>
               <span>All courses</span>
@@ -33,6 +35,8 @@ export default async function UltimateCoursePage({ params }: Props) {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-navy/58">{course.description}</p>
             <div className="mt-6 flex max-w-2xl items-center gap-4"><div className="h-2 flex-1 overflow-hidden rounded-full bg-navy/10"><div className="h-full rounded-full bg-brand" style={{ width: `${course.progress}%` }} /></div><span className="text-xs font-semibold tabular-nums text-navy/48">{course.completedLessons}/{course.totalLessons} complete</span></div>
             {nextLesson ? <Link href={`/ultimate/courses/${course.slug}/${nextLesson.slug}`} className="mt-6 inline-flex min-h-11 items-center rounded-lg bg-navy px-5 text-sm font-semibold text-white hover:bg-brand-600">{course.progress > 0 ? "Continue course" : "Start course"} →</Link> : null}
+            </div>
+            <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} priority className="rounded-xl border border-navy/10" />
           </div>
         </div>
       </header>

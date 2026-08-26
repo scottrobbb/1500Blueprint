@@ -6,6 +6,7 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { listCoursesForStudent } from "@/lib/courses/queries";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { LockedBadge, UpgradePrompt } from "@/components/account/UpgradePrompt";
+import { CourseCover } from "@/components/ultimate/courses/CourseCover";
 
 export const metadata = { title: "Courses" };
 export const dynamic = "force-dynamic";
@@ -39,10 +40,11 @@ export default async function UltimateCoursesPage() {
             />
           ) : null}
           <section className="grid gap-4 md:grid-cols-2">
-            {courses.map((course) => {
+            {courses.map((course, courseIndex) => {
               const locked = !canAccessCourse(access, course.slug);
               return (
               <Link key={course.id} href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group overflow-hidden rounded-xl border bg-white transition-colors ${locked ? "border-gold/30 hover:border-gold/50" : "border-navy/12 hover:border-brand/35"}`}>
+                <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} priority={courseIndex === 0} className="border-b border-navy/10" />
                 <div className="p-5 sm:p-6">
                   <div className="flex items-center justify-between gap-3"><p className="text-xs font-medium text-brand-600">{course.eyebrow ?? "SAT course"}</p>{locked ? <LockedBadge plan="max" /> : null}</div>
                   <h2 className="mt-2 font-display text-[23px] font-semibold leading-tight tracking-[-0.03em] text-ink">{course.title}</h2>
