@@ -33,7 +33,7 @@ export default async function UltimateCoursesPage() {
               const locked = !canAccessCourse(access, course.slug);
               return (
               <Link key={course.id} href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group relative overflow-hidden rounded-[20px] border bg-white shadow-pop transition-all ${locked ? "border-navy/10 opacity-75" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35"}`}>
-                <div className="relative min-h-44 overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
+                <div className="relative min-h-60 overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
                   {course.coverUrl ? <img src={course.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" /> : null}
                   <div className="relative">
                     <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-sky">{course.eyebrow ?? "1500 Blueprint course"}</p>
