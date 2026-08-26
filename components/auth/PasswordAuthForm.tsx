@@ -37,34 +37,34 @@ const INITIAL_AUTH_STATE: AuthActionState = {
 const content: Record<Mode, { eyebrow: string; title: string; description: string; submit: string; pending: string }> = {
   login: {
     eyebrow: "Student account",
-    title: "Welcome back",
-    description: "Use your email and password to continue studying.",
+    title: "Sign in",
+    description: "Enter the email and password connected to your SAT progress.",
     submit: "Sign in",
     pending: "Signing in…",
   },
   signup: {
-    eyebrow: "Create your account",
-    title: "Start your blueprint",
-    description: "Your progress, scores, and plan will stay with one secure account.",
+    eyebrow: "Free account",
+    title: "Create your account",
+    description: "Save your lessons, practice history, and test scores.",
     submit: "Create account",
     pending: "Creating account…",
   },
   forgot: {
     eyebrow: "Password help",
     title: "Reset your password",
-    description: "Enter your account email and we’ll send a secure reset link.",
+    description: "Enter your account email. We’ll send a reset link.",
     submit: "Send reset link",
     pending: "Sending link…",
   },
   reset: {
-    eyebrow: "Choose a new password",
-    title: "Secure your account",
+    eyebrow: "Password reset",
+    title: "Choose a new password",
     description: "Use a password you haven’t used for another account.",
     submit: "Update password",
     pending: "Updating password…",
   },
   claim: {
-    eyebrow: "Keep your progress",
+    eyebrow: "Existing account",
     title: "Create your password",
     description: "Add password sign-in to your existing Blueprint account.",
     submit: "Create password login",
@@ -83,16 +83,16 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
   if (state.status === "success") {
     return (
       <div className="text-center" aria-live="polite">
-        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-success-bg text-success-600">
+        <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-success-bg text-success-600">
           <CheckIcon className="h-6 w-6" />
         </span>
-        <h1 className="mt-5 font-display text-2xl font-extrabold tracking-[-0.02em] text-navy">
-          Check your inbox
+        <h1 className="mt-5 font-display text-2xl font-semibold tracking-[-0.02em] text-navy">
+          Check your email
         </h1>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-navy/60">{state.message}</p>
         <Link
           href={`/account/login?next=${encodeURIComponent(next)}`}
-          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl border border-navy/15 px-5 text-sm font-bold text-navy transition-colors hover:border-brand/40 hover:text-brand-600"
+          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-lg border border-navy/15 px-5 text-sm font-semibold text-navy transition-colors hover:border-brand/40 hover:text-brand-600"
         >
           Back to sign in
         </Link>
@@ -106,9 +106,9 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
 
   return (
     <form action={formAction} className="w-full">
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-brand-600">{copy.eyebrow}</p>
-      <h1 className="mt-2 font-display text-[30px] font-extrabold tracking-[-0.035em] text-navy">{copy.title}</h1>
-      <p className="mt-2 text-sm leading-6 text-navy/58">{copy.description}</p>
+      <p className="text-xs font-semibold text-brand-600">{copy.eyebrow}</p>
+      <h1 className="mt-1 font-display text-[30px] font-semibold tracking-[-0.035em] text-navy">{copy.title}</h1>
+      <p className="mt-2 text-[15px] leading-6 text-navy/58">{copy.description}</p>
 
       <input type="hidden" name="next" value={next} />
 
@@ -148,7 +148,7 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
         {mode === "claim" && email ? (
           <div>
             <span className="block text-sm font-bold text-navy">Account email</span>
-            <div className="mt-2 rounded-xl border border-navy/10 bg-haze px-4 py-3 text-sm font-semibold text-navy/65">
+            <div className="mt-2 rounded-lg border border-navy/10 bg-haze px-4 py-3 text-sm font-medium text-navy/65">
               {email}
             </div>
           </div>
@@ -171,7 +171,7 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
               <button
                 type="button"
                 onClick={() => setShowPassword((visible) => !visible)}
-                className="absolute inset-y-0 right-1 min-w-12 cursor-pointer rounded-lg px-3 text-xs font-bold text-navy/45 transition-colors hover:text-navy"
+                className="absolute inset-y-0 right-1 min-w-12 cursor-pointer rounded-md px-3 text-xs font-semibold text-navy/45 transition-colors hover:text-navy"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? "Hide" : "Show"}
@@ -211,7 +211,7 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
       <button
         type="submit"
         disabled={pending}
-        className="mt-6 inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-xl bg-brand px-6 text-[15px] font-extrabold text-white shadow-[0_2px_0_#2b8fe0] transition-colors duration-200 hover:bg-[#4db2f8] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
+        className="mt-6 inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-lg bg-navy px-6 text-[15px] font-semibold text-white transition-colors duration-200 hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {pending ? copy.pending : copy.submit}
       </button>
@@ -224,7 +224,7 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label htmlFor={fieldId(label)} className="block text-sm font-bold text-navy">
+      <label htmlFor={fieldId(label)} className="block text-sm font-semibold text-navy">
         {label}
       </label>
       <div className="mt-2">{children}</div>
@@ -241,7 +241,7 @@ function fieldId(label: string): string {
 }
 
 function inputClass(error: boolean): string {
-  return `min-h-12 w-full rounded-xl border bg-white px-4 text-base text-ink outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-navy/30 disabled:bg-haze disabled:opacity-70 ${
+  return `min-h-12 w-full rounded-lg border bg-white px-4 text-base text-ink outline-none transition-[border-color,box-shadow] duration-200 placeholder:text-navy/30 disabled:bg-haze disabled:opacity-70 ${
     error
       ? "border-danger/60 focus:border-danger focus:ring-2 focus:ring-danger/10"
       : "border-navy/15 focus:border-brand focus:ring-2 focus:ring-brand/15"

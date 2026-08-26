@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { getStudentAccess } from "@/lib/auth/entitlements";
@@ -13,7 +12,7 @@ import { TestimonialVideos } from "./TestimonialVideos";
 export const metadata: Metadata = {
   title: "Pricing | 1500 SAT Blueprint",
   description:
-    "Compare Hobby, Core, and Max SAT prep plans, including practice tests, targeted drills, courses, weekly calls, and study planning.",
+    "Compare Free, Core, and Max SAT prep plans, including practice tests, drills, courses, weekly calls, and study planning.",
 };
 
 type FeatureIcon =
@@ -71,7 +70,7 @@ const productFeatures: Array<{
   {
     icon: "file",
     title: "Full-length digital SATs",
-    description: "1 on Hobby, 2 on Core, 4 on Max",
+    description: "1 on Free, 2 on Core, 4 on Max",
   },
   {
     icon: "bolt",
@@ -156,7 +155,7 @@ const faqItems = [
   {
     question: "Which plan should I choose?",
     answer:
-      "Hobby is a good place to take your first test and try the Foundation course. Core adds more Question Bank work, a second test, and daily drills. Max is for students who also want every course, four tests, a personal study plan, and Scott's weekly calls.",
+      "Free includes a full test, the Foundation course, and 300 Question Bank attempts. Core adds a second test, 3,000 Question Bank attempts, and daily drills. Max adds every course, 4 tests, a personal study plan, and Scott's weekly calls.",
   },
   {
     question: "Are Core and Max billed monthly?",
@@ -176,7 +175,7 @@ const faqItems = [
   {
     question: "Do I need a card to start?",
     answer:
-      "No. The Hobby plan does not require a card. You only enter payment details when you choose Core or Max.",
+      "No. The Free plan does not require a card. You only enter payment details when you choose Core or Max.",
   },
   {
     question: "What happens on the weekly Max calls?",
@@ -209,9 +208,10 @@ export default async function PricingPage({
 
   return (
     <main className={styles.page}>
+      <a href="#pricing-content" className={styles.skipLink}>Skip to pricing content</a>
       <div className={styles.announcement}>
-        <strong>Everything you need for the SAT in one membership</strong>
-        <a href="#plans">Start free today</a>
+        <strong>Free accounts include a full test, the Foundation course, and 300 Question Bank attempts.</strong>
+        <Link href="#plans">Compare plans</Link>
       </div>
 
       <header className={styles.header}>
@@ -220,82 +220,59 @@ export default async function PricingPage({
           <span>1500 SAT Blueprint</span>
         </Link>
         <nav aria-label="Pricing navigation">
-          <a href="#inside">What you get</a>
-          <a href="#stories">Student stories</a>
-          <a href="#faq">FAQ</a>
+          <Link href="#inside">What’s included</Link>
+          <Link href="#stories">Student results</Link>
+          <Link href="#faq">Plan questions</Link>
         </nav>
         <Link href="/account/login?next=/ultimate" className={styles.openApp}>
           Open app <ArrowIcon />
         </Link>
       </header>
 
-      <section className={styles.hero}>
-        <div className={styles.heroGrid} aria-hidden="true" />
-        <div className={styles.heroGlow} aria-hidden="true" />
+      <section className={styles.hero} id="pricing-content">
         <div className={styles.heroCopy}>
-          <h1>
-            A clearer path to your <em>1500.</em>
-          </h1>
+          <p className={styles.heroKicker}>Digital SAT prep built around your results</p>
+          <h1>Know what to study next.</h1>
           <p className={styles.heroDescription}>
-            Start with a full test, see where you are losing points, and use the
-            courses, Question Bank, and drills to work on the right things.
+            Take a full test, review the skills that cost you points, and practice those skills before your next score check.
           </p>
           <div className={styles.heroActions}>
-            <a href="#plans" className={styles.heroPrimary}>
-              See plans <ArrowIcon />
-            </a>
+            <Link href="#plans" className={styles.heroPrimary}>Compare plans <ArrowIcon /></Link>
             <Link href="/practice-test" className={styles.heroSecondary}>
-              Try a practice test
+              Take a free test
             </Link>
           </div>
         </div>
 
-        <div className={styles.heroVisual} aria-label="Blu, the 1500 SAT Blueprint mascot">
-          <div className={`${styles.heroBadge} ${styles.testsBadge}`} aria-hidden="true">
-            <span><FeatureGlyph name="file" /></span>
-            1–4 full tests
-          </div>
-          <div className={`${styles.heroBadge} ${styles.bankBadge}`} aria-hidden="true">
-            <span><FeatureGlyph name="grid" /></span>
-            Math + R&amp;W Question Bank
-          </div>
-          <div className={`${styles.heroBadge} ${styles.callsBadge}`} aria-hidden="true">
-            <span><FeatureGlyph name="star" /></span>
-            Weekly Max calls
-          </div>
-          <div className={`${styles.heroBadge} ${styles.plannerBadge}`} aria-hidden="true">
-            <span><FeatureGlyph name="calendar" /></span>
-            Personal study plan
-          </div>
-          <Image
-            className={styles.heroBlu}
-            src="/images/blu.png"
-            alt="Blu, the 1500 SAT Blueprint mascot"
-            width={500}
-            height={500}
-            priority
-          />
+        <div className={styles.productPreview} aria-label="Example 1500 Blueprint study sequence">
+          <div className={styles.previewHeader}><span>Today’s plan</span><strong>3 steps</strong></div>
+          <ol className={styles.previewSteps}>
+            <li><span>1</span><div><strong>Finish the linear equations lesson</strong><small>12 minutes · Algebra</small></div><FeatureGlyph name="book" /></li>
+            <li><span>2</span><div><strong>Practice linear equations</strong><small>10 questions · Medium</small></div><FeatureGlyph name="bolt" /></li>
+            <li><span>3</span><div><strong>Review your last test</strong><small>6 missed questions</small></div><FeatureGlyph name="file" /></li>
+          </ol>
+          <div className={styles.previewFooter}><span>Best score</span><strong>1,420</strong><span>+70 points</span></div>
         </div>
       </section>
 
       <section className={styles.planSection} id="plans">
         {billing ? <BillingNotice state={billing} /> : null}
-        <SectionHeading title="Pricing" />
+        <SectionHeading title="Choose a plan" description="Start free. Upgrade when you need more practice, courses, or support." />
 
         <div className={styles.planGrid}>
           <PriceCard
             tier="free"
-            name="Hobby"
-            description="Take your first test, learn the foundations, and get a feel for the app."
+            name="Free"
+            description="Take a full test, use the Foundation course, and try the Question Bank."
             features={freeFeatures}
-            cta="Start for free"
+            cta="Create free account"
             currentPlan={access?.plan ?? null}
             billingEnabled={billingEnabled}
           />
           <PriceCard
             tier="core"
             name="Core"
-            description="Get more Question Bank practice, daily drills, and a second full test."
+            description="Add daily drills, more Question Bank practice, and a second full test."
             features={coreFeatures}
             cta="Choose Core"
             currentPlan={access?.plan ?? null}
@@ -306,7 +283,7 @@ export default async function PricingPage({
             tier="max"
             name="Max"
             price="80"
-            description="Use every course and test, plus a personal plan and Scott's weekly calls."
+            description="Get every course and test, a personal study plan, and Scott's weekly calls."
             features={maxFeatures}
             cta="Choose Max"
             currentPlan={access?.plan ?? null}
@@ -322,7 +299,8 @@ export default async function PricingPage({
 
       <section className={styles.includedSection} id="inside">
         <SectionHeading
-          title="Inside 1500 Blueprint"
+          title="What you can use"
+          description="Each tool uses the same account, progress history, and plan limits."
         />
         <div className={styles.featurePanel}>
           <aside className={styles.featurePanelIntro}>
@@ -347,52 +325,11 @@ export default async function PricingPage({
         </div>
       </section>
 
-      <section className={styles.savingsSection}>
-        <div className={styles.savingsPanel}>
-          <div className={styles.savingsCopy}>
-            <h2>
-              You could save <em>$240 a month</em> compared with tutoring.
-            </h2>
-            <p>Based on one $80 tutoring session each week.</p>
-            <a href="#plans" className={styles.savingsAction}>
-              See Max <ArrowIcon />
-            </a>
-          </div>
-          <div className={styles.costCard}>
-            <div className={styles.costHeader}>
-              <span>Monthly comparison</span>
-            </div>
-            <div className={styles.costRow}>
-              <div>
-                <strong>Private tutoring</strong>
-              </div>
-              <b>$320</b>
-            </div>
-            <div className={styles.costBar} aria-hidden="true"><span /></div>
-            <div className={`${styles.costRow} ${styles.maxCostRow}`}>
-              <div>
-                <strong>1500 Blueprint Max</strong>
-              </div>
-              <b>$80</b>
-            </div>
-            <div className={`${styles.costBar} ${styles.maxCostBar}`} aria-hidden="true"><span /></div>
-            <div className={styles.savingsTotal}>
-              <div>
-                <span>You save</span>
-                <strong>$240 / month</strong>
-              </div>
-              <b>75% less</b>
-            </div>
-            <p>Example only. Tutor rates vary.</p>
-          </div>
-        </div>
-      </section>
-
       <section className={styles.videoSection} id="stories">
         <div className={styles.storyHeading}>
           <SectionHeading
-            title="Hear from students who used the Blueprint."
-            description="Students share what helped them prepare, improve, and feel ready for test day."
+            title="Students explain what changed."
+            description="These students describe how they used the Blueprint and what happened to their scores."
             dark
           />
         </div>
@@ -401,7 +338,7 @@ export default async function PricingPage({
 
       <section className={styles.writtenStoriesSection}>
         <div className={styles.writtenStoriesIntro}>
-          <h2>More from students</h2>
+          <h2>More student results</h2>
         </div>
         <div className={styles.writtenStoryGrid}>
           {writtenStories.map((story) => (
@@ -428,9 +365,9 @@ export default async function PricingPage({
       <section className={styles.faqSection} id="faq">
         <div className={styles.faqLayout}>
           <div className={styles.faqIntro}>
-            <h2>A few things to know before you choose.</h2>
-            <Link href="/login" className={styles.faqLink}>
-              Already a member? Open the app <ArrowIcon />
+            <h2>Plan and billing questions</h2>
+            <Link href="/account/login?next=/ultimate" className={styles.faqLink}>
+              Sign in to your account <ArrowIcon />
             </Link>
           </div>
           <div className={styles.faqList}>
@@ -448,14 +385,11 @@ export default async function PricingPage({
       </section>
 
       <section className={styles.finalCta}>
-        <div className={styles.finalGrid} aria-hidden="true" />
         <div>
-          <h2>Start with Hobby.</h2>
-          <p>Take your first full-length test and try the Foundation course for free.</p>
+          <h2>Start with a free account.</h2>
+          <p>Take a full-length test and open the Foundation course without a card.</p>
         </div>
-        <a href="#plans" className={styles.finalButton}>
-          See plans <ArrowIcon />
-        </a>
+        <Link href="/account/sign-up?next=/ultimate" className={styles.finalButton}>Create free account <ArrowIcon /></Link>
       </section>
 
       <footer className={styles.footer}>
@@ -472,9 +406,9 @@ export default async function PricingPage({
             <div className={styles.footerColumn}>
               <h3>Explore</h3>
               <Link href="/">Home</Link>
-              <a href="#plans">Pricing</a>
+              <Link href="#plans">Pricing</Link>
               <Link href="/practice-test">Practice tests</Link>
-              <a href="#stories">Student stories</a>
+              <Link href="#stories">Student results</Link>
             </div>
             <div className={styles.footerColumn}>
               <h3>Study tools</h3>
@@ -486,13 +420,13 @@ export default async function PricingPage({
             <div className={styles.footerColumn}>
               <h3>Account</h3>
               <Link href="/account/sign-up">Create account</Link>
-              <Link href="/login">Log in</Link>
+              <Link href="/account/login?next=/ultimate">Log in</Link>
               <Link href="/ultimate">Open app</Link>
               <Link href="/history">Progress history</Link>
             </div>
             <div className={styles.footerColumn}>
               <h3>More</h3>
-              <a href="#faq">FAQ</a>
+              <Link href="#faq">Plan questions</Link>
               <Link href="/community">Community</Link>
               <Link href="/ultimate/planner">Study planner</Link>
               <Link href="/ultimate/live-calls">Weekly calls</Link>
@@ -630,7 +564,7 @@ function PlanDetails({ description, features }: { description: string; features:
 function BillingNotice({ state }: { state: string }) {
   const messages: Record<string, string> = {
     cancelled: "Checkout was cancelled. Nothing was charged.",
-    account: "This account cannot start a subscription.",
+    account: "This account is not active. Contact support before starting a subscription.",
     invalid: "Choose Core or Max to continue.",
     upgraded: "Your upgrade is active. Stripe charged the prorated difference now.",
     downgrade: "Your downgrade is scheduled for your next renewal. Current access stays active until then.",

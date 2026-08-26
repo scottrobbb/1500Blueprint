@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     default: "Ultimate | 1500 SAT Blueprint",
     template: "%s | 1500 Ultimate",
   },
-  description: "The private 1500 SAT Blueprint Ultimate workspace.",
+  description: "Courses, practice, tests, and progress for 1500 SAT Blueprint students.",
   robots: { index: false, follow: false },
 };
 

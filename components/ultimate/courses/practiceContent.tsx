@@ -23,7 +23,7 @@ export function renderPracticeExplanation(text: string): ReactNode {
     }
     const [, imageUrl, audioUrl, vimeoUrl] = match;
     if (imageUrl !== undefined) {
-      nodes.push(<img key={key++} src={imageUrl} alt="Explanation figure" className="my-3 max-h-80 w-auto max-w-full rounded-xl border border-navy/10 object-contain" />);
+      nodes.push(<img key={key++} src={imageUrl} alt="Explanation figure" width={1200} height={800} loading="lazy" className="my-3 h-auto max-h-80 w-auto max-w-full rounded-lg border border-navy/10 object-contain" />);
     } else if (audioUrl !== undefined) {
       nodes.push(<audio key={key++} controls src={audioUrl} className="my-3 w-full max-w-md" />);
     } else if (vimeoUrl !== undefined) {

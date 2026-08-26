@@ -20,7 +20,7 @@ const BASE_HREF = {
 function CategoryHeader({ title }: { title: string }) {
   return (
     <div className="mb-3.5 flex items-center gap-3">
-      <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-navy/55">{title}</h3>
+      <h3 className="text-sm font-semibold text-navy/65">{title}</h3>
       <span className="h-px flex-1 bg-navy/12" />
     </div>
   );
@@ -29,8 +29,8 @@ function CategoryHeader({ title }: { title: string }) {
 function IconTile({ name, large = true }: { name: DrillIconKey; large?: boolean }) {
   return (
     <span
-      className={`flex flex-none items-center justify-center bg-[#eef3fb] text-[#2b6fd6] ${
-        large ? "h-10 w-10 rounded-[11px]" : "h-[38px] w-[38px] rounded-[10px]"
+      className={`flex flex-none items-center justify-center text-brand-600 ${
+        large ? "h-9 w-9" : "h-8 w-8"
       }`}
     >
       <DrillIcon name={name} className={large ? "h-[21px] w-[21px]" : "h-5 w-5"} />
@@ -38,10 +38,10 @@ function IconTile({ name, large = true }: { name: DrillIconKey; large?: boolean 
   );
 }
 
-const cardBox = "flex h-full flex-col rounded-2xl bg-white p-[22px] shadow-pop";
+const cardBox = "flex h-full flex-col rounded-xl border border-navy/12 bg-white p-[22px]";
 const startBtn =
-  "inline-flex flex-1 items-center justify-center gap-[7px] rounded-[11px] bg-brand px-3 py-3 text-sm font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px";
-const ghostBtn = "rounded-[11px] bg-haze px-4 py-3 text-[13px] font-semibold text-navy transition-colors hover:bg-navy/10";
+  "inline-flex flex-1 items-center justify-center gap-[7px] rounded-lg bg-navy px-3 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-600";
+const ghostBtn = "rounded-lg border border-navy/12 bg-white px-4 py-3 text-[13px] font-semibold text-navy transition-colors hover:border-brand/30 hover:text-brand-600";
 
 function LockableCard({ locked, title, children }: { locked: boolean; title: string; children: ReactNode }) {
   if (!locked) return <>{children}</>;
@@ -50,10 +50,10 @@ function LockableCard({ locked, title, children }: { locked: boolean; title: str
       <div inert aria-hidden="true" className="h-full select-none opacity-30 grayscale">
         {children}
       </div>
-      <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 p-5 backdrop-blur-[1px]">
-        <div role="status" className="max-w-[220px] rounded-xl border border-gold/45 bg-[#fffaf0] px-5 py-4 text-center shadow-sm">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.15em] text-gold-600">Not published</div>
-          <p className="mt-1.5 text-[13px] font-semibold leading-5 text-navy/70">{title} is not currently available.</p>
+      <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80 p-5 backdrop-blur-[1px]">
+        <div role="status" className="max-w-[220px] rounded-lg border border-gold/40 bg-[#fffaf0] px-5 py-4 text-center">
+          <div className="text-[11px] font-semibold text-gold-600">Not published</div>
+          <p className="mt-1.5 text-[13px] font-medium leading-5 text-navy/70">{title} is not available.</p>
         </div>
       </div>
     </div>
@@ -109,9 +109,9 @@ export function DrillCatalog({
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-6 pb-12 pt-[30px]">
-      <div className="mb-[18px] flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-navy">Practice Drills</h2>
-        <span className="text-[13px] text-navy/50">Build streaks. Master one pattern at a time.</span>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-2">
+        <div><p className="text-xs font-semibold text-brand-600">Drill library</p><h2 className="mt-1 font-display text-2xl font-semibold tracking-[-0.02em] text-navy">Choose a drill</h2></div>
+        <span className="text-[13px] text-navy/52">Practice one SAT skill at a time.</span>
       </div>
 
       {isAdmin && hasLockedDrills && (
@@ -121,8 +121,8 @@ export function DrillCatalog({
       )}
 
       {!hasVisibleDrills ? (
-        <div className="rounded-2xl border border-navy/10 bg-white px-5 py-12 text-center text-sm font-semibold text-navy/55">
-          No drills are currently published.
+        <div className="rounded-xl border border-navy/12 bg-white px-5 py-12 text-center text-sm font-medium text-navy/55">
+          No drills are published right now.
         </div>
       ) : null}
 
@@ -144,7 +144,7 @@ export function DrillCatalog({
             </div>
           </div>
           <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Master grammar patterns by writing out your reasoning, graded on process, not just the pick.
+            Answer a grammar question, explain your reasoning, and get feedback on the process.
           </p>
           <div className="mt-4">
             <div className="mb-[7px] flex items-center justify-between text-[11.5px] font-semibold text-navy/50">
@@ -201,7 +201,7 @@ export function DrillCatalog({
             </div>
           </div>
           <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Comprehend hard SAT passages under time pressure, then recall the gist from memory.
+            Read an SAT passage under time pressure, then recall its main idea from memory.
           </p>
           <div className="mt-auto flex items-center gap-2.5 pt-[18px]">
             <Link href={href.reading} className={startBtn}>
@@ -229,7 +229,7 @@ export function DrillCatalog({
             </div>
           </div>
           <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Train your eye to spot elimination keywords before the timer drains. Pure speed reps.
+            Practice spotting the words that rule answer choices in or out.
           </p>
           <div className="mt-auto flex gap-2.5 pt-[18px]">
             <Link
@@ -261,20 +261,20 @@ export function DrillCatalog({
           name="target"
           tier="Medium"
           tierClass="text-success-600"
-          desc="Get 10 right before your lives run out."
+          desc="Answer 10 questions correctly before 3 misses."
           href={href.mathMedium}
           cta="Start Challenge"
-          ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
+          ctaClass="bg-navy text-white hover:bg-brand-600"
         />
         <MathCard
           locked={locked.targetedMath && !isAdmin}
           name="target"
           tier="Hard"
           tierClass="text-danger-600"
-          desc="Same rules, brutal questions. For 1500-chasers."
+          desc="Use the same rules with harder questions."
           href={href.mathHard}
           cta="Start Challenge"
-          ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
+          ctaClass="bg-navy text-white hover:bg-brand-600"
         />
         </> : null}
         {isAdmin || !locked.aiMath ? (
@@ -284,10 +284,10 @@ export function DrillCatalog({
           tier="Beta"
           tierClass="text-brand-600"
           title="AI Math"
-          desc="Fresh AI-generated questions tuned to your weak spots."
+          desc="Generate practice questions from your weaker math skills."
           href={href.aiMath}
           cta="Start Practice"
-          ctaClass="bg-brand text-white shadow-[0_2px_0_#2b8fe0]"
+          ctaClass="bg-navy text-white hover:bg-brand-600"
         />
         ) : null}
       </div>
@@ -310,7 +310,7 @@ export function DrillCatalog({
             </div>
           </div>
           <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Match definitions to terms in a timed session. Beat your best streak.
+            Match terms and definitions in a timed set.
           </p>
           <div className="mt-4 flex gap-4 text-xs text-navy/55">
             <span>
@@ -399,20 +399,20 @@ function MathCard({
 }) {
   return (
     <LockableCard locked={locked} title={title}>
-      <div className="flex h-full flex-col rounded-2xl bg-white p-5 shadow-pop">
+      <div className="flex h-full flex-col rounded-xl border border-navy/12 bg-white p-5">
       <div className="flex items-center gap-3">
         <IconTile name={name} large={false} />
         <div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-navy/40">
+          <div className="text-[11px] font-medium text-navy/45">
             Math <span className={tierClass}>· {tier}</span>
           </div>
-          <h4 className="mt-0.5 font-display text-[17px] font-bold tracking-[-0.01em] text-[#152347]">{title}</h4>
+          <h4 className="mt-0.5 font-display text-[17px] font-semibold tracking-[-0.01em] text-[#152347]">{title}</h4>
         </div>
       </div>
       <p className="mt-[13px] text-[13px] leading-[1.55] text-navy/60">{desc}</p>
       <Link
         href={href}
-        className={`mt-auto rounded-[11px] px-3 py-3 text-center text-[13.5px] font-bold transition-transform active:translate-y-px ${ctaClass}`}
+        className={`mt-auto rounded-lg px-3 py-3 text-center text-[13.5px] font-semibold transition-colors ${ctaClass}`}
       >
         {cta}
       </Link>

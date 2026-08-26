@@ -70,33 +70,33 @@ export function SubjectBankCatalogView({
   }
 
   return (
-    <div className="min-h-dvh bg-[#f5f6f8]">
+    <div className="min-h-dvh bg-[#f7f8fa]">
       <div className="mx-auto w-full max-w-[1120px] px-4 py-7 sm:px-7 sm:py-10">
         <Link
           href="/ultimate/bank"
-          className="inline-flex min-h-11 items-center gap-2 rounded-xl px-2 text-sm font-bold text-navy/55 transition-colors hover:bg-white hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-navy/55 transition-colors hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         >
           <ArrowLeftIcon className="h-4 w-4" /> Back to Question Bank
         </Link>
 
         <header className="mt-4 flex flex-wrap items-end justify-between gap-5">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-brand-600">Question Bank</p>
-            <h1 className="mt-1 font-display text-[34px] font-extrabold tracking-[-0.04em] text-ink sm:text-[42px]">
+            <p className="text-xs font-semibold text-brand-600">Question Bank</p>
+            <h1 className="mt-1 font-display text-[34px] font-semibold tracking-[-0.04em] text-ink sm:text-[40px]">
               {subjectTitle}
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-navy/50">
               Choose one or more SAT skills, then work through the questions in a focused practice session.
             </p>
           </div>
-          <div className="rounded-2xl border border-navy/10 bg-white px-4 py-3 text-right shadow-pop">
-            <p className="font-display text-2xl font-extrabold text-navy">{catalog.totalAvailable}</p>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-navy/40">questions available</p>
+          <div className="border-l border-navy/12 pl-5 text-right">
+            <p className="font-display text-2xl font-semibold tabular-nums text-navy">{catalog.totalAvailable}</p>
+            <p className="text-[11px] font-medium text-navy/45">questions available</p>
           </div>
         </header>
 
         {challengeLocked ? (
-          <UpgradePrompt currentPlan={currentPlan} requiredPlan="core" title="Challenge questions are locked" description={`Your Free ${subjectTitle} bank stays available. Core adds Scott's hardest transfer sets when you are ready for less predictable questions.`} features={["Challenge-level questions", "3,000 included submissions", "Daily drills"]} className="mt-6" />
+          <UpgradePrompt currentPlan={currentPlan} requiredPlan="core" title="Core adds Challenge questions" description={`Your Free ${subjectTitle} bank stays available. Core adds harder transfer questions, 3,000 submissions, and daily drills.`} features={["Challenge questions", "3,000 included submissions", "Daily drills"]} className="mt-6" />
         ) : null}
 
         <section aria-label="Practice filters" className="mt-7 flex flex-wrap gap-3">
@@ -125,17 +125,17 @@ export function SubjectBankCatalogView({
             <button
               type="button"
               onClick={() => setSelectedSkills(new Set())}
-              className="min-h-11 rounded-xl border border-navy/10 bg-white px-4 text-sm font-bold text-navy/55 transition-colors hover:border-brand/30 hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              className="min-h-11 rounded-lg border border-navy/12 bg-white px-4 text-sm font-semibold text-navy/55 transition-colors hover:border-brand/30 hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
             >
               Clear {selectedSkills.size} selected
             </button>
           )}
         </section>
 
-        <section className="mt-5 overflow-hidden rounded-[18px] border border-brand/20 bg-[linear-gradient(115deg,#eaf7ff_0%,#f8fbff_62%,#fff7da_100%)] p-5 shadow-pop sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+        <section className="mt-5 rounded-xl border border-navy/12 bg-white p-5 sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-600">Complete bank</p>
-            <h2 className="mt-1 font-display text-xl font-extrabold text-navy">Practice all {subjectTitle} topics</h2>
+            <p className="text-xs font-semibold text-brand-600">All topics</p>
+            <h2 className="mt-1 font-display text-xl font-semibold text-navy">Practice every {subjectTitle} skill</h2>
             <p className="mt-1 text-sm leading-5 text-navy/50">
               Start across all {skillCount} skills. Your active difficulty and completion filters still apply.
             </p>
@@ -143,18 +143,18 @@ export function SubjectBankCatalogView({
           {catalog.totalAvailable > 0 ? (
             <Link
               href={allPracticeHref}
-              className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-navy px-5 text-sm font-extrabold text-white transition-colors hover:bg-[#15396d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:mt-0"
+              className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:mt-0"
             >
               Start all topics <ArrowRightIcon className="h-4 w-4" />
             </Link>
           ) : (
-            <span className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-navy/10 px-5 text-sm font-bold text-navy/35 sm:mt-0">
+            <span className="mt-4 inline-flex min-h-11 items-center rounded-lg bg-navy/10 px-5 text-sm font-medium text-navy/40 sm:mt-0">
               No questions yet
             </span>
           )}
         </section>
 
-        <div className="mt-7 hidden grid-cols-[minmax(0,1fr)_220px_100px] gap-5 border-b border-navy/10 px-4 pb-3 text-[11px] font-bold uppercase tracking-[0.13em] text-navy/35 md:grid">
+        <div className="mt-7 hidden grid-cols-[minmax(0,1fr)_220px_100px] gap-5 border-b border-navy/10 px-4 pb-3 text-[11px] font-medium text-navy/40 md:grid">
           <span>Topic</span>
           <span>Progress</span>
           <span>Accuracy</span>
@@ -166,7 +166,7 @@ export function SubjectBankCatalogView({
             return (
               <section key={domain} aria-labelledby={slug(domain)} className="py-7 first:pt-6">
                 <div className="mb-3 flex items-center justify-between gap-4 px-1 sm:px-4">
-                  <h2 id={slug(domain)} className="font-display text-xl font-extrabold tracking-[-0.02em] text-ink">
+                  <h2 id={slug(domain)} className="font-display text-xl font-semibold tracking-[-0.02em] text-ink">
                     {domain}
                   </h2>
                   <span className="text-xs font-semibold text-navy/35">
@@ -197,7 +197,7 @@ export function SubjectBankCatalogView({
             </p>
             <Link
               href={practiceHref}
-              className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
+              className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
             >
               Practice selected <ArrowRightIcon className="h-4 w-4" />
             </Link>
@@ -223,7 +223,7 @@ function SkillRow({
 
   return (
     <li>
-      <label className={`grid min-h-[68px] cursor-pointer gap-3 rounded-2xl border px-4 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_220px_100px] md:items-center md:gap-5 ${
+      <label className={`grid min-h-[68px] cursor-pointer gap-3 rounded-lg border px-4 py-3 transition-colors md:grid-cols-[minmax(0,1fr)_220px_100px] md:items-center md:gap-5 ${
         checked
           ? "border-brand/35 bg-brand/[0.055]"
           : "border-transparent hover:border-navy/10 hover:bg-white"
@@ -237,7 +237,7 @@ function SkillRow({
             className="mt-0.5 h-5 w-5 flex-none accent-[#169bd5]"
           />
           <span>
-            <span className="block text-sm font-bold leading-5 text-navy sm:text-[15px]">{skill.name}</span>
+            <span className="block text-sm font-semibold leading-5 text-navy sm:text-[15px]">{skill.name}</span>
             {skill.available === 0 && <span className="mt-1 block text-xs font-semibold text-navy/35">Content queued</span>}
           </span>
         </span>
@@ -275,7 +275,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 appearance-none rounded-xl border border-navy/10 bg-white py-2 pl-4 pr-10 text-sm font-bold text-navy shadow-sm outline-none transition-colors hover:border-brand/30 focus:border-brand focus:ring-2 focus:ring-brand/15"
+        className="min-h-11 appearance-none rounded-lg border border-navy/12 bg-white py-2 pl-4 pr-10 text-sm font-semibold text-navy outline-none transition-colors hover:border-brand/30 focus:border-brand focus:ring-2 focus:ring-brand/15"
       >
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>{optionLabel}</option>

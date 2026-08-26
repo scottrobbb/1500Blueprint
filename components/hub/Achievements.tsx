@@ -8,16 +8,14 @@ import type {
 } from "@/lib/gamification";
 import { ChevronRightIcon } from "@/components/shell/icons";
 
-// One distinct accent per family so the row reads as seven different things, not
-// sixty-five identical shields.
 const CAT_COLOR: Record<AchievementCategory, string> = {
-  xp: "#e0a100",
-  level: "#3fa9f5",
-  streak: "#f97316",
-  drills: "#1b46a8",
+  xp: "#b78712",
+  level: "#2a89c7",
+  streak: "#b78712",
+  drills: "#2f435f",
   tests: "#16a34a",
-  goals: "#0d9488",
-  milestone: "#7c3aed",
+  goals: "#2a89c7",
+  milestone: "#2f435f",
 };
 
 function CatIcon({
@@ -88,7 +86,7 @@ function Medallion({ cat }: { cat: AchievementCategorySummary }) {
   return (
     <div className="flex flex-col items-center gap-2 text-center">
       <div
-        className="relative flex h-14 w-14 items-center justify-center rounded-2xl"
+        className="relative flex h-12 w-12 items-center justify-center rounded-lg"
         style={{
           background: active ? `${color}1f` : "rgba(11,42,91,0.05)",
           boxShadow: active ? `inset 0 0 0 1.5px ${color}40` : "inset 0 0 0 1.5px rgba(11,42,91,0.08)",
@@ -105,7 +103,7 @@ function Medallion({ cat }: { cat: AchievementCategorySummary }) {
       </div>
       <div>
         <div
-          className="text-[11px] font-bold uppercase tracking-[0.08em]"
+          className="text-[11px] font-semibold"
           style={{ color: active ? "#0b2a5b" : "rgba(11,42,91,0.4)" }}
         >
           {cat.label}
@@ -134,7 +132,7 @@ export function Achievements({ data }: { data: AchievementsView }) {
     <div className="overflow-hidden rounded-[14px] border border-navy/12 bg-white">
       <div className="flex items-center justify-between border-b border-navy/10 px-[18px] py-3.5">
         <div>
-          <h3 className="font-display text-[15px] font-bold text-navy">Achievements</h3>
+          <h3 className="font-display text-[15px] font-semibold text-navy">Achievements</h3>
           <div className="mt-0.5 text-xs text-navy/50">
             {data.unlocked} of {data.total} unlocked
           </div>
@@ -160,7 +158,7 @@ export function Achievements({ data }: { data: AchievementsView }) {
           <button
             type="button"
             onClick={() => setOpen(true)}
-            className="mt-4 flex w-full items-center gap-3 rounded-xl border border-navy/10 bg-haze px-4 py-3 text-left transition-colors hover:border-navy/20"
+            className="mt-4 flex w-full items-center gap-3 rounded-lg border border-navy/10 bg-haze px-4 py-3 text-left transition-colors hover:border-navy/20"
           >
             <span
               className="flex h-9 w-9 flex-none items-center justify-center rounded-lg"
@@ -169,8 +167,8 @@ export function Achievements({ data }: { data: AchievementsView }) {
               <CatIcon cat={data.nextUp.category} className="h-5 w-5" style={{ color: CAT_COLOR[data.nextUp.category] }} />
             </span>
             <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-navy/40">Next up</div>
-              <div className="truncate text-sm font-bold text-navy">{data.nextUp.label}</div>
+              <div className="text-[10px] font-medium text-navy/45">Next achievement</div>
+              <div className="truncate text-sm font-semibold text-navy">{data.nextUp.label}</div>
             </div>
             <div className="ml-auto hidden max-w-[45%] truncate text-right text-xs text-navy/55 sm:block">
               {data.nextUp.description}
@@ -186,14 +184,9 @@ export function Achievements({ data }: { data: AchievementsView }) {
 
 function AchievementsModal({ data, onClose }: { data: AchievementsView; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-6"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[85vh] w-full max-w-[620px] flex-col overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
+      <button type="button" aria-label="Close achievements" className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-label="Achievements" className="relative z-10 flex max-h-[85vh] w-full max-w-[620px] flex-col overflow-hidden rounded-t-xl bg-white sm:rounded-xl">
         <div className="flex items-center justify-between border-b border-navy/10 px-5 py-4">
           <div>
             <h3 className="font-display text-lg font-extrabold text-navy">Achievements</h3>

@@ -24,29 +24,24 @@ export default async function UltimateTestsPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-4 py-7 sm:px-7 sm:py-9">
-      <section className="relative mb-8 overflow-hidden rounded-[22px] bg-navy text-white shadow-[0_18px_50px_-30px_rgba(11,42,91,0.85)]">
-        <div aria-hidden="true" className="absolute -right-20 -top-28 h-80 w-80 rounded-full border-[46px] border-sky/[0.08]" />
-        <div aria-hidden="true" className="absolute bottom-0 right-[31%] h-32 w-32 translate-y-1/2 rounded-full border-[22px] border-brand/[0.08]" />
-
-        <div className="relative grid gap-7 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center lg:p-10">
+      <section className="mb-8 overflow-hidden rounded-xl border border-navy/12 bg-white">
+        <div className="grid gap-7 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-center">
           <div>
-            <div className="mb-5 flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-sky">
-                <TestsIcon className="h-5 w-5" />
-              </span>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky">Bluebook-style digital SAT</p>
+            <div className="mb-4 flex items-center gap-2.5">
+              <TestsIcon className="h-5 w-5 text-brand-600" />
+              <p className="text-xs font-semibold text-brand-600">Bluebook-style digital SAT</p>
             </div>
-            <h1 className="max-w-xl font-display text-[34px] font-extrabold leading-[1.03] tracking-[-0.04em] sm:text-[44px]">
-              Practice the real test, not just the questions.
+            <h1 className="max-w-xl font-display text-[34px] font-semibold leading-[1.05] tracking-[-0.04em] text-ink sm:text-[42px]">
+              Full-length practice tests
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/62 sm:text-[15px]">
-              Full adaptive modules, official timing, a built-in break, and detailed score reports in a focused exam workspace.
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-navy/58 sm:text-[15px]">
+              Take adaptive modules with SAT timing, a scheduled break, and a score report after you finish.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               {launchTest ? (
                 <Link
                   href={`/practice-test/${launchTest.slug}?workspace=ultimate`}
-                  className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-colors hover:bg-[#4db2f8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 >
                   Start a full test <ChevronRightIcon className="h-4 w-4" />
                 </Link>
@@ -54,7 +49,7 @@ export default async function UltimateTestsPage() {
               {progress.testsDone > 0 ? (
                 <Link
                   href="/ultimate/tests/completed"
-                  className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.07] px-5 text-sm font-bold text-white transition-colors hover:bg-white/[0.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-navy/15 bg-white px-5 text-sm font-semibold text-navy transition-colors hover:border-brand/35 hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 >
                   View score history <ChevronRightIcon className="h-4 w-4" />
                 </Link>
@@ -62,25 +57,25 @@ export default async function UltimateTestsPage() {
             </div>
           </div>
 
-          <div className="rounded-[18px] border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm sm:p-6">
+          <div className="rounded-lg border border-navy/10 bg-haze/70 p-5 sm:p-6">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Your best score</p>
-                <strong className="mt-1 block font-display text-5xl font-extrabold tracking-[-0.05em]">
+                <p className="text-xs font-medium text-navy/48">Best score</p>
+                <strong className="mt-1 block font-display text-5xl font-semibold tabular-nums tracking-[-0.05em] text-ink">
                   {progress.bestScore?.toLocaleString() ?? "-"}
                 </strong>
               </div>
               {progress.improvement != null ? (
-                <span className={`mb-1 rounded-full px-2.5 py-1 text-xs font-extrabold ${progress.improvement > 0 ? "bg-[#d9fae8] text-[#147a40]" : "bg-white/10 text-white/65"}`}>
+                <span className={`mb-1 rounded-full px-2.5 py-1 text-xs font-semibold ${progress.improvement > 0 ? "bg-[#d9fae8] text-[#147a40]" : "bg-white text-navy/58"}`}>
                   {progress.improvement >= 0 ? "+" : ""}{progress.improvement} points
                 </span>
               ) : null}
             </div>
-            <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-              <div className="h-full rounded-full bg-sky" style={{ width: `${scoreProgress}%` }} />
+            <div className="mt-5 h-2 overflow-hidden rounded-full bg-navy/10">
+              <div className="h-full rounded-full bg-brand" style={{ width: `${scoreProgress}%` }} />
             </div>
-            <div className="mt-2 flex justify-between text-[10px] font-semibold text-white/35"><span>400</span><span>1600</span></div>
-            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-5">
+            <div className="mt-2 flex justify-between text-[10px] font-medium text-navy/38"><span>400</span><span>1600</span></div>
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-navy/10 pt-5">
               <HeroMetric value={progress.testsDone.toLocaleString()} label="tests completed" />
               <HeroMetric value={availableCount.toLocaleString()} label="tests available" />
             </div>
@@ -89,19 +84,19 @@ export default async function UltimateTestsPage() {
       </section>
 
       {access.plan === "free" ? (
-        <UpgradePrompt currentPlan="free" requiredPlan="core" title="Unlock your next full-length test" description="Use the free test as your baseline, then compare a second adaptive score and add daily drills between attempts." features={["2 full-length tests", "Daily skill drills", "Challenge Question sets"]} className="mb-8" />
+        <UpgradePrompt currentPlan="free" requiredPlan="core" title="Core adds a second full-length test" description="Use the free test as a baseline, then compare it with another adaptive score after daily practice." features={["2 full-length tests", "Daily skill drills", "Challenge questions"]} className="mb-8" />
       ) : access.plan === "core" ? (
-        <UpgradePrompt currentPlan="core" requiredPlan="max" title="Measure every stage of your score climb" description="Max opens the complete test library, every explanation, and the planner that turns each score report into next-week assignments." features={["Complete test library", "All advanced courses", "Personal study planner"]} className="mb-8" />
+        <UpgradePrompt currentPlan="core" requiredPlan="max" title="Max adds the full test library" description="Max includes all 4 tests, the complete course library, and a planner that uses your score reports." features={["4 full-length tests", "All advanced courses", "Personal study planner"]} className="mb-8" />
       ) : null}
 
       <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">Test library</p>
-          <h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">Choose your next test</h2>
-          <p className="mt-1 text-sm text-navy/50">Set aside about 2 hours and 14 minutes for the full experience.</p>
+          <p className="text-xs font-semibold text-brand-600">Test library</p>
+          <h2 className="mt-1 font-display text-2xl font-semibold tracking-[-0.025em] text-ink">Choose a test</h2>
+          <p className="mt-1 text-sm text-navy/55">A full test takes about 2 hours and 14 minutes.</p>
         </div>
         {progress.testsDone > 0 ? (
-          <Link href="/ultimate/tests/completed" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-navy/10 bg-white px-4 text-sm font-bold text-navy transition-colors hover:border-brand/35 hover:text-brand-600">
+          <Link href="/ultimate/tests/completed" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-navy/12 bg-white px-4 text-sm font-semibold text-navy transition-colors hover:border-brand/35 hover:text-brand-600">
             All completed tests <ChevronRightIcon className="h-4 w-4" />
           </Link>
         ) : null}
@@ -131,11 +126,11 @@ export default async function UltimateTestsPage() {
 
             return (
               <li key={test.slug}>
-                <article className={`group relative h-full overflow-hidden rounded-[18px] border bg-white transition-[transform,border-color,box-shadow] duration-200 motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_14px_36px_-24px_rgba(11,42,91,0.55)]"}`}>
+                <article className={`group relative h-full overflow-hidden rounded-xl border bg-white transition-colors duration-200 ${locked ? "border-gold/25" : "border-navy/12 hover:border-brand/35"}`}>
                   <div className={`h-1 w-full ${best != null ? "bg-success" : locked ? "bg-navy/15" : "bg-brand"}`} />
                   <div className="p-5 sm:p-6">
                     <div className="flex items-start gap-4">
-                    <span className={`grid h-12 w-12 flex-none place-items-center rounded-[14px] font-display text-xl font-extrabold ${locked ? "bg-haze text-navy/35" : "bg-ice text-brand-600"}`}>
+                    <span className={`grid h-10 w-10 flex-none place-items-center rounded-lg border font-display text-lg font-semibold ${locked ? "border-navy/10 bg-haze text-navy/35" : "border-brand/15 bg-ice text-brand-600"}`}>
                       {number}
                     </span>
                     <div className="min-w-0 flex-1">
@@ -192,10 +187,8 @@ export default async function UltimateTestsPage() {
         </ul>
       )}
 
-      <Link href={access.entitlements.dailyDrillLimit === null ? "/pricing" : "/ultimate/drills"} className="group mt-6 flex items-center gap-4 rounded-[18px] border border-brand/20 bg-ice/50 p-4 text-navy transition-colors hover:border-brand/40 hover:bg-ice sm:p-5">
-        <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-white text-brand-600 shadow-sm">
-          <TestsIcon className="h-5 w-5" />
-        </span>
+      <Link href={access.entitlements.dailyDrillLimit === null ? "/pricing" : "/ultimate/drills"} className="group mt-6 flex items-center gap-4 rounded-xl border border-brand/20 bg-ice/40 p-4 text-navy transition-colors hover:border-brand/40 hover:bg-ice sm:p-5">
+        <TestsIcon className="h-5 w-5 flex-none text-brand-600" />
         <span className="min-w-0 flex-1">
           <strong className="block font-display text-sm">{access.entitlements.dailyDrillLimit === null ? "Unlock daily drills with Core" : "Not ready for a full test?"}</strong>
           <span className="mt-0.5 block text-xs leading-5 text-navy/50">{access.entitlements.dailyDrillLimit === null ? "Build one SAT pattern at a time between full-test checkpoints." : "Practice one skill at a time and come back when you have a full testing window."}</span>
@@ -209,8 +202,8 @@ export default async function UltimateTestsPage() {
 function HeroMetric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <strong className="block font-display text-xl font-extrabold text-white">{value}</strong>
-      <span className="mt-0.5 block text-[10px] font-medium text-white/40">{label}</span>
+      <strong className="block font-display text-xl font-semibold tabular-nums text-navy">{value}</strong>
+      <span className="mt-0.5 block text-[10px] font-medium text-navy/42">{label}</span>
     </div>
   );
 }

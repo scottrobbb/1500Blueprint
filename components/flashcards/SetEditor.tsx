@@ -405,7 +405,9 @@ function CardField({
           <img
             src={imageUrl}
             alt={`${fieldLabel} figure`}
-            className="max-h-24 rounded-card border border-navy/15 object-contain"
+            width={800}
+            height={600}
+            className="h-auto max-h-24 rounded-card border border-navy/15 object-contain"
           />
           <button
             type="button"

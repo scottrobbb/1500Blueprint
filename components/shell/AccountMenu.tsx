@@ -18,8 +18,6 @@ type Props = {
   billing?: boolean;
 };
 
-// The nav avatar: clicking it opens a small menu with profile-photo controls and
-// the sign-out action (a plain form POST to the logout route).
 export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = false, tone = "light", test = false, billing = false }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -39,10 +37,10 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
 
   function onPick(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-picking the same file after a remove
+    e.target.value = "";
     if (!file) return;
     setError(null);
-    setOpen(false); // hand off to the cropper modal
+    setOpen(false);
     setPending(file);
   }
 
@@ -55,7 +53,7 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
     setBusy(false);
     if (!res.ok) {
       setError("Upload failed. Use an image under 5 MB.");
-      return; // keep the cropper open so they can retry
+      return;
     }
     setPending(null);
     router.refresh();
@@ -67,7 +65,7 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
     const res = await fetch("/api/profile/avatar", { method: "DELETE" });
     setBusy(false);
     if (!res.ok) {
-      setError("Could not remove. Please try again.");
+      setError("The photo could not be removed. Try again.");
       return;
     }
     setOpen(false);
@@ -83,11 +81,11 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
         aria-expanded={open}
         aria-label="Account menu"
         className={wide
-          ? `flex min-h-14 w-full cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 ${tone === "dark" ? "hover:bg-white/[0.07] focus-visible:outline-sky" : "hover:bg-navy/[0.045] focus-visible:outline-brand"}`
+          ? `flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 ${tone === "dark" ? "hover:bg-white/[0.07] focus-visible:outline-sky" : "hover:bg-navy/[0.045] focus-visible:outline-brand"}`
           : "inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"}
       >
         <Avatar src={avatarUrl} initials={initials} alt={name} className={wide ? `h-10 w-10 flex-none border-2 text-[13px] ${tone === "dark" ? "border-white/20 shadow-[0_0_0_1px_rgba(255,255,255,0.08)]" : "border-white shadow-[0_0_0_1px_rgba(11,42,91,0.15)]"}` : "h-[34px] w-[34px] border-2 border-white text-[13px] shadow-[0_0_0_1px_rgba(11,42,91,0.15)]"} />
-        {wide ? <><span className="min-w-0 flex-1"><strong className={`block truncate text-xs font-extrabold ${tone === "dark" ? "text-white/90" : "text-navy"}`}>{name}</strong><span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-[0.1em] text-white shadow-sm ${planBadgeBg(plan)}`}>{plan}{test ? " · Test" : ""}</span></span><ChevronIcon className={`h-4 w-4 flex-none transition-transform duration-200 motion-reduce:transition-none ${tone === "dark" ? "text-white/40" : "text-navy/35"} ${open ? "rotate-180" : ""}`} /></> : null}
+        {wide ? <><span className="min-w-0 flex-1"><strong className={`block truncate text-xs font-semibold ${tone === "dark" ? "text-white/90" : "text-navy"}`}>{name}</strong><span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[9px] font-semibold text-white ${planBadgeBg(plan)}`}>{plan}{test ? " · Test" : ""}</span></span><ChevronIcon className={`h-4 w-4 flex-none transition-transform duration-200 motion-reduce:transition-none ${tone === "dark" ? "text-white/40" : "text-navy/35"} ${open ? "rotate-180" : ""}`} /></> : null}
       </button>
 
       {open && typeof document !== "undefined" ? createPortal(
@@ -102,17 +100,17 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
             role="dialog"
             aria-modal="true"
             aria-label="Your account"
-            className="fixed left-1/2 top-1/2 z-[60] w-[min(calc(100vw-2rem),360px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[22px] border border-navy/12 bg-white shadow-[0_28px_80px_-28px_rgba(11,42,91,0.65)]"
+            className="fixed left-1/2 top-1/2 z-[60] w-[min(calc(100vw-2rem),360px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-navy/12 bg-white shadow-[0_18px_50px_-28px_rgba(19,35,59,0.45)]"
           >
             <div className="relative flex items-center gap-4 border-b border-navy/10 px-5 py-5">
               <Avatar src={avatarUrl} initials={initials} alt={name} className="h-12 w-12 flex-none text-sm" />
               <div className="min-w-0 pr-9">
-                <div className="truncate font-display text-lg font-extrabold text-navy">{name}</div>
+                <div className="truncate font-display text-lg font-semibold text-navy">{name}</div>
                 <div className="mt-1 text-sm font-medium text-navy/50">
                   Level {level} · {plan}
                 </div>
               </div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close account dialog" className="absolute right-3 top-3 grid h-11 w-11 cursor-pointer place-items-center rounded-xl text-navy/40 transition-colors duration-200 hover:bg-navy/5 hover:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><CloseIcon className="h-5 w-5" /></button>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close account dialog" className="absolute right-3 top-3 grid h-11 w-11 cursor-pointer place-items-center rounded-lg text-navy/40 transition-colors duration-200 hover:bg-navy/5 hover:text-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><CloseIcon className="h-5 w-5" /></button>
             </div>
 
             <button

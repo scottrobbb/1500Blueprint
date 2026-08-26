@@ -58,15 +58,15 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
             <PlanSchedule plan={plan} today={today} />
             <aside className="space-y-5 lg:sticky lg:top-6">
               <FocusPanel plan={plan} />
-              <section className="rounded-[18px] border border-navy/10 bg-white p-5 shadow-pop">
-                <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Plan controls</p>
-                <h2 className="mt-1 font-display text-lg font-extrabold text-navy">Keep it honest.</h2>
-                <p className="mt-2 text-sm leading-6 text-navy/50">Retune after a score change, a missed day, or a strong practice session. Completed work stays in your learning history.</p>
+              <section className="rounded-xl border border-navy/12 bg-white p-5">
+                <p className="text-xs font-semibold text-brand-600">Plan settings</p>
+                <h2 className="mt-1 font-display text-lg font-semibold text-navy">Update this week</h2>
+                <p className="mt-2 text-sm leading-6 text-navy/55">Rebuild the schedule after a new score or a missed day. Completed work remains in your history.</p>
                 <div className="mt-4 grid gap-2">
-                  <button type="button" disabled={retuning} onClick={() => void retunePlan()} className="min-h-11 cursor-pointer rounded-xl bg-navy px-4 text-sm font-extrabold text-white transition-colors hover:bg-navy-700 disabled:cursor-wait disabled:opacity-60">
-                    {retuning ? "Reading your progress…" : "Retune from my progress"}
+                  <button type="button" disabled={retuning} onClick={() => void retunePlan()} className="min-h-11 cursor-pointer rounded-lg bg-navy px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-600 disabled:cursor-wait disabled:opacity-60">
+                    {retuning ? "Updating plan…" : "Update from my progress"}
                   </button>
-                  <button type="button" onClick={() => setSetupOpen(true)} className="min-h-11 cursor-pointer rounded-xl border border-navy/15 px-4 text-sm font-bold text-navy transition-colors hover:border-brand/45 hover:text-brand-600">
+                  <button type="button" onClick={() => setSetupOpen(true)} className="min-h-11 cursor-pointer rounded-lg border border-navy/15 px-4 text-sm font-semibold text-navy transition-colors hover:border-brand/45 hover:text-brand-600">
                     Edit schedule and goal
                   </button>
                 </div>
@@ -77,12 +77,12 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
           </div>
         </>
       ) : profile ? (
-        <section className="grid min-h-72 place-items-center rounded-[20px] border border-dashed border-brand/35 bg-ice px-6 text-center">
+        <section className="grid min-h-72 place-items-center rounded-xl border border-dashed border-navy/15 bg-white px-6 text-center">
           <div className="max-w-md">
-            <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-brand-600"><CalendarIcon className="h-6 w-6" /></span>
-            <h2 className="mt-4 font-display text-2xl font-extrabold text-navy">Your schedule needs a fresh read.</h2>
-            <p className="mt-2 text-sm leading-6 text-navy/50">Generate a new week from your current lessons, practice accuracy, and test history.</p>
-            <button type="button" disabled={retuning} onClick={() => void retunePlan()} className="mt-5 min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white disabled:opacity-60">{retuning ? "Building…" : "Build my week"}</button>
+            <CalendarIcon className="mx-auto h-7 w-7 text-brand-600" />
+            <h2 className="mt-4 font-display text-2xl font-semibold text-navy">Build a new week</h2>
+            <p className="mt-2 text-sm leading-6 text-navy/52">Use your current lessons, practice accuracy, and test history.</p>
+            <button type="button" disabled={retuning} onClick={() => void retunePlan()} className="mt-5 min-h-11 cursor-pointer rounded-lg bg-navy px-5 text-sm font-semibold text-white disabled:opacity-60">{retuning ? "Building…" : "Build this week"}</button>
           </div>
         </section>
       ) : (
@@ -107,14 +107,13 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
 
 function ExpiredPlan({ profile, onEdit }: { profile: StudyPlannerProfile; onEdit: () => void }) {
   return (
-    <section className="relative overflow-hidden rounded-[22px] bg-[linear-gradient(125deg,#0b2a5b,#174778)] p-7 text-white shadow-[0_22px_60px_-40px_rgba(11,42,91,0.95)] sm:p-10">
-      <div aria-hidden="true" className="absolute -right-16 -top-24 h-64 w-64 rounded-full border-[38px] border-sky/[0.08]" />
-      <div className="relative max-w-2xl">
-        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-sky"><CalendarIcon className="h-6 w-6" /></span>
-        <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.17em] text-sky">Plan complete</p>
-        <h2 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.035em]">Choose the next test day.</h2>
-        <p className="mt-3 text-sm leading-6 text-white/62">Your {formatDate(profile.testDate)} SAT date has passed. Add the next date and the planner will rebuild from everything you learned instead of starting over.</p>
-        <button type="button" onClick={onEdit} className="mt-6 min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white shadow-[0_2px_0_#2b8fe0] hover:bg-[#4db2f8]">Set my next SAT date</button>
+    <section className="rounded-xl border border-navy/12 bg-white p-7 sm:p-10">
+      <div className="max-w-2xl">
+        <CalendarIcon className="h-6 w-6 text-brand-600" />
+        <p className="mt-5 text-xs font-semibold text-brand-600">Previous test date passed</p>
+        <h2 className="mt-2 font-display text-3xl font-semibold tracking-[-0.035em] text-ink">Choose your next SAT date</h2>
+        <p className="mt-3 text-sm leading-6 text-navy/58">Your {formatDate(profile.testDate)} test date has passed. Add the next date to build a new schedule from your saved work.</p>
+        <button type="button" onClick={onEdit} className="mt-6 min-h-11 cursor-pointer rounded-lg bg-navy px-5 text-sm font-semibold text-white hover:bg-brand-600">Set next SAT date</button>
       </div>
     </section>
   );
@@ -127,57 +126,56 @@ function ScoreRunway({ plan, nextTask }: { plan: StudyPlan; nextTask: StudyPlanT
     : Math.max(0, Math.min(100, ((plan.currentScore - 400) / Math.max(1, plan.goalScore - 400)) * 100));
 
   return (
-    <section className="relative overflow-hidden rounded-[22px] bg-[linear-gradient(125deg,#0b2a5b,#174778)] text-white shadow-[0_22px_60px_-40px_rgba(11,42,91,0.95)]">
-      <div aria-hidden="true" className="absolute -right-16 -top-28 h-72 w-72 rounded-full border-[44px] border-sky/[0.08]" />
-      <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_310px] lg:items-center">
+    <section className="overflow-hidden rounded-xl border border-navy/12 bg-white">
+      <div className="grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-sky/20 bg-sky/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.15em] text-sky">{phase.label}</span>
-            <span className="text-xs font-semibold text-white/45">{plan.daysToTest} {plan.daysToTest === 1 ? "day" : "days"} to test day</span>
+            <span className="rounded-full border border-brand/20 bg-ice px-2.5 py-1 text-[10px] font-semibold text-brand-700">{phase.label}</span>
+            <span className="text-xs font-medium text-navy/45">{plan.daysToTest} {plan.daysToTest === 1 ? "day" : "days"} to test day</span>
           </div>
-          <h2 className="mt-4 max-w-2xl font-display text-[30px] font-extrabold leading-[1.05] tracking-[-0.04em] sm:text-[38px]">{phase.headline}</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/62">{phase.description}</p>
+          <h2 className="mt-4 max-w-2xl font-display text-[30px] font-semibold leading-[1.05] tracking-[-0.04em] text-ink sm:text-[36px]">{phase.headline}</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-navy/58">{phase.description}</p>
 
-          <div className="mt-6 max-w-2xl rounded-[16px] border border-white/10 bg-white/[0.07] p-4">
+          <div className="mt-6 max-w-2xl rounded-lg border border-navy/10 bg-haze/60 p-4">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-[0.13em] text-white/42">Current signal</span>
-                <strong className="mt-1 block font-display text-2xl font-extrabold">{plan.currentScore?.toLocaleString() ?? "Baseline needed"}</strong>
+                <span className="text-[10px] font-medium text-navy/45">Current score</span>
+                <strong className="mt-1 block font-display text-2xl font-semibold tabular-nums text-ink">{plan.currentScore?.toLocaleString() ?? "Baseline needed"}</strong>
               </div>
               <div className="text-right">
-                <span className="text-[10px] font-bold uppercase tracking-[0.13em] text-sky">Goal</span>
-                <strong className="mt-1 block font-display text-2xl font-extrabold text-sky">{plan.goalScore.toLocaleString()}</strong>
+                <span className="text-[10px] font-medium text-brand-600">Goal</span>
+                <strong className="mt-1 block font-display text-2xl font-semibold tabular-nums text-brand-600">{plan.goalScore.toLocaleString()}</strong>
               </div>
             </div>
-            <div className="relative mt-4 h-2 overflow-hidden rounded-full bg-white/12">
-              <div className="h-full rounded-full bg-[linear-gradient(90deg,#3fa9f5,#7ccbff)] transition-[width]" style={{ width: `${scoreProgress}%` }} />
+            <div className="relative mt-4 h-2 overflow-hidden rounded-full bg-navy/10">
+              <div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${scoreProgress}%` }} />
             </div>
-            <div className="mt-2 flex justify-between text-[10px] font-semibold text-white/35">
+            <div className="mt-2 flex justify-between text-[10px] font-medium text-navy/42">
               <span>{plan.scoreGap == null ? "Take a baseline test to measure the gap" : `${plan.scoreGap.toLocaleString()} points to close`}</span>
               <span>{formatDate(plan.endsOn)}</span>
             </div>
           </div>
         </div>
 
-        <div className="rounded-[18px] border border-white/10 bg-white/[0.08] p-5 backdrop-blur-sm">
+        <div className="rounded-lg border border-navy/10 bg-haze/60 p-5">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/45">This plan</p>
-              <strong className="mt-1 block font-display text-3xl font-extrabold">{plan.progress.percent}%</strong>
+              <p className="text-[10px] font-medium text-navy/45">This week</p>
+              <strong className="mt-1 block font-display text-3xl font-semibold tabular-nums text-ink">{plan.progress.percent}%</strong>
             </div>
             <ProgressRing value={plan.progress.percent} />
           </div>
-          <p className="mt-3 text-xs font-semibold text-white/50">{plan.progress.completed} of {plan.progress.target} assignments complete · {formatMinutes(plan.totalMinutes)}</p>
+          <p className="mt-3 text-xs font-medium text-navy/48">{plan.progress.completed} of {plan.progress.target} assignments complete · {formatMinutes(plan.totalMinutes)}</p>
           {nextTask ? (
-            <div className="mt-5 border-t border-white/10 pt-5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-sky">Next move</p>
-              <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-5">{nextTask.title}</h3>
-              <Link href={nextTask.href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand px-4 text-sm font-extrabold text-white transition-colors hover:bg-[#4db2f8]">
+            <div className="mt-5 border-t border-navy/10 pt-5">
+              <p className="text-[10px] font-medium text-brand-600">Next assignment</p>
+              <h3 className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-ink">{nextTask.title}</h3>
+              <Link href={nextTask.href} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-navy px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-600">
                 {nextTask.progress.completed > 0 ? "Continue assignment" : "Start assignment"}<ChevronRightIcon className="h-4 w-4" />
               </Link>
             </div>
           ) : (
-            <p className="mt-5 border-t border-white/10 pt-5 text-sm font-semibold text-sky">Week complete. Retune when you are ready for the next block.</p>
+            <p className="mt-5 border-t border-navy/10 pt-5 text-sm font-medium text-navy/58">This week is complete. Build the next schedule when you are ready.</p>
           )}
         </div>
       </div>
@@ -192,11 +190,11 @@ function PlanSchedule({ plan, today }: { plan: StudyPlan; today: string }) {
   })), [plan]);
 
   return (
-    <section className="overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-pop">
+    <section className="overflow-hidden rounded-xl border border-navy/12 bg-white">
       <header className="flex flex-wrap items-end justify-between gap-3 border-b border-navy/10 px-5 py-5 sm:px-6">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Your next seven days</p>
-          <h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">Do the work in this order.</h2>
+          <p className="text-xs font-semibold text-brand-600">Next 7 days</p>
+          <h2 className="mt-1 font-display text-2xl font-semibold tracking-[-0.025em] text-ink">This week&apos;s assignments</h2>
         </div>
         <span className="rounded-full bg-haze px-3 py-1.5 text-xs font-bold text-navy/45">{formatDate(plan.startsOn)}–{formatDate(plan.endsOn)}</span>
       </header>
@@ -232,25 +230,25 @@ function PlanSchedule({ plan, today }: { plan: StudyPlan; today: string }) {
 function PlanTaskCard({ task }: { task: StudyPlanTask }) {
   const label = taskLabel(task.kind);
   return (
-    <article className={`group rounded-[16px] border p-4 transition-colors ${task.completed ? "border-success/20 bg-success-bg/55" : "border-navy/10 bg-white hover:border-brand/30"}`}>
+    <article className={`group rounded-lg border p-4 transition-colors ${task.completed ? "border-success/20 bg-success-bg/55" : "border-navy/10 bg-white hover:border-brand/30"}`}>
       <div className="flex items-start gap-3.5">
-        <span className={`grid h-10 w-10 flex-none place-items-center rounded-xl ${task.completed ? "bg-success text-white" : "bg-ice text-brand-600"}`}>
+        <span className={`grid h-9 w-9 flex-none place-items-center rounded-lg ${task.completed ? "bg-success text-white" : "bg-ice text-brand-600"}`}>
           {task.completed ? <CheckIcon className="h-5 w-5" /> : <TaskIcon kind={task.kind} />}
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-brand-600">{label}</span>
+            <span className="text-[10px] font-semibold text-brand-600">{label}</span>
             <span className="text-[10px] font-semibold text-navy/35">{task.estimatedMinutes} min{task.section ? ` · ${task.section === "math" ? "Math" : "Reading & Writing"}` : ""}</span>
           </div>
-          <h3 className="mt-1 text-sm font-extrabold leading-5 text-ink sm:text-[15px]">{task.title}</h3>
+          <h3 className="mt-1 text-sm font-semibold leading-5 text-ink sm:text-[15px]">{task.title}</h3>
           <p className="mt-1 text-xs leading-5 text-navy/50">{task.description}</p>
-          <p className="mt-2 text-[11px] font-semibold leading-4 text-navy/42">Why this: {task.reason}</p>
+          <p className="mt-2 text-[11px] font-medium leading-4 text-navy/45">Reason: {task.reason}</p>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <TaskProgress task={task} />
             {task.completed ? (
               <span className="ml-auto inline-flex min-h-9 items-center gap-1.5 text-xs font-extrabold text-success-600"><CheckIcon className="h-4 w-4" /> Complete</span>
             ) : (
-              <Link href={task.href} className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-navy px-3.5 text-xs font-extrabold text-white transition-colors hover:bg-brand-600">
+              <Link href={task.href} className="ml-auto inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-navy px-3.5 text-xs font-semibold text-white transition-colors hover:bg-brand-600">
                 {task.progress.completed > 0 ? "Continue" : "Start"}<ChevronRightIcon className="h-3.5 w-3.5" />
               </Link>
             )}
@@ -277,9 +275,9 @@ function TaskProgress({ task }: { task: StudyPlanTask }) {
 
 function FocusPanel({ plan }: { plan: StudyPlan }) {
   return (
-    <section className="rounded-[18px] border border-navy/10 bg-white p-5 shadow-pop">
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Why this week</p>
-      <h2 className="mt-1 font-display text-lg font-extrabold text-navy">Your highest-leverage skills</h2>
+    <section className="rounded-xl border border-navy/12 bg-white p-5">
+      <p className="text-xs font-semibold text-brand-600">This week</p>
+      <h2 className="mt-1 font-display text-lg font-semibold text-navy">Priority skills</h2>
       {plan.focusAreas.length > 0 ? (
         <ol className="mt-4 space-y-4">
           {plan.focusAreas.slice(0, 3).map((focus, index) => (
@@ -303,19 +301,19 @@ function FocusPanel({ plan }: { plan: StudyPlan }) {
       ) : (
         <p className="mt-3 text-sm leading-6 text-navy/50">Complete a Question Bank session and your next plan will target the clearest weaknesses.</p>
       )}
-      <div className="mt-5 rounded-xl bg-ice/70 p-3 text-[11px] font-semibold leading-5 text-navy/50">The planner treats lessons as instruction and checked questions as evidence. It will not mark a skill mastered because you opened a page.</div>
+      <div className="mt-5 rounded-lg bg-ice/70 p-3 text-[11px] font-medium leading-5 text-navy/55">Lessons count as instruction. Submitted answers count as practice evidence.</div>
     </section>
   );
 }
 
 function PlannerBlankState({ onStart }: { onStart: () => void }) {
   return (
-    <section className="rounded-[20px] border border-dashed border-brand/35 bg-ice p-7 text-center sm:p-10">
-      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-white text-brand-600 shadow-sm"><CalendarIcon className="h-7 w-7" /></span>
-      <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">Max study planner</p>
-      <h2 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.035em] text-navy">Give every study day a job.</h2>
-      <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-navy/55">Set your test date, score target, and real availability. We will turn your current performance into a seven-day learn → practice → test loop.</p>
-      <button type="button" onClick={onStart} className="mt-6 min-h-11 cursor-pointer rounded-xl bg-brand px-6 text-sm font-extrabold text-white shadow-[0_2px_0_#2b8fe0]">Build my plan</button>
+    <section className="rounded-xl border border-dashed border-navy/15 bg-white p-7 text-center sm:p-10">
+      <CalendarIcon className="mx-auto h-7 w-7 text-brand-600" />
+      <p className="mt-5 text-xs font-semibold text-brand-600">Max study planner</p>
+      <h2 className="mt-2 font-display text-3xl font-semibold tracking-[-0.035em] text-navy">Build your first week</h2>
+      <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-navy/55">Add your test date, score goal, available study days, and preferred full-test day.</p>
+      <button type="button" onClick={onStart} className="mt-6 min-h-11 cursor-pointer rounded-lg bg-navy px-6 text-sm font-semibold text-white hover:bg-brand-600">Set up planner</button>
     </section>
   );
 }
@@ -367,18 +365,18 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-end bg-navy/55 p-0 backdrop-blur-[2px] sm:place-items-center sm:p-5" role="dialog" aria-modal="true" aria-labelledby="planner-setup-title">
-      <form onSubmit={submit} className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-t-[22px] bg-white shadow-2xl sm:rounded-[22px]">
+      <form onSubmit={submit} className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-t-xl bg-white shadow-[0_18px_50px_-24px_rgba(19,35,59,.55)] sm:rounded-xl">
         <div className="flex items-start justify-between gap-4 border-b border-navy/10 p-5 sm:p-7">
           <div>
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">{profile ? "Plan settings" : "Build your baseline"}</p>
-            <h2 id="planner-setup-title" className="mt-1 font-display text-2xl font-extrabold text-ink">Make the plan fit real life.</h2>
+            <p className="text-xs font-semibold text-brand-600">{profile ? "Plan settings" : "Study plan setup"}</p>
+            <h2 id="planner-setup-title" className="mt-1 font-display text-2xl font-semibold text-ink">Set your dates and weekly schedule</h2>
           </div>
-          {profile ? <button type="button" onClick={onClose} aria-label="Close planner settings" className="grid h-11 w-11 cursor-pointer place-items-center rounded-xl text-xl text-navy/45 hover:bg-haze">×</button> : null}
+          {profile ? <button type="button" onClick={onClose} aria-label="Close planner settings" className="grid h-11 w-11 cursor-pointer place-items-center rounded-lg text-xl text-navy/45 hover:bg-haze">×</button> : null}
         </div>
 
         <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-7">
           <div>
-            <label htmlFor="sat-test-date" className="block text-sm font-bold text-ink">When is your next SAT?</label>
+            <label htmlFor="sat-test-date" className="block text-sm font-semibold text-ink">When is your next SAT?</label>
             <select
               id="sat-test-date"
               value={customDateOpen ? "custom" : testDate}
@@ -391,7 +389,7 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
                   setTestDate(event.target.value);
                 }
               }}
-              className="mt-2 block min-h-12 w-full cursor-pointer rounded-xl border border-navy/15 bg-fill px-3 text-base font-semibold text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
+              className="mt-2 block min-h-12 w-full cursor-pointer rounded-lg border border-navy/15 bg-fill px-3 text-base font-semibold text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/20"
             >
               {satDates.map((date, index) => (
                 <option key={date} value={date}>{index === 0 ? "Next · " : ""}{formatSatDate(date)}</option>
@@ -406,7 +404,7 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
                 min={today}
                 value={testDate}
                 onChange={(event) => setTestDate(event.target.value)}
-                className="mt-2 block min-h-12 w-full rounded-xl border border-navy/15 bg-fill px-3 text-base font-medium text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+                className="mt-2 block min-h-12 w-full rounded-lg border border-navy/15 bg-fill px-3 text-base font-medium text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
               />
             ) : null}
             <p className="mt-2 text-[11px] font-medium leading-4 text-navy/45">College Board weekend dates are preloaded; 2027–28 dates are anticipated. Choose custom for SAT School Day or accommodated testing.</p>
@@ -436,12 +434,12 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
             <div className="mt-3 flex flex-wrap gap-2">{dayLabels.map((label, day) => <button key={label} type="button" onClick={() => setPracticeTestDay(day)} aria-pressed={practiceTestDay === day} className={`min-h-11 cursor-pointer rounded-full px-4 text-sm font-bold transition-colors ${practiceTestDay === day ? "bg-navy text-white" : "border border-navy/15 text-navy/60 hover:border-brand"}`}>{label}</button>)}</div>
           </fieldset>
 
-          {error ? <p role="alert" className="sm:col-span-2 rounded-xl bg-danger-bg px-4 py-3 text-sm font-medium text-danger-600">{error}</p> : null}
+          {error ? <p role="alert" className="sm:col-span-2 rounded-lg bg-danger-bg px-4 py-3 text-sm font-medium text-danger-600">{error}</p> : null}
         </div>
 
         <div className="flex justify-end gap-3 border-t border-navy/10 p-5 sm:px-7">
           {profile ? <button type="button" onClick={onClose} className="min-h-11 cursor-pointer px-4 text-sm font-bold text-navy/55">Cancel</button> : null}
-          <button disabled={busy} className="min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white disabled:cursor-wait disabled:opacity-60">{busy ? "Building your week…" : profile ? "Save and rebuild" : "Create my plan"}</button>
+          <button disabled={busy} className="min-h-11 cursor-pointer rounded-lg bg-navy px-5 text-sm font-semibold text-white hover:bg-brand-600 disabled:cursor-wait disabled:opacity-60">{busy ? "Building week…" : profile ? "Save and rebuild" : "Create plan"}</button>
         </div>
       </form>
     </div>
@@ -449,7 +447,7 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
 }
 
 function ProgressRing({ value }: { value: number }) {
-  return <div aria-label={`${value}% of this plan complete`} role="img" className="grid h-14 w-14 place-items-center rounded-full" style={{ background: `conic-gradient(#7ccbff ${value * 3.6}deg, rgba(255,255,255,0.12) 0deg)` }}><span className="grid h-10 w-10 place-items-center rounded-full bg-[#174778] text-[10px] font-extrabold text-white">{value}%</span></div>;
+  return <div aria-label={`${value}% of this plan complete`} role="img" className="grid h-14 w-14 place-items-center rounded-full" style={{ background: `conic-gradient(#2a89c7 ${value * 3.6}deg, rgba(19,35,59,0.10) 0deg)` }}><span className="grid h-10 w-10 place-items-center rounded-full bg-white text-[10px] font-semibold text-navy">{value}%</span></div>;
 }
 
 function TaskIcon({ kind }: { kind: StudyPlanTask["kind"] }) {
@@ -461,17 +459,17 @@ function TaskIcon({ kind }: { kind: StudyPlanTask["kind"] }) {
 
 function taskLabel(kind: StudyPlanTask["kind"]): string {
   if (kind === "full_test") return "Full-length test";
-  if (kind === "review") return "Accuracy rebuild";
-  if (kind === "course_lesson") return "Scott lesson";
-  return "Targeted practice";
+  if (kind === "review") return "Review";
+  if (kind === "course_lesson") return "Course lesson";
+  return "Practice set";
 }
 
 function phaseCopy(phase: StudyPlan["phase"]): { label: string; headline: string; description: string } {
-  if (phase === "baseline") return { label: "Baseline phase", headline: "Measure first. Then attack the right gaps.", description: "Your first week establishes a real score and enough skill evidence to make every later assignment sharper." };
-  if (phase === "foundation") return { label: "Foundation phase", headline: "Build the method before adding pressure.", description: "This week pairs Scott's instruction with focused reps so weak concepts become repeatable habits." };
-  if (phase === "build") return { label: "Score-building phase", headline: "Turn weak skills into reliable points.", description: "Most of your time goes to the skills with the clearest accuracy gap, with lessons added exactly where they help." };
-  if (phase === "test_ready") return { label: "Test-ready phase", headline: "Convert skill gains into full-test performance.", description: "Timed work and test review now matter more. The plan keeps remediation tight and measures whether it transfers." };
-  return { label: "Taper phase", headline: "Protect confidence. Sharpen, do not cram.", description: "The final days stay light and precise: short targeted sets, clean review, and no exhausting full test near test day." };
+  if (phase === "baseline") return { label: "Baseline", headline: "Start with a score and a short practice record", description: "This week schedules a full test and enough checked questions to identify your first priority skills." };
+  if (phase === "foundation") return { label: "Foundation", headline: "Learn the method before increasing the pace", description: "This week pairs course lessons with short practice sets on the same skills." };
+  if (phase === "build") return { label: "Build", headline: "Spend more time on weaker skills", description: "Most assignments target skills with lower accuracy. Lessons are added when the data shows a content gap." };
+  if (phase === "test_ready") return { label: "Test ready", headline: "Check whether practice holds under full-test timing", description: "This week adds timed work, a full test, and review of missed questions." };
+  return { label: "Taper", headline: "Keep the final days short and specific", description: "The last few days use brief practice sets and review. No full test is scheduled near test day." };
 }
 
 function dateRange(start: string, end: string): string[] {

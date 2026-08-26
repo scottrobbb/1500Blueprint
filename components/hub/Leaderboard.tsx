@@ -14,8 +14,8 @@ export function Leaderboard({ leaderboard, player }: { leaderboard: LeaderRow[];
   return (
     <div className="overflow-hidden rounded-[14px] border border-navy/12 bg-white">
       <div className="flex items-center justify-between border-b border-navy/10 px-[18px] py-3.5">
-        <h3 className="font-display text-[15px] font-bold text-navy">Weekly Leaderboard</h3>
-        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-navy/45">Resets Sun</span>
+        <h3 className="font-display text-[15px] font-semibold text-navy">Weekly leaderboard</h3>
+        <span className="text-[11px] font-medium text-navy/45">Resets Sunday</span>
       </div>
       <div
         id="weekly-leaderboard-rows"
@@ -27,7 +27,7 @@ export function Leaderboard({ leaderboard, player }: { leaderboard: LeaderRow[];
             className="flex items-center gap-[11px] px-[18px] py-[11px]"
             style={{
               borderTop: p.rank === 1 ? "none" : "1px solid rgba(11,42,91,0.07)",
-              background: p.you ? "linear-gradient(90deg,rgba(63,169,245,0.1),rgba(63,169,245,0.02))" : "transparent",
+              background: p.you ? "rgba(42,137,199,0.07)" : "transparent",
             }}
           >
             <span

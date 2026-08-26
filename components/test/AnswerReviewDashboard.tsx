@@ -132,7 +132,7 @@ export function AnswerReviewDashboard({
               </div>
               {question.figureUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={question.figureUrl} alt="Figure for this question" className="mb-5 max-h-72 max-w-full object-contain" />
+                <img src={question.figureUrl} alt="Figure for this question" width={1200} height={800} className="mb-5 h-auto max-h-72 max-w-full object-contain" />
               ) : null}
               {question.passage ? (
                 <QuestionContent text={question.passage} pClassName="whitespace-pre-line font-serif text-[15px] leading-7 text-slate-800" />

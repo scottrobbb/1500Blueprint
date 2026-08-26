@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { Logo } from "@/components/Logo";
 import { LockIcon } from "@/components/account/UpgradePrompt";
 import { CommunityIcon } from "@/components/community/icons";
@@ -45,7 +45,7 @@ const navigation: { title?: string; items: NavItem[] }[] = [
   {
     title: "Practice",
     items: [
-      { href: "/ultimate/bank", label: "Question Bank", Icon: QuestionBankIcon, chip: "New" },
+      { href: "/ultimate/bank", label: "Question Bank", Icon: QuestionBankIcon },
       { href: "/ultimate/drills", label: "Drills", Icon: DrillsIcon, requires: "drills" },
       { href: "/ultimate/tests", label: "Full-Length Tests", Icon: TestsIcon },
       { href: "/ultimate/flashcards", label: "Flashcards", Icon: LayersIcon },
@@ -72,6 +72,15 @@ export function UltimateShell({
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [menuOpen]);
+
   if (
     pathname.startsWith("/ultimate/bank/math/practice")
     || pathname.startsWith("/ultimate/bank/reading-writing/practice")
@@ -81,21 +90,21 @@ export function UltimateShell({
 
   const rail = (
     <div className="flex h-full flex-col">
-      <Link href="/ultimate" className="mx-2 mb-7 flex items-center gap-2.5" onClick={() => setMenuOpen(false)}>
-        <Logo withWordmark={false} className="[&>svg]:h-7 [&>svg]:w-7" />
+      <Link href="/ultimate" className="mx-2 mb-6 flex min-h-11 items-center gap-2.5" onClick={() => setMenuOpen(false)}>
+        <Logo withWordmark={false} className="[&>svg]:h-6 [&>svg]:w-6" />
         <span className="leading-none">
-          <strong className="block font-display text-[15px] font-extrabold tracking-tight text-white">
-            1500 SAT Blueprint
+          <strong className="block font-display text-[15px] font-semibold tracking-[-0.02em] text-white">
+            1500 Blueprint
           </strong>
-          <span className="mt-1 block text-[11px] font-medium text-sky">by Scott Robinson</span>
+          <span className="mt-1 block text-[11px] font-medium text-white/42">Digital SAT prep</span>
         </span>
       </Link>
 
       <nav aria-label="Ultimate workspace" className="min-h-0 flex-1 overflow-y-auto">
         {navigation.map((section, index) => (
-          <div key={section.title ?? index} className="mb-2.5">
+          <div key={section.title ?? index} className="mb-3">
             {section.title && (
-              <p className="mx-2 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">
+              <p className="mx-3 mb-1.5 mt-4 text-[11px] font-semibold text-white/38">
                 {section.title}
               </p>
             )}
@@ -115,7 +124,7 @@ export function UltimateShell({
 
         {stats.isAdmin && (
           <div className="mb-2.5">
-            <p className="mx-2 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">
+            <p className="mx-3 mb-1.5 mt-4 text-[11px] font-semibold text-white/38">
               Scott
             </p>
             <RailLink
@@ -129,23 +138,16 @@ export function UltimateShell({
 
       <div className="mt-3 border-t border-white/10 pt-3">
         {access.plan !== "max" ? (
-          <Link href="/pricing" onClick={() => setMenuOpen(false)} className="mb-2.5 flex min-h-14 items-center gap-3 rounded-xl border border-sky/15 bg-sky/[0.08] px-3 py-2.5 text-white transition-colors hover:border-sky/30 hover:bg-sky/[0.13]">
-            <span className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-gold/15 text-gold"><LockIcon className="h-4 w-4" /></span>
-            <span className="min-w-0 flex-1"><strong className="block text-xs font-extrabold">{access.plan === "free" ? "Unlock Core" : "Go Max"}</strong><span className="mt-0.5 block truncate text-[10px] text-white/50">{access.plan === "free" ? "Drills, Challenge sets, more tests" : "Planner, courses, weekly calls"}</span></span>
-            <span className="text-sm text-sky">→</span>
+          <Link href="/pricing" onClick={() => setMenuOpen(false)} className="mb-2 flex min-h-12 items-center gap-2.5 rounded-lg px-3 py-2 text-white/70 transition-colors hover:bg-white/[0.06] hover:text-white">
+            <LockIcon className="h-4 w-4 flex-none text-gold" />
+            <span className="min-w-0 flex-1"><strong className="block text-xs font-semibold">{access.plan === "free" ? "View Core" : "View Max"}</strong><span className="mt-0.5 block truncate text-[10px] text-white/38">Compare plans and limits</span></span>
+            <span aria-hidden="true" className="text-sm text-white/35">→</span>
           </Link>
         ) : null}
-        <div className="mb-2 grid grid-cols-2 divide-x divide-white/10 rounded-xl bg-white/[0.06] py-2.5">
-          <div className="px-3">
-            <span className="flex items-center gap-1 text-xs font-bold text-gold">
-              <FlameIcon className="h-4 w-4" /> {stats.streak}
-            </span>
-            <span className="mt-0.5 block text-[10px] text-white/55">day streak</span>
-          </div>
-          <div className="px-3">
-            <span className="text-xs font-bold text-white">{stats.xp.toLocaleString()} XP</span>
-            <span className="mt-0.5 block text-[10px] text-white/55">level {stats.level}</span>
-          </div>
+        <div className="mb-1 flex items-center gap-3 px-3 py-2 text-[11px] text-white/44">
+          <span className="inline-flex items-center gap-1.5"><FlameIcon className="h-3.5 w-3.5 text-gold" />{stats.streak} day streak</span>
+          <span aria-hidden="true" className="h-3 w-px bg-white/12" />
+          <span>{stats.xp.toLocaleString()} XP · Level {stats.level}</span>
         </div>
         <div className="flex items-center gap-1">
           <AccountMenu
@@ -166,17 +168,18 @@ export function UltimateShell({
   );
 
   return (
-    <div className="min-h-dvh bg-[#f5f7fa] text-ink lg:grid lg:grid-cols-[244px_minmax(0,1fr)]">
-      <aside className="sticky top-0 hidden h-dvh border-r border-white/10 bg-[#0c2348] px-3 pb-3 pt-5 lg:block">{rail}</aside>
+    <div className="min-h-dvh bg-[#f7f8fa] text-ink lg:grid lg:grid-cols-[232px_minmax(0,1fr)]">
+      <a href="#ultimate-main" className="sr-only z-[80] rounded-md bg-white px-4 py-2 text-sm font-semibold text-navy focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
+      <aside className="sticky top-0 hidden h-dvh border-r border-white/10 bg-[#111923] px-3 pb-3 pt-4 lg:block">{rail}</aside>
 
       <div className="min-w-0">
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-navy/10 bg-white/95 px-4 backdrop-blur lg:hidden">
+        <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-navy/10 bg-white px-3 lg:hidden">
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
             aria-label="Open navigation"
             aria-expanded={menuOpen}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl text-navy hover:bg-navy/5"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-navy hover:bg-navy/5"
           >
             <MenuIcon className="h-5 w-5" />
           </button>
@@ -197,7 +200,7 @@ export function UltimateShell({
           />
         </header>
 
-        {menuOpen && (
+        {menuOpen ? (
           <div className="fixed inset-0 z-50 lg:hidden">
             <button
               type="button"
@@ -205,21 +208,21 @@ export function UltimateShell({
               className="absolute inset-0 bg-navy/45 backdrop-blur-[2px]"
               onClick={() => setMenuOpen(false)}
             />
-            <aside className="relative h-dvh w-[min(86vw,280px)] border-r border-white/10 bg-[#0c2348] px-3 pb-3 pt-5 shadow-2xl">
+            <aside role="dialog" aria-modal="true" aria-label="Navigation" className="relative h-dvh w-[min(86vw,272px)] overscroll-contain border-r border-white/10 bg-[#111923] px-3 pb-3 pt-4 shadow-xl">
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}
                 aria-label="Close navigation"
-                className="absolute right-3 top-3 inline-flex h-11 w-11 items-center justify-center rounded-xl text-white/70 hover:bg-white/10 hover:text-white"
+                className="absolute right-3 top-2 inline-flex h-11 w-11 items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white"
               >
                 <CloseIcon className="h-5 w-5" />
               </button>
               {rail}
             </aside>
           </div>
-        )}
+        ) : null}
 
-        <main className="ultimate-surface">{children}</main>
+        <main id="ultimate-main" className="ultimate-surface">{children}</main>
       </div>
     </div>
   );
@@ -232,13 +235,13 @@ function RailLink({ item, active, locked = false, onNavigate }: { item: NavItem;
       href={item.href}
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-11 items-center gap-2.5 rounded-[11px] px-3 py-2 text-[13px] font-semibold transition-colors ${
-        active ? "bg-sky/15 text-white" : "text-white/70 hover:bg-white/[0.07] hover:text-white"
+      className={`flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] font-medium transition-colors ${
+        active ? "bg-white text-[#111923]" : "text-white/62 hover:bg-white/[0.06] hover:text-white"
       }`}
     >
-      <Icon className={`h-[18px] w-[18px] flex-none ${active ? "text-sky" : "text-white/55"}`} />
+      <Icon className={`h-[17px] w-[17px] flex-none ${active ? "text-brand-600" : "text-white/45"}`} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      {locked ? <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white/65"><LockIcon className="h-2.5 w-2.5" />{item.requires === "drills" ? "Core" : "Max"}</span> : null}
+      {locked ? <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${active ? "text-navy/45" : "text-white/40"}`}><LockIcon className="h-2.5 w-2.5" />{item.requires === "drills" ? "Core" : "Max"}</span> : null}
       {item.chip && (
         <span className="rounded-full bg-brand/20 px-1.5 py-0.5 text-[9px] font-bold text-sky">{item.chip}</span>
       )}

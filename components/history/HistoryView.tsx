@@ -20,15 +20,16 @@ import type {
 
 const ALL = "all";
 const LETTERS = ["A", "B", "C", "D"] as const;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
-// Deterministic date format from the stored UTC timestamp — no locale/timezone
-// formatting, so server and client markup match (no hydration mismatch).
 function fmtDate(iso: string): string {
-  const [y, m, d] = iso.slice(0, 10).split("-");
-  const mi = Number(m) - 1;
-  if (!y || Number.isNaN(mi) || mi < 0 || mi > 11) return iso.slice(0, 10);
-  return `${MONTHS[mi]} ${Number(d)}, ${y}`;
+  const value = new Date(iso);
+  return Number.isNaN(value.getTime()) ? iso.slice(0, 10) : dateFormatter.format(value);
 }
 
 function drillHref(slug: DrillSlug, difficulty: string): string {
@@ -38,7 +39,6 @@ function drillHref(slug: DrillSlug, difficulty: string): string {
   return `/drills/${slug}`;
 }
 
-// One-line preview for the list row.
 function preview(e: HistoryEntry): string {
   if (e.drillSlug === "vocab") {
     const c = e.question.content as VocabContent;
@@ -73,23 +73,22 @@ export function HistoryView({
   if (entries.length === 0 && !hasSavedActivity) {
     return (
       <main className={`mx-auto w-full max-w-[1120px] px-6 py-16 text-center ${variant === "ultimate" ? "min-h-[70dvh]" : ""}`}>
-        <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-ice text-brand">
+        <span className="mx-auto grid h-11 w-11 place-items-center rounded-lg border border-brand/15 bg-ice text-brand">
           <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
             <path d="M5 8V4m0 0h4M5 4l3 3a7 7 0 1 1-2 5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
-        <h1 className="mt-4 font-display text-2xl font-extrabold text-navy">No history yet</h1>
+        <h1 className="mt-4 font-display text-2xl font-semibold text-navy">No history yet</h1>
         <p className="mx-auto mt-2 max-w-md text-sm text-navy/60">
           Questions you work on in drills, courses, the Question Bank, and tests show up here after you finish them.
         </p>
-        <Link href={drillsHref} className={`${secondaryBtn} mt-6 ${variant === "ultimate" ? "min-h-11 rounded-xl" : ""}`}>
+        <Link href={drillsHref} className={`${secondaryBtn} mt-6 ${variant === "ultimate" ? "min-h-11 rounded-lg" : ""}`}>
           Go to drills
         </Link>
       </main>
     );
   }
 
-  // Filter chips: only drills that actually appear, in a stable order.
   const order: DrillSlug[] = ["grammar", "reading", "targeted-math", "vocab"];
   const present = order.filter((slug) => entries.some((e) => e.drillSlug === slug));
   const shown = filter === ALL ? entries : entries.filter((e) => e.drillSlug === filter);
@@ -99,10 +98,10 @@ export function HistoryView({
   return (
     <main className="mx-auto w-full max-w-[1120px] px-4 py-8 sm:px-7">
       <header className="mb-6">
-        {variant === "ultimate" && <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-brand-600">Practice analytics</p>}
-        <h1 className={`font-display font-extrabold tracking-tight text-navy ${variant === "ultimate" ? "mt-1 text-[32px]" : "text-2xl"}`}>Your history</h1>
+        {variant === "ultimate" && <p className="text-xs font-semibold text-brand-600">Practice analytics</p>}
+        <h1 className={`font-display font-semibold tracking-tight text-navy ${variant === "ultimate" ? "mt-1 text-[32px]" : "text-2xl"}`}>History</h1>
         <p className="mt-1 text-sm text-navy/60">
-          {entries.length} unique drill question{entries.length === 1 ? "" : "s"} practiced. Tap any to review it.
+          {entries.length} unique drill question{entries.length === 1 ? "" : "s"} practiced. Open a question to review it.
         </p>
       </header>
 
@@ -116,7 +115,7 @@ export function HistoryView({
         </div>
       )}
 
-      <div className={`mb-5 flex flex-wrap gap-2 ${variant === "ultimate" ? "rounded-2xl border border-navy/10 bg-white p-3 shadow-pop" : ""}`}>
+      <div className={`mb-5 flex flex-wrap gap-2 ${variant === "ultimate" ? "rounded-xl border border-navy/12 bg-white p-3" : ""}`}>
         <FilterChip active={filter === ALL} text={`All unique (${entries.length})`} onClick={() => setFilter(ALL)} />
         {present.map((slug) => (
           <FilterChip
@@ -134,7 +133,7 @@ export function HistoryView({
             <button
               type="button"
               onClick={() => setOpen(e)}
-              className={`${variant === "ultimate" ? "rounded-2xl border border-navy/10 bg-white shadow-pop" : surface} flex min-h-16 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-[background-color,border-color] hover:border-brand/30 hover:bg-ice/20`}
+              className={`${variant === "ultimate" ? "rounded-xl border border-navy/12 bg-white" : surface} flex min-h-16 w-full cursor-pointer items-center gap-3 px-4 py-3 text-left transition-[background-color,border-color] hover:border-brand/30 hover:bg-ice/20`}
             >
               <span className={`${chip} shrink-0 bg-brand/10 text-brand-600`}>{drillTitle(e.drillSlug)}</span>
               <span className="min-w-0 flex-1 truncate text-sm text-navy/80">{preview(e)}</span>
@@ -143,7 +142,7 @@ export function HistoryView({
             </button>
           </li>
         ))}
-      </ul> : <div className="rounded-2xl border border-dashed border-navy/15 bg-white p-7 text-center"><h2 className="font-display text-lg font-extrabold text-navy">No drill questions yet</h2><p className="mt-1 text-sm text-navy/50">Your other saved activity is summarized above. Complete a drill answer to add a reviewable question here.</p></div>}
+      </ul> : <div className="rounded-xl border border-dashed border-navy/15 bg-white p-7 text-center"><h2 className="font-display text-lg font-semibold text-navy">No drill questions yet</h2><p className="mt-1 text-sm text-navy/50">Complete a drill answer to add a question here.</p></div>}
 
       {open ? <DetailModal entry={open} onClose={() => setOpen(null)} /> : null}
     </main>
