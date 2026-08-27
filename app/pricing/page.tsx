@@ -409,15 +409,6 @@ export default async function PricingPage({
         </div>
       </section>
 
-      <section className={styles.finalCta}>
-        <div className={styles.finalGrid} aria-hidden="true" />
-        <div>
-          <h2>Start with Hobby.</h2>
-          <p>Take your first full-length test and try the Foundation course for free.</p>
-        </div>
-        <Link href="/account/sign-up?next=/ultimate" className={styles.finalButton}>Create free account <ArrowIcon /></Link>
-      </section>
-
       <footer className={styles.footer}>
         <div className={styles.footerMain}>
           <div className={styles.footerIdentity}>

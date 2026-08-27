@@ -71,7 +71,6 @@
 .heroPrimary,
 .savingsAction,
 .faqLink,
-.finalButton,
 .primaryAction,
 .disabledAction {
   align-items: center;
@@ -94,7 +93,6 @@
 .heroActions svg,
 .savingsAction svg,
 .faqLink svg,
-.finalButton svg,
 .primaryAction svg {
   fill: none;
   height: 17px;
@@ -118,16 +116,6 @@
   max-width: 1280px;
   min-height: 650px;
   padding: 72px 50px 84px;
-}
-.finalGrid {
-  background-image:
-    linear-gradient(rgba(92,181,244,.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(92,181,244,.06) 1px, transparent 1px);
-  background-size: 52px 52px;
-  inset: 0;
-  mask-image: linear-gradient(to right, #000, transparent 88%);
-  pointer-events: none;
-  position: absolute;
 }
 .heroCopy {
   max-width: 560px;
@@ -182,8 +170,7 @@
   margin-top: 32px;
 }
 .heroPrimary,
-.primaryAction,
-.finalButton {
+.primaryAction {
   background: var(--blue);
   border: 1px solid var(--blue);
   color: #06162d;
@@ -279,8 +266,7 @@
 .sectionHeading h2,
 .savingsCopy h2,
 .writtenStoriesIntro h2,
-.faqIntro h2,
-.finalCta h2 {
+.faqIntro h2 {
   color: var(--ink);
   font-family: var(--font-gabarito), sans-serif;
   font-size: clamp(40px,4.5vw,56px);
@@ -291,8 +277,7 @@
 }
 .sectionHeading > p:last-child,
 .writtenStoriesIntro > p:last-child,
-.faqIntro > p,
-.finalCta > div > p {
+.faqIntro > p {
   color: var(--muted);
   font-size: 17px;
   line-height: 1.65;
@@ -1023,29 +1008,6 @@
   max-width: 650px;
 }
 
-.finalCta {
-  align-items: center;
-  background: var(--navy);
-  display: flex;
-  gap: 40px;
-  justify-content: space-between;
-  min-height: 290px;
-  overflow: hidden;
-  padding: 62px max(28px, calc((100vw - 1180px) / 2));
-  position: relative;
-}
-.finalCta > div:not(.finalGrid),
-.finalButton { position: relative; z-index: 1; }
-.finalCta h2 {
-  color: #fff;
-  font-size: clamp(38px,4vw,52px);
-}
-.finalCta > div > p {
-  color: rgba(255,255,255,.68);
-  max-width: 650px;
-}
-.finalButton { flex: 0 0 auto; }
-
 .footer {
   background: #041124;
   border-top: 1px solid rgba(255,255,255,.08);
@@ -1175,10 +1137,6 @@
   .videoCard { scroll-snap-align: start; }
   .writtenStoriesIntro,
   .faqIntro { max-width: 650px; }
-  .finalCta {
-    align-items: flex-start;
-    flex-direction: column;
-  }
   .footer {
     padding-top: 56px;
   }
@@ -1212,12 +1170,10 @@
   .sectionHeading h2,
   .savingsCopy h2,
   .writtenStoriesIntro h2,
-  .faqIntro h2,
-  .finalCta h2 { font-size: 38px; }
+  .faqIntro h2 { font-size: 38px; }
   .sectionHeading > p:last-child,
   .writtenStoriesIntro > p:last-child,
-  .faqIntro > p,
-  .finalCta > div > p { font-size: 15px; }
+  .faqIntro > p { font-size: 15px; }
   .priceCard,
   .priceCard.max {
     border-radius: 14px;
@@ -1245,11 +1201,6 @@
     padding-right: 20px;
   }
   .faqList summary { font-size: 15px; }
-  .finalCta {
-    min-height: 0;
-    padding: 58px 20px;
-  }
-  .finalButton { width: 100%; }
   .footer {
     padding: 48px 20px 24px;
   }
