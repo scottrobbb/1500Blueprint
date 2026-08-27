@@ -1,14 +1,25 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import type { PlanCode } from "@/lib/auth/plans";
 import { getSession } from "@/lib/auth/session";
 import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
+import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { CorePricingPanel } from "./CorePricingPanel";
+import { ExamCountdown } from "./ExamCountdown";
 import styles from "./pricing.module.css";
 import { TestimonialVideos } from "./TestimonialVideos";
+
+const HERO_VSL_URL = "https://vimeo.com/1221856607?share=copy&fl=sv&fe=ci";
+
+const heroChecklist = [
+  "4 Full Practice Tests (made to be harder than the real SAT)",
+  "1250+ Question Bank Qs",
+  "Complete Math & Reading Course",
+  "Weekly class — get your questions answered directly",
+  "On-Demand Video Library, updated weekly",
+];
 
 export const metadata: Metadata = {
   title: "Pricing | 1500 SAT Blueprint",
@@ -231,51 +242,25 @@ export default async function PricingPage({
       </header>
 
       <section className={styles.hero} id="pricing-content">
-        <div className={styles.heroGrid} aria-hidden="true" />
-        <div className={styles.heroGlow} aria-hidden="true" />
         <div className={styles.heroCopy}>
-          <h1>
-            A clearer path to your <em>1500.</em>
-          </h1>
-          <p className={styles.heroDescription}>
-            Start with a full test, see where you are losing points, and use the
-            courses, Question Bank, and drills to work on the right things.
-          </p>
+          <h1>1500 Blueprint.<br />Crush the SAT.</h1>
+          <ul className={styles.heroChecklist}>
+            {heroChecklist.map((item) => (
+              <li key={item}>
+                <PlanCheckIcon />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
           <div className={styles.heroActions}>
             <Link href="#plans" className={styles.heroPrimary}>
-              See plans <ArrowIcon />
-            </Link>
-            <Link href="/practice-test" className={styles.heroSecondary}>
-              Try a practice test
+              Enroll Now
             </Link>
           </div>
         </div>
 
-        <div className={styles.heroVisual} aria-label="Blu, the 1500 SAT Blueprint mascot">
-          <div className={`${styles.heroBadge} ${styles.testsBadge}`} aria-hidden="true">
-            <span><FeatureGlyph name="file" /></span>
-            1–4 full tests
-          </div>
-          <div className={`${styles.heroBadge} ${styles.bankBadge}`} aria-hidden="true">
-            <span><FeatureGlyph name="grid" /></span>
-            Math + R&amp;W Question Bank
-          </div>
-          <div className={`${styles.heroBadge} ${styles.callsBadge}`} aria-hidden="true">
-            <span><FeatureGlyph name="star" /></span>
-            Weekly Max calls
-          </div>
-          <div className={`${styles.heroBadge} ${styles.plannerBadge}`} aria-hidden="true">
-            <span><FeatureGlyph name="calendar" /></span>
-            Personal study plan
-          </div>
-          <Image
-            className={styles.heroBlu}
-            src="/images/blu.png"
-            alt="Blu, the 1500 SAT Blueprint mascot"
-            width={500}
-            height={500}
-            priority
-          />
+        <div className={styles.heroVisual}>
+          <VslCard />
         </div>
       </section>
 
@@ -508,6 +493,28 @@ export default async function PricingPage({
         </div>
       </footer>
     </main>
+  );
+}
+
+function VslCard() {
+  const base = vimeoEmbedUrl(HERO_VSL_URL);
+  const embedUrl = base ? `${base}${base.includes("?") ? "&" : "?"}autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0` : null;
+
+  return (
+    <div className={styles.vslCard}>
+      <div className={styles.vslFrame}>
+        {embedUrl ? (
+          <iframe
+            src={embedUrl}
+            title="1500 Blueprint overview"
+            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+            allowFullScreen
+            sandbox="allow-scripts allow-same-origin allow-fullscreen"
+          />
+        ) : null}
+      </div>
+      <ExamCountdown />
+    </div>
   );
 }
 
