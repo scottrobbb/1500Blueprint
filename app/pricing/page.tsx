@@ -27,7 +27,7 @@ const heroChecklist = [
 export const metadata: Metadata = {
   title: "Pricing | 1500 SAT Blueprint",
   description:
-    "Compare Hobby, Core, and Max SAT prep plans, including practice tests, targeted drills, courses, weekly calls, and study planning.",
+    "Compare Free, Core, and Max SAT prep plans, including practice tests, targeted drills, courses, weekly calls, and study planning.",
 };
 
 type FeatureIcon =
@@ -85,7 +85,7 @@ const productFeatures: Array<{
   {
     icon: "file",
     title: "Full-length digital SATs",
-    description: "1 on Hobby, 2 on Core, 4 on Max",
+    description: "1 on Free, 2 on Core, 4 on Max",
   },
   {
     icon: "bolt",
@@ -133,7 +133,7 @@ const faqItems = [
   {
     question: "Do I need a card to start?",
     answer:
-      "No. The Hobby plan does not require a card. You only enter payment details when you choose Core or Max.",
+      "No. The Free plan does not require a card. You only enter payment details when you choose Core or Max.",
   },
   {
     question: "What happens on the weekly Max calls?",
