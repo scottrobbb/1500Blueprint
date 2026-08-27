@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ExplanationText } from "@/components/test/ExplanationText";
 import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import {
@@ -9,6 +10,20 @@ import {
   countExplanationWords,
 } from "@/lib/explanations/policy";
 import type { ExplanationQueueItem } from "@/lib/explanations/queries";
+import { createClient } from "@/utils/supabase/client";
+
+async function uploadPastedImage(file: File): Promise<string | null> {
+  const response = await fetch("/api/manager/upload", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: file.name || `pasted-${Date.now()}.png`, type: file.type, size: file.size }),
+  });
+  const signed = (await response.json().catch(() => null)) as { path?: string; token?: string; url?: string; error?: string } | null;
+  if (!response.ok || !signed?.path || !signed.token || !signed.url) return null;
+  const uploaded = await createClient().storage.from("course-assets").uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type, cacheControl: "31536000" });
+  if (uploaded.error) return null;
+  return signed.url;
+}
 
 type SourceFilter = "all" | ExplanationQueueItem["targetType"];
 type DifficultyFilter = "all" | "easy" | "medium" | "hard";
@@ -121,9 +136,26 @@ function ExplanationWorkspace({ item, onSaved }: { item: ExplanationQueueItem; o
   const [explanation, setExplanation] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pastingImage, setPastingImage] = useState(false);
+  const [pasteError, setPasteError] = useState(false);
   const wordCount = countExplanationWords(explanation);
   const remainingWords = Math.max(0, EXPLANATION_MIN_WORDS - wordCount);
   const minimumMet = remainingWords === 0;
+
+  async function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
+    if (!imageItem) return;
+    event.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    const cursor = event.currentTarget.selectionStart;
+    setPastingImage(true);
+    setPasteError(false);
+    const url = await uploadPastedImage(file);
+    setPastingImage(false);
+    if (!url) { setPasteError(true); return; }
+    setExplanation((current) => `${current.slice(0, cursor)}\n![](${url})\n${current.slice(cursor)}`);
+  }
 
   async function save() {
     if (!minimumMet) return;
@@ -164,8 +196,10 @@ function ExplanationWorkspace({ item, onSaved }: { item: ExplanationQueueItem; o
 
         <div className="min-w-0">
           <label htmlFor="explanation" className="text-sm font-extrabold text-navy">Explanation</label>
-          <p className="mt-1 text-xs leading-5 text-navy/45">Explain why the correct answer works and why the tempting wrong path fails. LaTeX delimiters render in the preview.</p>
-          <textarea id="explanation" value={explanation} maxLength={EXPLANATION_MAX_CHARACTERS} onChange={(event) => setExplanation(event.target.value)} className="mt-3 min-h-[280px] w-full resize-y rounded-2xl border border-navy/15 bg-haze/35 p-4 font-mono text-sm leading-6 text-ink outline-none placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15" placeholder="Write a complete, student-facing explanation…" />
+          <p className="mt-1 text-xs leading-5 text-navy/45">Explain why the correct answer works and why the tempting wrong path fails. LaTeX delimiters render in the preview. Paste a screenshot to drop it in.</p>
+          <textarea id="explanation" value={explanation} maxLength={EXPLANATION_MAX_CHARACTERS} onChange={(event) => setExplanation(event.target.value)} onPaste={(event) => void handlePaste(event)} className="mt-3 min-h-[280px] w-full resize-y rounded-2xl border border-navy/15 bg-haze/35 p-4 font-mono text-sm leading-6 text-ink outline-none placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15" placeholder="Write a complete, student-facing explanation…" />
+          {pastingImage ? <p className="mt-1.5 text-xs font-semibold text-brand-700">Uploading pasted screenshot…</p> : null}
+          {pasteError ? <p role="alert" className="mt-1.5 text-xs font-semibold text-danger-600">That screenshot could not be uploaded.</p> : null}
           <div className="mt-3" aria-live="polite">
             <div className="flex items-center justify-between gap-3 text-xs font-semibold">
               <span className={minimumMet ? "text-success-600" : "text-navy/50"}>{minimumMet ? "Minimum met" : `${remainingWords} more word${remainingWords === 1 ? "" : "s"} required`}</span>
@@ -173,7 +207,7 @@ function ExplanationWorkspace({ item, onSaved }: { item: ExplanationQueueItem; o
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy/[0.08]"><div className={`h-full rounded-full transition-[width] duration-200 ${minimumMet ? "bg-success" : "bg-brand"}`} style={{ width: `${Math.min(100, (wordCount / EXPLANATION_MIN_WORDS) * 100)}%` }} /></div>
           </div>
-          <div className="mt-4 rounded-2xl border border-brand/15 bg-ice/45 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Live preview</p><div className="mt-3 font-serif text-[16px] leading-7 text-[#222]">{explanation.trim() ? <MathText>{explanation}</MathText> : <span className="font-sans text-sm text-navy/35">The formatted explanation appears here.</span>}</div></div>
+          <div className="mt-4 rounded-2xl border border-brand/15 bg-ice/45 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Live preview</p><div className="mt-3 font-serif text-[16px] leading-7 text-[#222]">{explanation.trim() ? <ExplanationText text={explanation} /> : <span className="font-sans text-sm text-navy/35">The formatted explanation appears here.</span>}</div></div>
           {error ? <p role="alert" className="mt-3 rounded-xl bg-danger-bg px-3 py-2 text-sm font-semibold text-danger-600">{error}</p> : null}
           <div className="mt-4 flex justify-end"><button type="button" onClick={() => void save()} disabled={saving || !minimumMet} className="min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:bg-navy/15 disabled:text-navy/35">{saving ? "Saving…" : "Save explanation"}</button></div>
         </div>

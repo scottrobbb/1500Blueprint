@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import { ExplanationText } from "@/components/test/ExplanationText";
 import { MathText } from "@/components/test/MathText";
 import { CloseIcon } from "@/components/test/icons";
 import { drillTitle } from "@/lib/drills/registry";
@@ -377,7 +378,7 @@ function Explanation({ text }: { text: string }) {
   return (
     <div className="rounded-card border border-navy/12 bg-navy/[0.02] px-3.5 py-3">
       <SectionLabel>Explanation</SectionLabel>
-      <p className="mt-1 text-sm leading-relaxed text-navy/75">{text}</p>
+      <p className="mt-1 text-sm leading-relaxed text-navy/75"><ExplanationText text={text} /></p>
     </div>
   );
 }

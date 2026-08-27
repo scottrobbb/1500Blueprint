@@ -5,6 +5,7 @@ import { formatTime } from "@/lib/sat/testState";
 import { isCorrect } from "@/lib/sat/scoring";
 import { subjectFor, topicFor } from "@/lib/sat/results";
 import type { AnswerMap, ChoiceId, Section, TestModule } from "@/lib/sat/types";
+import { ExplanationText } from "./ExplanationText";
 import { MathText } from "./MathText";
 import { QuestionContent } from "./QuestionContent";
 import { ArrowLeftIcon, CheckIcon, CloseIcon } from "./icons";
@@ -186,7 +187,7 @@ export function AnswerReviewDashboard({
               {!hideAnswers && question.explanation ? (
                 <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700">
                   <p className="font-bold text-navy">Explanation</p>
-                  <p className="mt-1"><MathText>{question.explanation}</MathText></p>
+                  <p className="mt-1"><ExplanationText text={question.explanation} /></p>
                   {question.type === "mc" && answer && answer !== question.correct && question.choiceExplanations?.[answer as ChoiceId] ? (
                     <p className="mt-2 border-t border-blue-100 pt-2">
                       <span className="font-semibold">Your choice: </span>

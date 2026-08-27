@@ -7,6 +7,7 @@ import { isCorrect } from "@/lib/sat/scoring";
 import { formatTime } from "@/lib/sat/testState";
 import type { PracticeModuleMeta } from "@/lib/sat/modules";
 import { Logo } from "@/components/Logo";
+import { ExplanationText } from "./ExplanationText";
 import { MathText } from "./MathText";
 import { QuestionContent } from "./QuestionContent";
 import { CheckIcon, CloseIcon } from "./icons";
@@ -184,7 +185,7 @@ export function ModuleResults({
                 {q.explanation && (
                   <p className="mt-3 text-sm leading-6 text-ink">
                     <span className="font-semibold">Why: </span>
-                    <MathText>{q.explanation}</MathText>
+                    <ExplanationText text={q.explanation} />
                   </p>
                 )}
                 {wrongChoiceExplanation && (

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CalculatorPanel } from "@/components/test/CalculatorPanel";
+import { ExplanationText } from "@/components/test/ExplanationText";
 import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import { ReferenceModal } from "@/components/test/ReferenceModal";
@@ -501,7 +502,7 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
             </div>
             <button type="button" onClick={onToggleExplanation} aria-label="Close explanation" className="grid h-9 w-9 place-items-center rounded-md text-[#777] hover:bg-[#eee] hover:text-black"><CloseIcon className="h-4 w-4" /></button>
           </div>
-          <div className="mt-4 border-t border-[#dedede] pt-4 font-serif text-[16px] leading-7 text-[#222]"><MathText>{result.explanation}</MathText></div>
+          <div className="mt-4 border-t border-[#dedede] pt-4 font-serif text-[16px] leading-7 text-[#222]"><ExplanationText text={result.explanation} /></div>
         </div>
       )}
     </div>
