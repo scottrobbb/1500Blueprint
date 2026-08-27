@@ -340,14 +340,15 @@
   box-shadow: 0 20px 45px -32px rgba(47,159,233,.4);
 }
 .priceCard.max {
-  background-clip: padding-box, padding-box, border-box;
+  background-clip: padding-box, padding-box, padding-box, border-box;
   background-color: #0c0e13;
   background-image:
     radial-gradient(130% 110% at 0% 0%, rgba(47,159,233,.05), transparent 60%),
     radial-gradient(130% 110% at 100% 100%, rgba(255,200,61,.045), transparent 60%),
+    linear-gradient(#0c0e13, #0c0e13),
     linear-gradient(135deg, var(--blue), var(--gold), var(--blue));
-  background-origin: padding-box, padding-box, border-box;
-  background-size: 100% 100%, 100% 100%, 300% 300%;
+  background-origin: padding-box, padding-box, padding-box, border-box;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 300% 300%;
   border: 2px solid transparent;
   animation: maxBorderShimmer 8s ease-in-out infinite;
 }
@@ -357,8 +358,8 @@
     0 30px 70px -26px rgba(255,200,61,.4);
 }
 @keyframes maxBorderShimmer {
-  0%, 100% { background-position: 0 0, 0 0, 0% 0%; }
-  50% { background-position: 0 0, 0 0, 100% 100%; }
+  0%, 100% { background-position: 0 0, 0 0, 0 0, 0% 0%; }
+  50% { background-position: 0 0, 0 0, 0 0, 100% 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .priceCard.max { animation: none; }
