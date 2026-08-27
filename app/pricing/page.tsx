@@ -7,6 +7,7 @@ import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
 import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { ExamCountdown } from "./ExamCountdown";
 import { PlansPanel } from "./PlansPanel";
+import { TestimonialReel } from "./TestimonialReel";
 import styles from "./pricing.module.css";
 
 const HERO_VSL_URL = "https://vimeo.com/1221856607?share=copy&fl=sv&fe=ci";
@@ -337,7 +338,7 @@ export default async function PricingPage({
             dark
           />
         </div>
-        <TestimonialReel />
+        <TestimonialReel url={TESTIMONIAL_REEL_URL} />
       </section>
 
       <section className={styles.writtenStoriesSection}>
@@ -460,26 +461,6 @@ function VslCard() {
         ) : null}
       </div>
       <ExamCountdown />
-    </div>
-  );
-}
-
-function TestimonialReel() {
-  const embedUrl = vimeoEmbedUrl(TESTIMONIAL_REEL_URL);
-
-  return (
-    <div className={styles.testimonialReel}>
-      <div className={styles.testimonialReelFrame}>
-        {embedUrl ? (
-          <iframe
-            src={embedUrl}
-            title="1500 Blueprint student testimonials"
-            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
-            allowFullScreen
-            sandbox="allow-scripts allow-same-origin allow-fullscreen"
-          />
-        ) : null}
-      </div>
     </div>
   );
 }
