@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import Link from "next/link";
+import { EnrollButton } from "./EnrollButton";
 import styles from "./pricing.module.css";
 
 const MAX_MONTHLY_PRICE = 80;
@@ -81,9 +81,9 @@ export function SavingsCalculator() {
           </div>
         </div>
 
-        <Link href="#plans" className={styles.savingsAction}>
+        <EnrollButton className={styles.savingsAction}>
           See Max <ArrowIcon />
-        </Link>
+        </EnrollButton>
       </div>
       <div className={styles.costCard}>
         <div className={styles.costHeader}>
