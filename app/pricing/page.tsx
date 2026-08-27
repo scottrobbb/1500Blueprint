@@ -8,9 +8,9 @@ import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { ExamCountdown } from "./ExamCountdown";
 import { PlansPanel } from "./PlansPanel";
 import styles from "./pricing.module.css";
-import { TestimonialVideos } from "./TestimonialVideos";
 
 const HERO_VSL_URL = "https://vimeo.com/1221856607?share=copy&fl=sv&fe=ci";
+const TESTIMONIAL_REEL_URL = "https://vimeo.com/1221904969?share=copy&fl=sv&fe=ci";
 
 const heroChecklist = [
   "4 Realistic Full-Length Practice Tests",
@@ -106,27 +106,6 @@ const productFeatures: Array<{
     description: "Max only, live with Scott plus recordings",
   },
 ];
-
-const videoStories = [
-  {
-    name: "Annie",
-    src: "/testimonials/annie.mp4",
-    poster: "/testimonials/annie-poster.jpg",
-    quote: "I was able to get my score from a 1220 to a 1350 in a little over two months.",
-  },
-  {
-    name: "Felix",
-    src: "/testimonials/felix.mp4",
-    poster: "/testimonials/felix-poster.jpg",
-    quote: "I went from a 1190 to a 1480 on the May SAT, all thanks to the Blueprint.",
-  },
-  {
-    name: "Michael",
-    src: "/testimonials/michael.mp4",
-    poster: "/testimonials/michael-poster.jpg",
-    quote: "I started at an 830, and I came out with a 1330.",
-  },
-] as const;
 
 const writtenStories = [
   {
@@ -358,7 +337,7 @@ export default async function PricingPage({
             dark
           />
         </div>
-        <TestimonialVideos stories={videoStories} />
+        <TestimonialReel />
       </section>
 
       <section className={styles.writtenStoriesSection}>
@@ -481,6 +460,26 @@ function VslCard() {
         ) : null}
       </div>
       <ExamCountdown />
+    </div>
+  );
+}
+
+function TestimonialReel() {
+  const embedUrl = vimeoEmbedUrl(TESTIMONIAL_REEL_URL);
+
+  return (
+    <div className={styles.testimonialReel}>
+      <div className={styles.testimonialReelFrame}>
+        {embedUrl ? (
+          <iframe
+            src={embedUrl}
+            title="1500 Blueprint student testimonials"
+            allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media"
+            allowFullScreen
+            sandbox="allow-scripts allow-same-origin allow-fullscreen"
+          />
+        ) : null}
+      </div>
     </div>
   );
 }
