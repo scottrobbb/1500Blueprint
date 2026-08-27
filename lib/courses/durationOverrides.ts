@@ -29,6 +29,20 @@ const DURATION_OVERRIDE_MINUTES: Record<string, Record<string, number>> = {
     "Right Triangles and Trigonometry": 16,
     "Circles": 13,
   },
+  "reading-writing-subtopic-course": {
+    "Pacing and General Reading Tips": 7,
+    "How to R-A-P: Read, Analyze, Predict": 7,
+    "Words in Context": 11,
+    "Cross-Text Connections": 16,
+    "Text Structure and Purpose": 12,
+    "Central Ideas and Details": 16,
+    "Command of Evidence": 14,
+    "Inferences": 16,
+    "Boundaries": 15,
+    "Form, Structure, and Sense": 10,
+    "Transitions": 8,
+    "Rhetorical Synthesis": 6,
+  },
 };
 
 export function lessonDurationMinutes(courseSlug: string, lesson: { title: string; estimatedMinutes: number }): number {
