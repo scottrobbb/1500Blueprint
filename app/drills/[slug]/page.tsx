@@ -24,6 +24,8 @@ import { isAdminEmail } from "@/lib/auth/admin";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { loadVocabDashboard, loadVocabFlashcardDeck } from "@/lib/drills/vocab.server";
 import { drillAllowance } from "@/lib/auth/access-control";
+import { ActivityBeacon } from "@/components/home/ActivityBeacon";
+import type { StudyActivityMetadata } from "@/lib/home/continuation-policy";
 
 // Next 16: route params and searchParams are async.
 export default async function DrillPage({
@@ -52,7 +54,8 @@ export default async function DrillPage({
   }
   const contentOptions = { includeDraftDrill: adminPreview };
 
-  switch (slug) {
+  const content = await (async () => {
+    switch (slug) {
     case "grammar": {
       const raw = await loadDrillQuestions("grammar", contentOptions);
       const [ordered, nav, mastery] = email
@@ -135,5 +138,19 @@ export default async function DrillPage({
       return <AiMathDrill returnHref={returnHref} />;
     default:
       notFound();
-  }
+    }
+  })();
+
+  const activityMetadata: StudyActivityMetadata | undefined = slug === "targeted-math"
+    ? { difficulty: sp.difficulty === "hard" ? "hard" : "medium" }
+    : slug === "word-scan"
+      ? { mode: sp.mode === "bad-mold" ? "bad-mold" : "ceased" }
+      : undefined;
+
+  return (
+    <>
+      <ActivityBeacon kind="drill" resourceId={slug} metadata={activityMetadata} />
+      {content}
+    </>
+  );
 }

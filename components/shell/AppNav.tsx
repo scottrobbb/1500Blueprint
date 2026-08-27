@@ -20,7 +20,15 @@ const TABS: { key: TabKey; label: string; href: string; Icon: (p: { className?: 
   { key: "history", label: "History", href: "/history", Icon: HistoryIcon },
 ];
 
-export function AppNav({ activePage, stats }: { activePage: TabKey | "settings"; stats: NavStats }) {
+export function AppNav({
+  activePage,
+  stats,
+  showProgress = true,
+}: {
+  activePage: TabKey | "settings";
+  stats: NavStats;
+  showProgress?: boolean;
+}) {
   return (
     <header className="sticky top-0 z-40 border-b border-navy/12 bg-white/[0.88] backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-[1120px] items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-6">
@@ -57,19 +65,21 @@ export function AppNav({ activePage, stats }: { activePage: TabKey | "settings";
         </nav>
 
         <div className="flex flex-none items-center gap-2 sm:gap-3.5">
-          <div className="hidden items-center gap-3.5 sm:flex">
-            <span className="inline-flex items-center gap-1 text-sm font-bold text-flag" title="Day streak">
-              <FlameIcon className="h-[18px] w-[18px] animate-flicker" />
-              {stats.streak}
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-sm font-bold text-navy" title={`Level ${stats.level}`}>
-              <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand font-display text-[10px] leading-none text-white">
-                {stats.level}
+          {showProgress ? (
+            <div className="hidden items-center gap-3.5 sm:flex">
+              <span className="inline-flex items-center gap-1 text-sm font-bold text-flag" title="Day streak">
+                <FlameIcon className="h-[18px] w-[18px] animate-flicker" />
+                {stats.streak}
               </span>
-              {stats.xp.toLocaleString()}
-              <span className="font-semibold text-navy/45">XP</span>
-            </span>
-          </div>
+              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-navy" title={`Level ${stats.level}`}>
+                <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-brand font-display text-[10px] leading-none text-white">
+                  {stats.level}
+                </span>
+                {stats.xp.toLocaleString()}
+                <span className="font-semibold text-navy/45">XP</span>
+              </span>
+            </div>
+          ) : null}
 
           {stats.isAdmin && (
             <Link

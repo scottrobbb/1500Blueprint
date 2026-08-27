@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 import type { GrammarMasteryState } from "@/lib/drills/mastery";
 import type { DrillSlug, QuestionStatus } from "@/lib/drills/types";
 import { DrillIcon, type DrillIconKey } from "./icons";
-import { PlayIcon } from "@/components/shell/icons";
 
 const BASE_HREF = {
   grammar: "/drills/grammar",
@@ -15,48 +14,77 @@ const BASE_HREF = {
   aiMath: "/drills/ai-math",
   vocab: "/drills/vocab",
   flashcards: "/drills/flashcards",
-};
+} as const;
 
-function CategoryHeader({ title }: { title: string }) {
-  return (
-    <div className="mb-3.5 flex items-center gap-3">
-      <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-navy/55">{title}</h3>
-      <span className="h-px flex-1 bg-navy/12" />
-    </div>
-  );
-}
+const countFormatter = new Intl.NumberFormat("en-US");
 
-function IconTile({ name, large = true }: { name: DrillIconKey; large?: boolean }) {
+const primaryAction =
+  "inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-navy px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-navy-700 active:bg-[#203e6f]";
+const secondaryAction =
+  "inline-flex min-h-11 items-center justify-center rounded-lg border border-navy/15 bg-white px-4 py-2.5 text-center text-sm font-semibold text-navy transition-colors hover:border-navy/25 hover:bg-haze active:bg-navy/[0.07]";
+
+function IconTile({ name }: { name: DrillIconKey }) {
   return (
-    <span
-      className={`flex flex-none items-center justify-center bg-[#eef3fb] text-[#2b6fd6] ${
-        large ? "h-10 w-10 rounded-[11px]" : "h-[38px] w-[38px] rounded-[10px]"
-      }`}
-    >
-      <DrillIcon name={name} className={large ? "h-[21px] w-[21px]" : "h-5 w-5"} />
+    <span className="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-brand/15 bg-ice text-brand-600">
+      <DrillIcon name={name} className="h-[19px] w-[19px]" />
     </span>
   );
 }
 
-const cardBox = "flex h-full flex-col rounded-2xl bg-white p-[22px] shadow-pop";
-const startBtn =
-  "inline-flex flex-1 items-center justify-center gap-[7px] rounded-[11px] bg-brand px-3 py-3 text-sm font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px";
-const ghostBtn = "rounded-[11px] bg-haze px-4 py-3 text-[13px] font-semibold text-navy transition-colors hover:bg-navy/10";
-
-function LockableCard({ locked, title, children }: { locked: boolean; title: string; children: ReactNode }) {
-  if (!locked) return <>{children}</>;
+function PracticeCard({
+  icon,
+  title,
+  description,
+  adminPreview = false,
+  detail,
+  children,
+}: {
+  icon: DrillIconKey;
+  title: string;
+  description: string;
+  adminPreview?: boolean;
+  detail?: ReactNode;
+  children: ReactNode;
+}) {
   return (
-    <div className="relative h-full">
-      <div inert aria-hidden="true" className="h-full select-none opacity-30 grayscale">
-        {children}
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-white/70 p-5 backdrop-blur-[1px]">
-        <div role="status" className="max-w-[220px] rounded-xl border border-gold/45 bg-[#fffaf0] px-5 py-4 text-center shadow-sm">
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.15em] text-gold-600">Not published</div>
-          <p className="mt-1.5 text-[13px] font-semibold leading-5 text-navy/70">{title} is not currently available.</p>
+    <article className="flex h-full flex-col rounded-xl border border-navy/12 bg-white p-5 sm:p-6">
+      <div className="flex items-start gap-3">
+        <IconTile name={icon} />
+        <div className="min-w-0 pt-1">
+          <h4 className="text-balance font-display text-[17px] font-semibold leading-5 text-navy">{title}</h4>
+          {adminPreview ? <p className="mt-1 text-xs font-medium text-flag">Draft visible to admins</p> : null}
         </div>
       </div>
-    </div>
+      <p className="mt-4 text-pretty text-sm leading-6 text-navy/60">{description}</p>
+      {detail ? <div className="mt-4">{detail}</div> : null}
+      <div className="mt-auto flex flex-wrap gap-2.5 pt-6">{children}</div>
+    </article>
+  );
+}
+
+function PracticeSection({
+  id,
+  title,
+  description,
+  columns = 2,
+  children,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  columns?: 2 | 3;
+  children: ReactNode;
+}) {
+  return (
+    <section aria-labelledby={id}>
+      <div className="mb-4 max-w-[620px]">
+        <h3 id={id} className="font-display text-xl font-semibold tracking-[-0.015em] text-navy">
+          {title}
+        </h3>
+        <p className="mt-1 text-pretty text-sm leading-6 text-navy/55">{description}</p>
+      </div>
+      <div className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${columns === 3 ? "lg:grid-cols-3" : ""}`}>{children}</div>
+    </section>
   );
 }
 
@@ -77,7 +105,7 @@ export function DrillCatalog({
 }) {
   const grammarBarPct =
     grammarMastery.total > 0
-      ? Math.round((grammarMastery.mastered / grammarMastery.total) * 100)
+      ? Math.min(100, Math.round((grammarMastery.mastered / grammarMastery.total) * 100))
       : 0;
   const drillHref = (value: string) => {
     if (workspace !== "ultimate") return value;
@@ -94,7 +122,8 @@ export function DrillCatalog({
     vocab: drillHref(BASE_HREF.vocab),
     flashcards: drillHref(BASE_HREF.flashcards),
   };
-  const historyHref = (slug: DrillSlug) => `${workspace === "ultimate" ? "/ultimate/history" : "/history"}?drill=${slug}`;
+  const historyHref = (slug: DrillSlug) =>
+    `${workspace === "ultimate" ? "/ultimate/history" : "/history"}?drill=${slug}`;
   const locked = {
     grammar: publication.grammar !== "published",
     reading: publication.reading !== "published",
@@ -106,317 +135,181 @@ export function DrillCatalog({
   };
   const hasLockedDrills = Object.values(locked).some(Boolean);
   const hasVisibleDrills = isAdmin || Object.values(locked).some((value) => !value);
+  const showReadingWriting = isAdmin || !locked.grammar || !locked.reading || !locked.wordScan;
+  const showMath = isAdmin || !locked.targetedMath || !locked.aiMath;
+  const showVocabulary = isAdmin || !locked.vocab || !locked.flashcards;
 
   return (
-    <div className="mx-auto w-full max-w-[1120px] px-6 pb-12 pt-[30px]">
-      <div className="mb-[18px] flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-2xl font-extrabold tracking-[-0.02em] text-navy">Practice Drills</h2>
-        <span className="text-[13px] text-navy/50">Build streaks. Master one pattern at a time.</span>
+    <section
+      id="practice-drills"
+      aria-labelledby="practice-drills-heading"
+      className="mx-auto w-full max-w-[1120px] scroll-mt-24 px-4 pb-12 pt-12 sm:px-6 sm:pt-14"
+    >
+      <div className="mb-8 max-w-[640px]">
+        <h2
+          id="practice-drills-heading"
+          className="text-balance font-display text-[24px] font-bold tracking-[-0.02em] text-navy"
+        >
+          Practice by skill
+        </h2>
+        <p className="mt-2 text-pretty text-[15px] leading-6 text-navy/60">
+          Choose one skill and complete a focused set. Short, deliberate sessions make it easier to see what is improving.
+        </p>
       </div>
 
-      {isAdmin && hasLockedDrills && (
-        <div className="mb-6 rounded-xl border border-gold/40 bg-gold/[0.07] px-4 py-3 text-[13px] font-semibold leading-5 text-navy/70">
-          Draft drills are hidden from students. Admin links remain available for content QA.
-        </div>
-      )}
+      {isAdmin && hasLockedDrills ? (
+        <p className="mb-8 rounded-lg border border-gold/35 bg-flag-bg px-4 py-3 text-sm leading-6 text-navy/65">
+          Some drills are still drafts. They remain visible here so admins can review them before publishing.
+        </p>
+      ) : null}
 
       {!hasVisibleDrills ? (
-        <div className="rounded-2xl border border-navy/10 bg-white px-5 py-12 text-center text-sm font-semibold text-navy/55">
-          No drills are currently published.
+        <div className="rounded-xl border border-navy/12 bg-white px-5 py-12 text-center">
+          <h3 className="font-display text-base font-semibold text-navy">No practice drills are available yet</h3>
+          <p className="mt-1 text-sm text-navy/55">Check back after the next content update.</p>
         </div>
       ) : null}
 
-      {/* Writing */}
-      {isAdmin || !locked.grammar ? <>
-      <CategoryHeader title="Writing" />
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <LockableCard locked={locked.grammar && !isAdmin} title="Grammar Drill">
-          <div className={cardBox}>
-          <div className="flex items-center gap-3.5">
-            <IconTile name="grammar" />
-            <div className="min-w-0">
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-navy/40">
-                Writing <span className="text-brand-600">· AI</span>
-              </div>
-              <h4 className="mt-0.5 font-display text-lg font-bold leading-[1.15] tracking-[-0.01em] text-[#152347]">
-                Grammar Drill
-              </h4>
-            </div>
-          </div>
-          <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Master grammar patterns by writing out your reasoning, graded on process, not just the pick.
-          </p>
-          <div className="mt-4">
-            <div className="mb-[7px] flex items-center justify-between text-[11.5px] font-semibold text-navy/50">
-              <span>
-                {grammarMastery.mastered} / {grammarMastery.total} patterns mastered
-              </span>
-              <span className="inline-flex items-center gap-1 text-flag">
-                <svg viewBox="0 0 24 24" className="h-[13px] w-[13px]" aria-hidden="true">
-                  <path d="M12 3s5 3.5 5 8.5a5 5 0 0 1-10 0c0-1.6.6-2.8 1.3-3.6.2 1.2.9 1.9 1.7 2.1C9.4 7.8 12 6.3 12 3z" fill="#ffbd20" stroke="#f0a900" strokeWidth="1.2" />
-                </svg>
-                {streak} streak
-              </span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-navy/[0.09]">
-              <div
-                className="h-full rounded-full bg-brand"
-                style={{ width: `${grammarBarPct}%` }}
-              />
-            </div>
-          </div>
-          <div className="mt-auto flex items-center gap-2.5 pt-[18px]">
-            <Link href={href.grammar} className={startBtn}>
-              <PlayIcon className="h-3.5 w-3.5" />
-              Start practice
-            </Link>
-            <Link href={historyHref("grammar")} className={ghostBtn}>
-              History
-            </Link>
-          </div>
-          </div>
-        </LockableCard>
-      </div>
-      </> : null}
+      <div className="space-y-12">
+        {showReadingWriting ? (
+          <PracticeSection
+            id="reading-writing-practice-heading"
+            title="Reading and writing"
+            description="Build command of grammar, passage comprehension, and the wording patterns that drive answer choices."
+            columns={3}
+          >
+            {isAdmin || !locked.grammar ? (
+              <PracticeCard
+                icon="grammar"
+                title="Grammar reasoning"
+                description="Explain why an answer follows the rule, then get feedback on both your choice and your reasoning."
+                adminPreview={isAdmin && locked.grammar}
+                detail={
+                  <div>
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-navy/50">
+                      <span className="tabular-nums">
+                        {countFormatter.format(grammarMastery.mastered)} of {countFormatter.format(grammarMastery.total)} patterns mastered
+                      </span>
+                      <span className="tabular-nums">{streak}-day study streak</span>
+                    </div>
+                    <div
+                      role="progressbar"
+                      aria-label="Grammar patterns mastered"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={grammarBarPct}
+                      className="h-1.5 overflow-hidden rounded-full bg-navy/[0.09]"
+                    >
+                      <div className="h-full rounded-full bg-brand-600" style={{ width: `${grammarBarPct}%` }} />
+                    </div>
+                  </div>
+                }
+              >
+                <Link href={href.grammar} className={primaryAction}>Practice grammar</Link>
+                <Link href={historyHref("grammar")} className={secondaryAction}>View history</Link>
+              </PracticeCard>
+            ) : null}
+            {isAdmin || !locked.reading ? (
+              <PracticeCard
+                icon="reading"
+                title="Reading comprehension"
+                description="Read a difficult SAT passage under time pressure, then reconstruct its central idea from memory."
+                adminPreview={isAdmin && locked.reading}
+              >
+                <Link href={href.reading} className={primaryAction}>Practice reading</Link>
+                <Link href={historyHref("reading")} className={secondaryAction}>View history</Link>
+              </PracticeCard>
+            ) : null}
 
-      {/* Reading */}
-      {isAdmin || !locked.reading || !locked.wordScan ? <>
-      <CategoryHeader title="Reading" />
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        {isAdmin || !locked.reading ? (
-        <LockableCard
-          locked={locked.reading && !isAdmin}
-          title="Reading Comprehension"
-        >
-          <div className={cardBox}>
-          <div className="flex items-center gap-3.5">
-            <IconTile name="reading" />
-            <div className="min-w-0">
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-navy/40">
-                Reading <span className="text-brand-600">· AI</span>
-              </div>
-              <h4 className="mt-0.5 font-display text-lg font-bold leading-[1.15] tracking-[-0.01em] text-[#152347]">
-                Reading Comprehension
-              </h4>
-            </div>
-          </div>
-          <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Comprehend hard SAT passages under time pressure, then recall the gist from memory.
-          </p>
-          <div className="mt-auto flex items-center gap-2.5 pt-[18px]">
-            <Link href={href.reading} className={startBtn}>
-              <PlayIcon className="h-3.5 w-3.5" />
-              Start practice
-            </Link>
-            <Link href={historyHref("reading")} className={ghostBtn}>
-              History
-            </Link>
-          </div>
-          </div>
-        </LockableCard>
+            {isAdmin || !locked.wordScan ? (
+              <PracticeCard
+                icon="scan"
+                title="Answer-choice word scan"
+                description="Train your eye to notice high-risk wording before it costs you time or leads you to a tempting wrong answer."
+                adminPreview={isAdmin && locked.wordScan}
+                detail={<p className="text-xs leading-5 text-navy/50">Choose the keyword family you want to recognize faster.</p>}
+              >
+                <Link href={href.wordScanCeased} className={`${secondaryAction} flex-1`}>Practice “ceased”</Link>
+                <Link href={href.wordScanBadMold} className={`${secondaryAction} flex-1`}>Practice “bad mold”</Link>
+              </PracticeCard>
+            ) : null}
+          </PracticeSection>
         ) : null}
 
-        {isAdmin || !locked.wordScan ? (
-        <LockableCard locked={locked.wordScan && !isAdmin} title="Word Scan Drill">
-          <div className={cardBox}>
-          <div className="flex items-center gap-3.5">
-            <IconTile name="scan" />
-            <div className="min-w-0">
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-navy/40">Reading · Speed</div>
-              <h4 className="mt-0.5 font-display text-lg font-bold leading-[1.15] tracking-[-0.01em] text-[#152347]">
-                Word Scan Drill
-              </h4>
-            </div>
-          </div>
-          <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Train your eye to spot elimination keywords before the timer drains. Pure speed reps.
-          </p>
-          <div className="mt-auto flex gap-2.5 pt-[18px]">
-            <Link
-              href={href.wordScanCeased}
-              className="flex-1 rounded-[11px] bg-haze px-3 py-3 text-center text-[13.5px] font-bold text-navy transition-colors hover:bg-navy/10"
-            >
-              Ceased
-            </Link>
-            <Link
-              href={href.wordScanBadMold}
-              className="flex-1 rounded-[11px] bg-haze px-3 py-3 text-center text-[13.5px] font-bold text-navy transition-colors hover:bg-navy/10"
-            >
-              Bad Mold
-            </Link>
-          </div>
-          </div>
-        </LockableCard>
-        ) : null}
-      </div>
-      </> : null}
+        {showMath ? (
+          <PracticeSection
+            id="math-practice-heading"
+            title="Math"
+            description="Choose a controlled challenge or generate a fresh set based on the areas that need more work."
+          >
+            {isAdmin || !locked.targetedMath ? (
+              <PracticeCard
+                icon="target"
+                title="Targeted math challenge"
+                description="Reach 10 correct answers before your attempts run out. Start at medium or raise the difficulty."
+                adminPreview={isAdmin && locked.targetedMath}
+              >
+                <Link href={href.mathMedium} className={primaryAction}>Start medium</Link>
+                <Link href={href.mathHard} className={secondaryAction}>Start hard</Link>
+              </PracticeCard>
+            ) : null}
 
-      {/* Math */}
-      {isAdmin || !locked.targetedMath || !locked.aiMath ? <>
-      <CategoryHeader title="Math" />
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {isAdmin || !locked.targetedMath ? <>
-        <MathCard
-          locked={locked.targetedMath && !isAdmin}
-          name="target"
-          tier="Medium"
-          tierClass="text-success-600"
-          desc="Get 10 right before your lives run out."
-          href={href.mathMedium}
-          cta="Start Challenge"
-          ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
-        />
-        <MathCard
-          locked={locked.targetedMath && !isAdmin}
-          name="target"
-          tier="Hard"
-          tierClass="text-danger-600"
-          desc="Same rules, brutal questions. For 1500-chasers."
-          href={href.mathHard}
-          cta="Start Challenge"
-          ctaClass="bg-navy text-white shadow-[0_2px_0_#07193b]"
-        />
-        </> : null}
-        {isAdmin || !locked.aiMath ? (
-        <MathCard
-          locked={locked.aiMath && !isAdmin}
-          name="aimath"
-          tier="Beta"
-          tierClass="text-brand-600"
-          title="AI Math"
-          desc="Fresh AI-generated questions tuned to your weak spots."
-          href={href.aiMath}
-          cta="Start Practice"
-          ctaClass="bg-brand text-white shadow-[0_2px_0_#2b8fe0]"
-        />
-        ) : null}
-      </div>
-      </> : null}
-
-      {/* Vocabulary */}
-      {isAdmin || !locked.vocab || !locked.flashcards ? <>
-      <CategoryHeader title="Vocabulary" />
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {isAdmin || !locked.vocab ? (
-        <LockableCard locked={locked.vocab && !isAdmin} title="Vocab Drill">
-          <div className={cardBox}>
-          <div className="flex items-center gap-3.5">
-            <IconTile name="vocab" />
-            <div className="min-w-0">
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-navy/40">Vocabulary</div>
-              <h4 className="mt-0.5 font-display text-lg font-bold leading-[1.15] tracking-[-0.01em] text-[#152347]">
-                Vocab Drill
-              </h4>
-            </div>
-          </div>
-          <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Match definitions to terms in a timed session. Beat your best streak.
-          </p>
-          <div className="mt-4 flex gap-4 text-xs text-navy/55">
-            <span>
-              <strong className="text-navy">{vocabStats.words}</strong> words
-            </span>
-            <span>
-              <strong className="text-navy">{vocabStats.mastered}</strong> mastered
-            </span>
-            <span>
-              <strong className="text-navy">{vocabStats.bestStreak}</strong> best streak
-            </span>
-          </div>
-          <div className="mt-auto flex gap-2.5 pt-[18px]">
-            <Link href={href.vocab} className={startBtn}>
-              <PlayIcon className="h-3.5 w-3.5" />
-              Start practice
-            </Link>
-            <Link href={historyHref("vocab")} className={ghostBtn}>
-              History
-            </Link>
-          </div>
-          </div>
-        </LockableCard>
+            {isAdmin || !locked.aiMath ? (
+              <PracticeCard
+                icon="aimath"
+                title="Adaptive math practice"
+                description="Generate fresh questions focused on your weaker areas when you need practice beyond a fixed set."
+                adminPreview={isAdmin && locked.aiMath}
+              >
+                <Link href={href.aiMath} className={primaryAction}>Generate a practice set</Link>
+              </PracticeCard>
+            ) : null}
+          </PracticeSection>
         ) : null}
 
-        {isAdmin || !locked.flashcards ? (
-        <LockableCard locked={locked.flashcards && !isAdmin} title="Vocab Flashcards">
-          <div className={cardBox}>
-          <div className="flex items-center gap-3.5">
-            <IconTile name="flashcards" />
-            <div className="min-w-0">
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-navy/40">Vocabulary</div>
-              <h4 className="mt-0.5 font-display text-lg font-bold leading-[1.15] tracking-[-0.01em] text-[#152347]">
-                Vocab Flashcards
-              </h4>
-            </div>
-          </div>
-          <p className="mt-[13px] text-[13.5px] leading-[1.55] text-navy/60">
-            Review the words you save from the Vocab Drill with spaced repetition.
-          </p>
-          <div className="mt-4 flex gap-4 text-xs text-navy/55">
-            <span>
-              <strong className="text-navy">{vocabStats.flashcards}</strong> in deck
-            </span>
-          </div>
-          <div className="mt-auto flex gap-2.5 pt-[18px]">
-            <Link
-              href={href.flashcards}
-              className="flex-1 rounded-[11px] bg-haze px-3 py-3 text-center text-sm font-bold text-navy transition-colors hover:bg-navy/10"
-            >
-              Instructions
-            </Link>
-            <Link href={href.flashcards} className={ghostBtn}>
-              Manage
-            </Link>
-          </div>
-          </div>
-        </LockableCard>
+        {showVocabulary ? (
+          <PracticeSection
+            id="vocabulary-practice-heading"
+            title="Vocabulary"
+            description="Learn high-value words through timed recall, then revisit the terms that need another pass."
+          >
+            {isAdmin || !locked.vocab ? (
+              <PracticeCard
+                icon="vocab"
+                title="Vocabulary recall"
+                description="Match definitions to SAT vocabulary in a timed session and build reliable recall through repetition."
+                adminPreview={isAdmin && locked.vocab}
+                detail={
+                  <dl className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-navy/50">
+                    <div className="flex gap-1"><dt className="order-2">words</dt><dd className="order-1 font-semibold tabular-nums text-navy">{countFormatter.format(vocabStats.words)}</dd></div>
+                    <div className="flex gap-1"><dt className="order-2">mastered</dt><dd className="order-1 font-semibold tabular-nums text-navy">{countFormatter.format(vocabStats.mastered)}</dd></div>
+                    <div className="flex gap-1"><dt className="order-2">best streak</dt><dd className="order-1 font-semibold tabular-nums text-navy">{countFormatter.format(vocabStats.bestStreak)}</dd></div>
+                  </dl>
+                }
+              >
+                <Link href={href.vocab} className={primaryAction}>Practice vocabulary</Link>
+                <Link href={historyHref("vocab")} className={secondaryAction}>View history</Link>
+              </PracticeCard>
+            ) : null}
+
+            {isAdmin || !locked.flashcards ? (
+              <PracticeCard
+                icon="flashcards"
+                title="Saved-word flashcards"
+                description="Review vocabulary you saved during practice and give difficult words another repetition."
+                adminPreview={isAdmin && locked.flashcards}
+                detail={
+                  <p className="text-xs tabular-nums text-navy/50">
+                    {countFormatter.format(vocabStats.flashcards)} {vocabStats.flashcards === 1 ? "card" : "cards"} saved
+                  </p>
+                }
+              >
+                <Link href={href.flashcards} className={primaryAction}>Review saved words</Link>
+              </PracticeCard>
+            ) : null}
+          </PracticeSection>
         ) : null}
       </div>
-      </> : null}
-    </div>
-  );
-}
-
-function MathCard({
-  locked,
-  name,
-  tier,
-  tierClass,
-  title = "Targeted Math",
-  desc,
-  href,
-  cta,
-  ctaClass,
-}: {
-  locked: boolean;
-  name: DrillIconKey;
-  tier: string;
-  tierClass: string;
-  title?: string;
-  desc: string;
-  href: string;
-  cta: string;
-  ctaClass: string;
-}) {
-  return (
-    <LockableCard locked={locked} title={title}>
-      <div className="flex h-full flex-col rounded-2xl bg-white p-5 shadow-pop">
-      <div className="flex items-center gap-3">
-        <IconTile name={name} large={false} />
-        <div>
-          <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-navy/40">
-            Math <span className={tierClass}>· {tier}</span>
-          </div>
-          <h4 className="mt-0.5 font-display text-[17px] font-bold tracking-[-0.01em] text-[#152347]">{title}</h4>
-        </div>
-      </div>
-      <p className="mt-[13px] text-[13px] leading-[1.55] text-navy/60">{desc}</p>
-      <Link
-        href={href}
-        className={`mt-auto rounded-[11px] px-3 py-3 text-center text-[13.5px] font-bold transition-transform active:translate-y-px ${ctaClass}`}
-      >
-        {cta}
-      </Link>
-      </div>
-    </LockableCard>
+    </section>
   );
 }

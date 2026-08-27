@@ -50,6 +50,16 @@ export type HubState = {
   achievements: AchievementsView;
 };
 
+export type HomePlayer = Pick<
+  Player,
+  "name" | "initials" | "avatarUrl" | "level" | "xp" | "xpForNextLevel" | "streak" | "plan"
+> & { firstName: string | null };
+
+export type HomeState = {
+  player: HomePlayer;
+  dailyGoal: { done: number; total: number };
+};
+
 export type AwardOutcome = { xpAwarded: number; newAchievements: string[] };
 
 type UserRow = {
@@ -114,6 +124,78 @@ async function loadAvatarUrls(emails: string[]): Promise<Map<string, string | nu
     .returns<{ email: string; avatar_url: string | null }[]>();
   if (error || !data) return new Map();
   return new Map(data.map((r) => [r.email, r.avatar_url ?? null]));
+}
+
+async function loadAchievements(email: string): Promise<AchievementsView> {
+  const { data } = await supabaseAdmin()
+    .from("user_achievements")
+    .select("achievement_id")
+    .eq("email", email)
+    .returns<{ achievement_id: string }[]>();
+  const unlocked = new Set((data ?? []).map((row) => row.achievement_id));
+  const items: AchievementItem[] = ACHIEVEMENTS.map((achievement) => ({
+    id: achievement.id,
+    label: achievement.label,
+    description: achievement.description,
+    category: achievement.category,
+    unlocked: unlocked.has(achievement.id),
+  }));
+  const categories = ACHIEVEMENT_CATEGORIES.map((category) => {
+    const categoryItems = items.filter((item) => item.category === category.key);
+    return {
+      key: category.key,
+      label: category.label,
+      unlocked: categoryItems.filter((item) => item.unlocked).length,
+      total: categoryItems.length,
+    };
+  });
+
+  return {
+    unlocked: unlocked.size,
+    total: ACHIEVEMENTS.length,
+    categories,
+    items,
+    nextUp: items.find((item) => !item.unlocked) ?? null,
+  };
+}
+
+// The home page only needs the student's identity, navigation stats, and
+// compact daily count. Keep this separate from getHubState so the home never pays for
+// achievements, weekly summaries, rival calculations, or leaderboard avatars.
+export async function getHomeState(email: string): Promise<HomeState> {
+  const today = dateKey(new Date());
+  const db = supabaseAdmin();
+  const [user, avatarUrl, access, drillsToday] = await Promise.all([
+    loadUser(email),
+    loadAvatarUrl(email),
+    getStudentAccess(email),
+    db
+      .from("drill_attempts")
+      .select("id", { count: "exact", head: true })
+      .eq("email", email)
+      .gte("created_at", `${today}T00:00:00Z`),
+  ]);
+  const xp = user?.xp ?? 0;
+  const progress = levelProgress(xp);
+  const id = identity(email, user?.name ?? null);
+
+  return {
+    player: {
+      name: id.name,
+      firstName: user?.name?.trim() ? user.name.trim().split(/\s+/)[0] : null,
+      initials: id.initials,
+      avatarUrl,
+      level: progress.level,
+      xp,
+      xpForNextLevel: progress.ceil,
+      streak: user?.streak_current ?? 0,
+      plan: access.plan,
+    },
+    dailyGoal: {
+      done: drillsToday.count ?? 0,
+      total: user?.daily_goal_target ?? 5,
+    },
+  };
 }
 
 // Assemble everything the hub needs for one student in a single call.
@@ -195,29 +277,7 @@ export async function getHubState(email: string): Promise<HubState> {
   });
 
   // Achievements: read persisted unlocks; the catalog supplies labels + descriptions.
-  const { data: ua } = await db
-    .from("user_achievements")
-    .select("achievement_id")
-    .eq("email", email)
-    .returns<{ achievement_id: string }[]>();
-  const unlocked = new Set((ua ?? []).map((r) => r.achievement_id));
-  const achievementItems: AchievementItem[] = ACHIEVEMENTS.map((a) => ({
-    id: a.id,
-    label: a.label,
-    description: a.description,
-    category: a.category,
-    unlocked: unlocked.has(a.id),
-  }));
-  const achievementCategories = ACHIEVEMENT_CATEGORIES.map((c) => {
-    const inCat = achievementItems.filter((i) => i.category === c.key);
-    return {
-      key: c.key,
-      label: c.label,
-      unlocked: inCat.filter((i) => i.unlocked).length,
-      total: inCat.length,
-    };
-  });
-  const nextUp = achievementItems.find((i) => !i.unlocked) ?? null;
+  const achievements = await loadAchievements(email);
 
   const player: Player = {
     name: id.name,
@@ -241,13 +301,7 @@ export async function getHubState(email: string): Promise<HubState> {
     todayIndex: mondayIndex(now),
     dailyGoal: { done: drillsToday ?? 0, total: dailyTarget },
     leaderboard,
-    achievements: {
-      unlocked: unlocked.size,
-      total: ACHIEVEMENTS.length,
-      categories: achievementCategories,
-      items: achievementItems,
-      nextUp,
-    },
+    achievements,
   };
 }
 
