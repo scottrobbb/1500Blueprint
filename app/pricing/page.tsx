@@ -15,7 +15,7 @@ const HERO_VSL_URL = "https://vimeo.com/1221856607?share=copy&fl=sv&fe=ci";
 const heroChecklist = [
   "4 Full Practice Tests (made to be harder than the real SAT)",
   "1250+ Question Bank Qs",
-  "Complete Math & Reading Course",
+  "Step-by-step math and reading courses",
   "Weekly group class with Scott",
   "On-Demand Video Library, updated weekly",
   "Realistic challenge questions (built for 1400+ scorers)",
