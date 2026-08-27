@@ -27,6 +27,7 @@ export type NavStats = {
   avatarUrl: string | null;
   plan: string;
   isAdmin: boolean;
+  isExplanationEditor: boolean;
 };
 
 // One day in the weekly streak row. `done` = the daily goal was met that day

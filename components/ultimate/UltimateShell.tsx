@@ -134,6 +134,19 @@ export function UltimateShell({
             />
           </div>
         )}
+
+        {stats.isExplanationEditor && !stats.isAdmin && (
+          <div className="mb-2.5">
+            <p className="mx-2 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">
+              Staff
+            </p>
+            <RailLink
+              item={{ href: "/manager", label: "Explanation Manager", Icon: EditIcon }}
+              active={isActivePath(pathname, "/manager")}
+              onNavigate={() => setMenuOpen(false)}
+            />
+          </div>
+        )}
       </nav>
 
       <div className="mt-3 border-t border-white/10 pt-3">
@@ -266,6 +279,15 @@ function canUse(item: NavItem, access: StudentAccess): boolean {
 function isActivePath(pathname: string, href: string): boolean {
   if (href === "/ultimate/tests" && pathname.startsWith("/practice-test/")) return true;
   return href === "/ultimate" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function EditIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M12 20h9" strokeLinecap="round" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 }
 
 function HomeIcon({ className }: IconProps) {

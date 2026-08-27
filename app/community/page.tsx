@@ -4,6 +4,7 @@ import { CommunityFeed } from "@/components/community/CommunityFeed";
 import { RightRail } from "@/components/community/RightRail";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { hasStaffRole } from "@/lib/auth/staff";
 import { getHubState } from "@/lib/gamification/state";
 import { listPosts, listTopMembers } from "@/lib/community/queries";
 
@@ -20,10 +21,11 @@ export default async function CommunityPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [hub, posts, topMembers] = await Promise.all([
+  const [hub, posts, topMembers, isExplanationEditor] = await Promise.all([
     getHubState(session.email),
     listPosts(session.email),
     listTopMembers(),
+    hasStaffRole(session.email, "explanation_editor"),
   ]);
   const isAdmin = isAdminEmail(session.email);
   const nav = {
@@ -35,6 +37,7 @@ export default async function CommunityPage() {
     avatarUrl: hub.player.avatarUrl,
     plan: hub.player.plan,
     isAdmin,
+    isExplanationEditor,
   };
   const user = {
     name: hub.player.name,

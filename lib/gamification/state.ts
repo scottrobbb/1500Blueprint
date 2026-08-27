@@ -12,6 +12,7 @@ import type {
 } from "@/lib/gamification";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { hasStaffRole } from "@/lib/auth/staff";
 import { effectivePlan, normalizeLegacyPlanCode, normalizePlanCode, type AccessSource, type PlanCode } from "@/lib/auth/plans";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { drillAllowance } from "@/lib/auth/access-control";
@@ -681,7 +682,12 @@ export async function getTestAttempt(
 
 // Lightweight stats for the shared top nav, without the full hub query.
 export async function getNavStats(email: string): Promise<NavStats> {
-  const [user, avatarUrl, access] = await Promise.all([loadUser(email), loadAvatarUrl(email), getStudentAccess(email)]);
+  const [user, avatarUrl, access, isExplanationEditor] = await Promise.all([
+    loadUser(email),
+    loadAvatarUrl(email),
+    getStudentAccess(email),
+    hasStaffRole(email, "explanation_editor"),
+  ]);
   const xp = user?.xp ?? 0;
   const id = identity(email, user?.name ?? null);
   return {
@@ -693,6 +699,7 @@ export async function getNavStats(email: string): Promise<NavStats> {
     avatarUrl,
     plan: access.plan,
     isAdmin: isAdminEmail(email),
+    isExplanationEditor,
   };
 }
 

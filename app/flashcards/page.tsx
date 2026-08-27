@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { AppNav } from "@/components/shell/AppNav";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { hasStaffRole } from "@/lib/auth/staff";
 import { getHubState } from "@/lib/gamification/state";
 import { listStudentLibrary } from "@/lib/flashcards/queries";
 import { SetLibrary } from "@/components/flashcards/SetLibrary";
@@ -16,9 +17,10 @@ export default async function FlashcardsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [hub, library] = await Promise.all([
+  const [hub, library, isExplanationEditor] = await Promise.all([
     getHubState(session.email),
     listStudentLibrary(session.email),
+    hasStaffRole(session.email, "explanation_editor"),
   ]);
 
   const nav = {
@@ -30,6 +32,7 @@ export default async function FlashcardsPage() {
     avatarUrl: hub.player.avatarUrl,
     plan: hub.player.plan,
     isAdmin: isAdminEmail(session.email),
+    isExplanationEditor,
   };
 
   return (

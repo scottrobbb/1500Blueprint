@@ -8,6 +8,7 @@ import { DrillCatalog } from "@/components/hub/DrillCatalog";
 import { OnboardingTour } from "@/components/hub/OnboardingTour";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { hasStaffRole } from "@/lib/auth/staff";
 import { getHubState, needsOnboarding } from "@/lib/gamification/state";
 import { loadGrammarMastery } from "@/lib/drills/progress";
 import { loadVocabDashboard } from "@/lib/drills/vocab.server";
@@ -23,12 +24,13 @@ export default async function DrillsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [hub, showOnboarding, grammarMastery, vocabState, drills] = await Promise.all([
+  const [hub, showOnboarding, grammarMastery, vocabState, drills, isExplanationEditor] = await Promise.all([
     getHubState(session.email),
     needsOnboarding(session.email),
     loadGrammarMastery(session.email),
     loadVocabDashboard(session.email),
     listDrills(),
+    hasStaffRole(session.email, "explanation_editor"),
   ]);
   const nav = {
     streak: hub.player.streak,
@@ -39,6 +41,7 @@ export default async function DrillsPage() {
     avatarUrl: hub.player.avatarUrl,
     plan: hub.player.plan,
     isAdmin: isAdminEmail(session.email),
+    isExplanationEditor,
   };
 
   return (

@@ -82,6 +82,17 @@ export function AppNav({ activePage, stats }: { activePage: TabKey | "settings";
             </Link>
           )}
 
+          {stats.isExplanationEditor && !stats.isAdmin && (
+            <Link
+              href="/manager"
+              aria-label="Explanation manager"
+              title="Explanation manager"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-brand transition-colors hover:bg-navy/[0.06]"
+            >
+              <EditIcon className="h-[18px] w-[18px]" />
+            </Link>
+          )}
+
           <NotificationBell />
 
           <AccountMenu
@@ -94,5 +105,14 @@ export function AppNav({ activePage, stats }: { activePage: TabKey | "settings";
         </div>
       </div>
     </header>
+  );
+}
+
+function EditIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <path d="M12 20h9" strokeLinecap="round" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

@@ -3,6 +3,7 @@ import { AppNav } from "@/components/shell/AppNav";
 import { PostDetail } from "@/components/community/PostDetail";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { hasStaffRole } from "@/lib/auth/staff";
 import { getHubState } from "@/lib/gamification/state";
 import { getPost } from "@/lib/community/queries";
 
@@ -18,7 +19,11 @@ export default async function CommunityPostPage({
   if (!session) redirect("/login");
 
   const { id } = await params;
-  const [hub, post] = await Promise.all([getHubState(session.email), getPost(id, session.email)]);
+  const [hub, post, isExplanationEditor] = await Promise.all([
+    getHubState(session.email),
+    getPost(id, session.email),
+    hasStaffRole(session.email, "explanation_editor"),
+  ]);
   if (!post) notFound();
 
   const isAdmin = isAdminEmail(session.email);
@@ -31,6 +36,7 @@ export default async function CommunityPostPage({
     avatarUrl: hub.player.avatarUrl,
     plan: hub.player.plan,
     isAdmin,
+    isExplanationEditor,
   };
   const user = {
     name: hub.player.name,
