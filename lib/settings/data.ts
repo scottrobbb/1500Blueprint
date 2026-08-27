@@ -8,6 +8,8 @@ import {
 import { normalizePlanCode, type PlanCode, type StudentAccess } from "@/lib/auth/plans";
 import { billingLivemode } from "@/lib/billing/config";
 import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
+import type { AchievementCategory } from "@/lib/gamification";
+import { ACHIEVEMENTS, levelProgress, weekStart } from "@/lib/gamification/engine";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 
 export type SettingsAccount = {
@@ -16,6 +18,11 @@ export type SettingsAccount = {
   name: string | null;
   avatarUrl: string | null;
   createdAt: string | null;
+  lastLoginAt: string | null;
+  loginCount: number;
+  xp: number;
+  currentStreak: number;
+  longestStreak: number;
   status: "active" | "suspended" | "archived";
   hasPasswordIdentity: boolean;
   hasStripeCustomer: boolean;
@@ -49,12 +56,34 @@ export type SubscriptionSettingsData = {
   drillsUsedToday: number | null;
 };
 
+export type AccountAchievement = {
+  id: string;
+  label: string;
+  category: AchievementCategory;
+};
+
+export type AccountSettingsData = {
+  account: SettingsAccount | null;
+  plan: PlanCode;
+  level: number;
+  weeklyRank: number | null;
+  achievementCount: number;
+  achievementTotal: number;
+  achievements: AccountAchievement[];
+  testDate: string | null;
+};
+
 type AccountRow = {
   id: string;
   email: string;
   name: string | null;
   avatar_url: string | null;
   created_at: string | null;
+  last_login_at: string | null;
+  login_count: number;
+  xp: number;
+  streak_current: number;
+  streak_longest: number;
   account_status: SettingsAccount["status"];
   auth_user_id: string | null;
   stripe_test_customer_id: string | null;
@@ -82,7 +111,7 @@ export async function getSettingsAccount(email: string): Promise<SettingsAccount
   const { data, error } = await supabaseAdmin()
     .from("users")
     .select(
-      "id,email,name,avatar_url,created_at,account_status,auth_user_id,stripe_test_customer_id,stripe_live_customer_id",
+      "id,email,name,avatar_url,created_at,last_login_at,login_count,xp,streak_current,streak_longest,account_status,auth_user_id,stripe_test_customer_id,stripe_live_customer_id",
     )
     .eq("email", email.trim().toLowerCase())
     .maybeSingle<AccountRow>();
@@ -96,6 +125,11 @@ export async function getSettingsAccount(email: string): Promise<SettingsAccount
     name: data.name,
     avatarUrl: data.avatar_url,
     createdAt: data.created_at,
+    lastLoginAt: data.last_login_at,
+    loginCount: data.login_count,
+    xp: data.xp,
+    currentStreak: data.streak_current,
+    longestStreak: data.streak_longest,
     status: data.account_status,
     hasPasswordIdentity: Boolean(data.auth_user_id),
     hasStripeCustomer: Boolean(
@@ -103,6 +137,81 @@ export async function getSettingsAccount(email: string): Promise<SettingsAccount
         ? data.stripe_live_customer_id
         : data.stripe_test_customer_id,
     ),
+  };
+}
+
+type UnlockedAchievementRow = {
+  achievement_id: string;
+  unlocked_at: string;
+};
+
+type WeeklyXpRow = {
+  email: string;
+  weekly_xp: number | string;
+};
+
+export async function getAccountSettings(email: string): Promise<AccountSettingsData> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const db = supabaseAdmin();
+  const [account, access, optional] = await Promise.all([
+    getSettingsAccount(normalizedEmail),
+    getStudentAccess(normalizedEmail),
+    Promise.allSettled([
+      db
+        .from("user_achievements")
+        .select("achievement_id,unlocked_at", { count: "exact" })
+        .eq("email", normalizedEmail)
+        .order("unlocked_at", { ascending: false })
+        .limit(6)
+        .returns<UnlockedAchievementRow[]>(),
+      db
+        .from("study_planner_profiles")
+        .select("test_date")
+        .eq("email", normalizedEmail)
+        .maybeSingle<{ test_date: string }>(),
+      db.rpc("weekly_leaderboard", { p_since: weekStart(new Date()).toISOString() }),
+    ]),
+  ]);
+
+  const [achievementResult, plannerResult, leaderboardResult] = optional;
+  const achievementResponse = achievementResult.status === "fulfilled"
+    ? achievementResult.value
+    : null;
+  const catalog = new Map(ACHIEVEMENTS.map((achievement) => [achievement.id, achievement]));
+  const achievements = (achievementResponse?.data ?? []).flatMap((row) => {
+    const achievement = catalog.get(row.achievement_id);
+    return achievement
+      ? [{ id: achievement.id, label: achievement.label, category: achievement.category }]
+      : [];
+  });
+
+  const leaderboardResponse = leaderboardResult.status === "fulfilled"
+    ? leaderboardResult.value
+    : null;
+  const leaderboard = ((leaderboardResponse?.data ?? []) as WeeklyXpRow[]).map((row) => ({
+    email: row.email.trim().toLowerCase(),
+    xp: Number(row.weekly_xp),
+  }));
+  if (!leaderboard.some((row) => row.email === normalizedEmail)) {
+    leaderboard.push({ email: normalizedEmail, xp: 0 });
+  }
+  leaderboard.sort((a, b) => b.xp - a.xp);
+  const rankIndex = leaderboard.findIndex((row) => row.email === normalizedEmail);
+
+  const plannerResponse = plannerResult.status === "fulfilled"
+    ? plannerResult.value
+    : null;
+  const xp = account?.xp ?? 0;
+
+  return {
+    account,
+    plan: access.plan,
+    level: levelProgress(xp).level,
+    weeklyRank: rankIndex >= 0 ? rankIndex + 1 : null,
+    achievementCount: achievementResponse?.count ?? achievements.length,
+    achievementTotal: ACHIEVEMENTS.length,
+    achievements,
+    testDate: plannerResponse?.data?.test_date ?? null,
   };
 }
 

@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
-import { SignOutButton } from "@/components/auth/SignOutButton";
 import { ProfileSettingsCard } from "@/components/settings/ProfileSettingsCard";
 import { SettingsPageHeading } from "@/components/settings/SettingsPageHeading";
 import { getSession } from "@/lib/auth/session";
-import { getSettingsAccount } from "@/lib/settings/data";
+import { getAccountSettings } from "@/lib/settings/data";
 
 export default async function AccountSettingsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const account = await getSettingsAccount(session.email);
+  const data = await getAccountSettings(session.email);
+  const { account } = data;
 
   return (
     <>
@@ -23,6 +23,16 @@ export default async function AccountSettingsPage() {
           email={account.email}
           avatarUrl={account.avatarUrl}
           createdAt={account.createdAt}
+          plan={data.plan}
+          xp={account.xp}
+          level={data.level}
+          currentStreak={account.currentStreak}
+          longestStreak={account.longestStreak}
+          weeklyRank={data.weeklyRank}
+          achievementCount={data.achievementCount}
+          achievementTotal={data.achievementTotal}
+          achievements={data.achievements}
+          testDate={data.testDate}
         />
       ) : (
         <section className="rounded-2xl border border-flag/20 bg-flag-bg p-5">
@@ -33,13 +43,6 @@ export default async function AccountSettingsPage() {
         </section>
       )}
 
-      <section className="mt-10">
-        <h2 className="font-display text-lg font-extrabold text-navy">Account actions</h2>
-        <div className="mt-4 rounded-2xl border border-navy/10 bg-white p-5 sm:flex sm:items-center sm:justify-between">
-          <h3 className="text-sm font-extrabold text-navy">Sign out</h3>
-          <SignOutButton className="mt-4 min-h-11 rounded-xl px-5 sm:mt-0" />
-        </div>
-      </section>
     </>
   );
 }
