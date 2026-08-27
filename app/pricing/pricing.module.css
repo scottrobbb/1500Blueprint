@@ -346,9 +346,9 @@
 .planName h3 {
   color: #fff;
   font-family: var(--font-gabarito), sans-serif;
-  font-size: 20px;
-  font-weight: 560;
-  letter-spacing: -.015em;
+  font-size: 27px;
+  font-weight: 650;
+  letter-spacing: -.02em;
   margin: 0;
 }
 .cadenceToggle {
@@ -403,34 +403,36 @@
   margin-top: 12px;
 }
 .priceRow > span {
-  font-size: 17px;
+  color: #fff;
+  font-size: 20px;
   font-weight: 700;
   margin-right: 3px;
 }
 .priceRow strong {
+  color: #fff;
   font-family: var(--font-gabarito), sans-serif;
-  font-size: 44px;
-  font-weight: 620;
-  letter-spacing: -.055em;
+  font-size: 48px;
+  font-weight: 650;
+  letter-spacing: -.05em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .priceRow em {
-  color: rgba(255,255,255,.5);
-  font-size: 15px;
+  color: rgba(255,255,255,.6);
+  font-size: 16px;
   font-style: normal;
   margin-left: 8px;
 }
 .billingDetail {
-  color: rgba(255,255,255,.45);
-  font-size: 12px;
+  color: rgba(255,255,255,.55);
+  font-size: 13px;
   line-height: 1.5;
   margin: -2px 0 0;
   min-height: 36px;
 }
 .planDescription {
-  color: rgba(255,255,255,.55);
-  font-size: 14px;
+  color: rgba(255,255,255,.68);
+  font-size: 15px;
   line-height: 1.55;
   margin: 11px 0 0;
   min-height: 66px;
@@ -441,36 +443,37 @@
   margin: 21px 0;
 }
 .includesLabel {
-  color: rgba(255,255,255,.4);
+  color: rgba(255,255,255,.45);
   font-size: 13px;
   font-weight: 750;
   margin: 0 0 15px;
 }
 .features {
   display: grid;
-  gap: 11px;
+  gap: 13px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 .features li {
   align-items: flex-start;
-  color: rgba(255,255,255,.82);
+  color: #fff;
   display: flex;
-  font-size: 13px;
-  gap: 8px;
+  font-size: 16px;
+  font-weight: 520;
+  gap: 10px;
   line-height: 1.45;
 }
 .features svg {
   fill: none;
   flex: 0 0 auto;
-  height: 15px;
+  height: 17px;
   margin-top: 2px;
   stroke: #fff;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2;
-  width: 15px;
+  width: 17px;
 }
 .actions {
   margin-top: auto;
