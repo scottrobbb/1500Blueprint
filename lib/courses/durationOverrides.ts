@@ -30,6 +30,7 @@ const DURATION_OVERRIDE_MINUTES: Record<string, Record<string, number>> = {
     "Circles": 13,
   },
   "reading-writing-subtopic-course": {
+    "Start Here if Your Reading and Writing Score Is Below 500": 2,
     "Pacing and General Reading Tips": 7,
     "How to R-A-P: Read, Analyze, Predict": 7,
     "Words in Context": 11,
