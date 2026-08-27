@@ -32,7 +32,7 @@ export default async function UltimateCoursePage({ params }: Props) {
               WebkitMaskImage: "radial-gradient(75% 75% at 50% 50%, black 45%, transparent 62%)",
             }}
           >
-            <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} priority fill className="h-full bg-transparent" />
+            <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} zoom={course.coverZoom} priority fill className="h-full bg-transparent" />
           </div>
           <div className="relative">
             <Link href="/ultimate/courses" aria-label="Back to all courses" className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3.5 text-[13px] font-bold text-white/80 shadow-[0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition duration-200 hover:border-white/25 hover:bg-white/[0.14] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">

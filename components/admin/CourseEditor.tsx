@@ -91,7 +91,7 @@ export function CourseEditor({ initial }: { initial: Course }) {
     if (saving) return;
     setSaving(true);
     setMessage(null);
-    const input: CourseInput = { id: course.id, slug: cleanSlug(course.slug), title: course.title, description: course.description, eyebrow: course.eyebrow, coverUrl: course.coverUrl, position: course.position, estimatedMinutes: course.estimatedMinutes, status: course.status, modules: course.modules };
+    const input: CourseInput = { id: course.id, slug: cleanSlug(course.slug), title: course.title, description: course.description, eyebrow: course.eyebrow, coverUrl: course.coverUrl, coverZoom: course.coverZoom, position: course.position, estimatedMinutes: course.estimatedMinutes, status: course.status, modules: course.modules };
     try {
       const response = await fetch(`/api/admin/courses/${course.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(input) });
       const result = (await response.json().catch(() => null)) as { error?: string; detail?: string } | null;
@@ -185,7 +185,7 @@ function CourseCoverEditor({ course, onChange }: { course: Course; onChange: Rea
         {hasCover ? <span className="rounded-full bg-success-bg px-2.5 py-1 text-[10px] font-bold text-success-600">Cover added</span> : null}
       </div>
       <div className="mt-2.5 overflow-hidden rounded-xl border border-navy/12 bg-white lg:grid lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
-        <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} className="border-b border-navy/10 lg:border-b-0 lg:border-r" />
+        <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} zoom={course.coverZoom} className="border-b border-navy/10 lg:border-b-0 lg:border-r" />
         <div className="p-4 sm:p-5">
           <p className="text-sm font-semibold text-navy">{hasCover ? "Replace this cover" : "Add a course cover"}</p>
           <p className="mt-1 text-xs leading-5 text-navy/48">Use a 1600 × 700 image so the subject stays clear on desktop and mobile.</p>
@@ -210,9 +210,25 @@ function CourseCoverEditor({ course, onChange }: { course: Course; onChange: Rea
               className={`${inputClass} mt-0`}
             />
           </label>
+          {hasCover ? (
+            <label className="mt-4 block" htmlFor={`course-cover-zoom-${course.id}`}>
+              <span className="flex items-center justify-between text-xs font-semibold text-navy/60"><span>Zoom</span><span className="tabular-nums text-navy/40">{course.coverZoom.toFixed(2)}×</span></span>
+              <input
+                id={`course-cover-zoom-${course.id}`}
+                type="range"
+                min={1}
+                max={3}
+                step={0.05}
+                value={course.coverZoom}
+                onChange={(event) => onChange((current) => ({ ...current, coverZoom: Number(event.target.value) }))}
+                className="mt-1.5 w-full accent-brand"
+              />
+              <span className="mt-1 block text-[11px] leading-4 text-navy/38">If the image is a small centered badge rather than full-bleed art, zoom in until it fills the card.</span>
+            </label>
+          ) : null}
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <p className="text-[11px] leading-4 text-navy/38">Save the course to publish the new cover.</p>
-            {hasCover ? <button type="button" onClick={() => onChange((current) => ({ ...current, coverUrl: null }))} className="min-h-10 cursor-pointer rounded-lg px-3 text-xs font-bold text-danger-600 transition-colors hover:bg-danger-bg">Remove cover</button> : null}
+            {hasCover ? <button type="button" onClick={() => onChange((current) => ({ ...current, coverUrl: null, coverZoom: 1 }))} className="min-h-10 cursor-pointer rounded-lg px-3 text-xs font-bold text-danger-600 transition-colors hover:bg-danger-bg">Remove cover</button> : null}
           </div>
         </div>
       </div>

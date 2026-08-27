@@ -14,9 +14,13 @@ type CourseCoverProps = {
   // the default aspect-ratio via a `!` override, which doesn't reliably win
   // against an arbitrary-value utility.
   fill?: boolean;
+  // Some cover art is a small centered badge on a large background instead
+  // of full-bleed art; scaling the image up crops that dead space away so
+  // the subject fills the card. 1 = no zoom (the default).
+  zoom?: number;
 };
 
-export function CourseCover({ src, title, eyebrow, className = "", fill = false, priority = false }: CourseCoverProps) {
+export function CourseCover({ src, title, eyebrow, className = "", fill = false, zoom = 1, priority = false }: CourseCoverProps) {
   const normalizedSrc = src?.trim() ?? "";
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
@@ -34,7 +38,8 @@ export function CourseCover({ src, title, eyebrow, className = "", fill = false,
           fetchPriority={priority ? "high" : "auto"}
           decoding="async"
           onError={() => setFailedSrc(normalizedSrc)}
-          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]"
+          style={{ "--cover-zoom": zoom } as React.CSSProperties}
+          className="h-full w-full origin-center scale-[var(--cover-zoom)] object-cover transition-transform duration-300 group-hover:scale-[calc(var(--cover-zoom)*1.015)]"
         />
       ) : (
         <CourseCoverFallback title={title} eyebrow={eyebrow} />

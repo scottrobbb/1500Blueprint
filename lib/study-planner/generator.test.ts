@@ -422,6 +422,7 @@ function courseWithLesson(title: string, minutes: number, practiceUrl: string | 
     description: null,
     eyebrow: null,
     coverUrl: null,
+    coverZoom: 1,
     position: 1,
     estimatedMinutes: minutes,
     status: "published",

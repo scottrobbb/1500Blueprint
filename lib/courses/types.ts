@@ -70,6 +70,7 @@ export type Course = {
   description: string | null;
   eyebrow: string | null;
   coverUrl: string | null;
+  coverZoom: number;
   position: number;
   estimatedMinutes: number;
   status: CourseStatus;
