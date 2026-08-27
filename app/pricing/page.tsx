@@ -57,7 +57,7 @@ const freeFeatures: PlanFeature[] = [
 ];
 
 const coreFeatures: PlanFeature[] = [
-  { label: "1250+ Questions (with Desmos Explanations)", icon: "grid" },
+  { label: "1250+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
   { label: "2 full-length digital SATs", icon: "file" },
   { label: "20 practice drills each day", icon: "bolt" },
   { label: "Everything in Free", icon: "check" },
