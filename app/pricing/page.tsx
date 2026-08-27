@@ -218,7 +218,6 @@ export default async function PricingPage({
 
       <section className={styles.planSection} id="plans">
         {billing ? <BillingNotice state={billing} /> : null}
-        <SectionHeading title="Pricing" />
 
         <PlansPanel
           freeFeatures={freeFeatures}

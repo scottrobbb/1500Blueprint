@@ -254,7 +254,7 @@
   background: #131417;
   border-top: 1px solid rgba(255,255,255,.06);
   color: #fff;
-  padding: 92px max(28px, calc((100vw - 1180px) / 2)) 76px;
+  padding: 16px max(28px, calc((100vw - 1180px) / 2)) 76px;
 }
 .billingNotice {
   background: rgba(255,200,61,.1);
@@ -290,15 +290,6 @@
 }
 .sectionHeadingDark h2 { color: #fff; }
 .sectionHeadingDark > p:last-child { color: rgba(255,255,255,.68); }
-.planSection > .sectionHeading { margin-bottom: 36px; }
-.planSection > .sectionHeading h2 {
-  color: #fff;
-  font-size: clamp(42px, 4.5vw, 54px);
-}
-.planSection > .sectionHeading > p:last-child {
-  color: rgba(255,255,255,.6);
-  margin-top: 10px;
-}
 .planGrid {
   align-items: stretch;
   display: grid;
@@ -1066,10 +1057,6 @@
   .faqLayout { grid-template-columns: minmax(0,1fr); }
   .testimonialWall { column-count: 2; }
   .planGrid { margin: 0 auto; max-width: 560px; }
-  .planSection > .sectionHeading {
-    margin-inline: auto;
-    text-align: center;
-  }
   .planFootnote { max-width: 550px; }
   .priceCard,
   .priceCard.max { padding: 28px; }
