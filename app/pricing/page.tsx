@@ -8,6 +8,7 @@ import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { ExamCountdown } from "./ExamCountdown";
 import { PlansPanel } from "./PlansPanel";
 import { TestimonialReel } from "./TestimonialReel";
+import { TestimonialWall } from "./TestimonialWall";
 import styles from "./pricing.module.css";
 
 const HERO_VSL_URL = "https://vimeo.com/1221856607?share=copy&fl=sv&fe=ci";
@@ -107,42 +108,6 @@ const productFeatures: Array<{
     description: "Max only, live with Scott plus recordings",
   },
 ];
-
-const writtenStories = [
-  {
-    student: "Tara",
-    before: "",
-    highlight:
-      "I went up 110 points since September. I got my score back this morning and I got a 1490.",
-    after: " I just wanted to say thank you for all the help!",
-    result: "1490 SAT, up 110 points",
-    source: "IMG_0237.PNG",
-  },
-  {
-    student: "@ut.4392",
-    before: "Bro I just wanted to hit u up and say thank u so much for all the math tips. ",
-    highlight: "I went from 1260 to 1480 with 790 on math.",
-    after: "",
-    result: "1260 to 1480, 790 Math",
-    source: "IMG_8598.PNG",
-  },
-  {
-    student: "@rushanthg",
-    before: "Yo I just wanted to let you know ",
-    highlight: "I went from a 1300 to a 1480 in 3 weeks",
-    after: " because of you on June SAT and I appreciate your help.",
-    result: "1300 to 1480 in 3 weeks",
-    source: "IMG_8604.PNG",
-  },
-  {
-    student: "plushy",
-    before: "",
-    highlight: "1280 to 1410 thanks to you bro.",
-    after: " I know it's not amazing, but I'm really proud of it.",
-    result: "1280 to 1410",
-    source: "IMG_0962.PNG",
-  },
-] as const;
 
 const faqItems = [
   {
@@ -345,26 +310,7 @@ export default async function PricingPage({
         <div className={styles.writtenStoriesIntro}>
           <h2>More from students</h2>
         </div>
-        <div className={styles.writtenStoryGrid}>
-          {writtenStories.map((story) => (
-            <article
-              className={styles.writtenStory}
-              key={story.result}
-            >
-              <div className={styles.storyAuthor}>
-                <div>
-                  <strong>{story.student}</strong>
-                  <span>{story.result}</span>
-                </div>
-              </div>
-              <p>
-                {story.before}
-                <span>{story.highlight}</span>
-                {story.after}
-              </p>
-            </article>
-          ))}
-        </div>
+        <TestimonialWall />
       </section>
 
       <section className={styles.faqSection} id="faq">
