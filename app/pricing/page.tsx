@@ -16,7 +16,7 @@ const heroChecklist = [
   "4 Full Practice Tests (made to be harder than the real SAT)",
   "1250+ Question Bank Qs",
   "Complete Math & Reading Course",
-  "Weekly class — get your questions answered directly",
+  "Weekly group class with Scott",
   "On-Demand Video Library, updated weekly",
 ];
 
