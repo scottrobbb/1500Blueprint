@@ -323,7 +323,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: 28px;
+  padding: 22px;
   position: relative;
 }
 .priceCard.core {
@@ -399,8 +399,7 @@
 .priceRow {
   align-items: baseline;
   display: flex;
-  min-height: 60px;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 .priceRow > span {
   color: #fff;
@@ -427,30 +426,28 @@
   color: rgba(255,255,255,.55);
   font-size: 13px;
   line-height: 1.5;
-  margin: -2px 0 0;
-  min-height: 36px;
+  margin: 4px 0 0;
 }
 .planDescription {
   color: rgba(255,255,255,.68);
   font-size: 15px;
-  line-height: 1.55;
-  margin: 11px 0 0;
-  min-height: 66px;
+  line-height: 1.5;
+  margin: 8px 0 0;
 }
 .cardRule {
   background: rgba(255,255,255,.12);
   height: 1px;
-  margin: 21px 0;
+  margin: 16px 0;
 }
 .includesLabel {
   color: rgba(255,255,255,.45);
   font-size: 13px;
   font-weight: 750;
-  margin: 0 0 15px;
+  margin: 0 0 10px;
 }
 .features {
   display: grid;
-  gap: 13px;
+  gap: 10px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -477,7 +474,7 @@
 }
 .actions {
   margin-top: auto;
-  padding-top: 28px;
+  padding-top: 20px;
 }
 .actions form { margin: 0; }
 .primaryAction,
