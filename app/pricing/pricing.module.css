@@ -341,9 +341,11 @@
 }
 .priceCard.max {
   background:
-    linear-gradient(135deg, rgba(47,159,233,.4) 0%, #0c0e13 45%, #0c0e13 55%, rgba(255,200,61,.36) 100%) padding-box,
+    radial-gradient(130% 110% at 0% 0%, rgba(47,159,233,.4), transparent 60%) padding-box,
+    radial-gradient(130% 110% at 100% 100%, rgba(255,200,61,.36), transparent 60%) padding-box,
+    #0c0e13 padding-box,
     linear-gradient(135deg, var(--blue), var(--gold), var(--blue)) border-box;
-  background-size: 100% 100%, 300% 300%;
+  background-size: 100% 100%, 100% 100%, 100% 100%, 300% 300%;
   border: 2px solid transparent;
   animation: maxBorderShimmer 8s ease-in-out infinite;
 }
@@ -353,8 +355,8 @@
     0 30px 70px -26px rgba(255,200,61,.4);
 }
 @keyframes maxBorderShimmer {
-  0%, 100% { background-position: 0 0, 0% 0%; }
-  50% { background-position: 0 0, 100% 100%; }
+  0%, 100% { background-position: 0 0, 0 0, 0 0, 0% 0%; }
+  50% { background-position: 0 0, 0 0, 0 0, 100% 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .priceCard.max { animation: none; }
