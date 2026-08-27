@@ -3,7 +3,7 @@ import { PlanBadge } from "./PlanBadge";
 import { LockIcon } from "./UpgradePrompt";
 import type { PlanCode } from "@/lib/auth/plans";
 
-export function AccessGate({ title, description, currentPlan, requiredPlan = "max", upgrade = true }: { title: string; description: string; currentPlan: PlanCode; requiredPlan?: "core" | "max"; upgrade?: boolean }) {
+export function AccessGate({ title, description, currentPlan, requiredPlan = "max", upgrade = true, eyebrow }: { title: string; description: string; currentPlan: PlanCode; requiredPlan?: "core" | "max"; upgrade?: boolean; eyebrow?: string }) {
   const features = requiredPlan === "core"
     ? ["Daily skill drills", "Challenge questions", "More full tests"]
     : ["Every course", "Personal study planner", "Weekly live calls"];
@@ -12,7 +12,7 @@ export function AccessGate({ title, description, currentPlan, requiredPlan = "ma
       <section className="w-full overflow-hidden rounded-[22px] border border-navy/10 bg-white text-center shadow-[0_24px_70px_-42px_rgba(11,42,91,0.6)]">
         <div className="bg-[linear-gradient(125deg,#0b2a5b,#174b91)] px-6 py-8 text-white sm:px-10">
           <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-sky"><LockIcon className="h-6 w-6" /></span>
-          <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky">{requiredPlan} feature</p>
+          <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky">{eyebrow ?? `${requiredPlan} feature`}</p>
           <h1 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.035em]">{title}</h1>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/65">{description}</p>
         </div>

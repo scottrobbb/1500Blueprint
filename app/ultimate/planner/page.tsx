@@ -4,16 +4,32 @@ import { StudyPlanner } from "@/components/ultimate/StudyPlanner";
 import { AccessGate } from "@/components/account/AccessGate";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getOrCreateStudyPlan } from "@/lib/study-planner/plan";
 import { getStudyPlannerProfile } from "@/lib/study-planner/profile";
 
 export const metadata = { title: "Study Planner" };
 
+// Flip to false to relaunch. Admins still see the real planner behind this
+// so it can be QA'd before the flag comes down.
+const STUDY_PLANNER_COMING_SOON = true;
+
 export default async function PlannerPage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
   const access = await getStudentAccess(session.email);
+  if (STUDY_PLANNER_COMING_SOON && !isAdminEmail(session.email)) {
+    return (
+      <AccessGate
+        eyebrow="Coming soon"
+        title="The study planner is almost ready"
+        description="We're still tuning the adaptive study planner. It'll unlock here as soon as it's ready — no action needed on your end."
+        currentPlan={access.plan}
+        upgrade={false}
+      />
+    );
+  }
   if (!access.entitlements.studyPlanner) {
     return <AccessGate title="Build a personal study plan" description="The adaptive study planner, score goals, and weekly schedule are included with Max." currentPlan={access.plan} />;
   }
