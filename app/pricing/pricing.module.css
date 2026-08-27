@@ -326,7 +326,6 @@
   padding: 28px;
   position: relative;
 }
-.priceCard.free {}
 .priceCard.core {
   border-color: rgba(47,159,233,.4);
   box-shadow: 0 20px 45px -32px rgba(47,159,233,.4);
@@ -493,6 +492,11 @@
   background: var(--gold);
   border-color: var(--gold);
   color: #302300;
+}
+.priceCard.free .primaryAction {
+  background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.14);
+  color: #fff;
 }
 .disabledAction {
   background: rgba(255,255,255,.06);

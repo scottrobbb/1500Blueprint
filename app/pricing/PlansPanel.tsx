@@ -62,10 +62,10 @@ export function PlansPanel({
       <div className={styles.planGrid}>
         <PriceCard
           tier="free"
-          name="Hobby"
-          description="Take your first test, learn the foundations, and get a feel for the app."
+          name="Free"
+          description="Start for free"
           features={freeFeatures}
-          cta="Start for free"
+          cta="Get Started"
           currentPlan={currentPlan}
         />
         <PriceCard
@@ -115,7 +115,7 @@ function PriceCard({
   const paid = tier !== "free";
   const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
   const current = currentPlan === plan;
-  const priceInfo = tier === "core" || tier === "max" ? CADENCE_PRICE[tier][cadence ?? "monthly"] : null;
+  const priceInfo = tier === "core" || tier === "max" ? CADENCE_PRICE[tier][cadence ?? "monthly"] : { perMonth: "0", billed: null };
 
   return (
     <article className={`${styles.priceCard} ${styles[tier]}`}>
@@ -124,15 +124,9 @@ function PriceCard({
       </div>
 
       <div className={styles.priceRow}>
-        {priceInfo ? (
-          <>
-            <span>$</span><strong>{priceInfo.perMonth}</strong><em>/ month</em>
-          </>
-        ) : (
-          <><strong>Free</strong><em>forever</em></>
-        )}
+        <span>$</span><strong>{priceInfo.perMonth}</strong><em>/month</em>
       </div>
-      {priceInfo ? <p className={styles.billingDetail}>{priceInfo.billed ?? "Billed monthly · cancel anytime · no setup fee"}</p> : null}
+      {paid ? <p className={styles.billingDetail}>{priceInfo.billed ?? "Billed monthly · cancel anytime · no setup fee"}</p> : null}
 
       <p className={styles.planDescription}>{description}</p>
       <div className={styles.cardRule} />

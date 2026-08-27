@@ -45,10 +45,9 @@ type PlanFeature = {
 };
 
 const freeFeatures: PlanFeature[] = [
-  { label: "300 Question Bank attempts", icon: "grid" },
-  { label: "1 full-length digital SAT", icon: "file" },
-  { label: "Blueprint Foundation course", icon: "book" },
-  { label: "Flashcards, progress history, and community", icon: "chart" },
+  { label: "300 questions", icon: "grid" },
+  { label: "Desmos 101 course", icon: "bolt" },
+  { label: "Reading & Writing 101 course", icon: "book" },
 ];
 
 const coreFeatures: PlanFeature[] = [
