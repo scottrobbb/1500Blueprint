@@ -321,8 +321,22 @@
   transform: translateZ(0);
   will-change: transform;
 }
+/* The blurred glow lives on its own layer behind the card, decoupled
+   from the text-bearing card layer, so Chrome can downsample the
+   (invisible-when-soft) shadow during fast scroll without touching
+   text sharpness. */
+.priceCard::before {
+  border-radius: inherit;
+  content: "";
+  inset: 0;
+  position: absolute;
+  transform: translateZ(0);
+  z-index: -1;
+}
 .priceCard.core {
   border-color: rgba(47,159,233,.4);
+}
+.priceCard.core::before {
   box-shadow: 0 20px 45px -32px rgba(47,159,233,.4);
 }
 .priceCard.max {
@@ -330,6 +344,8 @@
     linear-gradient(155deg, rgba(47,159,233,.4) 0%, #0c0e13 42%, #0c0e13 58%, rgba(255,200,61,.36) 100%) padding-box,
     linear-gradient(135deg, var(--blue), var(--gold)) border-box;
   border: 2px solid transparent;
+}
+.priceCard.max::before {
   box-shadow:
     0 30px 70px -26px rgba(47,159,233,.55),
     0 30px 70px -26px rgba(255,200,61,.4);
