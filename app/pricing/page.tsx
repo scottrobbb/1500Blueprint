@@ -8,6 +8,7 @@ import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { EnrollButton } from "./EnrollButton";
 import { ExamCountdown } from "./ExamCountdown";
 import { PlansPanel } from "./PlansPanel";
+import { SavingsCalculator } from "./SavingsCalculator";
 import { TestimonialReel } from "./TestimonialReel";
 import { TestimonialWall } from "./TestimonialWall";
 import styles from "./pricing.module.css";
@@ -261,44 +262,7 @@ export default async function PricingPage({
       </section>
 
       <section className={styles.savingsSection}>
-        <div className={styles.savingsPanel}>
-          <div className={styles.savingsCopy}>
-            <h2>
-              You could save <em>$240 a month</em> compared with tutoring.
-            </h2>
-            <p>Based on one $80 tutoring session each week.</p>
-            <Link href="#plans" className={styles.savingsAction}>
-              See Max <ArrowIcon />
-            </Link>
-          </div>
-          <div className={styles.costCard}>
-            <div className={styles.costHeader}>
-              <span>Monthly comparison</span>
-            </div>
-            <div className={styles.costRow}>
-              <div>
-                <strong>Private tutoring</strong>
-              </div>
-              <b>$320</b>
-            </div>
-            <div className={styles.costBar} aria-hidden="true"><span /></div>
-            <div className={`${styles.costRow} ${styles.maxCostRow}`}>
-              <div>
-                <strong>1500 Blueprint Max</strong>
-              </div>
-              <b>$80</b>
-            </div>
-            <div className={`${styles.costBar} ${styles.maxCostBar}`} aria-hidden="true"><span /></div>
-            <div className={styles.savingsTotal}>
-              <div>
-                <span>You save</span>
-                <strong>$240 / month</strong>
-              </div>
-              <b>75% less</b>
-            </div>
-            <p>Example only. Tutor rates vary.</p>
-          </div>
-        </div>
+        <SavingsCalculator />
       </section>
 
       <section className={styles.videoSection} id="stories">

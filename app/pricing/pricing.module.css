@@ -640,7 +640,7 @@
   padding: 92px max(28px, calc((100vw - 1180px) / 2));
 }
 .savingsPanel {
-  align-items: center;
+  align-items: start;
   background: #eaf6fd;
   border: 1px solid #d0e8f7;
   border-radius: 22px;
@@ -679,6 +679,82 @@
   background: var(--navy);
   color: #fff;
   margin-top: 27px;
+}
+.savingsSlider {
+  margin-top: 26px;
+  max-width: 460px;
+}
+.savingsSliderLabel {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+  margin-bottom: 10px;
+}
+.savingsSliderLabel span {
+  background: #eaf6fd;
+  border-radius: 8px;
+  color: #147fc5;
+  font-family: var(--font-gabarito), sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 3px 9px;
+}
+.savingsSlider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: linear-gradient(to right, var(--blue) var(--fill), #dde5ec var(--fill));
+  border-radius: 999px;
+  cursor: pointer;
+  height: 6px;
+  width: 100%;
+}
+.savingsSlider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: #fff;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(11,27,51,.25);
+  height: 20px;
+  width: 20px;
+}
+.savingsSlider input[type="range"]::-moz-range-thumb {
+  background: #fff;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(11,27,51,.25);
+  height: 20px;
+  width: 20px;
+}
+.savingsQuickPicks {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.savingsQuickPicks span {
+  color: #8494a8;
+  font-size: 12px;
+  margin-right: 2px;
+}
+.savingsQuickPicks button {
+  background: #eef3f7;
+  border: 1px solid #dde5ec;
+  border-radius: 999px;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 650;
+  padding: 6px 12px;
+}
+.savingsQuickPicks button:hover { border-color: var(--blue); }
+.savingsQuickActive {
+  background: var(--blue) !important;
+  border-color: var(--blue) !important;
+  color: #fff !important;
 }
 .costCard {
   background: #fff;
@@ -720,7 +796,7 @@
   width: 100%;
 }
 .maxCostRow b { color: #147fc5; }
-.maxCostBar span { background: var(--blue); width: 25%; }
+.maxCostBar span { background: var(--blue); }
 .savingsTotal {
   align-items: center;
   background: #edf8fe;
