@@ -332,12 +332,14 @@
 }
 .priceCard.max {
   background:
-    linear-gradient(#000,#000) padding-box,
+    radial-gradient(130% 150% at 8% -10%, rgba(47,159,233,.42), transparent 55%) padding-box,
+    radial-gradient(130% 150% at 105% 115%, rgba(255,200,61,.38), transparent 55%) padding-box,
+    linear-gradient(165deg, #10131a, #05060a) padding-box,
     linear-gradient(135deg, var(--blue), var(--gold)) border-box;
   border: 2px solid transparent;
   box-shadow:
-    0 25px 60px -28px rgba(47,159,233,.4),
-    0 25px 60px -28px rgba(255,200,61,.25);
+    0 30px 70px -26px rgba(47,159,233,.55),
+    0 30px 70px -26px rgba(255,200,61,.4);
 }
 .planName {
   align-items: center;
