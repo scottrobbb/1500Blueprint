@@ -234,7 +234,7 @@ export default async function PricingPage({
           <Link href="#faq">FAQ</Link>
         </nav>
         <Link href="/account/login?next=/ultimate" className={styles.openApp}>
-          Open app <ArrowIcon />
+          Log in <ArrowIcon />
         </Link>
       </header>
 
