@@ -16,18 +16,34 @@ export default async function LoginPage({
   if (session) redirect("/drills");
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-[#f4f5f6] px-6 py-12">
-      <div className="w-full max-w-[400px]">
+    <div
+      className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden px-6 py-12"
+      style={{
+        background:
+          "linear-gradient(110deg,transparent 36%,rgba(124,203,255,0.22) 44%,transparent 52%)," +
+          "linear-gradient(125deg,transparent 56%,rgba(124,203,255,0.16) 63%,transparent 70%)," +
+          "linear-gradient(130deg,#07193b 0%,#0b2a5b 42%,#1b46a8 74%,#0b2a5b 100%)",
+      }}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-10 -top-12 font-display font-black leading-none tracking-[-0.04em] text-white/[0.04]"
+        style={{ fontSize: "260px" }}
+      >
+        1500
+      </div>
+
+      <div className="relative z-10 w-full max-w-[400px]">
         <div className="mb-7 flex justify-center">
-          <Logo />
+          <Logo className="[&_.text-navy]:text-white" />
         </div>
 
-        <div className="rounded-xl border border-navy/12 bg-white p-7 shadow-[0_1px_2px_rgba(19,35,59,0.05)] sm:p-8">
+        <div className="rounded-2xl border border-white/10 bg-white p-7 shadow-[0_20px_60px_rgba(7,25,59,0.35)] sm:p-8">
           <LoginForm initialError={error} />
         </div>
 
-        <p className="mt-5 text-center text-xs text-navy/45">
-          Use the email connected to your Blueprint account.
+        <p className="mt-5 text-center text-xs text-white/55">
+          Access is for active 1500 SAT Blueprint members.
         </p>
       </div>
     </div>

@@ -205,7 +205,7 @@ export function StudyDeck({
               <span className="flex items-center justify-between">
                 <span className={`${label} text-navy/40`}>Term</span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-navy/35">
-                  <RotateIcon className="h-3.5 w-3.5" /> Flip card
+                  <RotateIcon className="h-3.5 w-3.5" /> Tap to flip
                 </span>
               </span>
               <span className="flex flex-1 flex-col items-center justify-center gap-3 overflow-auto px-2 text-center">
@@ -234,7 +234,7 @@ export function StudyDeck({
               <span className="flex items-center justify-between">
                 <span className={`${label} text-brand-600`}>Definition</span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-navy/35">
-                  <RotateIcon className="h-3.5 w-3.5" /> Flip card
+                  <RotateIcon className="h-3.5 w-3.5" /> Tap to flip
                 </span>
               </span>
               <span className="flex flex-1 flex-col items-center justify-center gap-3 overflow-auto px-2 text-center">

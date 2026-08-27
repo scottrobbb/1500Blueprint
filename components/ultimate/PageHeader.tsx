@@ -8,10 +8,10 @@ export function PageHeader({
   description?: string;
 }) {
   return (
-    <header className="mb-7 max-w-3xl">
-      {eyebrow ? <p className="text-xs font-semibold text-brand-600">{eyebrow}</p> : null}
-      <h1 className="mt-1 font-display text-[30px] font-semibold leading-tight tracking-[-0.035em] text-ink sm:text-[36px]">{title}</h1>
-      {description ? <p className="mt-2 max-w-2xl text-[15px] leading-6 text-navy/58">{description}</p> : null}
+    <header className="mb-6">
+      {eyebrow && <p className="text-[11px] font-bold uppercase tracking-[0.17em] text-brand-600">{eyebrow}</p>}
+      <h1 className="mt-1 font-display text-[28px] font-extrabold tracking-[-0.03em] text-ink sm:text-[34px]">{title}</h1>
+      {description && <p className="mt-1.5 max-w-2xl text-sm leading-6 text-navy/55">{description}</p>}
     </header>
   );
 }

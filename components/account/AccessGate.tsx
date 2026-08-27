@@ -8,14 +8,18 @@ export function AccessGate({ title, description, currentPlan, requiredPlan = "ma
     ? ["Daily skill drills", "Challenge questions", "More full tests"]
     : ["Every course", "Personal study planner", "Weekly live calls"];
   return (
-    <div className="mx-auto grid min-h-[calc(100dvh-3.5rem)] w-full max-w-[680px] place-items-center px-4 py-10 sm:px-7">
-      <section className="w-full rounded-xl border border-navy/12 bg-white p-7 text-left sm:p-10">
-        <span className="grid h-10 w-10 place-items-center rounded-lg border border-navy/10 bg-haze text-navy/60"><LockIcon className="h-5 w-5" /></span>
-        <p className="mt-5 text-xs font-semibold text-brand-600">{requiredPlan === "core" ? "Core" : "Max"} plan</p>
-        <h1 className="mt-1 font-display text-[30px] font-semibold tracking-[-0.035em] text-ink">{title}</h1>
-        <p className="mt-3 max-w-xl text-[15px] leading-6 text-navy/58">{description}</p>
-        <div className="mt-6 flex items-center gap-2 text-xs font-medium text-navy/48">Current plan <PlanBadge plan={currentPlan} /></div>
-        {upgrade ? <><ul className="mt-5 grid gap-2 sm:grid-cols-3">{features.map((feature) => <li key={feature} className="text-xs font-medium text-navy/62">✓ {feature}</li>)}</ul><Link href="/pricing" className="mt-7 inline-flex min-h-11 items-center justify-center rounded-lg bg-navy px-6 text-sm font-semibold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">See {requiredPlan === "core" ? "Core" : "Max"} plan</Link></> : null}
+    <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-[760px] place-items-center px-4 py-10 sm:px-7">
+      <section className="w-full overflow-hidden rounded-[22px] border border-navy/10 bg-white text-center shadow-[0_24px_70px_-42px_rgba(11,42,91,0.6)]">
+        <div className="bg-[linear-gradient(125deg,#0b2a5b,#174b91)] px-6 py-8 text-white sm:px-10">
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white/10 text-sky"><LockIcon className="h-6 w-6" /></span>
+          <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-sky">{requiredPlan} feature</p>
+          <h1 className="mt-2 font-display text-3xl font-extrabold tracking-[-0.035em]">{title}</h1>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-white/65">{description}</p>
+        </div>
+        <div className="px-6 py-7 sm:px-10">
+          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-navy/45">Current access <PlanBadge plan={currentPlan} /></div>
+          {upgrade ? <><ul className="mt-5 flex flex-wrap justify-center gap-x-4 gap-y-2">{features.map((feature) => <li key={feature} className="text-xs font-bold text-navy/55">✓ {feature}</li>)}</ul><Link href="/pricing" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand px-6 text-sm font-extrabold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Unlock {requiredPlan === "core" ? "Core" : "Max"}</Link></> : null}
+        </div>
       </section>
     </div>
   );

@@ -1,5 +1,10 @@
 import type { PostShot } from "@/lib/community/types";
 
+// An uploaded screenshot attached to a post.
+// - "thumb" (feed list): a small fixed square, cropped to fill — a decorative
+//   preview docked beside the post text, Skool-style.
+// - "full" (post detail): near full-width. object-contain, NOT object-cover —
+//   score screenshots must stay fully visible, never cropping the number.
 export function Attachment({ shot, variant }: { shot: PostShot; variant: "thumb" | "full" }) {
   if (variant === "thumb") {
     return (

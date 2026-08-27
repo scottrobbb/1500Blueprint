@@ -15,17 +15,18 @@
     Helvetica, Arial, sans-serif;
 
   /* 1500 SAT Blueprint brand */
-  --color-navy: #13233b;
-  --color-navy-700: #2f435f;
-  --color-ink: #172033;
-  --color-brand: #2a89c7;
-  --color-brand-600: #1c72aa;
-  --color-sky: #8fc9ec;
-  --color-ice: #edf5fa;
-  --color-ice-200: #dcecf5;
-  --color-haze: #f1f3f5;
-  --color-gold: #d7aa2c;
-  --color-gold-600: #b78712;
+  --color-navy: #0b2a5b;
+  --color-navy-700: #294879;
+  --color-ink: #1a233e;
+  --color-brand: #3fa9f5;
+  --color-brand-600: #2b8fe0;
+  --color-sky: #7ccbff;
+  --color-ice: #ebf7ff;
+  --color-ice-200: #d7f8ff;
+  /* Gamified platform-shell background (hub + test picker). */
+  --color-haze: #eef2f7;
+  --color-gold: #ffbd20;
+  --color-gold-600: #f0a900;
 
   /* Bluebook-faithful exam tokens */
   --color-exam-bg: #ffffff;
@@ -78,20 +79,12 @@
 
 html {
   -webkit-text-size-adjust: 100%;
-  scroll-padding-top: 4rem;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-dm-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
-}
-
-:where(a, button, input, select, textarea, summary) {
-  -webkit-tap-highlight-color: rgba(42, 137, 199, 0.12);
-  touch-action: manipulation;
 }
 
 /* Bluebook perforated dashed separator (header / footer / question strip). */
@@ -183,26 +176,16 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* Quiet edge definition for product surfaces. */
+/* The soft "lifted card" shadow used across gamified drill cards. */
 @utility shadow-pop {
-  box-shadow: 0 0 0 1px rgba(19, 35, 59, 0.07), 0 1px 2px rgba(19, 35, 59, 0.04);
+  box-shadow: 0 1px 3px rgba(11, 42, 91, 0.05), 0 16px 32px -22px rgba(11, 42, 91, 0.35);
 }
 
-.ultimate-surface {
-  min-height: 100dvh;
-  background: #f7f8fa;
-}
-
-.ultimate-surface :is(h1, h2, h3) {
-  text-wrap: balance;
-}
-
-.ultimate-surface :is(p, li) {
-  text-wrap: pretty;
-}
-
+/* Ultimate uses the same components and data as the current platform, but its
+   application shell has a softer, product-level surface language. Keep these
+   overrides scoped so the Bluebook exam and legacy routes remain untouched. */
 .ultimate-surface .rounded-card {
-  border-radius: 0.625rem;
+  border-radius: 0.875rem;
 }
 
 .ultimate-surface .rounded-chip {
@@ -212,5 +195,5 @@ body {
 .ultimate-surface input:not([type="checkbox"]):not([type="radio"]),
 .ultimate-surface select,
 .ultimate-surface textarea {
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
 }

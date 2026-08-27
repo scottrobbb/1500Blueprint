@@ -105,7 +105,7 @@ export function CoursePracticeRunner({
       </header>
       <div className="px-5 py-6 sm:px-7 sm:py-7">
         {question.prompt ? <p className="max-w-[72ch] whitespace-pre-wrap text-base font-semibold leading-7 text-ink sm:text-lg"><MathText>{question.prompt}</MathText></p> : null}
-        {question.imageUrl ? <img src={question.imageUrl} alt="Question figure" width={1200} height={800} className="mt-5 h-auto max-h-[420px] w-auto max-w-full rounded-lg border border-navy/10 object-contain" /> : null}
+        {question.imageUrl ? <img src={question.imageUrl} alt="Question figure" width={1200} height={800} className="mt-5 h-auto max-h-[420px] w-auto max-w-full rounded-2xl border border-navy/10 object-contain" /> : null}
         {question.type === "multiple_choice" ? (
           <div className="mt-6 grid gap-3">
             {question.choices.map((choice, choiceIndex) => {

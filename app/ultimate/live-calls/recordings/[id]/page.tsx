@@ -16,7 +16,7 @@ export default async function RecordingPlayerPage({ params }: Params) {
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
   const access = await getStudentAccess(session.email);
   if (!access.entitlements.liveGroupClasses) {
-    return <AccessGate title="Call recordings are included with Max" description="Max includes Scott's weekly group sessions and the recording library." currentPlan={access.plan} />;
+    return <AccessGate title="Join Scott's weekly calls" description="Weekly group classes and their recordings are included with Max." currentPlan={access.plan} />;
   }
 
   const { id } = await params;

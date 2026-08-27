@@ -37,19 +37,19 @@ export function SetLibrary({
   }, [owned, shared, norm]);
 
   return (
-    <div className={variant === "ultimate" ? "rounded-xl border border-navy/12 bg-white p-5 sm:p-7" : ""}>
+    <div className={variant === "ultimate" ? "rounded-[18px] border border-navy/10 bg-white p-5 shadow-pop sm:p-7" : ""}>
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           {variant === "ultimate" && (
-            <p className="mb-1 text-xs font-semibold text-brand-600">Study library</p>
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.17em] text-brand-600">Your study library</p>
           )}
-          <h1 className={`font-display font-semibold tracking-tight text-navy ${variant === "ultimate" ? "text-[30px]" : "text-3xl"}`}>Flashcards</h1>
+          <h1 className={`font-display font-extrabold tracking-tight text-navy ${variant === "ultimate" ? "text-[30px]" : "text-3xl"}`}>Flashcards</h1>
           <p className="mt-1 text-sm text-navy/55">
             Study the sets your tutor shares, and build your own.
           </p>
         </div>
-        <Link href={createHref} className={`${accentBtn} ${variant === "ultimate" ? "min-h-11 rounded-lg px-5" : ""}`}>
+        <Link href={createHref} className={`${accentBtn} ${variant === "ultimate" ? "min-h-11 rounded-xl px-5" : ""}`}>
           <PlusIcon className="h-4 w-4" />
           Create set
         </Link>
@@ -65,10 +65,10 @@ export function SetLibrary({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search sets"
             aria-label="Search sets"
-            className={`w-full border border-navy/15 bg-white py-2.5 pl-9 pr-3 text-sm text-navy placeholder:text-navy/35 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 ${variant === "ultimate" ? "min-h-11 rounded-lg bg-haze/45" : "rounded-card"}`}
+            className={`w-full border border-navy/15 bg-white py-2.5 pl-9 pr-3 text-sm text-navy placeholder:text-navy/35 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/15 ${variant === "ultimate" ? "min-h-11 rounded-xl bg-haze/45" : "rounded-card"}`}
           />
         </div>
-        <div className={`flex items-center border border-navy/15 bg-white p-0.5 ${variant === "ultimate" ? "rounded-lg" : "rounded-card"}`}>
+        <div className={`flex items-center border border-navy/15 bg-white p-0.5 ${variant === "ultimate" ? "rounded-xl" : "rounded-card"}`}>
           <ViewToggle active={view === "grid"} onClick={() => setView("grid")} label="Grid view">
             <GridIcon className="h-4 w-4" />
           </ViewToggle>
@@ -78,9 +78,9 @@ export function SetLibrary({
         </div>
       </div>
 
-      {/* Tutor sets appear before student sets. */}
+      {/* From your tutor — featured, shown first so Scott's sets lead */}
       {shared.length > 0 ? (
-        <section className={`mt-7 border border-gold-600/25 bg-gold/[0.05] p-4 sm:p-5 ${variant === "ultimate" ? "rounded-xl" : "rounded-card"}`}>
+        <section className={`mt-7 border border-gold-600/25 bg-gold/[0.05] p-4 sm:p-5 ${variant === "ultimate" ? "rounded-2xl" : "rounded-card"}`}>
           <div className="mb-4 flex items-center gap-2.5">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-card bg-gold/20 text-gold-600">
               <SparkIcon className="h-5 w-5" />

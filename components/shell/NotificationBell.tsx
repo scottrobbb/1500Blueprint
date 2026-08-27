@@ -5,6 +5,10 @@ import Link from "next/link";
 import type { CommunityNotification } from "@/lib/community/types";
 import { BellIcon } from "./icons";
 
+// Non-intrusive notification bell for the shared nav: a badge when you have
+// unread mentions/replies, and a small dropdown (same anatomy as AccountMenu).
+// Fetches client-side so it adds nothing to any page's server render; opening it
+// clears the badge. Fails quiet — if the endpoint errors the bell just stays empty.
 export function NotificationBell({
   tone = "light",
   communityHrefBase = "/community",
@@ -28,6 +32,9 @@ export function NotificationBell({
     }
   }, []);
 
+  // Load on mount, refresh on tab focus, and slow-poll so a new mention appears
+  // without a reload. 60s is plenty for a study community. (load() only setStates
+  // after an await, so it never triggers the synchronous cascade the rule guards.)
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
@@ -44,12 +51,13 @@ export function NotificationBell({
     const next = !open;
     setOpen(next);
     if (next && unread > 0) {
+      // Clear the badge optimistically; the list stays readable.
       setUnread(0);
       setItems((prev) => prev.map((n) => ({ ...n, read: true })));
       try {
         await fetch("/api/community/notifications/read", { method: "POST" });
       } catch {
-        // The next refresh restores the unread count.
+        // a failed mark-read re-syncs on the next poll
       }
     }
   }
@@ -87,7 +95,7 @@ export function NotificationBell({
           />
           <div
             role="menu"
-            className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-lg border border-navy/12 bg-white shadow-[0_14px_36px_-24px_rgba(19,35,59,.45)]"
+            className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-xl border border-navy/12 bg-white shadow-xl"
           >
             <div className="border-b border-navy/10 px-4 py-2.5">
               <div className="text-sm font-bold text-navy">Notifications</div>
@@ -106,7 +114,7 @@ export function NotificationBell({
                         n.read ? "" : "bg-brand/[0.045]"
                       }`}
                     >
-                      <span className="mt-0.5 inline-flex h-8 w-8 flex-none items-center justify-center rounded-full bg-navy font-display text-[11px] font-semibold text-white">
+                      <span className="mt-0.5 inline-flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display text-[11px] font-extrabold text-white">
                         {initialsOf(n.actorName, n.actorHandle)}
                       </span>
                       <div className="min-w-0 flex-1">
@@ -147,6 +155,7 @@ export function NotificationBell({
   );
 }
 
+// Actor initials for the avatar, from the snapshot name (falls back to handle).
 function initialsOf(name: string, handle: string): string {
   const src = (name || handle).trim();
   if (!src) return "?";

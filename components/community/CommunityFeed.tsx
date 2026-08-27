@@ -125,7 +125,7 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
 
   return (
     <div
-      className="rounded-xl border border-navy/12 bg-white p-3.5"
+      className={`${variant === "ultimate" ? "rounded-2xl shadow-pop" : "rounded-xl"} border border-navy/10 bg-white p-3.5`}
       onDrop={(e) => {
         if (takeImageFrom(e.dataTransfer)) e.preventDefault();
       }}
@@ -136,6 +136,7 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
       <div className="flex items-start gap-2.5">
         <Avatar src={user.avatarUrl} initials={user.initials} size={38} />
         <textarea
+          autoFocus
           value={text}
           onChange={(e) => setText(e.target.value)}
           onPaste={(e) => {

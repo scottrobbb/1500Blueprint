@@ -34,16 +34,16 @@ export function ProgressOverview({
     <section aria-labelledby={`progress-${variant}-title`} className="mb-8">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold text-brand-600">Progress</p>
-          <h2 id={`progress-${variant}-title`} className="mt-1 font-display text-2xl font-semibold tracking-[-0.025em] text-ink">
-            {full ? "All saved activity" : "Current totals"}
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">Saved progress</p>
+          <h2 id={`progress-${variant}-title`} className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">
+            {full ? "Your progress, source by source" : "Progress snapshot"}
           </h2>
-          <p className="mt-1 text-sm leading-6 text-navy/55">Attempts count every submitted answer. Drill totals also show unique questions.</p>
+          <p className="mt-1 text-sm leading-6 text-navy/50">Attempts are counted each time; unique drill questions are labeled separately.</p>
         </div>
-        {!full ? <Link href="/ultimate/history" className="inline-flex min-h-11 items-center rounded-lg px-3 text-sm font-semibold text-brand-700 transition-colors hover:bg-ice hover:text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">View history →</Link> : null}
+        {!full ? <Link href="/ultimate/history" className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-bold text-brand-700 transition-colors hover:bg-ice hover:text-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Open full history →</Link> : null}
       </div>
 
-      <div className="grid grid-cols-2 overflow-hidden rounded-xl border border-navy/12 bg-white lg:grid-cols-4 lg:divide-x lg:divide-navy/10">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard label="Lessons completed" value={lessonValue} detail={progress.lessons.total > 0 ? `${Math.max(0, progress.lessons.total - progress.lessons.completed)} remaining` : "Saved completions"} />
         <MetricCard label="Questions attempted" value={progress.questions.attempted.toLocaleString()} detail={`${progress.questions.correct} correct · ${progress.questions.incorrect} incorrect`} />
         <MetricCard label="Answer accuracy" value={percent(progress.questions.accuracy)} detail="Across the sources below" />
@@ -55,10 +55,10 @@ export function ProgressOverview({
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <article className="rounded-xl border border-navy/12 bg-white p-5">
+        <article className="rounded-[18px] border border-navy/10 bg-white p-5 shadow-[0_1px_3px_rgba(11,42,91,0.04)]">
           <div className="flex items-start justify-between gap-4">
-            <div><p className="text-xs font-semibold text-brand-600">Practice tests</p><h3 className="mt-1 font-display text-lg font-semibold text-navy">Score history</h3></div>
-            <Link href="/ultimate/tests/completed" className="inline-flex min-h-11 items-center text-xs font-semibold text-brand-700 hover:text-navy">Reports →</Link>
+            <div><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Practice tests</p><h3 className="mt-1 font-display text-lg font-extrabold text-navy">Score progress</h3></div>
+            <Link href="/ultimate/tests/completed" className="inline-flex min-h-11 items-center text-xs font-bold text-brand-700 hover:text-navy">Reports →</Link>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
             <SmallMetric label="Latest" value={progress.tests.latestScore?.toLocaleString() ?? "-"} />
@@ -71,7 +71,7 @@ export function ProgressOverview({
             {full && progress.drills.recentSessions.length > 0 ? (
               <ul className="mt-3 space-y-2">
                 {progress.drills.recentSessions.slice(0, 5).map((session) => (
-                  <li key={session.id} className="flex items-center justify-between gap-3 rounded-md bg-haze/70 px-3 py-2.5 text-xs">
+                  <li key={session.id} className="flex items-center justify-between gap-3 rounded-xl bg-haze/70 px-3 py-2.5 text-xs">
                     <span className="min-w-0"><strong className="block truncate text-navy">{session.title}</strong><span className="text-navy/45">{dateFormatter.format(new Date(session.createdAt))}</span></span>
                     <span className="flex-none font-extrabold text-navy/65">{session.correct != null && session.total != null ? `${session.correct}/${session.total}` : session.score != null ? `${session.score}%` : "Saved"}</span>
                   </li>
@@ -81,14 +81,14 @@ export function ProgressOverview({
           </div>
         </article>
 
-        <article className="rounded-xl border border-navy/12 bg-white p-5">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-semibold text-brand-600">Timeline</p><h3 className="mt-1 font-display text-lg font-semibold text-navy">Recent activity</h3></div><span className="text-xs font-medium text-navy/38">Newest first</span></div>
+        <article className="rounded-[18px] border border-navy/10 bg-white p-5 shadow-[0_1px_3px_rgba(11,42,91,0.04)]">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Timeline</p><h3 className="mt-1 font-display text-lg font-extrabold text-navy">Recent activity</h3></div><span className="text-xs font-semibold text-navy/35">Newest first</span></div>
           {recent.length > 0 ? (
             <ul className="mt-3 divide-y divide-navy/10">
               {recent.map((item) => <ActivityRow key={item.id} item={item} />)}
             </ul>
           ) : (
-            <div className="mt-4 rounded-lg border border-dashed border-navy/15 bg-haze/50 px-4 py-6 text-center text-sm text-navy/50">Your completed lessons, practice answers, drills, and tests will appear here.</div>
+            <div className="mt-4 rounded-xl border border-dashed border-navy/15 bg-haze/50 px-4 py-6 text-center text-sm text-navy/45">Your completed lessons, practices, drill answers, and tests will appear here.</div>
           )}
         </article>
       </div>
@@ -98,19 +98,19 @@ export function ProgressOverview({
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <article className="min-w-0 border-b border-r border-navy/10 p-4 last:border-r-0 sm:p-5 lg:border-b-0">
-      <p className="text-[11px] font-medium text-navy/48">{label}</p>
-      <strong className="mt-2 block truncate font-display text-2xl font-semibold tabular-nums text-navy sm:text-3xl">{value}</strong>
-      <p className="mt-1 truncate text-[11px] text-navy/48 sm:text-xs">{detail}</p>
+    <article className="min-w-0 rounded-2xl border border-navy/10 bg-white p-4 shadow-[0_1px_3px_rgba(11,42,91,0.04)] sm:p-5">
+      <p className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-navy/40">{label}</p>
+      <strong className="mt-2 block truncate font-display text-2xl font-extrabold tabular-nums text-navy sm:text-3xl">{value}</strong>
+      <p className="mt-1 truncate text-[11px] text-navy/45 sm:text-xs">{detail}</p>
     </article>
   );
 }
 
 function SourceCard({ source }: { source: QuestionProgressSource }) {
   return (
-    <article className="rounded-xl border border-navy/12 bg-white p-4">
-      <div className="flex items-center justify-between gap-3"><h3 className="text-sm font-semibold text-navy">{source.label}</h3><span className="text-xs font-semibold text-brand-700">{percent(source.accuracy)}</span></div>
-      <dl className="mt-3 grid grid-cols-3 divide-x divide-navy/10 border-y border-navy/10 py-2.5 text-center">
+    <article className="rounded-2xl border border-navy/10 bg-white p-4 shadow-[0_1px_3px_rgba(11,42,91,0.04)]">
+      <div className="flex items-center justify-between gap-3"><h3 className="font-display text-sm font-extrabold text-navy">{source.label}</h3><span className="rounded-full bg-ice px-2.5 py-1 text-xs font-extrabold text-brand-700">{percent(source.accuracy)}</span></div>
+      <dl className="mt-3 grid grid-cols-3 divide-x divide-navy/10 rounded-xl bg-haze/65 py-2.5 text-center">
         <SmallMetric label="Attempted" value={source.attempted.toLocaleString()} compact />
         <SmallMetric label="Correct" value={source.correct.toLocaleString()} compact />
         <SmallMetric label="Incorrect" value={source.incorrect.toLocaleString()} compact />
@@ -122,9 +122,9 @@ function SourceCard({ source }: { source: QuestionProgressSource }) {
 
 function SmallMetric({ label, value, suffix, compact = false }: { label: string; value: string; suffix?: string; compact?: boolean }) {
   return (
-    <div className={compact ? "px-1.5" : "rounded-md bg-haze/65 px-3 py-2.5"}>
-      <dt className="text-[10px] font-medium text-navy/42">{label}</dt>
-      <dd className={`mt-1 font-display font-semibold tabular-nums text-navy ${compact ? "text-sm" : "text-lg"}`}>{value}{suffix}</dd>
+    <div className={compact ? "px-1.5" : "rounded-xl bg-haze/65 px-3 py-2.5"}>
+      <dt className="text-[9px] font-bold uppercase tracking-[0.08em] text-navy/35">{label}</dt>
+      <dd className={`mt-1 font-display font-extrabold tabular-nums text-navy ${compact ? "text-sm" : "text-lg"}`}>{value}{suffix}</dd>
     </div>
   );
 }

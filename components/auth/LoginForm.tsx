@@ -47,7 +47,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             <path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <h1 className="mt-4 font-display text-2xl font-semibold tracking-[-0.01em] text-navy">Check your email</h1>
+        <h1 className="mt-4 font-display text-2xl font-extrabold tracking-[-0.01em] text-navy">Check your inbox</h1>
         <p className="mt-2 text-sm leading-6 text-navy/60">{message}</p>
         <button
           onClick={() => {
@@ -64,9 +64,9 @@ export function LoginForm({ initialError }: { initialError?: string }) {
 
   return (
     <form onSubmit={onSubmit} className="w-full">
-      <h1 className="text-balance font-display text-2xl font-semibold tracking-[-0.01em] text-navy">Email link sign in</h1>
+      <h1 className="text-balance font-display text-2xl font-extrabold tracking-[-0.01em] text-navy">Sign in</h1>
       <p className="mt-2 text-sm leading-6 text-navy/60">
-        Enter your account email. We&rsquo;ll send a one-time sign-in link.
+        Enter the email on your 1500 membership and we&rsquo;ll send you a login link.
       </p>
 
       <label htmlFor="email" className="sr-only">
@@ -83,7 +83,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
         placeholder="you@example.com…"
-        className="mt-6 w-full rounded-lg border border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
+        className="mt-6 w-full rounded-[10px] border-[1.5px] border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
       />
 
       {adminMode && (
@@ -100,7 +100,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             value={key}
             onChange={(e) => setKey(e.target.value)}
             placeholder="Admin access key…"
-            className="mt-3 w-full rounded-lg border border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
+            className="mt-3 w-full rounded-[10px] border-[1.5px] border-navy/15 bg-white px-4 py-3 text-ink outline-none transition-colors placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15"
           />
         </>
       )}
@@ -108,7 +108,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-lg bg-navy px-8 text-[15px] font-semibold text-white transition-colors hover:bg-brand-600 disabled:opacity-60"
+        className="mt-4 inline-flex h-12 w-full items-center justify-center rounded-[11px] bg-brand px-8 text-[15px] font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:opacity-60 disabled:shadow-none"
       >
         {status === "sending"
           ? adminMode
@@ -116,7 +116,7 @@ export function LoginForm({ initialError }: { initialError?: string }) {
             : "Sending…"
           : adminMode
             ? "Sign in"
-            : "Send sign-in link"}
+            : "Send me a login link"}
       </button>
 
       {message ? (

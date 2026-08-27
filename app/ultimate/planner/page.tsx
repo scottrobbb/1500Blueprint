@@ -15,7 +15,7 @@ export default async function PlannerPage() {
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
   const access = await getStudentAccess(session.email);
   if (!access.entitlements.studyPlanner) {
-    return <AccessGate title="The study planner is included with Max" description="Set a score goal, test date, study days, and weekly schedule." currentPlan={access.plan} />;
+    return <AccessGate title="Build a personal study plan" description="The adaptive study planner, score goals, and weekly schedule are included with Max." currentPlan={access.plan} />;
   }
   const profile = await getStudyPlannerProfile(session.email);
   const plan = profile ? await getOrCreateStudyPlan(session.email, profile) : null;
@@ -24,8 +24,8 @@ export default async function PlannerPage() {
     <div className="mx-auto w-full max-w-[980px] px-4 py-8 sm:px-7">
       <PageHeader
         eyebrow="Study planner"
-        title="Your weekly study plan"
-        description="The planner uses your lessons, Question Bank accuracy, test history, score goal, and available study days to schedule the next week."
+        title="Turn your next score into a weekly system."
+        description="Your plan reads your lessons, question-bank accuracy, and full-test history, then assigns the work most likely to move your score."
       />
       <StudyPlanner initialProfile={profile} initialPlan={plan} />
     </div>
