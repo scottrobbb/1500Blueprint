@@ -3,13 +3,15 @@ import { HomePracticeList } from "@/components/home/HomePracticeList";
 import { AppNav } from "@/components/shell/AppNav";
 import { ContinueStudy } from "@/components/hub/ContinueStudy";
 import { HomeOverview } from "@/components/hub/HomeOverview";
+import { HomeProgress } from "@/components/hub/HomeProgress";
 import { StudyPathways } from "@/components/hub/StudyPathways";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { hasStaffRole } from "@/lib/auth/staff";
-import { getHomeState } from "@/lib/gamification/state";
+import { getHomeState, getTestProgress } from "@/lib/gamification/state";
 import { listDrills } from "@/lib/drills/admin-queries";
 import { getHomeContinuation } from "@/lib/home/continuation";
+import { getStudyPlannerProfile } from "@/lib/study-planner/profile";
 
 export const metadata = {
   title: "Home | 1500 SAT Blueprint",
@@ -21,11 +23,13 @@ export default async function DrillsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [home, continuation, drills, isExplanationEditor] = await Promise.all([
+  const [home, continuation, drills, isExplanationEditor, plannerProfile, testProgress] = await Promise.all([
     getHomeState(session.email),
     getHomeContinuation(session.email),
     listDrills(),
     hasStaffRole(session.email, "explanation_editor"),
+    getStudyPlannerProfile(session.email).catch(() => null),
+    getTestProgress(session.email),
   ]);
   const nav = {
     streak: home.player.streak,
@@ -50,8 +54,21 @@ export default async function DrillsPage() {
       </a>
       <AppNav activePage="drills" stats={nav} showProgress={false} />
       <main id="main-content" tabIndex={-1}>
-        <HomeOverview firstName={home.player.firstName} streak={home.player.streak} dailyGoal={home.dailyGoal} />
-        <ContinueStudy continuation={continuation} isAdmin={nav.isAdmin} publication={publication} />
+        <HomeOverview firstName={home.player.firstName} />
+        <section aria-labelledby="today-heading" className="mx-auto w-full max-w-[1080px] px-4 pt-8 sm:px-6">
+          <h2 id="today-heading" className="mb-3 font-display text-lg font-semibold text-navy">
+            Today
+          </h2>
+          <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(0,1.8fr)_minmax(280px,1fr)]">
+            <ContinueStudy
+              continuation={continuation}
+              dailyGoal={home.dailyGoal}
+              isAdmin={nav.isAdmin}
+              publication={publication}
+            />
+            <HomeProgress profile={plannerProfile} testProgress={testProgress} />
+          </div>
+        </section>
         <StudyPathways />
         <HomePracticeList
           isAdmin={nav.isAdmin}

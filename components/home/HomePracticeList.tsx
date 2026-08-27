@@ -51,7 +51,7 @@ export function HomePracticeList({
     <section
       id="practice-drills"
       aria-labelledby="practice-drills-heading"
-      className="mx-auto w-full max-w-[1000px] scroll-mt-24 px-4 pb-14 pt-9 sm:px-6 sm:pb-16"
+      className="mx-auto w-full max-w-[1080px] scroll-mt-24 px-4 pb-14 pt-9 sm:px-6 sm:pb-16"
     >
       <h2 id="practice-drills-heading" className="mb-4 font-display text-lg font-semibold text-navy">
         Practice by skill

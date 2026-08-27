@@ -25,7 +25,7 @@ const PATHWAYS = [
 
 export function StudyPathways() {
   return (
-    <section aria-labelledby="study-pathways-heading" className="mx-auto w-full max-w-[1000px] px-4 pt-9 sm:px-6">
+    <section aria-labelledby="study-pathways-heading" className="mx-auto w-full max-w-[1080px] px-4 pt-9 sm:px-6">
       <h2 id="study-pathways-heading" className="mb-3 font-display text-lg font-semibold text-navy">
         More ways to study
       </h2>
