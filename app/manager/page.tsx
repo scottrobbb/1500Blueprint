@@ -4,7 +4,7 @@ import { ExplanationManager } from "@/components/manager/ExplanationManager";
 import { Logo } from "@/components/Logo";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getExplanationEditorSession } from "@/lib/auth/staff";
-import { listExplanationEditorStats, listExplanationQueue } from "@/lib/explanations/queries";
+import { countExplanationQueueRemaining, listExplanationEditorStats, listExplanationQueue } from "@/lib/explanations/queries";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Explanation Manager · 1500 SAT Blueprint" };
@@ -12,9 +12,10 @@ export const metadata = { title: "Explanation Manager · 1500 SAT Blueprint" };
 export default async function ManagerPage() {
   const session = await getExplanationEditorSession();
   if (!session) notFound();
-  const [queue, stats] = await Promise.all([
+  const [queue, stats, remainingTotal] = await Promise.all([
     listExplanationQueue(),
     listExplanationEditorStats(),
+    countExplanationQueueRemaining(),
   ]);
   const editorStats = stats.find((item) => item.email === session.email);
 
@@ -34,7 +35,11 @@ export default async function ManagerPage() {
           </div>
         </div>
       </header>
-      <ExplanationManager initialItems={queue} initialCompletedTotal={editorStats?.completedTotal ?? 0} />
+      <ExplanationManager
+        initialItems={queue}
+        initialCompletedTotal={editorStats?.completedTotal ?? 0}
+        initialRemainingTotal={remainingTotal}
+      />
     </main>
   );
 }

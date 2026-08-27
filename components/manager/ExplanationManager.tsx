@@ -31,12 +31,15 @@ type DifficultyFilter = "all" | "easy" | "medium" | "hard";
 export function ExplanationManager({
   initialItems,
   initialCompletedTotal,
+  initialRemainingTotal,
 }: {
   initialItems: ExplanationQueueItem[];
   initialCompletedTotal: number;
+  initialRemainingTotal: number;
 }) {
   const [items, setItems] = useState(initialItems);
   const [completedTotal, setCompletedTotal] = useState(initialCompletedTotal);
+  const [remainingTotal, setRemainingTotal] = useState(initialRemainingTotal);
   const [selectedKey, setSelectedKey] = useState(initialItems[0] ? itemKey(initialItems[0]) : null);
   const [query, setQuery] = useState("");
   const [source, setSource] = useState<SourceFilter>("all");
@@ -61,6 +64,7 @@ export function ExplanationManager({
 
     setItems(remaining);
     setCompletedTotal((current) => current + 1);
+    setRemainingTotal((current) => Math.max(0, current - 1));
     setSelectedKey(next ? itemKey(next) : null);
     setStatus(`Explanation saved. ${remaining.length.toLocaleString()} question${remaining.length === 1 ? "" : "s"} remain in this queue.`);
   }
@@ -79,7 +83,7 @@ export function ExplanationManager({
               <p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-brand-600">Unanswered queue</p>
               <h2 className="mt-1 font-display text-xl font-extrabold text-navy">Choose the next explanation.</h2>
             </div>
-            <span className="rounded-full bg-ice px-2.5 py-1 text-xs font-extrabold text-brand-700">{items.length.toLocaleString()} open</span>
+            <span className="rounded-full bg-ice px-2.5 py-1 text-xs font-extrabold text-brand-700">{remainingTotal.toLocaleString()} open</span>
           </div>
           <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-haze/65 px-3 py-2 text-xs text-navy/55">
             <span>Your completed explanations</span>

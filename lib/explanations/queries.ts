@@ -59,6 +59,14 @@ type ExplanationEditorStatsRow = {
   current_staff: boolean;
 };
 
+// The queue itself is capped at 500 rows for the sidebar list; this is the
+// true remaining total, independent of that cap, for the "open" badge.
+export async function countExplanationQueueRemaining(): Promise<number> {
+  const { data, error } = await supabaseAdmin().rpc("get_explanation_queue_count");
+  if (error) throw new Error(`failed to count explanation queue: ${error.message}`);
+  return numberValue(data as number | string);
+}
+
 export async function listExplanationQueue(limit = 500): Promise<ExplanationQueueItem[]> {
   const { data, error } = await supabaseAdmin()
     .rpc("get_explanation_queue", { p_limit: Math.max(1, Math.min(limit, 500)) });
