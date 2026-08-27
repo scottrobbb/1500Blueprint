@@ -505,116 +505,97 @@
 }
 
 .includedSection {
-  background: #f4f9fc;
-  color: var(--ink);
-  padding: 82px max(28px, calc((100vw - 1180px) / 2));
+  background: #131417;
+  color: #fff;
+  padding: 92px max(28px, calc((100vw - 1180px) / 2));
 }
-.includedSection > .sectionHeading { margin-bottom: 30px; }
-.featurePanel {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  overflow: hidden;
+.insideHeading {
+  margin: 0 auto 48px;
+  max-width: 640px;
+  text-align: center;
 }
-.featurePanelIntro {
-  border-right: 1px solid var(--line);
-  padding: 28px 26px;
-}
-.featurePanelIcon {
-  align-items: center;
-  background: #e9f6fe;
-  border-radius: 12px;
-  color: #1788d1;
-  display: flex;
-  height: 48px;
-  justify-content: center;
-  width: 48px;
-}
-.featurePanelIcon svg {
-  fill: none;
-  height: 23px;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  width: 23px;
-}
-.featurePanelIntro h3 {
+.insideHeading h2 {
+  color: rgba(255,255,255,.7);
   font-family: var(--font-gabarito), sans-serif;
-  font-size: 23px;
-  font-weight: 620;
-  letter-spacing: -.025em;
-  margin: 20px 0 0;
+  font-size: clamp(28px,3vw,34px);
+  font-weight: 500;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+  margin: 0;
 }
-.featureList {
-  min-width: 0;
+.insideHeading h2 strong {
+  color: #fff;
+  font-weight: 650;
 }
-.featureRow {
-  align-items: center;
+.insideGrid {
   display: grid;
   gap: 20px;
-  grid-template-columns: auto minmax(0, 1fr);
-  min-height: 88px;
-  padding: 16px 24px;
+  grid-template-columns: repeat(3,minmax(0,1fr));
 }
-.featureRow:not(:last-child) {
-  border-bottom: 1px solid var(--line);
+.insideCard {
+  background: #000;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 20px;
+  padding: 28px;
 }
-.featureIcon {
+.insideCardIcon {
   align-items: center;
-  background: #e7f4fd;
+  background: linear-gradient(135deg, rgba(47,159,233,.24), rgba(255,200,61,.24));
   border-radius: 12px;
-  color: #1c88cf;
+  color: var(--blue);
   display: flex;
   height: 44px;
   justify-content: center;
+  margin-bottom: 18px;
   width: 44px;
 }
-.featureIcon svg {
+.insideCard:nth-child(2) .insideCardIcon { color: var(--gold); }
+.insideCardIcon svg {
   fill: none;
-  height: 22px;
+  height: 21px;
   stroke: currentColor;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.8;
-  width: 22px;
+  width: 21px;
 }
-.featureRow:nth-child(2) .featureIcon {
-  background: #f0edff;
-  color: #795be8;
-}
-.featureRow:nth-child(3) .featureIcon {
-  background: #fff0df;
-  color: #d88724;
-}
-.featureRow:nth-child(4) .featureIcon {
-  background: #e6f8ee;
-  color: #218b58;
-}
-.featureRow:nth-child(5) .featureIcon {
-  background: #eaf0ff;
-  color: #4b70d8;
-}
-.featureRow:nth-child(6) .featureIcon {
-  background: #ffebef;
-  color: #d45773;
-}
-.featureRowCopy {
-  min-width: 0;
-}
-.featureRowCopy h3 {
+.insideCard h3 {
+  color: #fff;
   font-family: var(--font-gabarito), sans-serif;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 620;
-  letter-spacing: -.018em;
-  line-height: 1.2;
-  margin: 0;
+  letter-spacing: -.02em;
+  margin: 0 0 16px;
 }
-.featureRowCopy p {
-  color: #677588;
-  font-size: 13px;
+.insideCard ul {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.insideCard li {
+  align-items: flex-start;
+  color: rgba(255,255,255,.72);
+  display: flex;
+  font-size: 14px;
+  gap: 9px;
   line-height: 1.5;
-  margin: 5px 0 0;
+}
+.insideCard li strong {
+  color: #fff;
+  font-weight: 650;
+}
+.insideCard li svg {
+  fill: none;
+  flex: 0 0 auto;
+  height: 15px;
+  margin-top: 3px;
+  stroke: var(--blue);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+  width: 15px;
 }
 
 .savingsSection {
@@ -953,9 +934,7 @@
   .planGrid { gap: 12px; }
   .priceCard,
   .priceCard.max { padding: 23px; }
-  .featurePanel { grid-template-columns: 220px minmax(0, 1fr); }
-  .featurePanelIntro { padding: 28px 24px; }
-  .featureRow { padding-inline: 22px; }
+  .insideGrid { gap: 14px; }
   .savingsPanel {
     gap: 36px;
     grid-template-columns: minmax(0,1fr) minmax(340px,.85fr);
@@ -979,6 +958,7 @@
   .vslCard { max-width: 460px; }
   .planGrid,
   .savingsPanel,
+  .insideGrid,
   .faqLayout { grid-template-columns: minmax(0,1fr); }
   .testimonialWall { column-count: 2; }
   .planGrid { margin: 0 auto; max-width: 560px; }
@@ -990,12 +970,6 @@
   .priceCard,
   .priceCard.max { padding: 28px; }
   .planDescription { min-height: 0; }
-  .featurePanel { grid-template-columns: minmax(0, 1fr); }
-  .featurePanelIntro {
-    border-bottom: 1px solid var(--line);
-    border-right: 0;
-  }
-  .featurePanelIntro h3 { margin-top: 18px; }
   .savingsPanel { padding: 34px; }
   .writtenStoriesIntro,
   .faqIntro { max-width: 650px; }
@@ -1042,18 +1016,7 @@
     padding: 24px;
   }
   .testimonialWall { column-count: 1; }
-  .featurePanel { border-radius: 15px; }
-  .featurePanelIntro { padding: 24px; }
-  .featureRow {
-    align-items: start;
-    gap: 14px;
-    grid-template-columns: auto minmax(0, 1fr);
-    padding: 20px;
-  }
-  .featureIcon {
-    height: 42px;
-    width: 42px;
-  }
+  .insideCard { border-radius: 16px; padding: 22px; }
   .savingsPanel { border-radius: 16px; padding: 24px; }
   .costCard { padding: 20px; }
   .costRow b { font-size: 21px; }

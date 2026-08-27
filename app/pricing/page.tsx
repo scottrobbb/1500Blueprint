@@ -73,40 +73,46 @@ const maxFeatures: PlanFeature[] = [
   { label: "Weekly calls with Scott and recordings", icon: "star" },
 ];
 
-const productFeatures: Array<{
+const insideColumns: Array<{
   icon: FeatureIcon;
   title: string;
-  description: string;
+  items: string[];
 }> = [
   {
-    icon: "grid",
-    title: "Question Banks",
-    description: "Math and Reading & Writing practice on every plan",
-  },
-  {
-    icon: "file",
-    title: "Full-length digital SATs",
-    description: "1 on Free, 2 on Core, 4 on Max",
-  },
-  {
-    icon: "bolt",
-    title: "Daily practice drills",
-    description: "20 a day on Core, unlimited on Max",
-  },
-  {
     icon: "book",
-    title: "Courses and lessons",
-    description: "Foundation for everyone, all 41 lessons on Max",
+    title: "Learn & Master",
+    items: [
+      "Learn every tested concept with step-by-step courses",
+      "Master Math, Reading, Writing, Grammar, and Desmos",
+      "Follow a clear path instead of guessing what to study",
+      "Get explanations, strategies, and shortcuts built for the SAT",
+      "Join the private Blueprint Discord community",
+      "Get support, accountability, and weekly live group calls with Scott",
+    ],
   },
   {
-    icon: "calendar",
-    title: "Personal study planner",
-    description: "Max only, built around your test date and score goal",
+    icon: "target",
+    title: "Practice & Improve",
+    items: [
+      "Practice with a realistic SAT Question Bank (Zero AI Questions)",
+      "Drill questions by topic, difficulty, and skill",
+      "Take quizzes built directly into each course",
+      "Challenge yourself with my hardest **Challenge Questions**",
+      "Review detailed explanations for every question",
+      "Turn weak areas into targeted practice",
+    ],
   },
   {
-    icon: "star",
-    title: "Weekly calls and recordings",
-    description: "Max only, live with Scott plus recordings",
+    icon: "chart",
+    title: "Test & Track",
+    items: [
+      "Take realistic, full-length digital SAT practice tests",
+      "Practice under real SAT timing and conditions",
+      "Get detailed score and section breakdowns",
+      "Identify exactly where you're losing points",
+      "Review mistakes and target weaknesses before your next test",
+      "Track your progress as your score improves",
+    ],
   },
 ];
 
@@ -229,29 +235,28 @@ export default async function PricingPage({
       </section>
 
       <section className={styles.includedSection} id="inside">
-        <SectionHeading
-          title="Inside 1500 Blueprint"
-        />
-        <div className={styles.featurePanel}>
-          <aside className={styles.featurePanelIntro}>
-            <div className={styles.featurePanelIcon}>
-              <FeatureGlyph name="target" />
-            </div>
-            <h3>Study tools</h3>
-          </aside>
-          <div className={styles.featureList}>
-            {productFeatures.map((feature) => (
-              <article className={styles.featureRow} key={feature.title}>
-                <div className={styles.featureIcon}>
-                  <FeatureGlyph name={feature.icon} />
-                </div>
-                <div className={styles.featureRowCopy}>
-                  <h3>{feature.title}</h3>
-                  <p>{feature.description}</p>
-                </div>
-              </article>
-            ))}
-          </div>
+        <div className={styles.insideHeading}>
+          <h2>
+            Max Includes <strong>Everything You Need to Reach 1500+</strong>
+          </h2>
+        </div>
+        <div className={styles.insideGrid}>
+          {insideColumns.map((column) => (
+            <article className={styles.insideCard} key={column.title}>
+              <div className={styles.insideCardIcon}>
+                <FeatureGlyph name={column.icon} />
+              </div>
+              <h3>{column.title}</h3>
+              <ul>
+                {column.items.map((item) => (
+                  <li key={item}>
+                    <PlanCheckIcon />
+                    <span>{renderWithBold(item)}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -474,4 +479,10 @@ function ArrowIcon() {
 
 function PlanCheckIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>;
+}
+
+function renderWithBold(text: string) {
+  return text.split(/\*\*(.+?)\*\*/g).map((part, index) =>
+    index % 2 === 1 ? <strong key={index}>{part}</strong> : part,
+  );
 }
