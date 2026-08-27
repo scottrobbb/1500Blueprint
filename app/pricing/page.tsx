@@ -14,7 +14,7 @@ const HERO_VSL_URL = "https://vimeo.com/1221856607?share=copy&fl=sv&fe=ci";
 
 const heroChecklist = [
   "4 1:1 Realistic Full-Length Practice Tests",
-  "1250+ Question Bank Qs",
+  "1250+ Question Bank Qs (with Desmos explanations)",
   "Step-by-step math and reading courses",
   "Weekly group class with Scott",
   "On-Demand Video Library, updated weekly",
