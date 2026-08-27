@@ -221,10 +221,6 @@ export default async function PricingPage({
   return (
     <main className={styles.page}>
       <a href="#pricing-content" className={styles.skipLink}>Skip to pricing content</a>
-      <div className={styles.announcement}>
-        <strong>Everything you need for the SAT in one membership</strong>
-        <Link href="#plans">Start free today</Link>
-      </div>
 
       <header className={styles.header}>
         <Link href="/" className={styles.brand} aria-label="1500 SAT Blueprint home">
@@ -242,25 +238,27 @@ export default async function PricingPage({
       </header>
 
       <section className={styles.hero} id="pricing-content">
-        <div className={styles.heroCopy}>
-          <h1>1500 Blueprint.<br />Crush the SAT.</h1>
-          <ul className={styles.heroChecklist}>
-            {heroChecklist.map((item) => (
-              <li key={item}>
-                <PlanCheckIcon />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <div className={styles.heroActions}>
-            <Link href="#plans" className={styles.heroPrimary}>
-              Enroll Now
-            </Link>
+        <div className={styles.heroInner}>
+          <div className={styles.heroCopy}>
+            <h1>1500 Blueprint.<br />Crush the SAT.</h1>
+            <ul className={styles.heroChecklist}>
+              {heroChecklist.map((item) => (
+                <li key={item}>
+                  <PlanCheckIcon />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+            <div className={styles.heroActions}>
+              <Link href="#plans" className={styles.heroPrimary}>
+                Enroll Now
+              </Link>
+            </div>
           </div>
-        </div>
 
-        <div className={styles.heroVisual}>
-          <VslCard />
+          <div className={styles.heroVisual}>
+            <VslCard />
+          </div>
         </div>
       </section>
 
