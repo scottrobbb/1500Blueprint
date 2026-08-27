@@ -5,6 +5,7 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
 import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
+import { EnrollButton } from "./EnrollButton";
 import { ExamCountdown } from "./ExamCountdown";
 import { PlansPanel } from "./PlansPanel";
 import { TestimonialReel } from "./TestimonialReel";
@@ -196,9 +197,9 @@ export default async function PricingPage({
               ))}
             </ul>
             <div className={styles.heroActions}>
-              <Link href="#plans" className={styles.heroPrimary}>
+              <EnrollButton className={styles.heroPrimary}>
                 Enroll Now
-              </Link>
+              </EnrollButton>
             </div>
           </div>
 

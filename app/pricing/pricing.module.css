@@ -175,6 +175,13 @@
   border: 1px solid var(--blue);
   color: #06162d;
 }
+.heroPrimary {
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 18px;
+  min-height: 60px;
+  padding: 16px 34px;
+}
 .heroVisual {
   align-items: center;
   display: flex;
