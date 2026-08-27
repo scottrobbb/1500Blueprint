@@ -51,10 +51,11 @@ const freeFeatures: PlanFeature[] = [
 ];
 
 const coreFeatures: PlanFeature[] = [
-  { label: "Up to 3,000 Question Bank attempts", icon: "grid" },
+  { label: "1250+ Questions (with Desmos Explanations)", icon: "grid" },
   { label: "2 full-length digital SATs", icon: "file" },
   { label: "20 practice drills each day", icon: "bolt" },
-  { label: "Blueprint Foundation course", icon: "book" },
+  { label: "Desmos 101 course", icon: "bolt" },
+  { label: "Reading & Writing 101 course", icon: "book" },
   { label: "Challenge questions", icon: "target" },
 ];
 
