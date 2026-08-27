@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { getStudentAccess } from "@/lib/auth/entitlements";
-import type { PlanCode } from "@/lib/auth/plans";
 import { getSession } from "@/lib/auth/session";
 import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
 import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
-import { CorePricingPanel } from "./CorePricingPanel";
 import { ExamCountdown } from "./ExamCountdown";
+import { PlansPanel } from "./PlansPanel";
 import styles from "./pricing.module.css";
 import { TestimonialVideos } from "./TestimonialVideos";
 
@@ -214,7 +213,7 @@ export default async function PricingPage({
       && process.env.STRIPE_CORE_PRICE_ID
       && process.env.STRIPE_MAX_PRICE_ID,
   );
-  const initialCoreCadence: BillingCadence = plan === "core" && isBillingCadence(cadence)
+  const initialCadence: BillingCadence = (plan === "core" || plan === "max") && isBillingCadence(cadence)
     ? cadence
     : "monthly";
 
@@ -266,40 +265,17 @@ export default async function PricingPage({
         {billing ? <BillingNotice state={billing} /> : null}
         <SectionHeading title="Pricing" />
 
-        <div className={styles.planGrid}>
-          <PriceCard
-            tier="free"
-            name="Hobby"
-            description="Take your first test, learn the foundations, and get a feel for the app."
-            features={freeFeatures}
-            cta="Start for free"
-            currentPlan={access?.plan ?? null}
-            billingEnabled={billingEnabled}
-          />
-          <PriceCard
-            tier="core"
-            name="Core"
-            description="Get more Question Bank practice, daily drills, and a second full test."
-            features={coreFeatures}
-            cta="Choose Core"
-            currentPlan={access?.plan ?? null}
-            billingEnabled={billingEnabled}
-            initialCadence={initialCoreCadence}
-          />
-          <PriceCard
-            tier="max"
-            name="Max"
-            price="80"
-            description="Use every course and test, plus a personal plan and Scott's weekly calls."
-            features={maxFeatures}
-            cta="Choose Max"
-            currentPlan={access?.plan ?? null}
-            billingEnabled={billingEnabled}
-          />
-        </div>
+        <PlansPanel
+          freeFeatures={freeFeatures}
+          coreFeatures={coreFeatures}
+          maxFeatures={maxFeatures}
+          currentPlan={access?.plan ?? null}
+          billingEnabled={billingEnabled}
+          initialCadence={initialCadence}
+        />
 
         <p className={styles.planFootnote}>
-          Core is billed monthly or every three months. Max is billed monthly.
+          Core and Max are billed monthly or every three months.
           Both can be cancelled anytime, and your first purchase has a 24-hour refund window.
         </p>
       </section>
@@ -530,104 +506,6 @@ function SectionHeading({
       <h2>{title}</h2>
       {description ? <p>{description}</p> : null}
     </div>
-  );
-}
-
-function PriceCard({
-  tier,
-  name,
-  price,
-  description,
-  features,
-  cta,
-  currentPlan,
-  billingEnabled,
-  initialCadence = "monthly",
-}: {
-  tier: "free" | "core" | "max";
-  name: string;
-  price?: string;
-  description: string;
-  features: PlanFeature[];
-  cta: string;
-  currentPlan: PlanCode | null;
-  billingEnabled: boolean;
-  initialCadence?: BillingCadence;
-}) {
-  const paid = tier !== "free";
-  const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
-  const current = currentPlan === plan;
-
-  return (
-    <article className={`${styles.priceCard} ${styles[tier]}`}>
-      <div className={styles.planName}>
-        <h3>{name}</h3>
-      </div>
-      {tier === "core" ? (
-        <CorePricingPanel
-          billingEnabled={billingEnabled}
-          current={current}
-          initialCadence={initialCadence}
-        >
-          <PlanDetails description={description} features={features} />
-        </CorePricingPanel>
-      ) : (
-        <>
-          <div className={styles.priceRow}>
-            {paid ? (
-              <>
-                <span>$</span><strong>{price}</strong><em>/ month</em>
-              </>
-            ) : (
-              <><strong>Free</strong><em>forever</em></>
-            )}
-          </div>
-          <PlanDetails description={description} features={features} />
-          <div className={styles.actions}>
-            {paid ? (
-              billingEnabled ? (
-                <form action="/api/billing/checkout" method="post">
-                  <input type="hidden" name="plan" value={plan} />
-                  <input type="hidden" name="cadence" value="monthly" />
-                  <button type="submit" className={styles.primaryAction}>
-                    {current ? "Manage plan" : cta} <ArrowIcon />
-                  </button>
-                </form>
-              ) : (
-                <button type="button" className={styles.disabledAction} disabled>
-                  Billing opens soon
-                </button>
-              )
-            ) : (
-              <Link
-                href={currentPlan ? "/ultimate" : "/account/sign-up?next=/ultimate"}
-                className={styles.primaryAction}
-              >
-                {currentPlan ? "Open app" : cta} <ArrowIcon />
-              </Link>
-            )}
-          </div>
-        </>
-      )}
-    </article>
-  );
-}
-
-function PlanDetails({ description, features }: { description: string; features: PlanFeature[] }) {
-  return (
-    <>
-      <p className={styles.planDescription}>{description}</p>
-      <div className={styles.cardRule} />
-      <p className={styles.includesLabel}>Includes</p>
-      <ul className={styles.features}>
-        {features.map((feature) => (
-          <li key={feature.label}>
-            <PlanCheckIcon />
-            <span>{feature.label}</span>
-          </li>
-        ))}
-      </ul>
-    </>
   );
 }
 

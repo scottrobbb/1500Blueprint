@@ -52,6 +52,7 @@ test("billing recognizes canonical prices and stable legacy products", () => {
     corePrice: process.env.STRIPE_CORE_PRICE_ID,
     coreThreeMonthPrice: process.env.STRIPE_CORE_THREE_MONTH_PRICE_ID,
     maxPrice: process.env.STRIPE_MAX_PRICE_ID,
+    maxThreeMonthPrice: process.env.STRIPE_MAX_THREE_MONTH_PRICE_ID,
     legacyCoreProducts: process.env.STRIPE_LEGACY_CORE_PRODUCT_IDS,
     legacyMaxProducts: process.env.STRIPE_LEGACY_MAX_PRODUCT_IDS,
   };
@@ -59,6 +60,7 @@ test("billing recognizes canonical prices and stable legacy products", () => {
   process.env.STRIPE_CORE_PRICE_ID = "price_core";
   process.env.STRIPE_CORE_THREE_MONTH_PRICE_ID = "price_core_three_month";
   process.env.STRIPE_MAX_PRICE_ID = "price_max";
+  process.env.STRIPE_MAX_THREE_MONTH_PRICE_ID = "price_max_three_month";
   process.env.STRIPE_LEGACY_CORE_PRODUCT_IDS = "prod_old_core";
   process.env.STRIPE_LEGACY_MAX_PRODUCT_IDS = " prod_old_max, prod_older_max ";
 
@@ -66,6 +68,7 @@ test("billing recognizes canonical prices and stable legacy products", () => {
     assert.equal(planForPriceId("price_core"), "core");
     assert.equal(planForPriceId("price_core_three_month"), "core");
     assert.equal(planForPriceId("price_max"), "max");
+    assert.equal(planForPriceId("price_max_three_month"), "max");
     assert.equal(planForPriceId("price_unknown"), null);
     assert.equal(planForLegacyProductId("prod_old_core"), "core");
     assert.equal(planForLegacyProductId("prod_old_max"), "max");
@@ -75,12 +78,13 @@ test("billing recognizes canonical prices and stable legacy products", () => {
     restoreEnvironmentVariable("STRIPE_CORE_PRICE_ID", original.corePrice);
     restoreEnvironmentVariable("STRIPE_CORE_THREE_MONTH_PRICE_ID", original.coreThreeMonthPrice);
     restoreEnvironmentVariable("STRIPE_MAX_PRICE_ID", original.maxPrice);
+    restoreEnvironmentVariable("STRIPE_MAX_THREE_MONTH_PRICE_ID", original.maxThreeMonthPrice);
     restoreEnvironmentVariable("STRIPE_LEGACY_CORE_PRODUCT_IDS", original.legacyCoreProducts);
     restoreEnvironmentVariable("STRIPE_LEGACY_MAX_PRODUCT_IDS", original.legacyMaxProducts);
   }
 });
 
-test("Core offers use the requested one- and three-month prices", () => {
+test("Core and Max offers use the requested one- and three-month prices", () => {
   assert.deepEqual(billingOffer("core", "monthly"), {
     plan: "core",
     cadence: "monthly",
@@ -90,9 +94,11 @@ test("Core offers use the requested one- and three-month prices", () => {
   });
   assert.equal(billingOffer("core", "three_month").amount, 12_000);
   assert.equal(billingOffer("core", "three_month").intervalCount, 3);
+  assert.equal(billingOffer("max", "monthly").amount, 8_000);
+  assert.equal(billingOffer("max", "three_month").amount, 21_000);
+  assert.equal(billingOffer("max", "three_month").intervalCount, 3);
   assert.equal(billingCadenceForInterval("month", 1), "monthly");
   assert.equal(billingCadenceForInterval("month", 3), "three_month");
-  assert.throws(() => billingOffer("max", "three_month"));
 });
 
 function restoreEnvironmentVariable(name: string, value: string | undefined): void {

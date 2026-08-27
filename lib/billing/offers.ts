@@ -35,6 +35,13 @@ const OFFERS: Record<BillablePlan, Partial<Record<BillingCadence, BillingOffer>>
       intervalCount: 1,
       label: "Max — 1 month",
     },
+    three_month: {
+      plan: "max",
+      cadence: "three_month",
+      amount: 21_000,
+      intervalCount: 3,
+      label: "Max — 3 months",
+    },
   },
 };
 

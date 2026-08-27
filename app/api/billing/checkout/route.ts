@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     const plan = formData.get("plan");
     const cadenceValue = formData.get("cadence") ?? "monthly";
     if (!isBillablePlan(plan)) return redirect(baseUrl, "/pricing?billing=invalid");
-    if (!isBillingCadence(cadenceValue) || (plan === "max" && cadenceValue !== "monthly")) {
+    if (!isBillingCadence(cadenceValue)) {
       return redirect(baseUrl, "/pricing?billing=invalid");
     }
     const cadence = cadenceValue;

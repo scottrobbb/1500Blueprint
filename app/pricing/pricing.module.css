@@ -352,61 +352,48 @@
   letter-spacing: -.015em;
   margin: 0;
 }
-.termSelector {
+.cadenceToggle {
   background: rgba(255,255,255,.05);
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 12px;
-  display: grid;
+  display: flex;
   gap: 4px;
-  grid-template-columns: 1fr 1fr;
-  margin-top: 16px;
+  margin: 0 auto 28px;
   padding: 4px;
+  width: fit-content;
 }
-.termOption {
+.cadenceOption {
+  align-items: center;
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: rgba(255,255,255,.55);
+  color: rgba(255,255,255,.6);
   cursor: pointer;
-  display: grid;
+  display: flex;
   font: inherit;
-  gap: 4px;
-  min-height: 58px;
-  padding: 8px 10px;
-  text-align: left;
+  font-size: 14px;
+  font-weight: 650;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 18px;
   transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 120ms ease;
 }
-.termOption:hover { color: #fff; }
-.termOption:active { transform: scale(.98); }
-.termOption span {
-  align-items: center;
-  display: flex;
-  flex-wrap: wrap;
-  font-size: 11px;
-  font-weight: 700;
-  gap: 5px;
-}
-.termOption strong {
-  font-family: var(--font-gabarito), sans-serif;
-  font-size: 20px;
-  font-variant-numeric: tabular-nums;
-  font-weight: 620;
-  letter-spacing: -.025em;
-}
-.termOption em {
+.cadenceOption:hover { color: #fff; }
+.cadenceOption:active { transform: scale(.98); }
+.cadenceOption em {
   background: rgba(255,200,61,.16);
   border-radius: 999px;
   color: var(--gold);
-  font-size: 8px;
+  font-size: 10px;
   font-style: normal;
   font-weight: 850;
   letter-spacing: .04em;
-  padding: 3px 5px;
+  padding: 3px 6px;
   text-transform: uppercase;
 }
-.termActive {
-  background: rgba(255,255,255,.09);
-  border-color: rgba(255,255,255,.2);
+.cadenceActive {
+  background: rgba(255,255,255,.1);
+  border-color: rgba(255,255,255,.22);
   box-shadow: 0 1px 2px rgba(0,0,0,.4);
   color: #fff;
 }

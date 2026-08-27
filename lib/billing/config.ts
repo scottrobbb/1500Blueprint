@@ -18,11 +18,9 @@ export function isBillablePlan(value: unknown): value is BillablePlan {
 }
 
 export function configuredPriceId(plan: BillablePlan, cadence: BillingCadence = "monthly"): string {
-  const variable = plan === "max"
-    ? "STRIPE_MAX_PRICE_ID"
-    : cadence === "three_month"
-      ? "STRIPE_CORE_THREE_MONTH_PRICE_ID"
-      : "STRIPE_CORE_PRICE_ID";
+  const variable = cadence === "three_month"
+    ? plan === "max" ? "STRIPE_MAX_THREE_MONTH_PRICE_ID" : "STRIPE_CORE_THREE_MONTH_PRICE_ID"
+    : plan === "max" ? "STRIPE_MAX_PRICE_ID" : "STRIPE_CORE_PRICE_ID";
   const value = process.env[variable]?.trim();
   if (!value) throw new Error(`Stripe ${plan} price is not configured`);
   return value;
@@ -32,6 +30,7 @@ export function planForPriceId(priceId: string): BillablePlan | null {
   if (priceId === process.env.STRIPE_CORE_PRICE_ID?.trim()) return "core";
   if (priceId === process.env.STRIPE_CORE_THREE_MONTH_PRICE_ID?.trim()) return "core";
   if (priceId === process.env.STRIPE_MAX_PRICE_ID?.trim()) return "max";
+  if (priceId === process.env.STRIPE_MAX_THREE_MONTH_PRICE_ID?.trim()) return "max";
   return null;
 }
 

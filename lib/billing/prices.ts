@@ -58,8 +58,8 @@ async function retrieveAnchorPrice(
   try {
     return await stripe.prices.retrieve(configuredPriceId(plan, cadence));
   } catch (error) {
-    if (plan !== "core" || cadence !== "three_month") throw error;
-    return stripe.prices.retrieve(configuredPriceId("core", "monthly"));
+    if (cadence !== "three_month") throw error;
+    return stripe.prices.retrieve(configuredPriceId(plan, "monthly"));
   }
 }
 
