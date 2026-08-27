@@ -126,7 +126,7 @@ function PriceCard({
       <div className={styles.priceRow}>
         <span>$</span><strong>{priceInfo.perMonth}</strong><em>/month</em>
       </div>
-      {paid ? <p className={styles.billingDetail}>{priceInfo.billed ?? "Billed monthly · cancel anytime · no setup fee"}</p> : null}
+      {paid ? <p className={styles.billingDetail}>{priceInfo.billed ?? "Billed monthly · cancel anytime"}</p> : null}
 
       <p className={styles.planDescription}>{description}</p>
       <div className={styles.cardRule} />
@@ -160,7 +160,7 @@ function PriceCard({
             href={currentPlan ? "/ultimate" : "/account/sign-up?next=/ultimate"}
             className={styles.primaryAction}
           >
-            {currentPlan ? "Open app" : cta} <ArrowIcon />
+            {cta} <ArrowIcon />
           </Link>
         )}
       </div>
