@@ -5,6 +5,9 @@ import {
   EXPLANATION_MIN_WORDS,
   countExplanationWords,
   staffExplanationIssue,
+  staffQuestionChoiceIssue,
+  staffQuestionPassageIssue,
+  staffQuestionPromptIssue,
 } from "./policy";
 
 test("counts explanation words across ordinary whitespace", () => {
@@ -22,4 +25,21 @@ test("requires at least fifteen words", () => {
 
 test("rejects explanations beyond the storage boundary", () => {
   assert.match(staffExplanationIssue("x".repeat(EXPLANATION_MAX_CHARACTERS + 1)) ?? "", /under 20,000 characters/i);
+});
+
+test("rejects a blank or oversized question prompt, accepts a normal one", () => {
+  assert.match(staffQuestionPromptIssue("   ") ?? "", /cannot be blank/i);
+  assert.match(staffQuestionPromptIssue("x".repeat(20_001)) ?? "", /under 20,000 characters/i);
+  assert.equal(staffQuestionPromptIssue("What is the value of x?"), null);
+});
+
+test("allows an empty passage but rejects an oversized one", () => {
+  assert.equal(staffQuestionPassageIssue(""), null);
+  assert.match(staffQuestionPassageIssue("x".repeat(50_001)) ?? "", /under 50,000 characters/i);
+});
+
+test("rejects a blank or oversized choice, accepts a normal one", () => {
+  assert.match(staffQuestionChoiceIssue("") ?? "", /cannot be blank/i);
+  assert.match(staffQuestionChoiceIssue("x".repeat(5_001)) ?? "", /under 5,000 characters/i);
+  assert.equal(staffQuestionChoiceIssue("An equivalent expression"), null);
 });

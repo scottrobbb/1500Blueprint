@@ -65,6 +65,11 @@ export function ExplanationManager({
     setStatus(`Explanation saved. ${remaining.length.toLocaleString()} question${remaining.length === 1 ? "" : "s"} remain in this queue.`);
   }
 
+  function patchItem(patchedItem: ExplanationQueueItem, patch: Partial<ExplanationQueueItem>) {
+    const patchedKey = itemKey(patchedItem);
+    setItems((current) => current.map((item) => (itemKey(item) === patchedKey ? { ...item, ...patch } : item)));
+  }
+
   return (
     <div className="mx-auto grid max-w-[1440px] gap-5 px-4 py-5 sm:px-7 lg:grid-cols-[360px_minmax(0,1fr)]">
       <aside className="flex min-h-[560px] flex-col overflow-hidden rounded-[18px] border border-navy/10 bg-white shadow-pop lg:sticky lg:top-5 lg:h-[calc(100dvh-116px)] lg:min-h-0">
@@ -118,7 +123,14 @@ export function ExplanationManager({
 
       <div className="min-w-0">
         {status ? <p role="status" className="mb-4 rounded-xl border border-success/20 bg-success-bg px-4 py-3 text-sm font-semibold text-success-600">{status}</p> : null}
-        {selected ? <ExplanationWorkspace key={itemKey(selected)} item={selected} onSaved={() => completeItem(selected)} /> : (
+        {selected ? (
+          <ExplanationWorkspace
+            key={itemKey(selected)}
+            item={selected}
+            onSaved={() => completeItem(selected)}
+            onQuestionUpdated={(patch) => patchItem(selected, patch)}
+          />
+        ) : (
           <section className="grid min-h-[420px] place-items-center rounded-[18px] border border-dashed border-navy/15 bg-white px-6 text-center">
             <div><p className="font-display text-xl font-extrabold text-navy">{items.length ? "No matching questions" : "Queue clear"}</p><p className="mt-2 text-sm leading-6 text-navy/45">{items.length ? "Change the source, difficulty, or search filters." : "Every eligible question in the current queue has an explanation."}</p></div>
           </section>
@@ -132,7 +144,15 @@ function itemKey(item: Pick<ExplanationQueueItem, "targetType" | "id">): string 
   return `${item.targetType}:${item.id}`;
 }
 
-function ExplanationWorkspace({ item, onSaved }: { item: ExplanationQueueItem; onSaved: () => void }) {
+function ExplanationWorkspace({
+  item,
+  onSaved,
+  onQuestionUpdated,
+}: {
+  item: ExplanationQueueItem;
+  onSaved: () => void;
+  onQuestionUpdated: (patch: Partial<ExplanationQueueItem>) => void;
+}) {
   const [explanation, setExplanation] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -141,6 +161,64 @@ function ExplanationWorkspace({ item, onSaved }: { item: ExplanationQueueItem; o
   const wordCount = countExplanationWords(explanation);
   const remainingWords = Math.max(0, EXPLANATION_MIN_WORDS - wordCount);
   const minimumMet = remainingWords === 0;
+
+  const [editingQuestion, setEditingQuestion] = useState(false);
+  const [promptDraft, setPromptDraft] = useState(item.prompt);
+  const [passageDraft, setPassageDraft] = useState(item.passage ?? "");
+  const [choiceDrafts, setChoiceDrafts] = useState(item.choices);
+  const [questionSaving, setQuestionSaving] = useState(false);
+  const [questionError, setQuestionError] = useState<string | null>(null);
+
+  function startEditingQuestion() {
+    setPromptDraft(item.prompt);
+    setPassageDraft(item.passage ?? "");
+    setChoiceDrafts(item.choices);
+    setQuestionError(null);
+    setEditingQuestion(true);
+  }
+
+  function cancelEditingQuestion() {
+    setEditingQuestion(false);
+    setQuestionError(null);
+  }
+
+  async function saveQuestionContent() {
+    const patch: Record<string, unknown> = {};
+    const nextPrompt = promptDraft.trim();
+    const nextPassage = passageDraft.trim();
+    if (nextPrompt !== item.prompt) patch.prompt = nextPrompt;
+    if (nextPassage !== (item.passage ?? "")) patch.passage = nextPassage;
+    const trimmedChoices = choiceDrafts.map((choice) => ({ id: choice.id, text: choice.text.trim() }));
+    if (trimmedChoices.some((choice, index) => choice.text !== item.choices[index]?.text)) patch.choices = trimmedChoices;
+
+    if (Object.keys(patch).length === 0) {
+      setEditingQuestion(false);
+      return;
+    }
+
+    setQuestionSaving(true);
+    setQuestionError(null);
+    const target = item.targetType === "question_bank" ? "question-bank" : "practice-test";
+    try {
+      const response = await fetch(`/api/manager/questions/${target}/${encodeURIComponent(item.id)}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const responseBody = (await response.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+      if (!response.ok || !responseBody?.ok) throw new Error(responseBody?.error ?? "The question could not be updated.");
+      onQuestionUpdated({
+        prompt: (patch.prompt as string | undefined) ?? item.prompt,
+        passage: patch.passage !== undefined ? ((patch.passage as string) || null) : item.passage,
+        choices: (patch.choices as { id: string; text: string }[] | undefined) ?? item.choices,
+      });
+      setEditingQuestion(false);
+    } catch (reason) {
+      setQuestionError(reason instanceof Error ? reason.message : "The question could not be updated.");
+    } finally {
+      setQuestionSaving(false);
+    }
+  }
 
   async function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
     const imageItem = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
@@ -187,11 +265,64 @@ function ExplanationWorkspace({ item, onSaved }: { item: ExplanationQueueItem; o
 
       <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-2">
         <div className="min-w-0 rounded-2xl border border-[#d8dce3] bg-white p-5">
-          <p className="mb-4 text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy/35">Student view</p>
-          {item.passage ? <div className="mb-5 border-b border-navy/10 pb-5"><QuestionContent text={item.passage} pClassName="font-serif text-[16px] leading-7 text-[#111]" /></div> : null}
-          <QuestionContent text={item.prompt} pClassName="font-serif text-[17px] leading-7 text-[#111]" />
-          {item.choices.length ? <ol className="mt-5 space-y-2">{item.choices.map((choice) => <li key={choice.id} className="flex gap-3 rounded-xl border border-[#b9bec8] px-3 py-2.5 font-serif text-[15px]"><span className="font-sans text-xs font-bold">{choice.id}</span><MathText>{choice.text}</MathText></li>)}</ol> : null}
-          <div className="mt-5 rounded-xl bg-success-bg px-4 py-3 text-sm font-bold text-success-600">Correct answer: <MathText>{item.correctAnswer || "Not configured"}</MathText></div>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy/35">Student view</p>
+            {!editingQuestion ? (
+              <button type="button" onClick={startEditingQuestion} className="min-h-8 cursor-pointer rounded-lg border border-navy/15 px-3 text-xs font-bold text-navy/70 transition-colors hover:border-brand/40 hover:text-brand-700">
+                Fix wording / LaTeX
+              </button>
+            ) : null}
+          </div>
+
+          {editingQuestion ? (
+            <div className="space-y-5">
+              <p className="rounded-xl bg-ice/60 px-3 py-2 text-xs leading-5 text-navy/60">Fix typos or broken LaTeX in the question&rsquo;s own text. The correct answer, difficulty, and choice order can&rsquo;t be changed here — ask Scott for anything beyond wording.</p>
+              {item.passage ? (
+                <div>
+                  <label htmlFor="passage-draft" className="text-xs font-extrabold text-navy/50">Passage</label>
+                  <textarea id="passage-draft" value={passageDraft} onChange={(event) => setPassageDraft(event.target.value)} className="mt-1.5 min-h-[120px] w-full resize-y rounded-xl border border-navy/15 bg-haze/35 p-3 font-mono text-sm leading-6 text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/15" />
+                  <div className="mt-2 rounded-xl border border-navy/10 bg-haze/20 p-3"><QuestionContent text={passageDraft} pClassName="font-serif text-[15px] leading-7 text-[#111]" /></div>
+                </div>
+              ) : null}
+              <div>
+                <label htmlFor="prompt-draft" className="text-xs font-extrabold text-navy/50">Prompt</label>
+                <textarea id="prompt-draft" value={promptDraft} onChange={(event) => setPromptDraft(event.target.value)} className="mt-1.5 min-h-[90px] w-full resize-y rounded-xl border border-navy/15 bg-haze/35 p-3 font-mono text-sm leading-6 text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/15" />
+                <div className="mt-2 rounded-xl border border-navy/10 bg-haze/20 p-3"><QuestionContent text={promptDraft} pClassName="font-serif text-[15px] leading-7 text-[#111]" /></div>
+              </div>
+              {choiceDrafts.length ? (
+                <div>
+                  <p className="text-xs font-extrabold text-navy/50">Choices</p>
+                  <div className="mt-1.5 space-y-2">
+                    {choiceDrafts.map((choice, index) => (
+                      <div key={choice.id} className="rounded-xl border border-navy/15 bg-haze/25 p-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-sans text-xs font-bold text-navy/50">{choice.id}</span>
+                          <input
+                            value={choice.text}
+                            onChange={(event) => setChoiceDrafts((current) => current.map((c, i) => (i === index ? { ...c, text: event.target.value } : c)))}
+                            className="min-h-9 w-full rounded-lg border border-navy/15 bg-white px-2.5 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/15"
+                          />
+                        </div>
+                        <div className="mt-1.5 pl-6 font-serif text-sm text-[#333]"><MathText>{choice.text}</MathText></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {questionError ? <p role="alert" className="rounded-xl bg-danger-bg px-3 py-2 text-sm font-semibold text-danger-600">{questionError}</p> : null}
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={cancelEditingQuestion} disabled={questionSaving} className="min-h-9 cursor-pointer rounded-lg px-4 text-xs font-bold text-navy/60 transition-colors hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+                <button type="button" onClick={() => void saveQuestionContent()} disabled={questionSaving} className="min-h-9 cursor-pointer rounded-lg bg-navy px-4 text-xs font-extrabold text-white transition-colors hover:bg-navy/85 disabled:cursor-not-allowed disabled:opacity-50">{questionSaving ? "Saving…" : "Save question text"}</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              {item.passage ? <div className="mb-5 border-b border-navy/10 pb-5"><QuestionContent text={item.passage} pClassName="font-serif text-[16px] leading-7 text-[#111]" /></div> : null}
+              <QuestionContent text={item.prompt} pClassName="font-serif text-[17px] leading-7 text-[#111]" />
+              {item.choices.length ? <ol className="mt-5 space-y-2">{item.choices.map((choice) => <li key={choice.id} className="flex gap-3 rounded-xl border border-[#b9bec8] px-3 py-2.5 font-serif text-[15px]"><span className="font-sans text-xs font-bold">{choice.id}</span><MathText>{choice.text}</MathText></li>)}</ol> : null}
+              <div className="mt-5 rounded-xl bg-success-bg px-4 py-3 text-sm font-bold text-success-600">Correct answer: <MathText>{item.correctAnswer || "Not configured"}</MathText></div>
+            </>
+          )}
         </div>
 
         <div className="min-w-0">

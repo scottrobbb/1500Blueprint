@@ -112,6 +112,32 @@ export async function updateExplanation(
   if (error) throw new Error(`failed to update explanation: ${error.message}`);
 }
 
+export type QuestionContentEdit = {
+  prompt?: string;
+  passage?: string;
+  choices?: { id: string; text: string }[];
+};
+
+// Narrower than the admin question editor: only wording (prompt/passage/
+// choice text) can change here, never the correct answer, difficulty,
+// skill, status, or choice ids/count/order. Enforced again in the RPC.
+export async function updateQuestionContent(
+  editorEmail: string,
+  targetType: ExplanationTargetType,
+  targetId: string,
+  edit: QuestionContentEdit,
+): Promise<void> {
+  const { error } = await supabaseAdmin().rpc("update_staff_question_content", {
+    p_editor_email: editorEmail.trim().toLowerCase(),
+    p_target_type: targetType,
+    p_target_id: targetId,
+    p_prompt: edit.prompt ?? null,
+    p_passage: edit.passage ?? null,
+    p_choices: edit.choices ?? null,
+  });
+  if (error) throw new Error(`failed to update question content: ${error.message}`);
+}
+
 function parseChoices(value: unknown): { id: string; text: string }[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((choice) => {
