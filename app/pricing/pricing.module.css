@@ -478,6 +478,7 @@
   stroke-width: 2;
   width: 17px;
 }
+.priceCard.max .features svg { stroke: var(--blue); }
 .actions {
   margin-top: auto;
   padding-top: 20px;

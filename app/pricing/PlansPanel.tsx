@@ -4,9 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import type { PlanCode } from "@/lib/auth/plans";
 import type { BillingCadence } from "@/lib/billing/offers";
+import { FeatureGlyph, type FeatureIcon } from "./FeatureGlyph";
 import styles from "./pricing.module.css";
 
-export type PlanFeature = { label: string; icon: string };
+export type PlanFeature = { label: string; icon: FeatureIcon };
 
 const CADENCE_PRICE: Record<"core" | "max", Record<BillingCadence, { perMonth: string; billed: string | null }>> = {
   core: {
@@ -132,7 +133,7 @@ function PriceCard({
       <ul className={styles.features}>
         {features.map((feature) => (
           <li key={feature.label}>
-            <PlanCheckIcon />
+            <FeatureGlyph name={feature.icon} />
             <span>{feature.label}</span>
           </li>
         ))}
@@ -172,8 +173,4 @@ function ArrowIcon() {
       <path d="M5 12h14M14 7l5 5-5 5" />
     </svg>
   );
-}
-
-function PlanCheckIcon() {
-  return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>;
 }
