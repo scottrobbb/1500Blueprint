@@ -45,7 +45,7 @@ export default async function UltimateCoursesPage() {
               return (
               <Link key={course.id} href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group relative overflow-hidden rounded-[20px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25 hover:border-gold/45" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35"}`}>
                 <div className="relative min-h-60 overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
-                  <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} priority={courseIndex === 0} className="absolute inset-0 h-full w-full !aspect-auto opacity-35" />
+                  <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} priority={courseIndex === 0} fill className="absolute inset-0 h-full w-full opacity-35" />
                   <div className="relative">
                     <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-sky">{course.eyebrow ?? "1500 Blueprint course"}</p>
                     <h2 className="mt-2 max-w-lg font-display text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{course.title}</h2>

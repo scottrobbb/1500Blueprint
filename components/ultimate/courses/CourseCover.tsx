@@ -8,14 +8,20 @@ type CourseCoverProps = {
   eyebrow?: string | null;
   className?: string;
   priority?: boolean;
+  // Banner mode (default) reserves its own 16:7 box. Fill mode renders with
+  // no intrinsic aspect ratio at all, so a parent that positions this
+  // absolutely (inset-0 h-full w-full) gets a clean crop instead of fighting
+  // the default aspect-ratio via a `!` override, which doesn't reliably win
+  // against an arbitrary-value utility.
+  fill?: boolean;
 };
 
-export function CourseCover({ src, title, eyebrow, className = "", priority = false }: CourseCoverProps) {
+export function CourseCover({ src, title, eyebrow, className = "", fill = false, priority = false }: CourseCoverProps) {
   const normalizedSrc = src?.trim() ?? "";
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   return (
-    <div className={`relative aspect-[16/7] overflow-hidden bg-[#edf2f7] ${className}`}>
+    <div className={`relative overflow-hidden bg-[#edf2f7] ${fill ? "" : "aspect-[16/7]"} ${className}`}>
       {normalizedSrc && failedSrc !== normalizedSrc ? (
         // Admins can use any HTTPS image host, so this intentionally bypasses Next's fixed remote host allowlist.
         // eslint-disable-next-line @next/next/no-img-element
