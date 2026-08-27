@@ -113,7 +113,7 @@ const faqItems = [
   {
     question: "Which plan should I choose?",
     answer:
-      "Hobby is a good place to take your first test and try the Foundation course. Core adds more Question Bank work, a second test, and daily drills. Max is for students who also want every course, four tests, a personal study plan, and Scott's weekly calls.",
+      "Start with Free if you want to explore the platform. Choose Core if you're serious about improving and want consistent practice with more questions, drills, and tests. Go with Max if you want everything—including all courses, practice tests, challenge questions, drills, and weekly live calls with Scott.",
   },
   {
     question: "Are Core and Max billed monthly?",
