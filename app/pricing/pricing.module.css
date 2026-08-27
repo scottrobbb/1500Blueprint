@@ -755,7 +755,7 @@
 }
 
 .writtenStoriesSection {
-  background: #f6efe1;
+  background: #e8f2fb;
   color: var(--ink);
   padding: 100px max(28px, calc((100vw - 1180px) / 2));
 }
