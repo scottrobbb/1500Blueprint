@@ -343,8 +343,8 @@
   background-clip: padding-box, padding-box, padding-box, border-box;
   background-color: #0c0e13;
   background-image:
-    radial-gradient(130% 110% at 0% 0%, rgba(47,159,233,.05), transparent 60%),
-    radial-gradient(130% 110% at 100% 100%, rgba(255,200,61,.045), transparent 60%),
+    radial-gradient(130% 110% at 0% 0%, rgba(47,159,233,.1), transparent 60%),
+    radial-gradient(130% 110% at 100% 100%, rgba(255,200,61,.09), transparent 60%),
     linear-gradient(#0c0e13, #0c0e13),
     linear-gradient(135deg, var(--blue), var(--gold), var(--blue));
   background-origin: padding-box, padding-box, padding-box, border-box;
