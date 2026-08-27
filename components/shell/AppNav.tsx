@@ -20,7 +20,7 @@ const TABS: { key: TabKey; label: string; href: string; Icon: (p: { className?: 
   { key: "history", label: "History", href: "/history", Icon: HistoryIcon },
 ];
 
-export function AppNav({ activePage, stats }: { activePage: TabKey; stats: NavStats }) {
+export function AppNav({ activePage, stats }: { activePage: TabKey | "settings"; stats: NavStats }) {
   return (
     <header className="sticky top-0 z-40 border-b border-navy/12 bg-white/[0.88] backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-[1120px] items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-6">
