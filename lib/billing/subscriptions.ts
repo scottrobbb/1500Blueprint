@@ -9,6 +9,7 @@ import {
   REFUND_WINDOW_HOURS,
   type BillablePlan,
 } from "./config";
+import { billingCadenceForInterval, type BillingCadence } from "./offers";
 import { refundDeadline } from "./policy";
 
 type StripeEventContext = {
@@ -44,6 +45,14 @@ export function stripeSubscriptionPlan(subscription: Stripe.Subscription): Billa
   }
   const metadataPlan = normalizePlanCode(subscription.metadata.plan_code) as PlanCode;
   return metadataPlan === "core" || metadataPlan === "max" ? metadataPlan : null;
+}
+
+export function stripeSubscriptionCadence(subscription: Stripe.Subscription): BillingCadence {
+  const price = subscription.items.data[0]?.price;
+  if (price?.recurring) {
+    return billingCadenceForInterval(price.recurring.interval, price.recurring.interval_count);
+  }
+  return subscription.metadata.billing_cadence === "three_month" ? "three_month" : "monthly";
 }
 
 export async function syncStripeSubscription(

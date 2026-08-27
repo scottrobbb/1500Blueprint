@@ -676,6 +676,7 @@ function foundationCourse(): CourseInput {
     description: "A guided 21-day foundation across Desmos, SAT grammar, geometry, data, and non-Desmos math—organized into three focused weeks.",
     eyebrow: "Your first 3 weeks",
     coverUrl: null,
+    coverZoom: 1,
     position: 1,
     estimatedMinutes,
     status: "published",
@@ -709,7 +710,7 @@ function course(slug: string, title: string, description: string, eyebrow: strin
     }),
   }));
   const estimatedMinutes = modules.flatMap((module) => module.lessons).reduce((total, lesson) => total + lesson.estimatedMinutes, 0);
-  return { id: stableId(slug), slug, title, description, eyebrow, coverUrl: null, position, estimatedMinutes, status: "published", modules };
+  return { id: stableId(slug), slug, title, description, eyebrow, coverUrl: null, coverZoom: 1, position, estimatedMinutes, status: "published", modules };
 }
 
 const courses = [

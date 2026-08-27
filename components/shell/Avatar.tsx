@@ -26,6 +26,8 @@ export function Avatar({ src, initials, alt = "", className = "" }: Props) {
         <img
           src={src as string}
           alt={alt}
+          width={96}
+          height={96}
           onError={() => setFailed(true)}
           className="h-full w-full object-cover"
         />

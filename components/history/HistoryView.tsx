@@ -20,15 +20,16 @@ import type {
 
 const ALL = "all";
 const LETTERS = ["A", "B", "C", "D"] as const;
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
-// Deterministic date format from the stored UTC timestamp — no locale/timezone
-// formatting, so server and client markup match (no hydration mismatch).
 function fmtDate(iso: string): string {
-  const [y, m, d] = iso.slice(0, 10).split("-");
-  const mi = Number(m) - 1;
-  if (!y || Number.isNaN(mi) || mi < 0 || mi > 11) return iso.slice(0, 10);
-  return `${MONTHS[mi]} ${Number(d)}, ${y}`;
+  const value = new Date(iso);
+  return Number.isNaN(value.getTime()) ? iso.slice(0, 10) : dateFormatter.format(value);
 }
 
 function drillHref(slug: DrillSlug, difficulty: string): string {

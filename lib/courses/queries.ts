@@ -5,13 +5,13 @@ import type { Course, CourseInput, CourseLesson, CourseModule, CourseStatus, Les
 
 type CourseRow = {
   id: string; slug: string; title: string; description: string | null; eyebrow: string | null;
-  cover_url: string | null; position: number; estimated_minutes: number; status: string;
+  cover_url: string | null; cover_zoom: number; position: number; estimated_minutes: number; status: string;
 };
 type ModuleRow = { id: string; course_id: string; slug: string; title: string; description: string | null; position: number; status: string };
 type LessonRow = { id: string; module_id: string; slug: string; title: string; summary: string | null; position: number; estimated_minutes: number; status: string };
 type BlockRow = { id: string; lesson_id: string; position: number; kind: string; content: LessonBlock["content"] };
 
-const COURSE_COLUMNS = "id,slug,title,description,eyebrow,cover_url,position,estimated_minutes,status";
+const COURSE_COLUMNS = "id,slug,title,description,eyebrow,cover_url,cover_zoom,position,estimated_minutes,status";
 
 function status(value: string): CourseStatus { return value === "published" ? "published" : "draft"; }
 
@@ -83,6 +83,7 @@ async function hydrateCourses(
       description: courseRow.description,
       eyebrow: courseRow.eyebrow,
       coverUrl: courseRow.cover_url,
+      coverZoom: courseRow.cover_zoom,
       position: courseRow.position,
       estimatedMinutes: courseRow.estimated_minutes,
       status: status(courseRow.status),
@@ -154,7 +155,7 @@ export async function saveCourse(input: CourseInput): Promise<boolean> {
   const courseResult = await db.from("courses").upsert({
     id: input.id, slug: input.slug.trim(), title: input.title.trim() || "Untitled course",
     description: input.description?.trim() || null, eyebrow: input.eyebrow?.trim() || null,
-    cover_url: input.coverUrl?.trim() || null, position: input.position,
+    cover_url: input.coverUrl?.trim() || null, cover_zoom: Math.min(3, Math.max(1, input.coverZoom || 1)), position: input.position,
     estimated_minutes: input.estimatedMinutes, status: input.status, updated_at: new Date().toISOString(),
   });
   if (courseResult.error) return false;

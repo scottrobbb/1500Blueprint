@@ -211,7 +211,7 @@ export function StudyDeck({
               <span className="flex flex-1 flex-col items-center justify-center gap-3 overflow-auto px-2 text-center">
                 {card.termImageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={card.termImageUrl} alt="" className="max-h-44 w-auto rounded-lg object-contain" />
+                  <img src={card.termImageUrl} alt="" width={800} height={600} className="h-auto max-h-44 w-auto rounded-lg object-contain" />
                 )}
                 {(card.term || !card.termImageUrl) && (
                   <span className="font-serif text-2xl font-semibold leading-snug text-exam-ink sm:text-[2rem]">
@@ -240,7 +240,7 @@ export function StudyDeck({
               <span className="flex flex-1 flex-col items-center justify-center gap-3 overflow-auto px-2 text-center">
                 {card.definitionImageUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={card.definitionImageUrl} alt="" className="max-h-44 w-auto rounded-lg object-contain" />
+                  <img src={card.definitionImageUrl} alt="" width={800} height={600} className="h-auto max-h-44 w-auto rounded-lg object-contain" />
                 )}
                 {(card.definition || !card.definitionImageUrl) && (
                   <span className="font-serif text-xl leading-relaxed text-exam-ink sm:text-2xl">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getExplanationEditorSession } from "@/lib/auth/staff";
 import { updateExplanation, type ExplanationTargetType } from "@/lib/explanations/queries";
+import { staffExplanationIssue } from "@/lib/explanations/policy";
 
 type Context = { params: Promise<{ targetType: string; id: string }> };
 
@@ -20,8 +21,9 @@ export async function PATCH(request: Request, context: Context) {
 
   const body = (await request.json().catch(() => null)) as { explanation?: unknown } | null;
   const explanation = typeof body?.explanation === "string" ? body.explanation.trim() : "";
-  if (!explanation || explanation.length > 20_000) {
-    return NextResponse.json({ error: "Write an explanation between 1 and 20,000 characters." }, { status: 400 });
+  const issue = staffExplanationIssue(explanation);
+  if (issue) {
+    return NextResponse.json({ error: issue }, { status: 400 });
   }
 
   try {
@@ -29,6 +31,13 @@ export async function PATCH(request: Request, context: Context) {
     return NextResponse.json({ explanation });
   } catch (error) {
     console.error("explanation editor update failed", error);
+    const message = error instanceof Error ? error.message : "";
+    if (/already has an explanation/i.test(message)) {
+      return NextResponse.json({ error: "Another editor already completed this question. Refresh the queue." }, { status: 409 });
+    }
+    if (/not eligible for staff explanation/i.test(message)) {
+      return NextResponse.json({ error: "This question is not available to explanation editors." }, { status: 403 });
+    }
     return NextResponse.json({ error: "The explanation could not be saved." }, { status: 500 });
   }
 }

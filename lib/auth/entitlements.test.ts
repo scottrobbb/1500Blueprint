@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { accessForPlan, accessForTestPersona, effectivePlan, highestPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
+import { isUltimatePreviewEmail } from "./ultimate";
 
 test("legacy Stripe labels normalize to stable plan codes", () => {
   assert.equal(normalizePlanCode("Core monthly"), "core");
@@ -51,4 +52,10 @@ test("QA personas override stale legacy testing access", () => {
   assert.equal(accessForTestPersona("max", "qa-max")?.plan, "max");
   assert.equal(accessForTestPersona("suspended", "qa-suspended")?.active, false);
   assert.equal(accessForTestPersona(null, "qa-unknown"), null);
+});
+
+test("every authenticated student can enter the entitlement-gated Ultimate workspace", () => {
+  assert.equal(isUltimatePreviewEmail("new-student@example.com"), true);
+  assert.equal(isUltimatePreviewEmail("  "), false);
+  assert.equal(isUltimatePreviewEmail(null), false);
 });

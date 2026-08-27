@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/ultimate/PageHeader";
@@ -7,6 +6,7 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { listCoursesForStudent } from "@/lib/courses/queries";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { LockedBadge, UpgradePrompt } from "@/components/account/UpgradePrompt";
+import { CourseCover } from "@/components/ultimate/courses/CourseCover";
 
 export const metadata = { title: "Courses" };
 export const dynamic = "force-dynamic";
@@ -40,12 +40,13 @@ export default async function UltimateCoursesPage() {
             />
           ) : null}
           <section className="grid gap-5 md:grid-cols-2">
-            {courses.map((course) => {
+            {courses.map((course, courseIndex) => {
               const locked = !canAccessCourse(access, course.slug);
               return (
               <Link key={course.id} href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group relative overflow-hidden rounded-[20px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25 hover:border-gold/45" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35"}`}>
                 <div className="relative min-h-60 overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
-                  {course.coverUrl ? <img src={course.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" /> : null}
+                  <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} zoom={course.coverZoom} priority={courseIndex === 0} fill className="absolute inset-0 h-full w-full" />
+                  <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-navy/95 via-navy/35 to-navy/5" />
                   <div className="relative">
                     <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-sky">{course.eyebrow ?? "1500 Blueprint course"}</p>
                     <h2 className="mt-2 max-w-lg font-display text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{course.title}</h2>

@@ -5,6 +5,8 @@ import { Logo } from "@/components/Logo";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import type { PlanCode } from "@/lib/auth/plans";
 import { getSession } from "@/lib/auth/session";
+import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
+import { CorePricingPanel } from "./CorePricingPanel";
 import styles from "./pricing.module.css";
 import { TestimonialVideos } from "./TestimonialVideos";
 
@@ -159,7 +161,7 @@ const faqItems = [
   {
     question: "Are Core and Max billed monthly?",
     answer:
-      "Yes. Core is $39 per month and Max is $80 per month. You can cancel at any time, and your access continues through the end of the paid billing period.",
+      "Core is $50 month to month or $120 billed every three months, which works out to $40 per month. Max is $80 per month. You can cancel at any time, and your access continues through the end of the paid billing period.",
   },
   {
     question: "Can I change plans later?",
@@ -191,20 +193,26 @@ const faqItems = [
 export default async function PricingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing?: string }>;
+  searchParams: Promise<{ billing?: string; plan?: string; cadence?: string }>;
 }) {
   const session = await getSession();
   const access = session ? await getStudentAccess(session.email) : null;
-  const { billing } = await searchParams;
+  const { billing, plan, cadence } = await searchParams;
   const billingEnabled = Boolean(
-    process.env.STRIPE_CORE_PRICE_ID && process.env.STRIPE_MAX_PRICE_ID,
+    process.env.STRIPE_BILLING_KEY
+      && process.env.STRIPE_CORE_PRICE_ID
+      && process.env.STRIPE_MAX_PRICE_ID,
   );
+  const initialCoreCadence: BillingCadence = plan === "core" && isBillingCadence(cadence)
+    ? cadence
+    : "monthly";
 
   return (
     <main className={styles.page}>
+      <a href="#pricing-content" className={styles.skipLink}>Skip to pricing content</a>
       <div className={styles.announcement}>
         <strong>Everything you need for the SAT in one membership</strong>
-        <a href="#plans">Start free today</a>
+        <Link href="#plans">Start free today</Link>
       </div>
 
       <header className={styles.header}>
@@ -213,16 +221,16 @@ export default async function PricingPage({
           <span>1500 SAT Blueprint</span>
         </Link>
         <nav aria-label="Pricing navigation">
-          <a href="#inside">What you get</a>
-          <a href="#stories">Student stories</a>
-          <a href="#faq">FAQ</a>
+          <Link href="#inside">What you get</Link>
+          <Link href="#stories">Student stories</Link>
+          <Link href="#faq">FAQ</Link>
         </nav>
-        <Link href="/login" className={styles.openApp}>
+        <Link href="/account/login?next=/ultimate" className={styles.openApp}>
           Open app <ArrowIcon />
         </Link>
       </header>
 
-      <section className={styles.hero}>
+      <section className={styles.hero} id="pricing-content">
         <div className={styles.heroGrid} aria-hidden="true" />
         <div className={styles.heroGlow} aria-hidden="true" />
         <div className={styles.heroCopy}>
@@ -234,9 +242,9 @@ export default async function PricingPage({
             courses, Question Bank, and drills to work on the right things.
           </p>
           <div className={styles.heroActions}>
-            <a href="#plans" className={styles.heroPrimary}>
+            <Link href="#plans" className={styles.heroPrimary}>
               See plans <ArrowIcon />
-            </a>
+            </Link>
             <Link href="/practice-test" className={styles.heroSecondary}>
               Try a practice test
             </Link>
@@ -288,12 +296,12 @@ export default async function PricingPage({
           <PriceCard
             tier="core"
             name="Core"
-            price="39"
             description="Get more Question Bank practice, daily drills, and a second full test."
             features={coreFeatures}
             cta="Choose Core"
             currentPlan={access?.plan ?? null}
             billingEnabled={billingEnabled}
+            initialCadence={initialCoreCadence}
           />
           <PriceCard
             tier="max"
@@ -308,8 +316,8 @@ export default async function PricingPage({
         </div>
 
         <p className={styles.planFootnote}>
-          Paid plans are billed monthly and can be cancelled anytime. Your first
-          purchase has a 24-hour refund window.
+          Core is billed monthly or every three months. Max is billed monthly.
+          Both can be cancelled anytime, and your first purchase has a 24-hour refund window.
         </p>
       </section>
 
@@ -347,9 +355,9 @@ export default async function PricingPage({
               You could save <em>$240 a month</em> compared with tutoring.
             </h2>
             <p>Based on one $80 tutoring session each week.</p>
-            <a href="#plans" className={styles.savingsAction}>
+            <Link href="#plans" className={styles.savingsAction}>
               See Max <ArrowIcon />
-            </a>
+            </Link>
           </div>
           <div className={styles.costCard}>
             <div className={styles.costHeader}>
@@ -422,7 +430,7 @@ export default async function PricingPage({
         <div className={styles.faqLayout}>
           <div className={styles.faqIntro}>
             <h2>A few things to know before you choose.</h2>
-            <Link href="/login" className={styles.faqLink}>
+            <Link href="/account/login?next=/ultimate" className={styles.faqLink}>
               Already a member? Open the app <ArrowIcon />
             </Link>
           </div>
@@ -446,9 +454,7 @@ export default async function PricingPage({
           <h2>Start with Hobby.</h2>
           <p>Take your first full-length test and try the Foundation course for free.</p>
         </div>
-        <a href="#plans" className={styles.finalButton}>
-          See plans <ArrowIcon />
-        </a>
+        <Link href="/account/sign-up?next=/ultimate" className={styles.finalButton}>Create free account <ArrowIcon /></Link>
       </section>
 
       <footer className={styles.footer}>
@@ -465,9 +471,9 @@ export default async function PricingPage({
             <div className={styles.footerColumn}>
               <h3>Explore</h3>
               <Link href="/">Home</Link>
-              <a href="#plans">Pricing</a>
+              <Link href="#plans">Pricing</Link>
               <Link href="/practice-test">Practice tests</Link>
-              <a href="#stories">Student stories</a>
+              <Link href="#stories">Student stories</Link>
             </div>
             <div className={styles.footerColumn}>
               <h3>Study tools</h3>
@@ -479,13 +485,13 @@ export default async function PricingPage({
             <div className={styles.footerColumn}>
               <h3>Account</h3>
               <Link href="/account/sign-up">Create account</Link>
-              <Link href="/login">Log in</Link>
+              <Link href="/account/login?next=/ultimate">Log in</Link>
               <Link href="/ultimate">Open app</Link>
               <Link href="/history">Progress history</Link>
             </div>
             <div className={styles.footerColumn}>
               <h3>More</h3>
-              <a href="#faq">FAQ</a>
+              <Link href="#faq">FAQ</Link>
               <Link href="/community">Community</Link>
               <Link href="/ultimate/planner">Study planner</Link>
               <Link href="/ultimate/live-calls">Weekly calls</Link>
@@ -531,6 +537,7 @@ function PriceCard({
   cta,
   currentPlan,
   billingEnabled,
+  initialCadence = "monthly",
 }: {
   tier: "free" | "core" | "max";
   name: string;
@@ -540,6 +547,7 @@ function PriceCard({
   cta: string;
   currentPlan: PlanCode | null;
   billingEnabled: boolean;
+  initialCadence?: BillingCadence;
 }) {
   const paid = tier !== "free";
   const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
@@ -550,15 +558,59 @@ function PriceCard({
       <div className={styles.planName}>
         <h3>{name}</h3>
       </div>
-      <div className={styles.priceRow}>
-        {paid ? (
-          <>
-            <span>$</span><strong>{price}</strong><em>/ month</em>
-          </>
-        ) : (
-          <><strong>Free</strong><em>forever</em></>
-        )}
-      </div>
+      {tier === "core" ? (
+        <CorePricingPanel
+          billingEnabled={billingEnabled}
+          current={current}
+          initialCadence={initialCadence}
+        >
+          <PlanDetails description={description} features={features} />
+        </CorePricingPanel>
+      ) : (
+        <>
+          <div className={styles.priceRow}>
+            {paid ? (
+              <>
+                <span>$</span><strong>{price}</strong><em>/ month</em>
+              </>
+            ) : (
+              <><strong>Free</strong><em>forever</em></>
+            )}
+          </div>
+          <PlanDetails description={description} features={features} />
+          <div className={styles.actions}>
+            {paid ? (
+              billingEnabled ? (
+                <form action="/api/billing/checkout" method="post">
+                  <input type="hidden" name="plan" value={plan} />
+                  <input type="hidden" name="cadence" value="monthly" />
+                  <button type="submit" className={styles.primaryAction}>
+                    {current ? "Manage plan" : cta} <ArrowIcon />
+                  </button>
+                </form>
+              ) : (
+                <button type="button" className={styles.disabledAction} disabled>
+                  Billing opens soon
+                </button>
+              )
+            ) : (
+              <Link
+                href={currentPlan ? "/ultimate" : "/account/sign-up?next=/ultimate"}
+                className={styles.primaryAction}
+              >
+                {currentPlan ? "Open app" : cta} <ArrowIcon />
+              </Link>
+            )}
+          </div>
+        </>
+      )}
+    </article>
+  );
+}
+
+function PlanDetails({ description, features }: { description: string; features: PlanFeature[] }) {
+  return (
+    <>
       <p className={styles.planDescription}>{description}</p>
       <div className={styles.cardRule} />
       <p className={styles.includesLabel}>Includes</p>
@@ -570,27 +622,7 @@ function PriceCard({
           </li>
         ))}
       </ul>
-      <div className={styles.actions}>
-        {paid ? (
-          billingEnabled ? (
-            <form action="/api/billing/checkout" method="post">
-              <input type="hidden" name="plan" value={plan} />
-              <button type="submit" className={styles.primaryAction}>
-                {current ? "Manage plan" : cta} <ArrowIcon />
-              </button>
-            </form>
-          ) : (
-            <button type="button" className={styles.disabledAction} disabled>
-              Billing opens soon
-            </button>
-          )
-        ) : (
-          <Link href={currentPlan ? "/ultimate" : "/account/sign-up"} className={styles.primaryAction}>
-            {currentPlan ? "Open app" : cta} <ArrowIcon />
-          </Link>
-        )}
-      </div>
-    </article>
+    </>
   );
 }
 
@@ -604,6 +636,7 @@ function BillingNotice({ state }: { state: string }) {
     "change-cancelled": "The scheduled plan change was removed. Your current plan will continue.",
     payment: "Stripe could not collect the prorated upgrade charge, so your current plan was not changed.",
     managed: "Your subscription is already on that plan.",
+    ready: "You’re signed in. Your selected Core term is ready below.",
   };
   const message = messages[state] ?? "Billing could not be opened. Please try again.";
   return <div className={styles.billingNotice} role="status">{message}</div>;

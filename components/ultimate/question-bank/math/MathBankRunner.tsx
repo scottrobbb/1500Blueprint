@@ -273,7 +273,7 @@ function ObjectiveBankRunner({
                   )}
                   {question.figureUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={question.figureUrl} alt="Figure for this question" className="mt-6 max-h-[420px] max-w-full object-contain" />
+                    <img src={question.figureUrl} alt="Figure for this question" width={1200} height={800} className="mt-6 h-auto max-h-[420px] max-w-full object-contain" />
                   )}
                 </div>
               </section>
@@ -299,7 +299,7 @@ function ObjectiveBankRunner({
                 {question.passage && <QuestionContent text={question.passage} pClassName="mb-4 font-serif text-[17px] leading-7 text-[#111]" />}
                 {question.figureUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={question.figureUrl} alt="Figure for this question" className="mb-5 max-h-80 max-w-full object-contain" />
+                  <img src={question.figureUrl} alt="Figure for this question" width={1200} height={800} className="mb-5 h-auto max-h-80 max-w-full object-contain" />
                 )}
                 <QuestionContent text={question.prompt} pClassName="font-serif text-[17px] leading-[1.55] text-[#111] sm:text-[18px]" />
                 {answerArea}

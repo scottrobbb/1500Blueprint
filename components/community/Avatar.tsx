@@ -40,6 +40,8 @@ export function Avatar({
           <img
             src={src as string}
             alt={alt}
+            width={size}
+            height={size}
             onError={() => setFailed(true)}
             className="h-full w-full object-cover"
           />

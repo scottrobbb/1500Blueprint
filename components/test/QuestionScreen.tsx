@@ -171,7 +171,9 @@ export function QuestionScreen(props: Props) {
     <img
       src={question.figureUrl}
       alt="Figure for this question"
-      className="mb-4 max-h-80 max-w-full object-contain"
+      width={1200}
+      height={800}
+      className="mb-4 h-auto max-h-80 max-w-full object-contain"
     />
   ) : null;
 

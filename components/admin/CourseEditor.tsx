@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { auditCourse, type CourseAuditIssue } from "@/lib/courses/audit";
 import { emptyCoursePractice } from "@/lib/courses/practice";
 import type { Course, CourseInput, CourseLesson, CourseModule, LessonBlock, LessonBlockKind } from "@/lib/courses/types";
+import { CourseCover } from "@/components/ultimate/courses/CourseCover";
 import { CourseAssetUpload } from "./course-editor/CourseAssetUpload";
 import { PracticeBuilder } from "./course-editor/PracticeBuilder";
 
@@ -90,7 +91,7 @@ export function CourseEditor({ initial }: { initial: Course }) {
     if (saving) return;
     setSaving(true);
     setMessage(null);
-    const input: CourseInput = { id: course.id, slug: cleanSlug(course.slug), title: course.title, description: course.description, eyebrow: course.eyebrow, coverUrl: course.coverUrl, position: course.position, estimatedMinutes: course.estimatedMinutes, status: course.status, modules: course.modules };
+    const input: CourseInput = { id: course.id, slug: cleanSlug(course.slug), title: course.title, description: course.description, eyebrow: course.eyebrow, coverUrl: course.coverUrl, coverZoom: course.coverZoom, position: course.position, estimatedMinutes: course.estimatedMinutes, status: course.status, modules: course.modules };
     try {
       const response = await fetch(`/api/admin/courses/${course.id}`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(input) });
       const result = (await response.json().catch(() => null)) as { error?: string; detail?: string } | null;
@@ -144,7 +145,16 @@ export function CourseEditor({ initial }: { initial: Course }) {
       <details className="mt-5 overflow-hidden rounded-2xl border border-navy/10 bg-white">
         <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3"><SettingsIcon /><strong className="flex-1 text-sm text-navy">Course settings</strong><span className="text-xs font-semibold text-navy/35">Title, publishing, cover, and description</span></summary>
         <div className="grid gap-4 border-t border-navy/10 bg-haze/40 p-4 sm:grid-cols-2 sm:p-5">
-          <Field label="Course title"><input value={course.title} onChange={(event) => setCourse({ ...course, title: event.target.value })} className={inputClass} /></Field><Field label="URL slug"><input value={course.slug} onChange={(event) => setCourse({ ...course, slug: cleanSlug(event.target.value) })} className={inputClass} /></Field><Field label="Eyebrow"><input value={course.eyebrow ?? ""} onChange={(event) => setCourse({ ...course, eyebrow: event.target.value })} placeholder="e.g. Start Here" className={inputClass} /></Field><Field label="Publish status"><select value={course.status} onChange={(event) => setCourse({ ...course, status: event.target.value === "published" ? "published" : "draft" })} className={inputClass}><option value="draft">Draft</option><option value="published">Published</option></select></Field><Field label="Estimated minutes"><input type="number" min="0" value={course.estimatedMinutes} onChange={(event) => setCourse({ ...course, estimatedMinutes: Number(event.target.value) || 0 })} className={inputClass} /></Field><Field label="Cover image URL"><input type="url" value={course.coverUrl ?? ""} onChange={(event) => setCourse({ ...course, coverUrl: event.target.value })} className={inputClass} /><CourseAssetUpload kind="image" compact onUploaded={(url) => setCourse({ ...course, coverUrl: url })} /></Field><div className="sm:col-span-2"><Field label="Description"><textarea rows={3} value={course.description ?? ""} onChange={(event) => setCourse({ ...course, description: event.target.value })} className={inputClass} /></Field></div><div className="sm:col-span-2 flex justify-end border-t border-navy/10 pt-4"><button type="button" onClick={() => void removeCourse()} className="min-h-11 cursor-pointer rounded-xl border border-danger/20 px-4 text-sm font-bold text-danger-600 transition-colors hover:bg-danger-bg">Delete course</button></div>
+          <Field label="Course title"><input value={course.title} onChange={(event) => setCourse({ ...course, title: event.target.value })} className={inputClass} /></Field>
+          <Field label="URL slug"><input value={course.slug} onChange={(event) => setCourse({ ...course, slug: cleanSlug(event.target.value) })} className={inputClass} /></Field>
+          <Field label="Eyebrow"><input value={course.eyebrow ?? ""} onChange={(event) => setCourse({ ...course, eyebrow: event.target.value })} placeholder="e.g. Start Here" className={inputClass} /></Field>
+          <Field label="Publish status"><select value={course.status} onChange={(event) => setCourse({ ...course, status: event.target.value === "published" ? "published" : "draft" })} className={inputClass}><option value="draft">Draft</option><option value="published">Published</option></select></Field>
+          <Field label="Estimated minutes"><input type="number" min="0" value={course.estimatedMinutes} onChange={(event) => setCourse({ ...course, estimatedMinutes: Number(event.target.value) || 0 })} className={inputClass} /></Field>
+          <div className="sm:col-span-2">
+            <CourseCoverEditor course={course} onChange={setCourse} />
+          </div>
+          <div className="sm:col-span-2"><Field label="Description"><textarea rows={3} value={course.description ?? ""} onChange={(event) => setCourse({ ...course, description: event.target.value })} className={inputClass} /></Field></div>
+          <div className="sm:col-span-2 flex justify-end border-t border-navy/10 pt-4"><button type="button" onClick={() => void removeCourse()} className="min-h-11 cursor-pointer rounded-xl border border-danger/20 px-4 text-sm font-bold text-danger-600 transition-colors hover:bg-danger-bg">Delete course</button></div>
         </div>
       </details>
 
@@ -158,6 +168,71 @@ export function CourseEditor({ initial }: { initial: Course }) {
         </div>
       </section>
     </div>
+  );
+}
+
+function CourseCoverEditor({ course, onChange }: { course: Course; onChange: React.Dispatch<React.SetStateAction<Course>> }) {
+  const hasCover = Boolean(course.coverUrl?.trim());
+  const coverHelpId = `course-cover-help-${course.id}`;
+
+  return (
+    <section aria-labelledby={`course-cover-label-${course.id}`}>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <p id={`course-cover-label-${course.id}`} className={labelClass}>Course cover</p>
+          <p id={coverHelpId} className="mt-1 text-xs leading-5 text-navy/45">Shown in the course library and at the top of the course page.</p>
+        </div>
+        {hasCover ? <span className="rounded-full bg-success-bg px-2.5 py-1 text-[10px] font-bold text-success-600">Cover added</span> : null}
+      </div>
+      <div className="mt-2.5 overflow-hidden rounded-xl border border-navy/12 bg-white lg:grid lg:grid-cols-[minmax(280px,0.8fr)_minmax(0,1.2fr)]">
+        <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} zoom={course.coverZoom} className="border-b border-navy/10 lg:border-b-0 lg:border-r" />
+        <div className="p-4 sm:p-5">
+          <p className="text-sm font-semibold text-navy">{hasCover ? "Replace this cover" : "Add a course cover"}</p>
+          <p className="mt-1 text-xs leading-5 text-navy/48">Use a 1600 × 700 image so the subject stays clear on desktop and mobile.</p>
+          <CourseAssetUpload
+            kind="image"
+            purpose="cover"
+            compact
+            label={hasCover ? "Upload replacement" : "Upload cover"}
+            onUploaded={(url) => onChange((current) => ({ ...current, coverUrl: url }))}
+          />
+          <div className="my-4 flex items-center gap-3" aria-hidden="true"><span className="h-px flex-1 bg-navy/10" /><span className="text-[10px] font-bold uppercase tracking-[0.1em] text-navy/30">or paste a URL</span><span className="h-px flex-1 bg-navy/10" /></div>
+          <label className="block" htmlFor={`course-cover-url-${course.id}`}>
+            <span className="sr-only">Cover image URL</span>
+            <input
+              id={`course-cover-url-${course.id}`}
+              type="url"
+              inputMode="url"
+              aria-describedby={coverHelpId}
+              value={course.coverUrl ?? ""}
+              onChange={(event) => onChange((current) => ({ ...current, coverUrl: event.target.value }))}
+              placeholder="https://example.com/course-cover.webp"
+              className={`${inputClass} mt-0`}
+            />
+          </label>
+          {hasCover ? (
+            <label className="mt-4 block" htmlFor={`course-cover-zoom-${course.id}`}>
+              <span className="flex items-center justify-between text-xs font-semibold text-navy/60"><span>Zoom</span><span className="tabular-nums text-navy/40">{course.coverZoom.toFixed(2)}×</span></span>
+              <input
+                id={`course-cover-zoom-${course.id}`}
+                type="range"
+                min={1}
+                max={3}
+                step={0.05}
+                value={course.coverZoom}
+                onChange={(event) => onChange((current) => ({ ...current, coverZoom: Number(event.target.value) }))}
+                className="mt-1.5 w-full accent-brand"
+              />
+              <span className="mt-1 block text-[11px] leading-4 text-navy/38">If the image is a small centered badge rather than full-bleed art, zoom in until it fills the card.</span>
+            </label>
+          ) : null}
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-[11px] leading-4 text-navy/38">Save the course to publish the new cover.</p>
+            {hasCover ? <button type="button" onClick={() => onChange((current) => ({ ...current, coverUrl: null, coverZoom: 1 }))} className="min-h-10 cursor-pointer rounded-lg px-3 text-xs font-bold text-danger-600 transition-colors hover:bg-danger-bg">Remove cover</button> : null}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

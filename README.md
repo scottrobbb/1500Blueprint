@@ -15,7 +15,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 The integrated Ultimate workspace lives at `/ultimate` in this same application. It uses the existing authentication, Supabase data, feature APIs, student ownership, and admin tools.
 
 - Emails in `ADMIN_EMAILS` can access it automatically.
-- Additional private reviewers can be added with the comma-separated `ULTIMATE_PREVIEW_EMAILS` environment variable.
+- `/ultimate` is the authenticated student workspace. Free, Core, and Max access is enforced by server-side plan entitlements inside the workspace.
 - Signed-in users outside both allowlists are redirected to `/drills`.
 - No separate database or content migration is required.
 
@@ -32,11 +32,27 @@ current `/login` page and its Stripe membership check remain unchanged.
    is ready to open and server-side plan entitlements are enforced across the
    existing drills, tests, courses, and planner routes.
 
-Keep `PASSWORD_SIGNUP_ENABLED` off during the migration period. Password login
-can be enabled independently for existing students without opening Free signup.
+Keep `PASSWORD_SIGNUP_ENABLED=true` while public Free registration is open.
+Password login can still be enabled independently for existing students by
+turning signup off.
 
 Both flows are available by default during local development and can be forced
 off there by setting either flag to `false`.
+
+## Stripe billing
+
+Core is $50 monthly or $120 every three months. Max remains $80 monthly. The
+billing runtime reuses the configured Stripe product and resolves or creates the
+matching recurring Price before Checkout.
+
+```text
+STRIPE_BILLING_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_BILLING_MODE=live
+STRIPE_CORE_PRICE_ID=
+STRIPE_CORE_THREE_MONTH_PRICE_ID= # optional; resolved from the Core product
+STRIPE_MAX_PRICE_ID=
+```
 
 ## Weekly Calls and Google Calendar
 

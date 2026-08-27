@@ -13,6 +13,7 @@ export async function PUT(request: NextRequest, context: Context) {
   const { id } = await context.params;
   const input = (await request.json().catch(() => null)) as CourseInput | null;
   if (!input || input.id !== id || !input.title?.trim() || !input.slug?.trim() || !Array.isArray(input.modules) || !isPublicationStatus(input.status)) return NextResponse.json({ error: "invalid_course", detail: "The course title, slug, module list, and publication status are required." }, { status: 400 });
+  if (!isValidCoverUrl(input.coverUrl)) return NextResponse.json({ error: "invalid_cover", detail: "The course cover must use a valid HTTP or HTTPS image URL." }, { status: 400 });
   if (JSON.stringify(input).length > 10_000_000) return NextResponse.json({ error: "course_too_large", detail: "This course is too large to save in one request." }, { status: 413 });
   const moduleSlugs = input.modules.map((courseModule) => courseModule.slug);
   if (new Set(moduleSlugs).size !== moduleSlugs.length) return NextResponse.json({ error: "duplicate_slug", detail: "Every module needs a unique URL slug." }, { status: 400 });
@@ -58,6 +59,20 @@ export async function PUT(request: NextRequest, context: Context) {
       { error: "save_failed", detail: error instanceof Error ? error.message : "The course changes could not be saved." },
       { status: 500 },
     );
+  }
+}
+
+function isValidCoverUrl(value: unknown): boolean {
+  if (value === null || value === undefined || value === "") return true;
+  if (typeof value !== "string") return false;
+  const normalized = value.trim();
+  if (!normalized) return true;
+  if (normalized.startsWith("/") && !normalized.startsWith("//")) return true;
+  try {
+    const url = new URL(normalized);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
   }
 }
 

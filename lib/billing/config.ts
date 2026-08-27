@@ -1,5 +1,6 @@
 import type { PlanCode } from "@/lib/auth/plans";
 import { CANONICAL_APP_URL } from "@/lib/auth/config";
+import type { BillingCadence } from "./offers";
 
 export type BillablePlan = Extract<PlanCode, "core" | "max">;
 
@@ -16,14 +17,20 @@ export function isBillablePlan(value: unknown): value is BillablePlan {
   return value === "core" || value === "max";
 }
 
-export function priceIdForPlan(plan: BillablePlan): string {
-  const value = process.env[plan === "core" ? "STRIPE_CORE_PRICE_ID" : "STRIPE_MAX_PRICE_ID"]?.trim();
+export function configuredPriceId(plan: BillablePlan, cadence: BillingCadence = "monthly"): string {
+  const variable = plan === "max"
+    ? "STRIPE_MAX_PRICE_ID"
+    : cadence === "three_month"
+      ? "STRIPE_CORE_THREE_MONTH_PRICE_ID"
+      : "STRIPE_CORE_PRICE_ID";
+  const value = process.env[variable]?.trim();
   if (!value) throw new Error(`Stripe ${plan} price is not configured`);
   return value;
 }
 
 export function planForPriceId(priceId: string): BillablePlan | null {
   if (priceId === process.env.STRIPE_CORE_PRICE_ID?.trim()) return "core";
+  if (priceId === process.env.STRIPE_CORE_THREE_MONTH_PRICE_ID?.trim()) return "core";
   if (priceId === process.env.STRIPE_MAX_PRICE_ID?.trim()) return "max";
   return null;
 }

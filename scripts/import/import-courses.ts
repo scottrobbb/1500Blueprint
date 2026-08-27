@@ -26,7 +26,7 @@ function id(...parts: string[]): string { return `course-${crypto.createHash("sh
 function normalized(input: ManifestCourse, courseIndex: number): CourseInput {
   return {
     id: id(input.slug), slug: input.slug, title: input.title, description: input.description ?? null,
-    eyebrow: input.eyebrow ?? null, coverUrl: input.coverUrl ?? null, position: courseIndex + 1,
+    eyebrow: input.eyebrow ?? null, coverUrl: input.coverUrl ?? null, coverZoom: 1, position: courseIndex + 1,
     estimatedMinutes: input.estimatedMinutes ?? 0, status: input.status ?? "draft",
     modules: (input.modules ?? []).map((module, moduleIndex) => ({
       id: id(input.slug, module.slug), slug: module.slug, title: module.title,

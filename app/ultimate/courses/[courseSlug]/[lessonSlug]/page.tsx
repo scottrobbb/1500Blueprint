@@ -78,7 +78,7 @@ function LessonContent({ block, lessonId, initialAttempt }: { block: LessonBlock
     );
   }
   if (block.kind === "text") return null;
-  if (block.kind === "image" && block.content.url) return <figure className="overflow-hidden rounded-2xl border border-navy/10 bg-haze p-2"><img src={block.content.url} alt={block.content.alt ?? "Lesson illustration"} className="mx-auto max-h-[620px] w-auto rounded-xl object-contain" />{block.content.caption ? <figcaption className="px-3 py-2 text-center text-xs text-navy/45">{block.content.caption}</figcaption> : null}</figure>;
+  if (block.kind === "image" && block.content.url) return <figure className="overflow-hidden rounded-2xl border border-navy/10 bg-haze p-2"><img src={block.content.url} alt={block.content.alt ?? "Lesson illustration"} width={1200} height={800} loading="lazy" className="mx-auto h-auto max-h-[620px] w-auto rounded-xl object-contain" />{block.content.caption ? <figcaption className="px-3 py-2 text-center text-xs text-navy/45">{block.content.caption}</figcaption> : null}</figure>;
   if (block.kind === "video" && block.content.url) {
     const embedUrl = videoEmbed(block.content.url);
     return (

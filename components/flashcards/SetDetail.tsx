@@ -121,6 +121,8 @@ export function SetDetail({
                         <img
                           src={c.termImageUrl}
                           alt=""
+                          width={800}
+                          height={600}
                           className="mt-2 max-h-24 rounded-card border border-navy/15 object-contain"
                         />
                       )}
@@ -133,6 +135,8 @@ export function SetDetail({
                       <img
                         src={c.definitionImageUrl}
                         alt=""
+                        width={800}
+                        height={600}
                         className="mt-2 max-h-24 rounded-card border border-navy/15 object-contain"
                       />
                     )}

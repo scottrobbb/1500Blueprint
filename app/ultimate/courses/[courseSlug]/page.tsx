@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
@@ -6,6 +5,7 @@ import { getCourseForStudent } from "@/lib/courses/queries";
 import { lessonDurationMinutes } from "@/lib/courses/durationOverrides";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { AccessGate } from "@/components/account/AccessGate";
+import { CourseCover } from "@/components/ultimate/courses/CourseCover";
 
 export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ courseSlug: string }> };
@@ -24,17 +24,16 @@ export default async function UltimateCoursePage({ params }: Props) {
     <div className="min-h-dvh bg-[#f5f6f8]">
       <header className="overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#164582_68%,#2b8fe0)] px-4 py-8 text-white sm:px-7 sm:py-11">
         <div className="relative mx-auto min-h-[260px] max-w-[1120px]">
-          {course.coverUrl ? (
-            <img
-              src={course.coverUrl}
-              alt=""
-              className="absolute inset-y-0 right-0 hidden w-[460px] object-cover opacity-85 sm:block"
-              style={{
-                maskImage: "radial-gradient(75% 75% at 50% 50%, black 45%, transparent 62%)",
-                WebkitMaskImage: "radial-gradient(75% 75% at 50% 50%, black 45%, transparent 62%)",
-              }}
-            />
-          ) : null}
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 hidden w-[460px] opacity-85 sm:block"
+            style={{
+              maskImage: "radial-gradient(75% 75% at 50% 50%, black 45%, transparent 62%)",
+              WebkitMaskImage: "radial-gradient(75% 75% at 50% 50%, black 45%, transparent 62%)",
+            }}
+          >
+            <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} zoom={course.coverZoom} priority fill className="h-full bg-transparent" />
+          </div>
           <div className="relative">
             <Link href="/ultimate/courses" aria-label="Back to all courses" className="group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-white/15 bg-white/[0.08] px-3.5 text-[13px] font-bold text-white/80 shadow-[0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition duration-200 hover:border-white/25 hover:bg-white/[0.14] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5"><path d="m15 18-6-6 6-6" /></svg>

@@ -186,14 +186,9 @@ export function Achievements({ data }: { data: AchievementsView }) {
 
 function AchievementsModal({ data, onClose }: { data: AchievementsView; onClose: () => void }) {
   return (
-    <div
-      className="fixed inset-0 z-[70] flex items-end justify-center bg-black/40 sm:items-center sm:p-6"
-      onClick={onClose}
-    >
-      <div
-        className="flex max-h-[85vh] w-full max-w-[620px] flex-col overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center sm:p-6">
+      <button type="button" aria-label="Close achievements" className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div role="dialog" aria-modal="true" aria-label="Achievements" className="relative z-10 flex max-h-[85vh] w-full max-w-[620px] flex-col overflow-hidden rounded-t-2xl bg-white sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-navy/10 px-5 py-4">
           <div>
             <h3 className="font-display text-lg font-extrabold text-navy">Achievements</h3>

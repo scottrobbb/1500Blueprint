@@ -159,7 +159,7 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
       {preview ? (
         <div className="relative mt-3 inline-block">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={preview} alt="Selected screenshot preview" className="max-h-52 rounded-lg border border-navy/12" />
+          <img src={preview} alt="Selected screenshot preview" width={800} height={600} className="h-auto max-h-52 rounded-lg border border-navy/12" />
           <button
             type="button"
             onClick={clearFile}
