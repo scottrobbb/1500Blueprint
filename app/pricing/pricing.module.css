@@ -596,9 +596,9 @@
   align-items: flex-start;
   color: #fff;
   display: flex;
-  font-size: 14px;
+  font-size: 16px;
   gap: 9px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 .insideCard li strong {
   color: #fff;
@@ -607,13 +607,13 @@
 .insideCard li svg {
   fill: none;
   flex: 0 0 auto;
-  height: 15px;
+  height: 17px;
   margin-top: 3px;
   stroke: var(--blue);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.4;
-  width: 15px;
+  width: 17px;
 }
 
 .savingsSection {
