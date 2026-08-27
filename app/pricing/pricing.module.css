@@ -859,6 +859,29 @@
   max-width: 650px;
 }
 
+.bottomCta {
+  align-items: center;
+  background: var(--navy-deep);
+  display: flex;
+  justify-content: center;
+  padding: 36px max(28px, calc((100vw - 1180px) / 2));
+}
+.bottomCtaButton {
+  align-items: center;
+  background: var(--blue);
+  border: 1px solid var(--blue);
+  border-radius: 12px;
+  color: #06162d;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 750;
+  justify-content: center;
+  min-height: 60px;
+  padding: 16px 34px;
+}
+
 .footer {
   background: #041124;
   border-top: 1px solid rgba(255,255,255,.08);

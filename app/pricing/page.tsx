@@ -336,6 +336,12 @@ export default async function PricingPage({
         </div>
       </section>
 
+      <section className={styles.bottomCta}>
+        <EnrollButton className={styles.bottomCtaButton}>
+          Enroll Now
+        </EnrollButton>
+      </section>
+
       <footer className={styles.footer}>
         <div className={styles.footerMain}>
           <div className={styles.footerIdentity}>
