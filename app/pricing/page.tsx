@@ -18,6 +18,8 @@ const heroChecklist = [
   "Complete Math & Reading Course",
   "Weekly group class with Scott",
   "On-Demand Video Library, updated weekly",
+  "Realistic challenge questions (built for 1400+ scorers)",
+  "Targeted drills for grammar, reading, and vocab",
 ];
 
 export const metadata: Metadata = {
