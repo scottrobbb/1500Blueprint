@@ -68,7 +68,7 @@ const coreFeatures: PlanFeature[] = [
 const maxFeatures: PlanFeature[] = [
   { label: "4 full-length digital SATs", icon: "file" },
   { label: "Unlimited daily drills", icon: "bolt" },
-  { label: "All 3 courses and 41 lessons", icon: "play" },
+  { label: "Access to all courses, quizzes, and flashcards", icon: "play" },
   { label: "Personal study planner", icon: "calendar" },
   { label: "Weekly calls with Scott and recordings", icon: "star" },
   { label: "Everything in Core", icon: "check" },
