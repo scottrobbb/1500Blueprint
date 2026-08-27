@@ -286,10 +286,7 @@ export default async function PricingPage({
       <section className={styles.faqSection} id="faq">
         <div className={styles.faqLayout}>
           <div className={styles.faqIntro}>
-            <h2>A few things to know before you choose.</h2>
-            <Link href="/account/login?next=/ultimate" className={styles.faqLink}>
-              Already a member? Open the app <ArrowIcon />
-            </Link>
+            <h2>Frequently Asked Questions</h2>
           </div>
           <div className={styles.faqList}>
             {faqItems.map((item, index) => (

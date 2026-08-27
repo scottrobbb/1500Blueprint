@@ -70,7 +70,6 @@
 .openApp,
 .heroPrimary,
 .savingsAction,
-.faqLink,
 .primaryAction,
 .disabledAction {
   align-items: center;
@@ -92,7 +91,6 @@
 .openApp svg,
 .heroActions svg,
 .savingsAction svg,
-.faqLink svg,
 .primaryAction svg {
   fill: none;
   height: 17px;
@@ -907,12 +905,6 @@
   grid-template-columns: minmax(0,.75fr) minmax(0,1.25fr);
 }
 .faqIntro { max-width: 470px; }
-.faqLink {
-  color: #167dc6;
-  justify-content: flex-start;
-  margin-top: 16px;
-  padding-left: 0;
-}
 .faqList { border-top: 1px solid var(--line); }
 .faqList details { border-bottom: 1px solid var(--line); }
 .faqList summary {
