@@ -71,7 +71,6 @@ export function PlansPanel({
         <PriceCard
           tier="core"
           name="Core"
-          description="Get more Question Bank practice, daily drills, and a second full test."
           features={coreFeatures}
           cta="Choose Core"
           currentPlan={currentPlan}
@@ -81,7 +80,6 @@ export function PlansPanel({
         <PriceCard
           tier="max"
           name="Max"
-          description="Use every course and test, plus a personal plan and Scott's weekly calls."
           features={maxFeatures}
           cta="Choose Max"
           currentPlan={currentPlan}
@@ -105,7 +103,7 @@ function PriceCard({
 }: {
   tier: "free" | "core" | "max";
   name: string;
-  description: string;
+  description?: string;
   features: PlanFeature[];
   cta: string;
   currentPlan: PlanCode | null;
@@ -128,7 +126,7 @@ function PriceCard({
       </div>
       {paid ? <p className={styles.billingDetail}>{priceInfo.billed ?? "Billed monthly"}</p> : null}
 
-      <p className={styles.planDescription}>{description}</p>
+      {description ? <p className={styles.planDescription}>{description}</p> : null}
       <div className={styles.cardRule} />
       <p className={styles.includesLabel}>Includes</p>
       <ul className={styles.features}>
