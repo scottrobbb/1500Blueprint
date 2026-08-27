@@ -309,6 +309,7 @@
 }
 .priceCard {
   background: #000;
+  backface-visibility: hidden;
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 16px;
   color: #fff;
@@ -317,6 +318,8 @@
   min-width: 0;
   padding: 22px;
   position: relative;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .priceCard.core {
   border-color: rgba(47,159,233,.4);
@@ -515,7 +518,7 @@
   text-align: center;
 }
 .insideHeading h2 {
-  color: rgba(255,255,255,.7);
+  color: #fff;
   font-family: var(--font-gabarito), sans-serif;
   font-size: clamp(28px,3vw,34px);
   font-weight: 500;
@@ -534,9 +537,12 @@
 }
 .insideCard {
   background: #000;
+  backface-visibility: hidden;
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 20px;
   padding: 28px;
+  transform: translateZ(0);
+  will-change: transform;
 }
 .insideCardIcon {
   align-items: center;
@@ -576,7 +582,7 @@
 }
 .insideCard li {
   align-items: flex-start;
-  color: rgba(255,255,255,.72);
+  color: #fff;
   display: flex;
   font-size: 14px;
   gap: 9px;
