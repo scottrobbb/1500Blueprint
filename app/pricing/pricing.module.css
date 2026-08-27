@@ -341,14 +341,23 @@
 }
 .priceCard.max {
   background:
-    linear-gradient(155deg, rgba(47,159,233,.4) 0%, #0c0e13 42%, #0c0e13 58%, rgba(255,200,61,.36) 100%) padding-box,
-    linear-gradient(135deg, var(--blue), var(--gold)) border-box;
+    linear-gradient(135deg, rgba(47,159,233,.4) 0%, #0c0e13 45%, #0c0e13 55%, rgba(255,200,61,.36) 100%) padding-box,
+    linear-gradient(135deg, var(--blue), var(--gold), var(--blue)) border-box;
+  background-size: 100% 100%, 300% 300%;
   border: 2px solid transparent;
+  animation: maxBorderShimmer 8s ease-in-out infinite;
 }
 .priceCard.max::before {
   box-shadow:
     0 30px 70px -26px rgba(47,159,233,.55),
     0 30px 70px -26px rgba(255,200,61,.4);
+}
+@keyframes maxBorderShimmer {
+  0%, 100% { background-position: 0 0, 0% 0%; }
+  50% { background-position: 0 0, 100% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .priceCard.max { animation: none; }
 }
 .planName {
   align-items: center;
