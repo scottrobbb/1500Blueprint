@@ -140,6 +140,26 @@ const faqItems = [
     answer:
       "No. Your account keeps its course progress, attempts, scores, and study history. Paid features change with your plan, but the work you completed stays attached to your account.",
   },
+  {
+    question: "What's included in the Free plan?",
+    answer:
+      "The Free plan gives you access to a selection of Blueprint lessons, practice resources, and platform features so you can start preparing without paying. Upgrade to Core or Max anytime for access to more practice, tests, and premium features.",
+  },
+  {
+    question: "What payment methods do you accept?",
+    answer:
+      "We accept all major credit and debit cards. Your available payment options will be shown securely at checkout.",
+  },
+  {
+    question: "Can I share my account with someone else?",
+    answer:
+      "No. Each Blueprint membership is licensed for one student only and may not be shared, transferred, or used by multiple people.\n\nWe may monitor for unusual login or usage patterns that indicate account sharing. If an account is found to be shared, access may be restricted or suspended, and repeated or intentional violations may result in the account being terminated without a refund.",
+  },
+  {
+    question: "Are there any additional fees or charges?",
+    answer:
+      "No. There are no hidden fees or surprise charges. You'll only be charged the price of the plan you choose, plus any applicable taxes.",
+  },
 ] as const;
 
 export default async function PricingPage({
