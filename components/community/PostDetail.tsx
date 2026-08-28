@@ -49,12 +49,18 @@ function ReplyComposer({
 }: {
   user: Author;
   target: ReplyTarget;
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string) => Promise<string | null>;
   onCancel: () => void;
   onTyping: () => void;
   posting: boolean;
 }) {
   const [draft, setDraft] = useState(`@${target.handle} `);
+  const [error, setError] = useState("");
+
+  async function submit() {
+    const message = await onSubmit(draft);
+    setError(message ?? "");
+  }
 
   return (
     <div className="mt-2 flex items-start gap-2">
@@ -63,29 +69,32 @@ function ReplyComposer({
         <textarea
           autoFocus
           value={draft}
-          onChange={(e) => { setDraft(e.target.value); onTyping(); }}
+          onChange={(e) => { setDraft(e.target.value); setError(""); onTyping(); }}
           rows={2}
           placeholder={`Reply to @${target.handle}…`}
           // Put the caret after the prefilled mention on mount.
           onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
           className="w-full resize-none rounded-lg bg-haze px-3 py-2 text-[13.5px] leading-[1.55] text-ink outline-none ring-brand/40 transition-shadow placeholder:text-navy/40 focus:ring-2"
         />
-        <div className="mt-1.5 flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-navy/60 transition-colors hover:bg-navy/[0.06]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => onSubmit(draft)}
-            disabled={!draft.trim() || posting}
-            className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-          >
-            {posting ? "Replying…" : "Reply"}
-          </button>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <span className="text-[12px] font-semibold text-danger">{error}</span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="rounded-lg px-3 py-1.5 text-[12.5px] font-semibold text-navy/60 transition-colors hover:bg-navy/[0.06]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={!draft.trim() || posting}
+              className="rounded-lg bg-brand px-3.5 py-1.5 text-[12.5px] font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+            >
+              {posting ? "Replying…" : "Reply"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -171,6 +180,7 @@ export function PostDetail({
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [pinned, setPinned] = useState(post.pinned);
   const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
+  const [commentError, setCommentError] = useState("");
   const cat = CATEGORY[post.category];
   const canModeratePost = isAdmin || post.authorHandle === user.handle;
 
@@ -262,24 +272,34 @@ export function PostDetail({
     }
   }
 
-  async function submitComment(body: string, parentId: string | null) {
+  // Returns an error message on failure (so root vs. reply composers can each
+  // show it in the right place), or null on success.
+  async function submitComment(body: string, parentId: string | null): Promise<string | null> {
     const text = body.trim();
-    if (!text || posting) return;
+    if (!text || posting) return null;
     setPosting(true);
+    if (!parentId) setCommentError("");
     try {
       const res = await fetch(`/api/community/posts/${post.id}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ body: text, parentId }),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error === "blocked_content" ? "blocked_content" : "create");
+      }
       const { comment } = (await res.json()) as { comment: PostComment };
       setComments((prev) => [...prev, comment]);
       broadcastStoppedTyping();
       if (parentId) setReplyTo(null);
       else setDraft("");
-    } catch {
-      // leave the draft in place so nothing is lost
+      return null;
+    } catch (err) {
+      // On any failure the draft is left in place so nothing is lost.
+      const message = err instanceof Error && err.message === "blocked_content" ? "That comment contains language that isn't allowed here." : "";
+      if (!parentId) setCommentError(message);
+      return message;
     } finally {
       setPosting(false);
     }
@@ -411,23 +431,27 @@ export function PostDetail({
           <div className="flex-1">
             <textarea
               value={draft}
-              onChange={(e) => { setDraft(e.target.value); broadcastTyping(); }}
+              onChange={(e) => { setDraft(e.target.value); setCommentError(""); broadcastTyping(); }}
               rows={2}
               placeholder="Add a comment…"
               className="w-full resize-none rounded-lg bg-haze px-3.5 py-2.5 text-[14px] leading-[1.55] text-ink outline-none ring-brand/40 transition-shadow placeholder:text-navy/40 focus:ring-2"
             />
             <div className="mt-2 flex items-center justify-between">
-              <span className="flex min-h-4 items-center gap-1.5 text-[12px] font-semibold text-navy/45">
-                {typingUsers.size > 0 && (
-                  <>
-                    <TypingDots />
-                    {typingLabel(Array.from(typingUsers.values()))}
-                  </>
-                )}
-              </span>
+              {commentError ? (
+                <span className="text-[12px] font-semibold text-danger">{commentError}</span>
+              ) : (
+                <span className="flex min-h-4 items-center gap-1.5 text-[12px] font-semibold text-navy/45">
+                  {typingUsers.size > 0 && (
+                    <>
+                      <TypingDots />
+                      {typingLabel(Array.from(typingUsers.values()))}
+                    </>
+                  )}
+                </span>
+              )}
               <button
                 type="button"
-                onClick={() => submitComment(draft, null)}
+                onClick={() => void submitComment(draft, null)}
                 disabled={!draft.trim() || posting}
                 className="rounded-lg bg-brand px-4 py-2 text-[13px] font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
               >

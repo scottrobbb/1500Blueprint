@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { getHubState } from "@/lib/gamification/state";
 import { addComment } from "@/lib/community/queries";
 import { commentAuthorEmail, notifyForComment } from "@/lib/community/notifications";
+import { containsSlur } from "@/lib/community/moderation";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
   const text = typeof body.body === "string" ? body.body.trim() : "";
   if (!text) return NextResponse.json({ error: "empty" }, { status: 400 });
   if (text.length > MAX_COMMENT_LENGTH) return NextResponse.json({ error: "too_long" }, { status: 400 });
+  if (containsSlur(text)) return NextResponse.json({ error: "blocked_content" }, { status: 400 });
   const parentId = typeof body.parentId === "string" && body.parentId ? body.parentId : null;
   if (parentId && parentId.length > 160) return NextResponse.json({ error: "invalid_parent" }, { status: 400 });
 

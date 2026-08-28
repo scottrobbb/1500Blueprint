@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth/session";
 import { getHubState } from "@/lib/gamification/state";
 import { createPost } from "@/lib/community/queries";
 import { notifyForPost } from "@/lib/community/notifications";
+import { containsSlur } from "@/lib/community/moderation";
 import { isCategory } from "@/lib/community/types";
 import { normalizeHttpUrl, readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
@@ -36,6 +37,7 @@ export async function POST(req: NextRequest) {
   const imageUrl = body.imageUrl ? normalizeHttpUrl(body.imageUrl) : null;
   if (body.imageUrl && !imageUrl) return NextResponse.json({ error: "invalid_image" }, { status: 400 });
   if (!text && !imageUrl) return NextResponse.json({ error: "empty" }, { status: 400 });
+  if (containsSlur(text)) return NextResponse.json({ error: "blocked_content" }, { status: 400 });
 
   try {
     const rate = await consumeRateLimit("community-post", session.email, { limit: 10, windowSeconds: 60 * 60 });

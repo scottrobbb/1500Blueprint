@@ -89,12 +89,15 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ category, body: text.trim(), imageUrl }),
       });
-      if (!res.ok) throw new Error("create");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error === "blocked_content" ? "blocked_content" : "create");
+      }
       const { post } = (await res.json()) as { post: CommunityPost };
       onCreated(post);
       reset();
-    } catch {
-      setError("Could not post. Please try again.");
+    } catch (err) {
+      setError(err instanceof Error && err.message === "blocked_content" ? "That post contains language that isn't allowed here." : "Could not post. Please try again.");
     } finally {
       setSubmitting(false);
     }
