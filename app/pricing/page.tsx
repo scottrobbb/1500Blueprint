@@ -363,7 +363,7 @@ export default async function PricingPage({
           <div className={styles.footerLegal}>
             <p>© 2026 1500 SAT Blueprint. All rights reserved.</p>
             <a
-              href="https://docs.google.com/document/d/1WC-rXW1VE5Cc9YQtHpT4rcHqDZLLz6GtboRWNilb4cY/edit?usp=sharing"
+              href="https://docs.google.com/document/d/e/2PACX-1vTDMGNb4tNBjeakIccr0ArqPDmo9Mbgy82VeDpyhCuE9ck3I1sYvxBvOHDNZq2qeCJ3n9w4Ci6qgUGe/pub"
               target="_blank"
               rel="noopener noreferrer"
             >
