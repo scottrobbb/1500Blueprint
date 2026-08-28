@@ -11,6 +11,9 @@ import { supabaseAdmin } from "@/utils/supabase/admin";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { canAccessQuestionBankLevel } from "@/lib/question-bank/math";
+import { readJsonBody } from "@/lib/security/request";
+import { reportServerError } from "@/lib/observability/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 type AttemptBody = {
   questionId: string;
@@ -25,8 +28,11 @@ export async function POST(request: Request) {
   if (!session || !isUltimatePreviewEmail(session.email)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  const rate = await checkRateLimit("question-bank-attempt", session.email, { limit: 1_000, windowSeconds: 60 * 60 });
+  if (!rate) return NextResponse.json({ error: "Answer saving is temporarily unavailable" }, { status: 503 });
+  if (!rate.allowed) return NextResponse.json({ error: "Too many answer requests", resetsAt: rate.resetsAt }, { status: 429 });
 
-  const input = parseAttemptBody(await request.json().catch(() => null));
+  const input = parseAttemptBody(await readJsonBody(request, 8 * 1024).catch(() => null));
   if (!input) {
     return NextResponse.json({ error: "Invalid attempt" }, { status: 400 });
   }
@@ -39,7 +45,11 @@ export async function POST(request: Request) {
 
   const existing = await loadAttemptByToken(session.email, input.clientToken);
   if (existing.error) {
-    console.error("Question Bank retry check failed", existing.error);
+    reportServerError("question_bank.math.retry_check_failed", existing.error, {
+      provider: "supabase",
+      route: "/api/question-bank/math/attempt",
+      method: "POST",
+    });
     return NextResponse.json({ error: "We could not check that answer." }, { status: 500 });
   }
   if (existing.data) {
@@ -83,7 +93,11 @@ export async function POST(request: Request) {
       limit: access?.entitlements.questionBankLimit ?? null,
     });
   } catch (error) {
-    console.error("Question Bank attempt write failed", error);
+    reportServerError("question_bank.math.attempt_write_failed", error, {
+      provider: "supabase",
+      route: "/api/question-bank/math/attempt",
+      method: "POST",
+    });
     return NextResponse.json({ error: "Your answer was graded, but its analytics could not be saved." }, { status: 500 });
   }
   if (!write.allowed) {

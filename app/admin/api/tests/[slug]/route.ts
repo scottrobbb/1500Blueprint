@@ -6,6 +6,8 @@ import {
   type TestSettingsUpdate,
 } from "@/lib/sat/admin-queries";
 import { isPublicationStatus } from "@/lib/flags";
+import { reportServerError } from "@/lib/observability/server";
+import { readJsonBody } from "@/lib/security/request";
 
 // Practice-test settings endpoint. Authorizes with getAdminSession() before the
 // service-role write. Next 16: ctx.params is a Promise.
@@ -25,7 +27,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
   let body: Record<string, unknown>;
   try {
-    body = (await req.json()) as Record<string, unknown>;
+    body = (await readJsonBody(req, 16 * 1024)) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
@@ -57,8 +59,14 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   try {
     await updateTestSettings(slug, patch);
   } catch (e) {
-    console.error("update test settings failed:", e);
     const invalid = e instanceof TestPublicationError;
+    if (!invalid) {
+      reportServerError("admin.test_settings.update_failed", e, {
+        provider: "supabase",
+        route: "/admin/api/tests/[slug]",
+        method: "PUT",
+      });
+    }
     return NextResponse.json(
       { error: "save failed", detail: invalid ? e.message : "The test settings could not be saved." },
       { status: invalid ? 400 : 500 },

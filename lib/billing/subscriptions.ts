@@ -11,6 +11,7 @@ import {
 } from "./config";
 import { billingCadenceForInterval, type BillingCadence } from "./offers";
 import { refundDeadline } from "./policy";
+import { subscriptionIdentityConflict } from "./workflow";
 
 type StripeEventContext = {
   id: string;
@@ -18,6 +19,9 @@ type StripeEventContext = {
 };
 
 type ExistingSubscriptionRow = {
+  user_id: string;
+  stripe_customer_id: string;
+  livemode: boolean;
   refundable_until: string | null;
   pending_plan_code: string | null;
   pending_change_effective_at: string | null;
@@ -78,6 +82,34 @@ export async function syncStripeSubscription(
     throw new Error(`subscription ${subscription.id} is missing its Blueprint owner, customer, or plan`);
   }
 
+  const customerColumn = subscription.livemode
+    ? "stripe_live_customer_id"
+    : "stripe_test_customer_id";
+  const { data: account, error: accountError } = await supabaseAdmin()
+    .from("users")
+    .select(`id,${customerColumn}`)
+    .eq("id", userId)
+    .maybeSingle<{ id: string; stripe_live_customer_id?: string | null; stripe_test_customer_id?: string | null }>();
+  if (accountError) throw new Error(`failed to verify subscription owner: ${accountError.message}`);
+  if (!account) throw new Error(`subscription ${subscription.id} references a missing Blueprint owner`);
+  const { data: customerOwner, error: customerOwnerError } = await supabaseAdmin()
+    .from("users")
+    .select("id")
+    .eq(customerColumn, customerId)
+    .maybeSingle<{ id: string }>();
+  if (customerOwnerError) {
+    throw new Error(`failed to verify Stripe customer ownership: ${customerOwnerError.message}`);
+  }
+  if (customerOwner && customerOwner.id !== userId) {
+    throw new Error(`subscription ${subscription.id} customer belongs to another Blueprint owner`);
+  }
+  const linkedCustomer = subscription.livemode
+    ? account.stripe_live_customer_id
+    : account.stripe_test_customer_id;
+  if (linkedCustomer && linkedCustomer !== customerId) {
+    throw new Error(`subscription ${subscription.id} customer does not match its Blueprint owner`);
+  }
+
   const price = subscription.items.data[0]?.price;
   const productId = price ? stripeId(price.product) : null;
   const starts = subscription.items.data.map((item) => item.current_period_start);
@@ -85,10 +117,24 @@ export async function syncStripeSubscription(
   const createdAt = new Date(subscription.created * 1000);
   const { data: existingSubscription, error: purchaseError } = await supabaseAdmin()
     .from("student_subscriptions")
-    .select("refundable_until,pending_plan_code,pending_change_effective_at,stripe_schedule_id,last_stripe_event_created_at,last_stripe_event_id")
+    .select("user_id,stripe_customer_id,livemode,refundable_until,pending_plan_code,pending_change_effective_at,stripe_schedule_id,last_stripe_event_created_at,last_stripe_event_id")
     .eq("stripe_subscription_id", subscription.id)
     .maybeSingle<ExistingSubscriptionRow>();
   if (purchaseError) throw new Error(`failed to load refund window: ${purchaseError.message}`);
+
+  const identityConflict = subscriptionIdentityConflict(
+    existingSubscription
+      ? {
+          userId: existingSubscription.user_id,
+          customerId: existingSubscription.stripe_customer_id,
+          livemode: existingSubscription.livemode,
+        }
+      : null,
+    { userId, customerId, livemode: subscription.livemode },
+  );
+  if (identityConflict) {
+    throw new Error(`subscription ${subscription.id} cannot change its ${identityConflict} identity`);
+  }
 
   if (
     event

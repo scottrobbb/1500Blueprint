@@ -1,12 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { canAccessPublishedCourseLesson, setLessonComplete } from "@/lib/courses/queries";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 type Context = { params: Promise<{ id: string }> };
 
 async function update(context: Context, complete: boolean) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const rate = await checkRateLimit("course-lesson-completion", session.email, { limit: 300, windowSeconds: 60 * 60 });
+  if (!rate) return NextResponse.json({ error: "Progress saving is temporarily unavailable" }, { status: 503 });
+  if (!rate.allowed) return NextResponse.json({ error: "Too many progress requests", resetsAt: rate.resetsAt }, { status: 429 });
   const { id } = await context.params;
   try {
     if (!(await canAccessPublishedCourseLesson(session.email, id))) {

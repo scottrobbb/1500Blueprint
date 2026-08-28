@@ -1,0 +1,107 @@
+import { readIdempotencyToken } from "@/lib/idempotency";
+
+export const WEBHOOK_PROCESSING_LEASE_MS = 5 * 60 * 1_000;
+
+export type WebhookClaimRow = {
+  processing_status: "processing" | "processed" | "failed";
+  attempts: number;
+  processing_started_at: string | null;
+};
+
+type SubscriptionIdentity = {
+  userId: string;
+  customerId: string;
+  livemode: boolean;
+};
+
+export type CheckoutIntentClaim = {
+  decision: "claimed" | "ready" | "busy";
+  reservationId: string;
+  checkoutExpiresAt: string;
+  checkoutUrl: string | null;
+};
+
+export function checkoutRequestToken(token: unknown): string | null {
+  return readIdempotencyToken(token, { minLength: 16, maxLength: 100 });
+}
+
+export function stripeCheckoutIdempotencyKey(reservationId: string): string | null {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(reservationId)) {
+    return null;
+  }
+  return `blueprint-checkout-${reservationId.toLowerCase()}`;
+}
+
+export function parseCheckoutIntentClaim(value: unknown): CheckoutIntentClaim | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const row = value as Record<string, unknown>;
+  if (
+    !["claimed", "ready", "busy"].includes(String(row.decision))
+    || typeof row.reservation_id !== "string"
+    || !stripeCheckoutIdempotencyKey(row.reservation_id)
+    || typeof row.checkout_expires_at !== "string"
+    || !Number.isFinite(Date.parse(row.checkout_expires_at))
+  ) {
+    return null;
+  }
+  const checkoutUrl = typeof row.stripe_checkout_session_url === "string"
+    ? row.stripe_checkout_session_url
+    : null;
+  if (row.decision === "ready" && !isStripeCheckoutUrl(checkoutUrl)) return null;
+  return {
+    decision: row.decision as CheckoutIntentClaim["decision"],
+    reservationId: row.reservation_id,
+    checkoutExpiresAt: row.checkout_expires_at,
+    checkoutUrl: row.decision === "ready" ? checkoutUrl : null,
+  };
+}
+
+function isStripeCheckoutUrl(value: string | null): value is string {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:"
+      && (url.hostname === "checkout.stripe.com" || url.hostname.endsWith(".checkout.stripe.com"));
+  } catch {
+    return false;
+  }
+}
+
+export function webhookClaimDecision(
+  row: WebhookClaimRow,
+  now: Date,
+): "processed" | "processing" | "reclaim" {
+  if (row.processing_status === "processed") return "processed";
+  if (row.processing_status === "failed") return "reclaim";
+  if (!row.processing_started_at) return "reclaim";
+  const startedAt = Date.parse(row.processing_started_at);
+  if (!Number.isFinite(startedAt)) return "reclaim";
+  return now.getTime() - startedAt >= WEBHOOK_PROCESSING_LEASE_MS
+    ? "reclaim"
+    : "processing";
+}
+
+export function webhookAuditPayload(event: {
+  data?: { object?: { id?: unknown; object?: unknown } };
+}): { object_id?: string; object_type?: string } {
+  const object = event.data?.object;
+  return {
+    ...(typeof object?.id === "string" && object.id.length <= 128
+      ? { object_id: object.id }
+      : {}),
+    ...(typeof object?.object === "string" && object.object.length <= 64
+      ? { object_type: object.object }
+      : {}),
+  };
+}
+
+export function subscriptionIdentityConflict(
+  existing: SubscriptionIdentity | null,
+  incoming: SubscriptionIdentity,
+): "user" | "customer" | "mode" | null {
+  if (!existing) return null;
+  if (existing.userId !== incoming.userId) return "user";
+  if (existing.customerId !== incoming.customerId) return "customer";
+  if (existing.livemode !== incoming.livemode) return "mode";
+  return null;
+}

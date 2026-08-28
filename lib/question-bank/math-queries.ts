@@ -3,11 +3,13 @@ import "server-only";
 import type { ChoiceId, Difficulty } from "@/lib/sat/types";
 import {
   MATH_DOMAINS,
+  boundedQuestionBankSessionLimit,
   calculateAccuracy,
   canAccessQuestionBankLevel,
   isMathDomain,
   normalizeMathResponse,
   prioritizeBoundedQuestions,
+  prioritizeUnattemptedQuestions,
   questionBankLevel,
   type MathAnswerType,
   type MathBankCatalog,
@@ -20,6 +22,7 @@ import {
 } from "@/lib/question-bank/math";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
+import { signCourseAssetReferences } from "@/lib/courses/assets.server";
 
 type MathQuestionRow = {
   id: string;
@@ -108,12 +111,17 @@ export async function getMathRunnerQuestions(
   const preferredRows = completionRows.filter((row) => (
     filters.difficulty === "all" || row.difficulty === filters.difficulty
   ));
-  const preferred = toMathRunnerQuestions(preferredRows);
-  if (limit === null || preferred.length >= limit) return limit === null ? preferred : preferred.slice(0, limit);
+  const sessionLimit = boundedQuestionBankSessionLimit(limit);
+  const preferred = toMathRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
+  if (preferred.length >= sessionLimit) return preferred.slice(0, sessionLimit);
 
   return prioritizeBoundedQuestions(
-    [preferred, toMathRunnerQuestions(completionRows), toMathRunnerQuestions(skillRows)],
-    limit,
+    [
+      preferred,
+      toMathRunnerQuestions(prioritizeUnattemptedQuestions(completionRows, activity.attemptedIds)),
+      toMathRunnerQuestions(prioritizeUnattemptedQuestions(skillRows, activity.attemptedIds)),
+    ],
+    sessionLimit,
   );
 }
 
@@ -194,7 +202,7 @@ async function loadEligibleMathRows(questionId?: string): Promise<MathQuestionRo
     if (questions.error) throw databaseError("Could not load Math bank questions", questions.error);
     rows.push(...(questions.data ?? []));
   }
-  return rows
+  return signCourseAssetReferences(rows
     .filter((row) => isQuestionBankRuntimeReady({
       drillSlug: "targeted-math",
       section: "math",
@@ -206,7 +214,7 @@ async function loadEligibleMathRows(questionId?: string): Promise<MathQuestionRo
       passage: row.passage,
       content: row.content,
     }))
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    .sort((a, b) => a.created_at.localeCompare(b.created_at)));
 }
 
 const QUESTION_SELECT =

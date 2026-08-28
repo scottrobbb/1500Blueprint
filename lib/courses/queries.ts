@@ -2,6 +2,7 @@ import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { SavedCoursePracticeAttempt } from "./practice";
 import type { Course, CourseInput, CourseLesson, CourseModule, CourseStatus, LessonBlock } from "./types";
+import { canonicalizeCourseAssetReferences, signCourseAssetReferences } from "./assets.server";
 
 type CourseRow = {
   id: string; slug: string; title: string; description: string | null; eyebrow: string | null;
@@ -50,9 +51,13 @@ async function hydrateCourses(
   if (strict && blocksResult.error) throw blocksResult.error;
   if (strict && completionsResult.error) throw completionsResult.error;
   const completed = new Set((completionsResult.data ?? []).map((row) => row.lesson_id));
-  const blocks = blocksResult.data ?? [];
+  const rawBlocks = blocksResult.data ?? [];
+  const [signedRows, blocks] = await Promise.all([
+    signCourseAssetReferences(rows, strict),
+    signCourseAssetReferences(rawBlocks, strict),
+  ]);
 
-  return rows.map((courseRow) => {
+  return signedRows.map((courseRow) => {
     const modules: CourseModule[] = moduleRows.filter((row) => row.course_id === courseRow.id).map((moduleRow) => ({
       id: moduleRow.id,
       slug: moduleRow.slug,
@@ -152,6 +157,7 @@ async function loadAllIds(
 
 export async function saveCourse(input: CourseInput): Promise<boolean> {
   const db = supabaseAdmin();
+  input = canonicalizeCourseAssetReferences(input);
   const courseResult = await db.from("courses").upsert({
     id: input.id, slug: input.slug.trim(), title: input.title.trim() || "Untitled course",
     description: input.description?.trim() || null, eyebrow: input.eyebrow?.trim() || null,

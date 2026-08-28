@@ -19,7 +19,9 @@ async function uploadPastedImage(file: File): Promise<string | null> {
   if (!response.ok || !signed?.path || !signed.token || !signed.url) return null;
   const uploaded = await createClient().storage.from("course-assets").uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type, cacheControl: "31536000" });
   if (uploaded.error) return null;
-  return signed.url;
+  const previewResponse = await fetch(`/api/admin/courses/upload?path=${encodeURIComponent(signed.path)}`);
+  const preview = (await previewResponse.json().catch(() => null)) as { url?: string } | null;
+  return previewResponse.ok && preview?.url ? preview.url : signed.url;
 }
 
 const inputClass = "mt-1.5 w-full rounded-xl border border-navy/15 bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/15";

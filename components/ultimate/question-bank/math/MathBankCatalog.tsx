@@ -143,6 +143,7 @@ export function SubjectBankCatalogView({
           {catalog.totalAvailable > 0 ? (
             <Link
               href={allPracticeHref}
+              prefetch={false}
               className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-navy px-5 text-sm font-extrabold text-white transition-colors hover:bg-[#15396d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:mt-0"
             >
               Start all topics <ArrowRightIcon className="h-4 w-4" />
@@ -197,6 +198,7 @@ export function SubjectBankCatalogView({
             </p>
             <Link
               href={practiceHref}
+              prefetch={false}
               className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
             >
               Practice selected <ArrowRightIcon className="h-4 w-4" />

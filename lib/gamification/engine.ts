@@ -137,8 +137,12 @@ export type Achievement = {
   description: string;
   category: AchievementCategory;
   glyph: string; // SVG path, kept for reference; the hub draws its own family icons
+  metric: keyof Stats;
+  threshold: number;
   test: (s: Stats) => boolean;
 };
+
+export type AchievementRule = Pick<Achievement, "id" | "metric" | "threshold">;
 
 const GLYPH = {
   star: "M0 -8 L2.4 -2.5 L8 -2 L3.6 2 L5 7.5 L0 4.3 L-5 7.5 L-3.6 2 L-8 -2 L-2.4 -2.5 Z",
@@ -163,6 +167,8 @@ function tier(
     description: r.desc,
     category,
     glyph,
+    metric: key,
+    threshold: r.n,
     test: (s: Stats) => s[key] >= r.n,
   }));
 }
@@ -243,6 +249,8 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Score 100 on a drill.",
     category: "milestone",
     glyph: GLYPH.target,
+    metric: "perfectDrills",
+    threshold: 1,
     test: (s) => s.perfectDrills >= 1,
   },
   {
@@ -251,6 +259,8 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Score 100 on 10 drills.",
     category: "milestone",
     glyph: GLYPH.target,
+    metric: "perfectDrills",
+    threshold: 10,
     test: (s) => s.perfectDrills >= 10,
   },
   {
@@ -259,6 +269,8 @@ export const ACHIEVEMENTS: Achievement[] = [
     description: "Score 100 on 50 drills.",
     category: "milestone",
     glyph: GLYPH.target,
+    metric: "perfectDrills",
+    threshold: 50,
     test: (s) => s.perfectDrills >= 50,
   },
   ...tier("score", "milestone", GLYPH.diamond, "bestTestScore", [
@@ -286,4 +298,11 @@ export const ACHIEVEMENT_CATEGORIES: { key: AchievementCategory; label: string }
 // IDs of every achievement satisfied by the given stats.
 export function satisfiedAchievements(stats: Stats): string[] {
   return ACHIEVEMENTS.filter((a) => a.test(stats)).map((a) => a.id);
+}
+
+// Serializable rules supplied to the atomic award RPC. Keeping the rule metadata
+// beside each catalog item makes the database transaction follow the exact same
+// thresholds as the UI without maintaining a second achievement catalog in SQL.
+export function achievementRules(): AchievementRule[] {
+  return ACHIEVEMENTS.map(({ id, metric, threshold }) => ({ id, metric, threshold }));
 }

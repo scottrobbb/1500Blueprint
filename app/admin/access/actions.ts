@@ -7,6 +7,7 @@ import {
   normalizeComplimentaryEmail,
   revokeComplimentaryAccess,
 } from "@/lib/auth/users";
+import { reportServerError } from "@/lib/observability/server";
 
 export type AccessActionState = {
   status: "idle" | "success" | "error";
@@ -34,7 +35,10 @@ export async function grantComplimentaryAccessAction(
         : `Complimentary access granted to ${email}.`,
     };
   } catch (error) {
-    console.error("grant complimentary access failed:", error);
+    reportServerError("admin.complimentary_access.grant_failed", error, {
+      provider: "supabase",
+      source: "admin-access-action",
+    });
     return { status: "error", message: "Could not grant access. Try again." };
   }
 }
@@ -56,7 +60,10 @@ export async function revokeComplimentaryAccessAction(
       ? { status: "success", message: `Complimentary access revoked for ${normalizedEmail}.` }
       : { status: "error", message: `${normalizedEmail} no longer has complimentary access.` };
   } catch (error) {
-    console.error("revoke complimentary access failed:", error);
+    reportServerError("admin.complimentary_access.revoke_failed", error, {
+      provider: "supabase",
+      source: "admin-access-action",
+    });
     return { status: "error", message: "Could not revoke access. Try again." };
   }
 }

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { ReadingWritingBankRunner } from "@/components/ultimate/question-bank/math/MathBankRunner";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
@@ -11,6 +11,7 @@ import {
 import { getReadingWritingRunnerQuestions } from "@/lib/question-bank/reading-writing-queries";
 import { getQuestionBankRunnerState } from "@/lib/question-bank/runner-state";
 import { getStudentAccess } from "@/lib/auth/entitlements";
+import { questionBankAllowance } from "@/lib/auth/access-control";
 
 export const metadata = { title: "Reading & Writing Practice" };
 
@@ -28,7 +29,11 @@ export default async function UltimateReadingWritingPracticePage({ searchParams 
     completion: parseCompletionFilter(readParam(params.completion)),
   };
   const limit = parseQuestionLimit(readParam(params.limit));
-  const access = await getStudentAccess(session.email);
+  const [access, allowance] = await Promise.all([
+    getStudentAccess(session.email),
+    questionBankAllowance(session.email),
+  ]);
+  if (!allowance.allowed) redirect("/ultimate/bank?upgrade=1");
   const questions = await getReadingWritingRunnerQuestions(session.email, filters, limit, { includeChallenge: access.entitlements.challengeQuestions });
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 

@@ -10,6 +10,7 @@ test("password validation requires length, a letter, and a number", () => {
   assert.equal(validatePassword("short1").valid, false);
   assert.equal(validatePassword("abcdefghij").valid, false);
   assert.equal(validatePassword("1234567890").valid, false);
+  assert.equal(validatePassword(`Blueprint1${"x".repeat(128)}`).valid, false);
   assert.deepEqual(validatePassword("blueprint1500"), { valid: true });
 });
 

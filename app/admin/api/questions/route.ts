@@ -3,6 +3,7 @@ import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { createQuestion, listQuestions, type QuestionFilters } from "@/lib/drills/admin-queries";
 import type { Difficulty } from "@/lib/sat/types";
 import type { AnswerType, DrillSlug, QuestionStatus, SatSection } from "@/lib/drills/types";
+import { readJsonBody } from "@/lib/security/request";
 
 const FORBIDDEN = NextResponse.json({ error: "forbidden" }, { status: 403 });
 
@@ -50,7 +51,7 @@ export async function POST(req: NextRequest) {
 
   let drillSlug = "";
   try {
-    const body = await req.json();
+    const body = await readJsonBody(req, 16 * 1024) as Record<string, unknown>;
     drillSlug = String(body?.drillSlug ?? "").trim();
   } catch {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });

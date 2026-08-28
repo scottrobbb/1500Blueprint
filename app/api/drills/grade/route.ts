@@ -20,11 +20,16 @@ import type {
 } from "@/lib/drills/types";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { drillAllowance } from "@/lib/auth/access-control";
+import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
+import { reportServerError } from "@/lib/observability/server";
 
 // Per-student grading runs on a cheap, fast model (Haiku 4.5) per the cost
 // analysis (~$0.003/grade, well under the $10/student/month cap). Kept separate
 // from EXPLAIN_MODEL, which is for one-time import/seed quality. Override via env.
 const MODEL = process.env.GRADING_MODEL ?? "claude-haiku-4-5";
+const MAX_REQUEST_BYTES = 16 * 1024;
+const MAX_STUDENT_TEXT_LENGTH = 4_000;
 
 type GradeBody = {
   drillSlug?: string;
@@ -131,15 +136,31 @@ export async function POST(req: NextRequest) {
 
   let body: GradeBody;
   try {
-    body = (await req.json()) as GradeBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    const value = await readJsonBody(req, MAX_REQUEST_BYTES);
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("Invalid body");
+    body = value as GradeBody;
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof RequestBodyTooLargeError ? "Request body is too large" : "Invalid JSON body" },
+      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
+    );
   }
 
   const { drillSlug, questionId, studentText, selectedChoice } = body;
-  if (!drillSlug || !questionId || typeof studentText !== "string") {
+  if (
+    typeof drillSlug !== "string"
+    || drillSlug.length === 0
+    || drillSlug.length > 80
+    || typeof questionId !== "string"
+    || questionId.length === 0
+    || questionId.length > 160
+    || typeof studentText !== "string"
+    || studentText.trim().length === 0
+    || studentText.length > MAX_STUDENT_TEXT_LENGTH
+    || (selectedChoice !== undefined && (typeof selectedChoice !== "string" || selectedChoice.length > 20))
+  ) {
     return NextResponse.json(
-      { error: "drillSlug, questionId, and studentText are required" },
+      { error: `drillSlug, questionId, and 1-${MAX_STUDENT_TEXT_LENGTH} characters of studentText are required` },
       { status: 400 },
     );
   }
@@ -187,12 +208,48 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  try {
+    const burst = await consumeRateLimit("ai-grade", session.email, {
+      limit: 12,
+      windowSeconds: 60,
+    });
+    if (!burst.allowed) {
+      return NextResponse.json(
+        {
+          error: "Too many grading requests",
+          code: "rate_limit",
+          limit: burst.limit,
+          used: burst.used,
+          resetsAt: burst.resetsAt,
+        },
+        {
+          status: 429,
+          headers: {
+            "retry-after": String(Math.max(1, Math.ceil((Date.parse(burst.resetsAt) - Date.now()) / 1000))),
+          },
+        },
+      );
+    }
+  } catch (error) {
+    reportServerError("drill.grade.burst_limit_check_failed", error, {
+      provider: "supabase",
+      route: "/api/drills/grade",
+      method: "POST",
+    });
+    return NextResponse.json(
+      { error: "Grading quota is unavailable", code: "quota_unavailable" },
+      { status: 503 },
+    );
+  }
+
   let quota: Awaited<ReturnType<typeof reserveAiSubmission>>;
   try {
     quota = await reserveAiSubmission(session.email);
   } catch (error) {
-    console.error("AI submission quota check failed", {
-      name: error instanceof Error ? error.name : "UnknownError",
+    reportServerError("drill.grade.submission_quota_check_failed", error, {
+      provider: "supabase",
+      route: "/api/drills/grade",
+      method: "POST",
     });
     return NextResponse.json(
       { error: "Grading quota is unavailable", code: "quota_unavailable" },
@@ -226,15 +283,19 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     // Keep prompts and student work out of logs while preserving the vendor
     // status/type/request ID needed to distinguish auth, quota, and model errors.
-    console.error("Drill grading request failed", {
-      model: MODEL,
-      ...gradingFailure(error),
+    reportServerError("drill.grade.provider_request_failed", gradingFailure(error), {
+      provider: "anthropic",
+      route: "/api/drills/grade",
+      method: "POST",
+      source: MODEL,
     });
     try {
       await refundAiSubmission(session.email);
     } catch (refundError) {
-      console.error("AI submission quota refund failed", {
-        name: refundError instanceof Error ? refundError.name : "UnknownError",
+      reportServerError("drill.grade.submission_quota_refund_failed", refundError, {
+        provider: "supabase",
+        route: "/api/drills/grade",
+        method: "POST",
       });
     }
     return NextResponse.json({ error: "Grading request failed" }, { status: 502 });
@@ -242,9 +303,14 @@ export async function POST(req: NextRequest) {
 
   const parsed = extractJson(raw);
   if (!parsed || typeof parsed !== "object") {
-    console.error("Drill grading response was not valid JSON", {
-      model: MODEL,
-      responseLength: raw.length,
+    reportServerError("drill.grade.invalid_provider_response", {
+      name: "InvalidModelResponse",
+      status: 502,
+    }, {
+      provider: "anthropic",
+      route: "/api/drills/grade",
+      method: "POST",
+      source: MODEL,
     });
     return NextResponse.json({ error: "Could not parse grading response" }, { status: 502 });
   }
@@ -263,7 +329,11 @@ export async function POST(req: NextRequest) {
     gam = { xpAwarded: award.xpAwarded, streak: nav.streak, level: nav.level, xp: nav.xp };
     attemptSaved = true;
   } catch (e) {
-    console.error("drill award failed:", e);
+    reportServerError("drill.grade.award_failed", e, {
+      provider: "supabase",
+      route: "/api/drills/grade",
+      method: "POST",
+    });
   }
 
   // Track the question as attempted/mastered (score 100 = mastered) so it stops
@@ -278,7 +348,11 @@ export async function POST(req: NextRequest) {
     });
     questionSaved = true;
   } catch (e) {
-    console.error("drill progress failed:", e);
+    reportServerError("drill.grade.progress_save_failed", e, {
+      provider: "supabase",
+      route: "/api/drills/grade",
+      method: "POST",
+    });
   }
 
   let grammarMastery: Awaited<ReturnType<typeof loadGrammarMastery>> | undefined;
@@ -286,7 +360,11 @@ export async function POST(req: NextRequest) {
     try {
       grammarMastery = await loadGrammarMastery(session.email);
     } catch (e) {
-      console.error("grammar mastery failed:", e);
+      reportServerError("drill.grade.grammar_mastery_load_failed", e, {
+        provider: "supabase",
+        route: "/api/drills/grade",
+        method: "POST",
+      });
       attemptSaved = false;
     }
   }
@@ -296,7 +374,11 @@ export async function POST(req: NextRequest) {
     try {
       readingProgress = await loadReadingProgress(session.email);
     } catch (e) {
-      console.error("reading progress failed:", e);
+      reportServerError("drill.grade.reading_progress_load_failed", e, {
+        provider: "supabase",
+        route: "/api/drills/grade",
+        method: "POST",
+      });
     }
   }
 

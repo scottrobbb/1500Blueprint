@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accessForPlan, accessForTestPersona, effectivePlan, hasCourseAccess, highestPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
+import { accessForPlan, accessForTestPersona, canAccessCourse, effectivePlan, hasCourseAccess, highestPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
 import { isUltimatePreviewEmail } from "./ultimate";
 
 test("legacy Stripe labels normalize to stable plan codes", () => {
@@ -34,6 +34,16 @@ test("access records retain their resolution source", () => {
   assert.equal(access.entitlements.discordRole, "core");
 });
 
+test("course access requires an active account as well as the right plan", () => {
+  assert.equal(canAccessCourse(accessForPlan("free", "free", "free-user"), "blueprint-foundations"), true);
+  assert.equal(canAccessCourse(accessForPlan("core", "subscription", "core-user"), "advanced-math"), false);
+  assert.equal(canAccessCourse(accessForPlan("max", "subscription", "max-user"), "advanced-math"), true);
+  assert.equal(
+    canAccessCourse(accessForPlan("max", "subscription", "suspended-user", false, "suspended"), "blueprint-foundations"),
+    false,
+  );
+});
+
 test("the strongest active source wins instead of a lower manual grant", () => {
   assert.equal(highestPlan("core", "max", "free"), "max");
   assert.equal(highestPlan("max", "core"), "max");
@@ -44,6 +54,13 @@ test("explicit persona grants replace stale legacy labels", () => {
   assert.equal(effectivePlan("free", null, "max"), "free");
   assert.equal(effectivePlan("core", "max", "free"), "max");
   assert.equal(effectivePlan(null, null, "max"), "max");
+  assert.equal(effectivePlan(null, null, "max", true), "free");
+});
+
+test("a canceled tracked subscription cannot fall back to stale legacy paid access", () => {
+  assert.equal(effectivePlan(null, null, "max", true), "free");
+  assert.equal(effectivePlan("core", null, "max", true), "core");
+  assert.equal(effectivePlan(null, "max", "free", true), "max");
 });
 
 test("QA personas override stale legacy testing access", () => {

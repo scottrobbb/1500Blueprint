@@ -26,17 +26,17 @@ import { summarizeTestScores } from "@/lib/progress/summary";
 import {
   ACHIEVEMENTS,
   ACHIEVEMENT_CATEGORIES,
+  achievementRules,
   advanceStreak,
   dateKey,
   drillXpFor,
   levelProgress,
   mondayIndex,
   satisfiedAchievements,
-  TEST_COMPLETE_XP,
-  testBonusXp,
   weekStart,
   type Stats,
 } from "./engine";
+import { parseTestAwardRpcRow } from "./award-contract";
 
 const SEASON = "Season 4 · Spring Sprint";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -464,7 +464,7 @@ export type TestResultInput = {
   testSnapshot?: PracticeTest;
   // Idempotency: a unique per-finish token. A retried or duplicate submission with
   // the same token hits the unique index and is recorded once (no double award).
-  clientToken?: string;
+  clientToken: string;
 };
 
 export type TestAwardOutcome = AwardOutcome & { attemptId: string };
@@ -474,58 +474,32 @@ export type TestAwardOutcome = AwardOutcome & { attemptId: string };
 // existing attempt without awarding again. Returns the attempt id for linking.
 export async function awardTest(email: string, input: TestResultInput): Promise<TestAwardOutcome> {
   const db = supabaseAdmin();
-  const amount = TEST_COMPLETE_XP + testBonusXp(input.totalScore);
-  const attemptRow = {
-    email,
-    test_slug: input.testSlug,
-    total_score: input.totalScore,
-    rw_score: input.rwScore ?? null,
-    math_score: input.mathScore ?? null,
-    xp_awarded: amount,
-    answers: input.answers ?? null,
-    routed: input.routed ?? null,
-    per_question_time: input.perQuestionTime ?? null,
-    completed_at: new Date().toISOString(),
-    client_token: input.clientToken ?? null,
-  };
-  let insertion = await db
-    .from("test_attempts")
-    .insert({
-      ...attemptRow,
-      test_snapshot: input.testSnapshot ?? null,
-      test_title: input.testSnapshot?.title ?? null,
+  const { data, error } = await db
+    .rpc("record_test_award", {
+      p_email: email,
+      p_test_slug: input.testSlug,
+      p_total_score: input.totalScore,
+      p_rw_score: input.rwScore ?? null,
+      p_math_score: input.mathScore ?? null,
+      p_answers: input.answers ?? null,
+      p_routed: input.routed ?? null,
+      p_per_question_time: input.perQuestionTime ?? null,
+      p_test_snapshot: input.testSnapshot ?? null,
+      p_test_title: input.testSnapshot?.title ?? null,
+      p_client_token: input.clientToken,
+      p_achievement_rules: achievementRules(),
     })
-    .select("id")
-    .maybeSingle<{ id: string }>();
-  if (isMissingTestSnapshotColumnError(insertion.error)) {
-    insertion = await db
-      .from("test_attempts")
-      .insert(attemptRow)
-      .select("id")
-      .maybeSingle<{ id: string }>();
+    .single();
+  if (error) {
+    throw new Error(`Could not record test award [${error.code}]: ${error.message}`);
   }
-  const { data: inserted, error } = insertion;
-
-  // A unique-token collision means this attempt was already recorded: return it
-  // without awarding XP again. Anything else unexpected re-throws.
-  if (error || !inserted) {
-    if (input.clientToken) {
-      const { data: existing } = await db
-        .from("test_attempts")
-        .select("id")
-        .eq("email", email)
-        .eq("client_token", input.clientToken)
-        .maybeSingle<{ id: string }>();
-      if (existing) return { xpAwarded: 0, newAchievements: [], attemptId: existing.id };
-    }
-    if (error) throw error;
-  }
-
-  await db.from("xp_events").insert({ email, amount, reason: "test", ref: input.testSlug });
-  await db.rpc("add_xp", { p_email: email, p_amount: amount });
-  await creditStreak(email);
-  const newAchievements = await unlockNewAchievements(email);
-  return { xpAwarded: amount, newAchievements, attemptId: inserted?.id ?? "" };
+  const result = parseTestAwardRpcRow(data);
+  if (!result) throw new Error("The test award transaction returned an invalid result");
+  return {
+    attemptId: result.attempt_id,
+    xpAwarded: result.xp_awarded,
+    newAchievements: result.new_achievement_ids,
+  };
 }
 
 /* ------------------------------ Onboarding ------------------------------ */

@@ -108,7 +108,7 @@ function TargetedMathSession({
     }
   }
 
-  async function completeSession(outcome: PendingOutcome): Promise<boolean> {
+  async function completeSession(): Promise<boolean> {
     if (!tracked) return true;
     try {
       const response = await fetch("/api/drills/targeted-math/session", {
@@ -135,7 +135,7 @@ function TargetedMathSession({
     if (savingRef.current) return;
     savingRef.current = true;
     setSavingAnswer(true);
-    const saved = await completeSession(outcome);
+    const saved = await completeSession();
     savingRef.current = false;
     setSavingAnswer(false);
     if (saved) {

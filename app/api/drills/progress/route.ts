@@ -14,6 +14,9 @@ import type { LetteredChoice, VocabContent } from "@/lib/drills/types";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { drillAllowance } from "@/lib/auth/access-control";
 import { isCorrect as isMathAnswerCorrect } from "@/components/drills/math/mockData";
+import { readJsonBody } from "@/lib/security/request";
+import { reportServerError } from "@/lib/observability/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 const OBJECTIVE: ReadonlySet<string> = new Set(["targeted-math", "vocab"]);
 
@@ -58,10 +61,13 @@ function canonicalCorrect(
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const rate = await checkRateLimit("objective-drill-answer", session.email, { limit: 1_000, windowSeconds: 60 * 60 });
+  if (!rate) return NextResponse.json({ error: "Progress saving is temporarily unavailable" }, { status: 503 });
+  if (!rate.allowed) return NextResponse.json({ error: "Too many answer requests", resetsAt: rate.resetsAt }, { status: 429 });
 
   let body: Body;
   try {
-    body = (await req.json()) as Body;
+    body = (await readJsonBody(req, 8 * 1024)) as Body;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -70,7 +76,10 @@ export async function POST(req: NextRequest) {
   if (
     !drillSlug
     || !questionId
+    || drillSlug.length > 80
+    || questionId.length > 160
     || typeof answer !== "string"
+    || answer.length > 1_000
     || !OBJECTIVE.has(drillSlug)
     || typeof clientToken !== "string"
     || clientToken.length === 0
@@ -89,7 +98,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, duplicate: true });
     }
   } catch (error) {
-    console.error("drill progress idempotency check failed", error);
+    reportServerError("drill.progress.idempotency_check_failed", error, {
+      provider: "supabase",
+      route: "/api/drills/progress",
+      method: "POST",
+    });
     return NextResponse.json({ error: "Could not verify progress" }, { status: 500 });
   }
   const isAdmin = isAdminEmail(session.email);
@@ -122,7 +135,11 @@ export async function POST(req: NextRequest) {
       sessionToken,
     });
   } catch (e) {
-    console.error("recordProgress failed:", e);
+    reportServerError("drill.progress.record_failed", e, {
+      provider: "supabase",
+      route: "/api/drills/progress",
+      method: "POST",
+    });
     return NextResponse.json({ error: "Could not record progress" }, { status: 500 });
   }
   return NextResponse.json({ ok: true });

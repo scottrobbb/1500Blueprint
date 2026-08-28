@@ -2,14 +2,19 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { validateProfileName } from "@/lib/settings/profile-name";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { readJsonBody } from "@/lib/security/request";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export async function PATCH(request: Request) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
+  const rate = await checkRateLimit("profile-write", session.email, { limit: 30, windowSeconds: 60 * 60 });
+  if (!rate) return NextResponse.json({ error: "Profile updates are temporarily unavailable" }, { status: 503 });
+  if (!rate.allowed) return NextResponse.json({ error: "Too many profile updates", resetsAt: rate.resetsAt }, { status: 429 });
 
-  const body = (await request.json().catch(() => null)) as
+  const body = (await readJsonBody(request, 4 * 1024).catch(() => null)) as
     | { name?: unknown }
     | null;
   const validation = validateProfileName(body?.name);

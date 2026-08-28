@@ -8,8 +8,10 @@ import {
   parseCompletionFilter,
   parseDifficultyFilter,
   parseQuestionLimit,
+  boundedQuestionBankSessionLimit,
   parseSkillFilter,
   prioritizeBoundedQuestions,
+  prioritizeUnattemptedQuestions,
   questionBankLevel,
 } from "./math";
 
@@ -23,6 +25,20 @@ test("math bank filters reject unsupported query values", () => {
   assert.equal(parseQuestionLimit("100"), 30);
   assert.equal(parseQuestionLimit("all"), null);
   assert.equal(parseQuestionLimit(undefined), null);
+});
+
+test("question bank delivery is capped even when the UI requests all questions", () => {
+  assert.equal(boundedQuestionBankSessionLimit(null), 30);
+  assert.equal(boundedQuestionBankSessionLimit(12), 12);
+  assert.equal(boundedQuestionBankSessionLimit(1_000), 30);
+});
+
+test("bounded sessions advance unseen questions before recycling attempted ones", () => {
+  const questions = [{ id: "seen-1" }, { id: "new-1" }, { id: "seen-2" }, { id: "new-2" }];
+  assert.deepEqual(
+    prioritizeUnattemptedQuestions(questions, new Set(["seen-1", "seen-2"])).map(({ id }) => id),
+    ["new-1", "new-2", "seen-1", "seen-2"],
+  );
 });
 
 test("skill filters are trimmed and deduplicated", () => {

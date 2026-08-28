@@ -15,19 +15,21 @@ import type { AnswerMap, ModuleVariant, SectionId } from "@/lib/sat/types";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
 import { getStudentAccess } from "@/lib/auth/entitlements";
+import { readIdempotencyToken } from "@/lib/idempotency";
+import { reportServerError } from "@/lib/observability/server";
+import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeAnswerMap, sanitizePerQuestionTime, sanitizeRouted } from "@/lib/sat/submission";
+
+const MAX_COMPLETION_BYTES = 512 * 1024;
 
 type CompleteBody = {
   testSlug?: string;
   answers?: AnswerMap;
   routed?: Partial<Record<SectionId, ModuleVariant>>;
   perQuestionTime?: Record<string, number>;
-  clientToken?: string;
+  clientToken?: unknown;
 };
-
-// A second POST for the same finished test within this window (a StrictMode
-// double-render, an accidental refresh) returns the already-saved attempt
-// instead of awarding XP again.
-const DEDUPE_MS = 10_000;
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -35,41 +37,47 @@ export async function POST(req: NextRequest) {
 
   let body: CompleteBody;
   try {
-    body = (await req.json()) as CompleteBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    const value = await readJsonBody(req, MAX_COMPLETION_BYTES);
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("Invalid body");
+    body = value as CompleteBody;
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof RequestBodyTooLargeError ? "Request body is too large" : "Invalid JSON body" },
+      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
+    );
   }
 
   const { testSlug } = body;
-  if (!testSlug) {
+  if (typeof testSlug !== "string" || testSlug.length === 0 || testSlug.length > 160) {
     return NextResponse.json({ error: "testSlug is required" }, { status: 400 });
+  }
+  const clientToken = readIdempotencyToken(body.clientToken);
+  if (!clientToken) {
+    return NextResponse.json({ error: "A valid completion token is required" }, { status: 400 });
   }
   const isAdmin = isAdminEmail(session.email);
   if (!isAdmin && !(await canAccessPracticeTest(session.email, testSlug))) {
     return NextResponse.json({ error: "This practice test is not included with your plan.", code: "plan_limit" }, { status: 402 });
   }
-  const answers = body.answers ?? {};
-  const routed = body.routed ?? {};
-  const perQuestionTime = body.perQuestionTime ?? {};
-
   const test = await loadTest(testSlug, { includeDraft: isAdmin });
   if (!test) return NextResponse.json({ error: "Test not found" }, { status: 404 });
 
-  // Idempotency guard against a rapid double-submit (returns the existing attempt).
-  const recent = await supabaseAdmin()
-    .from("test_attempts")
-    .select("id,created_at")
-    .eq("email", session.email)
-    .eq("test_slug", testSlug)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<{ id: string; created_at: string }>();
-  if (recent.data && Date.now() - Date.parse(recent.data.created_at) < DEDUPE_MS) {
-    return NextResponse.json({
-      attemptId: recent.data.id,
-      deduped: true,
-      hasStudyPlanner: await hasStudyPlanner(session.email),
-    });
+  const questionIds = new Set(test.sections.flatMap((section) => [
+    ...section.module1.questions,
+    ...section.module2.easy.questions,
+    ...section.module2.hard.questions,
+  ]).map((question) => question.id));
+  const answers = sanitizeAnswerMap(body.answers, questionIds);
+  const routed = sanitizeRouted(body.routed);
+  const perQuestionTime = sanitizePerQuestionTime(body.perQuestionTime, questionIds);
+  if (!answers || !routed || !perQuestionTime) {
+    return NextResponse.json({ error: "Invalid test completion data" }, { status: 400 });
+  }
+  try {
+    const rate = await consumeRateLimit("practice-test-completion", session.email, { limit: 30, windowSeconds: 60 * 60 });
+    if (!rate.allowed) return NextResponse.json({ error: "Too many completion requests", resetsAt: rate.resetsAt }, { status: 429 });
+  } catch {
+    return NextResponse.json({ error: "Test saving is temporarily unavailable" }, { status: 503 });
   }
 
   const result = scoreTest(test, routed, answers);
@@ -88,12 +96,16 @@ export async function POST(req: NextRequest) {
       routed,
       perQuestionTime,
       testSnapshot: test,
-      clientToken: body.clientToken,
+      clientToken,
     });
     attemptId = award.attemptId;
     xpAwarded = award.xpAwarded;
   } catch (e) {
-    console.error("test award failed:", e);
+    reportServerError("practice_test.completion_save.failed", e, {
+      provider: "supabase",
+      route: "/api/tests/complete",
+      method: "POST",
+    });
     return NextResponse.json({ error: "Could not save your attempt" }, { status: 500 });
   }
 
@@ -101,7 +113,11 @@ export async function POST(req: NextRequest) {
   try {
     await clearTestSession(session.email, testSlug);
   } catch (e) {
-    console.error("clear test session failed:", e);
+    reportServerError("practice_test.session_cleanup.failed", e, {
+      provider: "supabase",
+      route: "/api/tests/complete",
+      method: "POST",
+    });
   }
 
   let nav: { streak: number; level: number; xp: number } | undefined;

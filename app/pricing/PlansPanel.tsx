@@ -27,6 +27,7 @@ export function PlansPanel({
   currentPlan,
   billingEnabled,
   initialCadence,
+  checkoutTokens,
 }: {
   freeFeatures: PlanFeature[];
   coreFeatures: PlanFeature[];
@@ -34,6 +35,7 @@ export function PlansPanel({
   currentPlan: PlanCode | null;
   billingEnabled: boolean;
   initialCadence: BillingCadence;
+  checkoutTokens: Record<"core" | "max", string>;
 }) {
   const [cadence, setCadence] = useState<BillingCadence>(initialCadence);
 
@@ -77,6 +79,7 @@ export function PlansPanel({
           currentPlan={currentPlan}
           billingEnabled={billingEnabled}
           cadence={cadence}
+          checkoutToken={checkoutTokens.core}
         />
         <PriceCard
           tier="max"
@@ -86,6 +89,7 @@ export function PlansPanel({
           currentPlan={currentPlan}
           billingEnabled={billingEnabled}
           cadence={cadence}
+          checkoutToken={checkoutTokens.max}
         />
       </div>
     </>
@@ -101,6 +105,7 @@ function PriceCard({
   currentPlan,
   billingEnabled = false,
   cadence,
+  checkoutToken,
 }: {
   tier: "free" | "core" | "max";
   name: string;
@@ -110,6 +115,7 @@ function PriceCard({
   currentPlan: PlanCode | null;
   billingEnabled?: boolean;
   cadence?: BillingCadence;
+  checkoutToken?: string;
 }) {
   const paid = tier !== "free";
   const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
@@ -145,6 +151,7 @@ function PriceCard({
             <form action="/api/billing/checkout" method="post">
               <input type="hidden" name="plan" value={plan} />
               <input type="hidden" name="cadence" value={cadence ?? "monthly"} />
+              <input type="hidden" name="checkoutToken" value={checkoutToken} />
               <button type="submit" className={styles.primaryAction}>
                 {current ? "Manage plan" : cta} <ArrowIcon />
               </button>

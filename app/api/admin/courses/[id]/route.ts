@@ -5,13 +5,15 @@ import { auditCourse } from "@/lib/courses/audit";
 import type { Course, CourseInput } from "@/lib/courses/types";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isPublicationStatus } from "@/lib/flags";
+import { reportServerError } from "@/lib/observability/server";
+import { readJsonBody } from "@/lib/security/request";
 
 type Context = { params: Promise<{ id: string }> };
 
 export async function PUT(request: NextRequest, context: Context) {
   if (!(await getAdminSession())) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const { id } = await context.params;
-  const input = (await request.json().catch(() => null)) as CourseInput | null;
+  const input = (await readJsonBody(request, 10_000_000).catch(() => null)) as CourseInput | null;
   if (!input || input.id !== id || !input.title?.trim() || !input.slug?.trim() || !Array.isArray(input.modules) || !isPublicationStatus(input.status)) return NextResponse.json({ error: "invalid_course", detail: "The course title, slug, module list, and publication status are required." }, { status: 400 });
   if (!isValidCoverUrl(input.coverUrl)) return NextResponse.json({ error: "invalid_cover", detail: "The course cover must use a valid HTTP or HTTPS image URL." }, { status: 400 });
   if (JSON.stringify(input).length > 10_000_000) return NextResponse.json({ error: "course_too_large", detail: "This course is too large to save in one request." }, { status: 413 });
@@ -55,8 +57,13 @@ export async function PUT(request: NextRequest, context: Context) {
       ? NextResponse.json({ ok: true })
       : NextResponse.json({ error: "save_failed", detail: "The course changes could not be saved. Content with student completions or practice attempts must be unpublished instead of deleted." }, { status: 500 });
   } catch (error) {
+    reportServerError("admin.course.save_failed", error, {
+      provider: "supabase",
+      route: "/api/admin/courses/[id]",
+      method: "PUT",
+    });
     return NextResponse.json(
-      { error: "save_failed", detail: error instanceof Error ? error.message : "The course changes could not be saved." },
+      { error: "save_failed", detail: "The course changes could not be saved." },
       { status: 500 },
     );
   }
@@ -91,8 +98,13 @@ export async function DELETE(_request: NextRequest, context: Context) {
       ? NextResponse.json({ ok: true })
       : NextResponse.json({ error: "delete_failed", detail: "The course could not be deleted because it may have student history. Unpublish it instead." }, { status: 500 });
   } catch (error) {
+    reportServerError("admin.course.delete_failed", error, {
+      provider: "supabase",
+      route: "/api/admin/courses/[id]",
+      method: "DELETE",
+    });
     return NextResponse.json(
-      { error: "delete_failed", detail: error instanceof Error ? error.message : "The course could not be deleted." },
+      { error: "delete_failed", detail: "The course could not be deleted." },
       { status: 500 },
     );
   }

@@ -2,16 +2,26 @@ import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { importVocabEntries } from "@/lib/drills/admin-queries";
 import { parseVocabImport } from "@/lib/drills/vocabImport";
+import { contentLengthExceeds } from "@/lib/security/request";
+import { reportServerError } from "@/lib/observability/server";
 
 const MAX_IMPORT_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (contentLengthExceeds(request, MAX_IMPORT_BYTES + 256 * 1024)) {
+    return NextResponse.json({ error: "The import file must be 10 MB or smaller." }, { status: 413 });
+  }
 
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return NextResponse.json({ error: "Choose a valid import file." }, { status: 400 });
+  }
   const file = form.get("file");
-  if (!(file instanceof File)) {
+  if (!(file instanceof File) || file.size === 0) {
     return NextResponse.json({ error: "Choose a CSV, TSV, TXT, or JSON file." }, { status: 400 });
   }
   if (file.size > MAX_IMPORT_BYTES) {
@@ -41,7 +51,11 @@ export async function POST(request: Request) {
     const outcome = await importVocabEntries(parsed.entries, session.email);
     return NextResponse.json({ ok: true, ...outcome });
   } catch (error) {
-    console.error("Vocab import failed", error);
+    reportServerError("admin.vocab_import.save_failed", error, {
+      provider: "supabase",
+      route: "/admin/api/drills/vocab/import",
+      method: "POST",
+    });
     return NextResponse.json({ error: "The vocab import could not be saved." }, { status: 500 });
   }
 }

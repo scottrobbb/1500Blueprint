@@ -3,160 +3,54 @@ import "server-only";
 import type Stripe from "stripe";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { billingLivemode } from "./config";
-import { isRefundEligible } from "./policy";
 import { billingStripe } from "./stripe";
 import { syncStripeSubscription } from "./subscriptions";
+import {
+  refundFirstPurchaseWithDeps,
+  type RefundablePayment,
+  type RefundRequestRow,
+  type RefundSubscriptionRow,
+} from "./refund-orchestrator";
 
-type SubscriptionRow = {
-  id: string;
-  user_id: string;
-  stripe_subscription_id: string;
-  stripe_created_at: string | null;
-  refundable_until: string | null;
-  refunded_at: string | null;
-  stripe_refund_id: string | null;
-};
-
-type RefundRequestRow = {
-  id: string;
-  status: string;
-  stripe_refund_ids: string[];
-};
-
-type RefundablePayment = {
-  id: string;
-  paymentIntentId: string | null;
-  chargeId: string | null;
-  amount: number;
-  currency: string;
-};
-
-export class BillingRefundError extends Error {
-  constructor(
-    public readonly code: "account" | "subscription" | "window" | "already" | "payment" | "processing",
-    message: string,
-  ) {
-    super(message);
-    this.name = "BillingRefundError";
-  }
-}
+export { BillingRefundError } from "./refund-orchestrator";
 
 export async function refundFirstPurchase(
   studentEmail: string,
   requestedBy: string,
 ): Promise<{ refundIds: string[]; amount: number; currency: string }> {
-  const normalizedEmail = studentEmail.trim().toLowerCase();
-  const { data: user, error: userError } = await supabaseAdmin()
-    .from("users")
-    .select("id")
-    .eq("email", normalizedEmail)
-    .maybeSingle<{ id: string }>();
-  if (userError) throw new Error(`failed to load refund account: ${userError.message}`);
-  if (!user) throw new BillingRefundError("account", "Student account not found");
-
-  const { data: subscriptions, error: subscriptionsError } = await supabaseAdmin()
-    .from("student_subscriptions")
-    .select("id,user_id,stripe_subscription_id,stripe_created_at,refundable_until,refunded_at,stripe_refund_id")
-    .eq("user_id", user.id)
-    .eq("livemode", billingLivemode())
-    .not("stripe_created_at", "is", null)
-    .order("stripe_created_at", { ascending: true })
-    .returns<SubscriptionRow[]>();
-  if (subscriptionsError) {
-    throw new Error(`failed to load refundable subscription: ${subscriptionsError.message}`);
-  }
-  const first = subscriptions?.[0];
-  if (!first) throw new BillingRefundError("subscription", "No Stripe purchase was found");
-
-  const eligible = isRefundEligible({
-    isFirstSubscription: true,
-    refundableUntil: first.refundable_until ? new Date(first.refundable_until) : null,
-    alreadyRefunded: Boolean(first.refunded_at || first.stripe_refund_id),
-    now: new Date(),
-  });
-  if (!eligible) {
-    if (first.refunded_at || first.stripe_refund_id) {
-      throw new BillingRefundError("already", "The first purchase was already refunded");
-    }
-    throw new BillingRefundError("window", "The 24-hour first-purchase refund window has ended");
-  }
-
-  const refundRequest = await claimRefundRequest(first, requestedBy);
-  if (refundRequest.status === "succeeded") {
-    return { refundIds: refundRequest.stripe_refund_ids, amount: 0, currency: "usd" };
-  }
-  if (refundRequest.status === "processing" && refundRequest.stripe_refund_ids.length > 0) {
-    throw new BillingRefundError("processing", "This refund is already being processed");
-  }
-
-  const stripe = billingStripe();
-  const subscription = await stripe.subscriptions.retrieve(first.stripe_subscription_id);
-  const payments = await listRefundablePayments(subscription.id);
-  if (!payments.length) {
-    await failRefundRequest(refundRequest.id, "No paid Stripe invoice payment was found");
-    throw new BillingRefundError("payment", "No paid Stripe invoice payment was found");
-  }
-
-  try {
-    const refunds: Stripe.Refund[] = [];
-    for (const payment of payments) {
-      const refund = await stripe.refunds.create(
-        {
-          ...(payment.paymentIntentId
-            ? { payment_intent: payment.paymentIntentId }
-            : { charge: payment.chargeId ?? undefined }),
-          reason: "requested_by_customer",
-          metadata: {
-            platform: "1500_blueprint",
-            user_id: user.id,
-            subscription_id: subscription.id,
-            refund_request_id: refundRequest.id,
-          },
-        },
-        { idempotencyKey: `blueprint-refund-${subscription.id}-${payment.id}` },
-      );
-      refunds.push(refund);
-    }
-
-    const refundIds = refunds.map((refund) => refund.id);
-    const amount = refunds.reduce((total, refund) => total + (refund.amount ?? 0), 0);
-    const currency = refunds[0]?.currency ?? payments[0].currency;
-    const { error: savedRefundError } = await supabaseAdmin()
-      .from("billing_refunds")
-      .update({
-        stripe_refund_ids: refundIds,
-        stripe_payment_intent_ids: payments.flatMap((payment) => payment.paymentIntentId ? [payment.paymentIntentId] : []),
-        stripe_charge_ids: payments.flatMap((payment) => payment.chargeId ? [payment.chargeId] : []),
-        amount,
-        currency,
-        status: refunds.every((refund) => refund.status === "succeeded") ? "succeeded" : "pending",
-        processing_error: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", refundRequest.id);
-    if (savedRefundError) throw new Error(`failed to save Stripe refunds: ${savedRefundError.message}`);
-
-    const canceled = await cancelImmediately(subscription);
-    await syncStripeSubscription(canceled, user.id);
-    const refundedAt = new Date().toISOString();
-    const { error: subscriptionError } = await supabaseAdmin()
-      .from("student_subscriptions")
-      .update({
-        refunded_at: refundedAt,
-        stripe_refund_id: refundIds[0] ?? null,
-        refundable_until: null,
-        pending_plan_code: null,
-        pending_change_effective_at: null,
-        stripe_schedule_id: null,
-        updated_at: refundedAt,
-      })
-      .eq("id", first.id);
-    if (subscriptionError) throw new Error(`failed to mark subscription refunded: ${subscriptionError.message}`);
-    return { refundIds, amount, currency };
-  } catch (error) {
-    await failRefundRequest(refundRequest.id, error instanceof Error ? error.message : "Refund failed");
-    throw error;
-  }
+  const livemode = billingLivemode();
+  return refundFirstPurchaseWithDeps({
+    livemode,
+    now: () => new Date(),
+    findUser: async (email) => {
+      const { data, error } = await supabaseAdmin()
+        .from("users")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle<{ id: string }>();
+      if (error) throw new Error(`failed to load refund account: ${error.message}`);
+      return data ?? null;
+    },
+    listPurchases: listPurchasesForUser,
+    claimRequest: claimRefundRequest,
+    retrieveSubscription: (id) => billingStripe().subscriptions.retrieve(id),
+    listPayments: listRefundablePayments,
+    createRefund: (payment, metadata, idempotencyKey) => billingStripe().refunds.create(
+      {
+        ...(payment.paymentIntentId
+          ? { payment_intent: payment.paymentIntentId }
+          : { charge: payment.chargeId ?? undefined }),
+        reason: "requested_by_customer",
+        metadata,
+      },
+      { idempotencyKey },
+    ),
+    saveRefunds,
+    cancelSubscription: cancelImmediately,
+    syncSubscription: (subscription, userId) => syncStripeSubscription(subscription, userId),
+    markSubscriptionRefunded,
+    failRequest: failRefundRequest,
+  }, studentEmail, requestedBy);
 }
 
 export async function syncStripeRefund(refund: Stripe.Refund): Promise<void> {
@@ -174,13 +68,28 @@ export async function syncStripeRefund(refund: Stripe.Refund): Promise<void> {
   if (error) throw new Error(`failed to sync Stripe refund: ${error.message}`);
 }
 
+async function listPurchasesForUser(userId: string, livemode: boolean): Promise<RefundSubscriptionRow[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("student_subscriptions")
+    .select("id,user_id,stripe_subscription_id,stripe_customer_id,stripe_created_at,refundable_until,refunded_at,stripe_refund_id")
+    .eq("user_id", userId)
+    .eq("livemode", livemode)
+    .not("stripe_created_at", "is", null)
+    .order("stripe_created_at", { ascending: true })
+    .returns<RefundSubscriptionRow[]>();
+  if (error) throw new Error(`failed to load refundable subscription: ${error.message}`);
+  return data ?? [];
+}
+
 async function claimRefundRequest(
-  subscription: SubscriptionRow,
+  subscription: RefundSubscriptionRow,
   requestedBy: string,
+  livemode: boolean,
 ): Promise<RefundRequestRow> {
+  const columns = "id,status,stripe_refund_ids,amount,currency";
   const { data: existing, error: existingError } = await supabaseAdmin()
     .from("billing_refunds")
-    .select("id,status,stripe_refund_ids")
+    .select(columns)
     .eq("student_subscription_id", subscription.id)
     .maybeSingle<RefundRequestRow>();
   if (existingError) throw new Error(`failed to load refund request: ${existingError.message}`);
@@ -193,16 +102,16 @@ async function claimRefundRequest(
       student_subscription_id: subscription.id,
       stripe_subscription_id: subscription.stripe_subscription_id,
       requested_by: requestedBy,
-      livemode: billingLivemode(),
+      livemode,
       status: "processing",
     })
-    .select("id,status,stripe_refund_ids")
+    .select(columns)
     .single<RefundRequestRow>();
   if (!error && data) return data;
   if (error?.code === "23505") {
     const { data: raced, error: racedError } = await supabaseAdmin()
       .from("billing_refunds")
-      .select("id,status,stripe_refund_ids")
+      .select(columns)
       .eq("student_subscription_id", subscription.id)
       .single<RefundRequestRow>();
     if (racedError) throw new Error(`failed to reload refund request: ${racedError.message}`);
@@ -233,6 +142,34 @@ async function listRefundablePayments(subscriptionId: string): Promise<Refundabl
   return payments;
 }
 
+async function saveRefunds(
+  requestId: string,
+  input: {
+    refundIds: string[];
+    paymentIntentIds: string[];
+    chargeIds: string[];
+    amount: number;
+    currency: string;
+    status: string;
+    updatedAt: string;
+  },
+): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from("billing_refunds")
+    .update({
+      stripe_refund_ids: input.refundIds,
+      stripe_payment_intent_ids: input.paymentIntentIds,
+      stripe_charge_ids: input.chargeIds,
+      amount: input.amount,
+      currency: input.currency,
+      status: input.status,
+      processing_error: null,
+      updated_at: input.updatedAt,
+    })
+    .eq("id", requestId);
+  if (error) throw new Error(`failed to save Stripe refunds: ${error.message}`);
+}
+
 async function cancelImmediately(subscription: Stripe.Subscription): Promise<Stripe.Subscription> {
   if (subscription.status === "canceled") return subscription;
   const scheduleId = stripeId(subscription.schedule);
@@ -246,13 +183,33 @@ async function cancelImmediately(subscription: Stripe.Subscription): Promise<Str
   return billingStripe().subscriptions.cancel(subscription.id, { invoice_now: false, prorate: false });
 }
 
-async function failRefundRequest(refundRequestId: string, message: string): Promise<void> {
+async function markSubscriptionRefunded(
+  subscriptionId: string,
+  refundId: string | null,
+  refundedAt: string,
+): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from("student_subscriptions")
+    .update({
+      refunded_at: refundedAt,
+      stripe_refund_id: refundId,
+      refundable_until: null,
+      pending_plan_code: null,
+      pending_change_effective_at: null,
+      stripe_schedule_id: null,
+      updated_at: refundedAt,
+    })
+    .eq("id", subscriptionId);
+  if (error) throw new Error(`failed to mark subscription refunded: ${error.message}`);
+}
+
+async function failRefundRequest(refundRequestId: string, message: string, updatedAt: string): Promise<void> {
   await supabaseAdmin()
     .from("billing_refunds")
     .update({
       status: "needs_attention",
       processing_error: message.slice(0, 500),
-      updated_at: new Date().toISOString(),
+      updated_at: updatedAt,
     })
     .eq("id", refundRequestId);
 }

@@ -10,6 +10,8 @@ import {
   type QuestionInput,
   type WalkthroughStepInput,
 } from "@/lib/drills/admin-queries";
+import { reportServerError } from "@/lib/observability/server";
+import { readJsonBody } from "@/lib/security/request";
 
 // Single-question CMS endpoint. Every method authorizes with getAdminSession()
 // before touching the service-role queries. Next 16: ctx.params is a Promise.
@@ -28,7 +30,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
 export async function PUT(req: NextRequest, ctx: Ctx) {
   if (!(await getAdminSession())) return forbidden();
   const { id } = await ctx.params;
-  const body = (await req.json().catch(() => null)) as {
+  const body = (await readJsonBody(req, 1024 * 1024).catch(() => null)) as {
     question: QuestionInput;
     walkthrough: WalkthroughStepInput[];
   } | null;
@@ -40,8 +42,14 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     await updateQuestion({ ...body.question, id });
     await replaceWalkthrough(id, body.walkthrough);
   } catch (error) {
-    console.error("save drill question failed", error);
     const invalidContent = error instanceof ContentPublicationError;
+    if (!invalidContent) {
+      reportServerError("admin.drill_question.save_failed", error, {
+        provider: "supabase",
+        route: "/admin/api/questions/[id]",
+        method: "PUT",
+      });
+    }
     const detail = invalidContent
       ? error.message
       : "The question could not be saved. Verify its publication and Question Bank settings.";
@@ -56,8 +64,14 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   try {
     await deleteQuestion(id);
   } catch (error) {
-    console.error("delete drill question failed", error);
     const hasHistory = error instanceof QuestionHasHistoryError;
+    if (!hasHistory) {
+      reportServerError("admin.drill_question.delete_failed", error, {
+        provider: "supabase",
+        route: "/admin/api/questions/[id]",
+        method: "DELETE",
+      });
+    }
     return NextResponse.json(
       {
         error: "delete_failed",

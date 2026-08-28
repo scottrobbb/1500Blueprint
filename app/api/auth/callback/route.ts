@@ -13,7 +13,9 @@ export async function GET(request: Request) {
   const base = appBaseUrl(requestUrl.origin);
   const raw = requestUrl.searchParams.get("token");
 
-  if (!raw) return NextResponse.redirect(new URL("/login?error=invalid", base));
+  if (!raw || raw.length > 128) {
+    return NextResponse.redirect(new URL("/login?error=invalid", base));
+  }
 
   const result = await consumeLoginToken(raw);
   if (!result) return NextResponse.redirect(new URL("/login?error=expired", base));

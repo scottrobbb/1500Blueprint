@@ -4,6 +4,8 @@ import { gradeCoursePractice, type CoursePracticeAnswer } from "@/lib/courses/pr
 import { canAccessPublishedCourseLesson } from "@/lib/courses/queries";
 import type { CoursePractice, LessonBlock } from "@/lib/courses/types";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { readJsonBody } from "@/lib/security/request";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 type AttemptRequest = {
   lessonId?: string;
@@ -117,7 +119,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  const body = (await request.json().catch(() => null)) as AttemptRequest | null;
+  const rate = await checkRateLimit("course-practice-attempt", session.email, { limit: 120, windowSeconds: 60 * 60 });
+  if (!rate) return NextResponse.json({ error: "Attempt saving is temporarily unavailable" }, { status: 503 });
+  if (!rate.allowed) return NextResponse.json({ error: "Too many attempt requests", resetsAt: rate.resetsAt }, { status: 429 });
+  const body = (await readJsonBody(request, 256 * 1024).catch(() => null)) as AttemptRequest | null;
   if (
     !body?.lessonId
     || !body.blockId

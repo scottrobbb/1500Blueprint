@@ -3,6 +3,8 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { regenerateStudyPlan } from "@/lib/study-planner/plan";
 import { getStudyPlannerProfile } from "@/lib/study-planner/profile";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
+import { reportServerError } from "@/lib/observability/server";
 
 export async function POST() {
   const session = await getSession();
@@ -22,13 +24,26 @@ export async function POST() {
   }
 
   try {
+    const rate = await consumeRateLimit("study-plan-regenerate", session.email, { limit: 30, windowSeconds: 60 * 60 });
+    if (!rate.allowed) {
+      return NextResponse.json({ error: "Too many plan updates. Try again later.", resetsAt: rate.resetsAt }, { status: 429 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Study Planner is temporarily unavailable." }, { status: 503 });
+  }
+
+  try {
     const profile = await getStudyPlannerProfile(session.email);
     if (!profile) {
       return NextResponse.json({ error: "Set up your Study Planner first." }, { status: 409 });
     }
     return NextResponse.json({ plan: await regenerateStudyPlan(session.email, profile) });
   } catch (error) {
-    console.error("study planner regeneration failed", error);
+    reportServerError("study_planner.plan_regeneration_failed", error, {
+      provider: "supabase",
+      route: "/api/study-planner/plan",
+      method: "POST",
+    });
     return NextResponse.json({ error: "Could not retune your plan." }, { status: 500 });
   }
 }

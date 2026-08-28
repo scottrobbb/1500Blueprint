@@ -1,11 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { appBaseUrl } from "@/lib/auth/config";
 import { findAuthUserByEmail, recordPasswordLogin } from "@/lib/auth/accounts";
 import { sendAccountVerification, sendPasswordReset } from "@/lib/auth/email";
 import {
+  PASSWORD_MAX_LENGTH,
   isPasswordAuthEnabled,
   isPasswordSignupEnabled,
   isValidEmail,
@@ -13,15 +14,21 @@ import {
   safeNextPath,
   validatePassword,
 } from "@/lib/auth/password";
+import {
+  friendlyPasswordError,
+  runPasswordAccountCreation,
+  runPasswordLogin,
+  type AuthWorkflowState,
+} from "@/lib/auth/password-workflows";
 import { getLegacySession } from "@/lib/auth/session";
+import { validateProfileName } from "@/lib/settings/profile-name";
+import { reportServerError } from "@/lib/observability/server";
+import { clientAddressFromHeaders } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 
-export type AuthActionState = {
-  status: "idle" | "error" | "success";
-  message: string;
-  field?: "name" | "email" | "password" | "confirmPassword";
-};
+export type AuthActionState = AuthWorkflowState;
 
 export async function loginWithPassword(
   _state: AuthActionState,
@@ -34,30 +41,35 @@ export async function loginWithPassword(
   const next = safeNextPath(formData.get("next"));
 
   if (!isValidEmail(email)) return fieldError("email", "Enter a valid email address.");
-  if (!password) return fieldError("password", "Enter your password.");
-
-  const supabase = createClient(await cookies());
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error || !data.user) {
+  if (!password || password.length > PASSWORD_MAX_LENGTH) {
     return fieldError("password", "The email or password is incorrect.");
   }
-
-  try {
-    const account = await recordPasswordLogin(data.user);
-    if (account.status !== "active") {
-      await supabase.auth.signOut({ scope: "local" });
-      return { status: "error", message: "This student account is not active." };
-    }
-  } catch (error) {
-    console.error("password login account link failed:", error);
-    await supabase.auth.signOut({ scope: "local" });
-    return {
-      status: "error",
-      message: "We could not finish signing you in. Please try again shortly.",
-    };
+  if (!(await authActionAllowed("password-login", email, 10, 15 * 60))) {
+    return fieldError("password", "Too many attempts. Wait a moment and try again.");
   }
 
-  redirect(next);
+  const supabase = createClient(await cookies());
+  const result = await runPasswordLogin(
+    { email, password, next },
+    {
+      signIn: async (credentials) => {
+        const { data, error } = await supabase.auth.signInWithPassword(credentials);
+        return { user: error ? null : data.user };
+      },
+      recordPasswordLogin,
+      signOutLocal: async () => {
+        await supabase.auth.signOut({ scope: "local" });
+      },
+      reportAccountLinkFailure: (error) => {
+        reportServerError("auth.password_login.account_link_failed", error, {
+          provider: "supabase",
+          source: "loginWithPassword",
+        });
+      },
+    },
+  );
+  if (result.kind === "redirect") redirect(result.path);
+  return result.state;
 }
 
 export async function signUpWithPassword(
@@ -96,6 +108,12 @@ export async function requestPasswordReset(
 
   const email = normalizeEmail(formData.get("email"));
   if (!isValidEmail(email)) return fieldError("email", "Enter a valid email address.");
+  if (!(await authActionAllowed("password-reset", email, 3, 15 * 60))) {
+    return {
+      status: "success",
+      message: "If an account exists for that email, a reset link is on its way.",
+    };
+  }
 
   const admin = supabaseAdmin();
   const { data, error } = await admin.auth.admin.generateLink({
@@ -105,7 +123,12 @@ export async function requestPasswordReset(
   });
 
   if (error || !data.properties.hashed_token) {
-    if (error) console.error("password reset link generation failed:", error.message);
+    if (error) {
+      reportServerError("auth.password_reset.link_generation_failed", error, {
+        provider: "supabase",
+        source: "requestPasswordReset",
+      });
+    }
   } else {
     try {
       await sendPasswordReset(
@@ -113,7 +136,10 @@ export async function requestPasswordReset(
         accountConfirmationUrl(data.properties.hashed_token, "recovery", "/account/reset-password"),
       );
     } catch (sendError) {
-      console.error("password reset email failed:", sendError);
+      reportServerError("auth.password_reset.email_failed", sendError, {
+        provider: "resend",
+        source: "requestPasswordReset",
+      });
     }
   }
 
@@ -152,7 +178,10 @@ export async function updatePassword(
   try {
     await recordPasswordLogin(userData.user);
   } catch (accountError) {
-    console.error("password reset account link failed:", accountError);
+    reportServerError("auth.password_reset.account_link_failed", accountError, {
+      provider: "supabase",
+      source: "updatePassword",
+    });
     return {
       status: "error",
       message: "Your password changed, but we could not load your student account.",
@@ -172,8 +201,9 @@ async function createPasswordAccount(
   const confirmPassword = stringValue(formData.get("confirmPassword"));
   const next = safeNextPath(formData.get("next"));
 
-  if (!lockedEmail && name.length < 2) {
-    return fieldError("name", "Enter the student's name.");
+  const nameValidation = validateProfileName(name);
+  if (!lockedEmail && !nameValidation.valid) {
+    return fieldError("name", nameValidation.message);
   }
   if (!isValidEmail(email)) return fieldError("email", "Enter a valid email address.");
 
@@ -182,82 +212,93 @@ async function createPasswordAccount(
   if (password !== confirmPassword) {
     return fieldError("confirmPassword", "The passwords do not match.");
   }
-
-  const admin = supabaseAdmin();
-  if (lockedEmail) {
-    let claimedExistingUser = false;
-    try {
-      const existingAuthUser = await findAuthUserByEmail(email);
-      if (existingAuthUser) {
-        const { error: updateError } = await admin.auth.admin.updateUserById(existingAuthUser.id, {
-          password,
-          email_confirm: true,
-        });
-        if (updateError) throw updateError;
-
-        const supabase = createClient(await cookies());
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (signInError || !signInData.user) {
-          throw signInError ?? new Error("updated auth user could not sign in");
-        }
-
-        await recordPasswordLogin(signInData.user);
-        claimedExistingUser = true;
-      }
-    } catch (existingUserError) {
-      console.error("existing password account claim failed:", existingUserError);
-      return {
-        status: "error",
-        message: "We could not link that existing login. Please try again.",
-      };
-    }
-    if (claimedExistingUser) redirect(next);
-  }
-
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: "signup",
-    email,
-    password,
-    options: {
-      data: name ? { display_name: name } : undefined,
-      redirectTo: `${accountBaseUrl()}${next}`,
-    },
-  });
-
-  if (error || !data.properties.hashed_token) {
-    console.error("password verification link generation failed:", {
-      code: error?.code,
-      status: error?.status,
-      message: error?.message ?? "missing verification token",
-    });
-    return fieldError(
-      "password",
-      friendlyPasswordError(error?.message ?? "Unable to generate verification link"),
-    );
-  }
-
-  try {
-    await sendAccountVerification(
-      email,
-      accountConfirmationUrl(data.properties.hashed_token, "signup", next),
-    );
-  } catch (sendError) {
-    console.error("password verification email failed:", sendError);
-    const { error: cleanupError } = await admin.auth.admin.deleteUser(data.user.id);
-    if (cleanupError) console.error("unconfirmed auth user cleanup failed:", cleanupError.message);
+  if (!(await authActionAllowed(lockedEmail ? "password-claim" : "password-signup", email, lockedEmail ? 5 : 3, 60 * 60))) {
     return {
       status: "error",
-      message: "We could not send the verification email. Please try again.",
+      message: "Too many attempts. Wait a while and try again.",
     };
   }
 
-  return {
-    status: "success",
-    message: "Check your email to verify the address and finish setting up your password.",
-  };
+  const admin = supabaseAdmin();
+  let claimClient: ReturnType<typeof createClient> | null = null;
+  const result = await runPasswordAccountCreation(
+    {
+      email,
+      password,
+      displayName: nameValidation.valid ? nameValidation.name : null,
+      next,
+      redirectTo: `${accountBaseUrl()}${next}`,
+      claimExisting: Boolean(lockedEmail),
+    },
+    {
+      findExistingAuthUser: findAuthUserByEmail,
+      updateExistingPassword: async (userId, nextPassword) => {
+        const { error } = await admin.auth.admin.updateUserById(userId, {
+          password: nextPassword,
+          email_confirm: true,
+        });
+        if (error) throw error;
+      },
+      signIn: async (credentials) => {
+        if (!lockedEmail) return { user: null, error: new Error("claim client is unavailable") };
+        claimClient ??= createClient(await cookies());
+        const { data, error } = await claimClient.auth.signInWithPassword(credentials);
+        return { user: error ? null : data.user, error };
+      },
+      recordPasswordLogin,
+      generateSignupLink: async (input) => {
+        const { data, error } = await admin.auth.admin.generateLink({
+          type: "signup",
+          email: input.email,
+          password: input.password,
+          options: {
+            data: input.displayName ? { display_name: input.displayName } : undefined,
+            redirectTo: input.redirectTo,
+          },
+        });
+        if (error || !data.properties.hashed_token) {
+          return { ok: false, error: error ?? new Error("Missing verification token") };
+        }
+        return {
+          ok: true,
+          userId: data.user.id,
+          hashedToken: data.properties.hashed_token,
+        };
+      },
+      sendVerification: sendAccountVerification,
+      deleteAuthUser: async (userId) => {
+        const { error } = await admin.auth.admin.deleteUser(userId);
+        if (error) throw error;
+      },
+      confirmationUrl: (tokenHash) => accountConfirmationUrl(tokenHash, "signup", next),
+      reportExistingClaimFailure: (error) => {
+        reportServerError("auth.password_claim.existing_user_failed", error, {
+          provider: "supabase",
+          source: "createPasswordAccount",
+        });
+      },
+      reportLinkGenerationFailure: (error) => {
+        reportServerError("auth.password_signup.link_generation_failed", error, {
+          provider: "supabase",
+          source: "createPasswordAccount",
+        });
+      },
+      reportVerificationEmailFailure: (error) => {
+        reportServerError("auth.password_signup.email_failed", error, {
+          provider: "resend",
+          source: "createPasswordAccount",
+        });
+      },
+      reportSignupCleanupFailure: (error) => {
+        reportServerError("auth.password_signup.cleanup_failed", error, {
+          provider: "supabase",
+          source: "createPasswordAccount",
+        });
+      },
+    },
+  );
+  if (result.kind === "redirect") redirect(result.path);
+  return result.state;
 }
 
 function accountBaseUrl(): string {
@@ -280,6 +321,28 @@ function stringValue(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value : "";
 }
 
+async function authActionAllowed(
+  scope: string,
+  email: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  try {
+    const address = clientAddressFromHeaders(await headers());
+    const [addressLimit, emailLimit] = await Promise.all([
+      consumeRateLimit(`${scope}-address`, address, { limit, windowSeconds }),
+      consumeRateLimit(`${scope}-email`, email, { limit, windowSeconds }),
+    ]);
+    return addressLimit.allowed && emailLimit.allowed;
+  } catch (error) {
+    reportServerError("auth.rate_limit.failed", error, {
+      provider: "supabase",
+      source: scope,
+    });
+    return false;
+  }
+}
+
 function fieldError(field: AuthActionState["field"], message: string): AuthActionState {
   return { status: "error", message, field };
 }
@@ -289,18 +352,4 @@ function unavailableState(): AuthActionState {
     status: "error",
     message: "Password sign-in is not enabled yet. Use the current member login.",
   };
-}
-
-function friendlyPasswordError(message: string): string {
-  const normalized = message.toLowerCase();
-  if (normalized.includes("already") || normalized.includes("registered")) {
-    return "An account already exists for that email. Sign in or reset the password.";
-  }
-  if (normalized.includes("password") && normalized.includes("weak")) {
-    return "Choose a stronger password with a mix of letters and numbers.";
-  }
-  if (normalized.includes("rate") || normalized.includes("security")) {
-    return "Too many attempts. Wait a moment and try again.";
-  }
-  return "We could not create that login. Try again or reset the password.";
 }

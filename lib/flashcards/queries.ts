@@ -2,8 +2,11 @@
 // (supabaseAdmin) which bypasses RLS, so callers MUST authorize first
 // (getSession / ownership checks) — never import this into a Client Component.
 
+import "server-only";
+
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { reportServerError } from "@/lib/observability/server";
 import type {
   CardInput,
   FlashcardCard,
@@ -231,7 +234,10 @@ async function insertCards(setId: string, cards: CardInput[]): Promise<boolean> 
   if (rows.length === 0) return true;
   const { error } = await supabaseAdmin().from("flashcard_cards").insert(rows);
   if (error) {
-    console.error("flashcard insertCards failed:", error.message);
+    reportServerError("flashcards.cards_insert_failed", error, {
+      provider: "supabase",
+      source: "insert-cards",
+    });
     return false;
   }
   return true;

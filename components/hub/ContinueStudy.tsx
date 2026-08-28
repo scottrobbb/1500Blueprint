@@ -48,28 +48,26 @@ export function ContinueStudy({
     : 0;
 
   return (
-    <article className="flex min-h-[310px] flex-col rounded-xl border border-navy/12 bg-white">
+    <article className="flex flex-col rounded-xl border border-navy/12 bg-white">
       {continuation ? (
-        <div className="flex flex-1 flex-col items-start justify-center px-5 py-8 sm:px-8">
-          <p className="text-sm font-medium text-navy/50">Continue where you left off</p>
-          <h3 className="mt-2 max-w-xl font-display text-2xl font-semibold leading-tight text-navy">
+        <div className="flex flex-1 flex-col items-start justify-center px-4 py-4 sm:px-5">
+          <h3 className="max-w-xl font-display text-2xl font-semibold leading-tight text-navy">
             {continuation.title}
           </h3>
-          <p className="mt-2 text-sm text-navy/55">{continuation.detail}</p>
-          {saved ? <p className="mt-1 text-xs text-navy/40">Saved {saved.toLowerCase()}</p> : null}
+          {saved ? <p className="mt-1 text-sm text-navy/45">Saved {saved.toLowerCase()}</p> : null}
           <Link
             href={continuation.href}
-            className="mt-6 inline-flex min-h-11 items-center gap-1 rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-navy-700"
+            className="mt-4 inline-flex min-h-11 items-center gap-1 rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-navy-700"
           >
             {actionLabel(continuation)}
             <ChevronRightIcon className="h-4 w-4" />
           </Link>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col items-start justify-center px-5 py-8 sm:px-8">
+        <div className="flex flex-1 flex-col items-start justify-center px-4 py-4 sm:px-5">
           <h3 className="font-display text-2xl font-semibold text-navy">Practice a skill</h3>
           <p className="mt-2 text-sm text-navy/55">Grammar, reading, math, or vocabulary</p>
-          <details className="group relative mt-6">
+          <details className="group relative mt-4">
             <summary className="inline-flex min-h-11 cursor-pointer list-none items-center justify-center gap-1 rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-navy-700 [&::-webkit-details-marker]:hidden">
               Choose a skill
               <ChevronRightIcon className="h-4 w-4 transition-transform group-open:rotate-90" />
@@ -91,7 +89,7 @@ export function ContinueStudy({
           </details>
         </div>
       )}
-      <div className="border-t border-navy/10 px-5 py-4 sm:px-8">
+      <div className="border-t border-navy/10 px-4 py-3 sm:px-5">
         <div className="flex items-center justify-between gap-4 text-sm">
           <span className="font-medium text-navy/55">Daily goal</span>
           <span className="font-semibold tabular-nums text-navy">

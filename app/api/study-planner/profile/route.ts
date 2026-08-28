@@ -4,6 +4,9 @@ import { getSession } from "@/lib/auth/session";
 import { regenerateStudyPlan } from "@/lib/study-planner/plan";
 import { getStudyPlannerProfile } from "@/lib/study-planner/profile";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
+import { readJsonBody } from "@/lib/security/request";
+import { reportServerError } from "@/lib/observability/server";
 
 type ProfileInput = {
   testDate?: unknown;
@@ -85,7 +88,11 @@ export async function GET() {
   try {
     return NextResponse.json({ profile: await getStudyPlannerProfile(auth.email) });
   } catch (error) {
-    console.error("study planner profile read failed", error);
+    reportServerError("study_planner.profile.read_failed", error, {
+      provider: "supabase",
+      route: "/api/study-planner/profile",
+      method: "GET",
+    });
     return NextResponse.json({ error: "Could not load your planner" }, { status: 500 });
   }
 }
@@ -94,9 +101,18 @@ export async function PUT(req: NextRequest) {
   const auth = await requirePlannerAccess();
   if ("response" in auth) return auth.response;
 
+  try {
+    const rate = await consumeRateLimit("study-plan-profile", auth.email, { limit: 30, windowSeconds: 60 * 60 });
+    if (!rate.allowed) {
+      return NextResponse.json({ error: "Too many plan updates. Try again later.", resetsAt: rate.resetsAt }, { status: 429 });
+    }
+  } catch {
+    return NextResponse.json({ error: "Study Planner is temporarily unavailable." }, { status: 503 });
+  }
+
   let input: ProfileInput;
   try {
-    input = (await req.json()) as ProfileInput;
+    input = (await readJsonBody(req, 16 * 1024)) as ProfileInput;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -119,7 +135,11 @@ export async function PUT(req: NextRequest) {
   try {
     existingProfile = await getStudyPlannerProfile(auth.email);
   } catch (error) {
-    console.error("study planner profile lookup failed", error);
+    reportServerError("study_planner.profile.lookup_failed", error, {
+      provider: "supabase",
+      route: "/api/study-planner/profile",
+      method: "PUT",
+    });
     return NextResponse.json({ error: "Could not save your planner" }, { status: 500 });
   }
   const updatedAt = new Date().toISOString();
@@ -139,7 +159,11 @@ export async function PUT(req: NextRequest) {
     updated_at: updatedAt,
   }, { onConflict: "email" });
   if (error) {
-    console.error("study planner profile save failed", error);
+    reportServerError("study_planner.profile.save_failed", error, {
+      provider: "supabase",
+      route: "/api/study-planner/profile",
+      method: "PUT",
+    });
     return NextResponse.json({ error: "Could not save your planner" }, { status: 500 });
   }
 
@@ -149,7 +173,11 @@ export async function PUT(req: NextRequest) {
     const plan = await regenerateStudyPlan(auth.email, profile);
     return NextResponse.json({ profile, plan });
   } catch (error) {
-    console.error("study planner generation failed", error);
+    reportServerError("study_planner.plan_generation_failed", error, {
+      provider: "supabase",
+      route: "/api/study-planner/profile",
+      method: "PUT",
+    });
     return NextResponse.json({ error: "Your settings were saved, but the plan could not be built." }, { status: 500 });
   }
 }
@@ -160,7 +188,7 @@ export async function PATCH(req: NextRequest) {
 
   let input: ProfileInput;
   try {
-    input = (await req.json()) as ProfileInput;
+    input = (await readJsonBody(req, 16 * 1024)) as ProfileInput;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -197,7 +225,11 @@ export async function PATCH(req: NextRequest) {
     .eq("email", auth.email)
     .maybeSingle<{ email: string }>();
   if (existingError) {
-    console.error("study planner profile lookup failed", existingError);
+    reportServerError("study_planner.profile.lookup_failed", existingError, {
+      provider: "supabase",
+      route: "/api/study-planner/profile",
+      method: "PATCH",
+    });
     return NextResponse.json({ error: "Could not update your score" }, { status: 500 });
   }
   if (!existing) return NextResponse.json({ error: "Set up your Study Planner first." }, { status: 409 });
@@ -208,7 +240,11 @@ export async function PATCH(req: NextRequest) {
     .update(settingsChanged ? { ...update, updated_at: new Date().toISOString() } : update)
     .eq("email", auth.email);
   if (error) {
-    console.error("study planner profile update failed", error);
+    reportServerError("study_planner.profile.update_failed", error, {
+      provider: "supabase",
+      route: "/api/study-planner/profile",
+      method: "PATCH",
+    });
     return NextResponse.json({ error: "Could not update your score" }, { status: 500 });
   }
   return NextResponse.json({ profile: await getStudyPlannerProfile(auth.email) });

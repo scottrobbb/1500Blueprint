@@ -5,6 +5,7 @@
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { reportServerError } from "@/lib/observability/server";
 import type {
   Author,
   CommenterAvatar,
@@ -202,7 +203,10 @@ export async function listPosts(
   const primary = await query.returns<PostRow[]>();
   let rows: PostRow[];
   if (primary.error) {
-    console.error("listPosts: enhanced select failed, falling back:", primary.error.message);
+    reportServerError("community.posts.enhanced_query_failed", primary.error, {
+      provider: "supabase",
+      source: "list-posts-fallback",
+    });
     let fallback = db
       .from("community_posts")
       .select(POST_SELECT_FALLBACK)
@@ -232,7 +236,10 @@ export async function getPost(id: string, viewerEmail: string): Promise<Communit
   const primary = await db.from("community_posts").select(POST_SELECT).eq("id", id).maybeSingle().returns<PostRow>();
   let row: PostRow | null;
   if (primary.error) {
-    console.error("getPost: enhanced select failed, falling back:", primary.error.message);
+    reportServerError("community.post.enhanced_query_failed", primary.error, {
+      provider: "supabase",
+      source: "get-post-fallback",
+    });
     const backup = await db
       .from("community_posts")
       .select(POST_SELECT_FALLBACK)

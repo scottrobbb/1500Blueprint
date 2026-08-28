@@ -94,3 +94,24 @@ export function ShieldIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+// Sliders — shared settings action throughout the app.
+export function SettingsIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9M4 12h4M12 12h8" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="17" r="2" />
+      <circle cx="10" cy="12" r="2" />
+    </svg>
+  );
+}

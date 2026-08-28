@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { createSet } from "@/lib/flashcards/queries";
-import type { CardInput, SetVisibility } from "@/lib/flashcards/types";
+import { MAX_FLASHCARD_SET_BYTES, parseSetInput } from "@/lib/flashcards/input";
+import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 // Create a flashcard set. Any signed-in member can create one for themselves;
 // only an admin may publish it to all students (visibility = 'shared').
@@ -10,22 +12,25 @@ export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const body = (await req.json()) as {
-    title?: string;
-    description?: string | null;
-    cards?: CardInput[];
-    visibility?: SetVisibility;
-  };
+  let value: unknown;
+  try {
+    value = await readJsonBody(req, MAX_FLASHCARD_SET_BYTES);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof RequestBodyTooLargeError ? "too_large" : "invalid_body" },
+      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
+    );
+  }
+  const input = parseSetInput(value, isAdminEmail(session.email));
+  if (!input) return NextResponse.json({ error: "invalid_set" }, { status: 400 });
+  try {
+    const rate = await consumeRateLimit("flashcard-set-write", session.email, { limit: 60, windowSeconds: 60 * 60 });
+    if (!rate.allowed) return NextResponse.json({ error: "rate_limit", resetsAt: rate.resetsAt }, { status: 429 });
+  } catch {
+    return NextResponse.json({ error: "temporarily_unavailable" }, { status: 503 });
+  }
 
-  const visibility: SetVisibility =
-    body.visibility === "shared" && isAdminEmail(session.email) ? "shared" : "private";
-
-  const id = await createSet(session.email, {
-    title: body.title ?? "",
-    description: body.description ?? null,
-    visibility,
-    cards: Array.isArray(body.cards) ? body.cards : [],
-  });
+  const id = await createSet(session.email, input);
 
   if (!id) return NextResponse.json({ error: "create_failed" }, { status: 500 });
   return NextResponse.json({ id }, { status: 201 });

@@ -1,13 +1,15 @@
-// Runtime reader for drill content, used by the student-facing players. Uses
-// the publishable (anon) key under RLS, so it only ever sees status='published'
-// questions (and their walkthrough steps). Mirrors lib/sat/loadTest.ts.
+// Runtime reader for drill content, used by the student-facing players. Paid
+// content is read only with the server-side client after the calling page or
+// route has enforced session, publication, and plan access.
 //
 // Note: this intentionally does NOT read drills.grading_prompt — grading runs
 // server-side, and Scott's prompts should not ship to the browser.
 
+import "server-only";
+
 import type { Difficulty } from "@/lib/sat/types";
-import { supabasePublishable } from "@/utils/supabase/publishable";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { signCourseAssetReferences } from "@/lib/courses/assets.server";
 import {
   canAccessPublication,
   isMissingPublicationStatusColumn,
@@ -81,10 +83,13 @@ export async function loadDrillQuestions(
   drillSlug: DrillSlug,
   options: { includeDraftDrill?: boolean } = {},
 ): Promise<DrillQuestion[]> {
+  // Preserve the existing caller contract; draft parent access is authorized
+  // separately, while student question rows must still be published.
+  void options;
   const rows: QuestionRow[] = [];
   const pageSize = 1000;
   for (let from = 0; ; from += pageSize) {
-    const db = options.includeDraftDrill ? supabaseAdmin() : supabasePublishable();
+    const db = supabaseAdmin();
     const { data, error } = await db
       .from("drill_questions")
       .select(
@@ -103,7 +108,7 @@ export async function loadDrillQuestions(
     rows.push(...page);
     if (page.length < pageSize) break;
   }
-  return rows.map(toQuestion);
+  return (await signCourseAssetReferences(rows)).map(toQuestion);
 }
 
 export async function canAccessDrillPublication(slug: string, isAdmin: boolean): Promise<boolean> {

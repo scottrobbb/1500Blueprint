@@ -3,6 +3,7 @@ import "server-only";
 import { getSession, type Session } from "./session";
 import { isAdminEmail } from "./admin";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { hasActiveStaffAssignment } from "./staff-policy";
 
 export type StaffRole = "explanation_editor";
 
@@ -23,14 +24,23 @@ type StaffRoleRow = {
 
 export async function hasStaffRole(email: string, role: StaffRole): Promise<boolean> {
   if (isAdminEmail(email)) return true;
-  const { data, error } = await supabaseAdmin()
-    .from("staff_roles")
-    .select("email")
-    .eq("email", email.trim().toLowerCase())
-    .eq("role", role)
-    .maybeSingle<{ email: string }>();
-  if (error) throw new Error(`failed to load staff role: ${error.message}`);
-  return Boolean(data);
+  const normalizedEmail = email.trim().toLowerCase();
+  const [assignment, account] = await Promise.all([
+    supabaseAdmin()
+      .from("staff_roles")
+      .select("email")
+      .eq("email", normalizedEmail)
+      .eq("role", role)
+      .maybeSingle<{ email: string }>(),
+    supabaseAdmin()
+      .from("users")
+      .select("account_status")
+      .eq("email", normalizedEmail)
+      .maybeSingle<{ account_status: string }>(),
+  ]);
+  if (assignment.error) throw new Error(`failed to load staff role: ${assignment.error.message}`);
+  if (account.error) throw new Error(`failed to load staff account: ${account.error.message}`);
+  return hasActiveStaffAssignment(Boolean(assignment.data), account.data?.account_status);
 }
 
 export async function getExplanationEditorSession(): Promise<Session | null> {

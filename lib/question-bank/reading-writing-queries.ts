@@ -11,10 +11,11 @@ import {
   type ReadingWritingRunnerQuestion,
   type ReadingWritingSkillMetric,
 } from "@/lib/question-bank/reading-writing";
-import { calculateAccuracy, canAccessQuestionBankLevel, prioritizeBoundedQuestions, questionBankLevel } from "@/lib/question-bank/math";
+import { boundedQuestionBankSessionLimit, calculateAccuracy, canAccessQuestionBankLevel, prioritizeBoundedQuestions, prioritizeUnattemptedQuestions, questionBankLevel } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
+import { signCourseAssetReferences } from "@/lib/courses/assets.server";
 
 type ReadingQuestionRow = {
   id: string;
@@ -92,12 +93,17 @@ export async function getReadingWritingRunnerQuestions(
   const preferredRows = completionRows.filter((row) => (
     filters.difficulty === "all" || row.difficulty === filters.difficulty
   ));
-  const preferred = toReadingWritingRunnerQuestions(preferredRows);
-  if (limit === null || preferred.length >= limit) return limit === null ? preferred : preferred.slice(0, limit);
+  const sessionLimit = boundedQuestionBankSessionLimit(limit);
+  const preferred = toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
+  if (preferred.length >= sessionLimit) return preferred.slice(0, sessionLimit);
 
   return prioritizeBoundedQuestions(
-    [preferred, toReadingWritingRunnerQuestions(completionRows), toReadingWritingRunnerQuestions(skillRows)],
-    limit,
+    [
+      preferred,
+      toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(completionRows, activity.attemptedIds)),
+      toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(skillRows, activity.attemptedIds)),
+    ],
+    sessionLimit,
   );
 }
 
@@ -165,7 +171,7 @@ async function loadEligibleReadingRows(questionId?: string): Promise<ReadingQues
     if (questions.error) throw databaseError("Could not load Reading & Writing bank", questions.error);
     rows.push(...(questions.data ?? []));
   }
-  return rows
+  return signCourseAssetReferences(rows
     .filter((row) => isQuestionBankRuntimeReady({
       drillSlug: "grammar",
       section: "rw",
@@ -177,7 +183,7 @@ async function loadEligibleReadingRows(questionId?: string): Promise<ReadingQues
       passage: row.passage,
       content: row.content,
     }))
-    .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    .sort((a, b) => a.created_at.localeCompare(b.created_at)));
 }
 
 const QUESTION_SELECT =

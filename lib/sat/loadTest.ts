@@ -1,5 +1,7 @@
-import { supabasePublishable } from "@/utils/supabase/publishable";
+import "server-only";
+
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { signCourseAssetReferences } from "@/lib/courses/assets.server";
 import {
   canAccessPublication,
   isMissingPublicationStatusColumn,
@@ -105,7 +107,7 @@ function buildModule(m: ModuleRow): TestModule {
 
 /** Load a test by slug from Supabase and assemble it into the runner's PracticeTest shape. */
 export async function loadTest(slug: string, options: TestLoadOptions = {}): Promise<PracticeTest | null> {
-  const db = options.includeDraft ? supabaseAdmin() : supabasePublishable();
+  const db = supabaseAdmin();
   let query = db
     .from("tests")
     .select(`${TEST_CONTENT_SELECT},status`)
@@ -132,6 +134,7 @@ export async function loadTest(slug: string, options: TestLoadOptions = {}): Pro
   }
 
   if (!data) return null;
+  data = await signCourseAssetReferences(data);
 
   const sections: Section[] = [];
   for (const sid of ["rw", "math"] as SectionId[]) {
@@ -161,7 +164,7 @@ export async function loadTest(slug: string, options: TestLoadOptions = {}): Pro
 
 /** Lightweight list of all tests for the picker (slug + title only, no questions). */
 export async function listTests(options: TestLoadOptions = {}): Promise<{ slug: string; title: string; status: PublicationStatus }[]> {
-  const db = options.includeDraft ? supabaseAdmin() : supabasePublishable();
+  const db = supabaseAdmin();
   let query = db
     .from("tests")
     .select("slug,title,status");

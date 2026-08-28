@@ -8,6 +8,7 @@ import {
 } from "@/lib/drills/progress";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import type { VocabContent } from "./types";
+import { reportServerError } from "@/lib/observability/server";
 import type { VocabImportEntry } from "./vocabImport";
 import {
   nextVocabFlashcardPosition,
@@ -378,7 +379,10 @@ export async function recordVocabAnswer(
       autoAdded = true;
     } catch (error) {
       flashcardSaveFailed = true;
-      console.error("Vocab answer was saved but auto-add failed", error);
+      reportServerError("drill.vocab.auto_add_flashcard_failed", error, {
+        provider: "supabase",
+        source: "record-vocab-answer",
+      });
     }
   }
   return {

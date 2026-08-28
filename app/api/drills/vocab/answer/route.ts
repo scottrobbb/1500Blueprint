@@ -5,15 +5,21 @@ import { canAccessDrillPublication } from "@/lib/drills/loadDrillContent";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { drillAllowance } from "@/lib/auth/access-control";
 import { hasRecordedDrillQuestionAttempt } from "@/lib/drills/progress";
+import { readJsonBody } from "@/lib/security/request";
+import { reportServerError } from "@/lib/observability/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const rate = await checkRateLimit("vocab-answer", session.email, { limit: 1_000, windowSeconds: 60 * 60 });
+  if (!rate) return NextResponse.json({ error: "Answer saving is temporarily unavailable" }, { status: 503 });
+  if (!rate.allowed) return NextResponse.json({ error: "Too many answer requests", resetsAt: rate.resetsAt }, { status: 429 });
   const isAdmin = isAdminEmail(session.email);
   if (!(await canAccessDrillPublication("vocab", isAdmin))) {
     return NextResponse.json({ error: "Drill not found" }, { status: 404 });
   }
-  const body = (await request.json().catch(() => null)) as
+  const body = (await readJsonBody(request, 8 * 1024).catch(() => null)) as
     | {
         questionId?: unknown;
         selectedWord?: unknown;
@@ -23,7 +29,11 @@ export async function POST(request: Request) {
     | null;
   if (
     typeof body?.questionId !== "string"
+    || body.questionId.length === 0
+    || body.questionId.length > 160
     || typeof body.selectedWord !== "string"
+    || body.selectedWord.length === 0
+    || body.selectedWord.length > 500
     || typeof body.clientToken !== "string"
     || body.clientToken.length === 0
     || body.clientToken.length > 200
@@ -56,7 +66,13 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not record answer.";
     const invalid = /not found|not an answer choice|no correct word/i.test(message);
-    if (!invalid) console.error("Vocab answer failed", error);
+    if (!invalid) {
+      reportServerError("drill.vocab.answer_failed", error, {
+        provider: "supabase",
+        route: "/api/drills/vocab/answer",
+        method: "POST",
+      });
+    }
     return NextResponse.json(
       { error: invalid ? message : "Could not record the vocab answer." },
       { status: invalid ? 400 : 500 },

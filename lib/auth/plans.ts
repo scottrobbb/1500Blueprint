@@ -85,8 +85,10 @@ export function effectivePlan(
   grant: PlanCode | null,
   subscription: PlanCode | null,
   legacy: PlanCode,
+  hasTrackedSubscription = subscription !== null,
 ): PlanCode {
-  return grant || subscription ? highestPlan(grant ?? "free", subscription ?? "free") : legacy;
+  if (grant || subscription) return highestPlan(grant ?? "free", subscription ?? "free");
+  return hasTrackedSubscription ? "free" : legacy;
 }
 
 export function accessForPlan(
@@ -106,6 +108,11 @@ export function accessForPlan(
     source,
     entitlements: PLAN_ENTITLEMENTS[plan],
   };
+}
+
+export function canAccessCourse(access: StudentAccess, courseSlug: string): boolean {
+  if (!access.active) return false;
+  return hasCourseAccess(access.entitlements, courseSlug);
 }
 
 export function accessForTestPersona(

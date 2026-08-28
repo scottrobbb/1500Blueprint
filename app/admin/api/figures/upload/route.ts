@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { contentLengthExceeds, hasImageSignature } from "@/lib/security/request";
+import { reportServerError } from "@/lib/observability/server";
 
 export const runtime = "nodejs";
 
@@ -23,13 +25,12 @@ async function ensureBucket() {
   if (error && !/already exists/i.test(error.message)) throw error;
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Unknown upload error";
-}
-
 export async function POST(req: NextRequest) {
   if (!(await getAdminSession())) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+  if (contentLengthExceeds(req, MAX_BYTES + 256 * 1024)) {
+    return NextResponse.json({ error: "too_large" }, { status: 413 });
   }
 
   let file: FormDataEntryValue | null;
@@ -53,9 +54,13 @@ export async function POST(req: NextRequest) {
 
   try {
     await ensureBucket();
+    const buffer = Buffer.from(await file.arrayBuffer());
+    if (!hasImageSignature(buffer, file.type)) {
+      return NextResponse.json({ error: "invalid_image" }, { status: 400 });
+    }
     const storage = supabaseAdmin().storage.from(BUCKET);
     const path = `admin/${crypto.randomUUID()}.${extension}`;
-    const { error } = await storage.upload(path, Buffer.from(await file.arrayBuffer()), {
+    const { error } = await storage.upload(path, buffer, {
       cacheControl: "31536000",
       contentType: file.type,
       upsert: false,
@@ -64,7 +69,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: storage.getPublicUrl(path).data.publicUrl });
   } catch (error) {
-    console.error("Admin figure upload failed", { message: errorMessage(error) });
+    reportServerError("admin.figure_upload.failed", error, {
+      provider: "supabase",
+      route: "/admin/api/figures/upload",
+      method: "POST",
+    });
     return NextResponse.json({ error: "upload_failed" }, { status: 500 });
   }
 }

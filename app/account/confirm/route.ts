@@ -8,6 +8,7 @@ import {
   safeNextPath,
 } from "@/lib/auth/password";
 import { createClient } from "@/utils/supabase/server";
+import { reportServerError } from "@/lib/observability/server";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -19,7 +20,11 @@ export async function GET(request: Request) {
   const verificationType = requestUrl.searchParams.get("type");
   const next = safeNextPath(requestUrl.searchParams.get("next"));
   const isEmailVerification = verificationType === "signup" || verificationType === "recovery";
-  if (!code && (!tokenHash || !isEmailVerification)) {
+  if (
+    (code && code.length > 2048)
+    || (tokenHash && tokenHash.length > 2048)
+    || (!code && (!tokenHash || !isEmailVerification))
+  ) {
     return NextResponse.redirect(new URL("/account/login?error=confirmation", base));
   }
 
@@ -43,7 +48,11 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/account/login?error=account", base));
     }
   } catch (accountError) {
-    console.error("auth confirmation account link failed:", accountError);
+    reportServerError("auth.confirmation.account_link_failed", accountError, {
+      provider: "supabase",
+      route: "/account/confirm",
+      method: "GET",
+    });
     await supabase.auth.signOut({ scope: "local" });
     return NextResponse.redirect(new URL("/account/login?error=account", base));
   }

@@ -1,4 +1,5 @@
 export const PASSWORD_MIN_LENGTH = 10;
+export const PASSWORD_MAX_LENGTH = 128;
 
 export type PasswordValidation =
   | { valid: true }
@@ -24,7 +25,7 @@ export function normalizeEmail(value: FormDataEntryValue | null): string {
 }
 
 export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export function validatePassword(password: string): PasswordValidation {
@@ -32,6 +33,12 @@ export function validatePassword(password: string): PasswordValidation {
     return {
       valid: false,
       message: `Use at least ${PASSWORD_MIN_LENGTH} characters.`,
+    };
+  }
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    return {
+      valid: false,
+      message: `Use ${PASSWORD_MAX_LENGTH} characters or fewer.`,
     };
   }
   if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {

@@ -12,13 +12,20 @@ import { saveModuleAttempt } from "@/lib/sat/moduleAttempts";
 import type { AnswerMap } from "@/lib/sat/types";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
+import { readIdempotencyToken } from "@/lib/idempotency";
+import { reportServerError } from "@/lib/observability/server";
+import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
+import { sanitizeAnswerMap, sanitizePerQuestionTime } from "@/lib/sat/submission";
+
+const MAX_COMPLETION_BYTES = 256 * 1024;
 
 type Body = {
   testSlug?: string;
   moduleKey?: string;
   answers?: AnswerMap;
   perQuestionTime?: Record<string, number>;
-  clientToken?: string;
+  clientToken?: unknown;
 };
 
 export async function POST(req: NextRequest) {
@@ -27,15 +34,29 @@ export async function POST(req: NextRequest) {
 
   let body: Body;
   try {
-    body = (await req.json()) as Body;
-  } catch {
-    return NextResponse.json({ error: "bad_json" }, { status: 400 });
+    const value = await readJsonBody(req, MAX_COMPLETION_BYTES);
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("Invalid body");
+    body = value as Body;
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof RequestBodyTooLargeError ? "too_large" : "bad_json" },
+      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
+    );
   }
 
   const { testSlug, moduleKey } = body;
-  if (!testSlug || !moduleKey) {
+  if (
+    typeof testSlug !== "string"
+    || testSlug.length === 0
+    || testSlug.length > 160
+    || typeof moduleKey !== "string"
+    || moduleKey.length === 0
+    || moduleKey.length > 160
+  ) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
   }
+  const clientToken = readIdempotencyToken(body.clientToken);
+  if (!clientToken) return NextResponse.json({ error: "invalid_completion_token" }, { status: 400 });
   const isAdmin = isAdminEmail(session.email);
   if (!isAdmin && !(await canAccessPracticeTest(session.email, testSlug))) {
     return NextResponse.json({ error: "plan_limit" }, { status: 402 });
@@ -45,7 +66,16 @@ export async function POST(req: NextRequest) {
   const found = getModuleByKey(test, moduleKey);
   if (!found) return NextResponse.json({ error: "module_not_found" }, { status: 404 });
 
-  const answers = body.answers ?? {};
+  const questionIds = new Set(found.module.questions.map((question) => question.id));
+  const answers = sanitizeAnswerMap(body.answers, questionIds);
+  const perQuestionTime = sanitizePerQuestionTime(body.perQuestionTime, questionIds);
+  if (!answers || !perQuestionTime) return NextResponse.json({ error: "invalid_completion_data" }, { status: 400 });
+  try {
+    const rate = await consumeRateLimit("practice-module-completion", session.email, { limit: 60, windowSeconds: 60 * 60 });
+    if (!rate.allowed) return NextResponse.json({ error: "rate_limit", resetsAt: rate.resetsAt }, { status: 429 });
+  } catch {
+    return NextResponse.json({ error: "temporarily_unavailable" }, { status: 503 });
+  }
   const correct = found.module.questions.reduce(
     (n, q) => n + (isCorrect(q, answers[q.id]) ? 1 : 0),
     0,
@@ -60,13 +90,17 @@ export async function POST(req: NextRequest) {
       correct,
       total,
       answers,
-      perQuestionTime: body.perQuestionTime ?? {},
+      perQuestionTime,
       moduleSnapshot: { meta: found.meta, module: found.module },
-      clientToken: body.clientToken,
+      clientToken,
     });
     return NextResponse.json({ attemptId: id, correct, total });
   } catch (e) {
-    console.error("module attempt save failed:", e);
+    reportServerError("practice_test.module_completion_save.failed", e, {
+      provider: "supabase",
+      route: "/api/practice-test/module/complete",
+      method: "POST",
+    });
     return NextResponse.json({ error: "save_failed" }, { status: 500 });
   }
 }

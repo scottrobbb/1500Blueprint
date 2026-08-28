@@ -4,6 +4,11 @@ import { getHubState } from "@/lib/gamification/state";
 import { createPost } from "@/lib/community/queries";
 import { notifyForPost } from "@/lib/community/notifications";
 import { isCategory } from "@/lib/community/types";
+import { normalizeHttpUrl, readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
+
+const MAX_POST_LENGTH = 10_000;
+const MAX_POST_BYTES = 16 * 1024;
 
 // Create a community post. Any signed-in member can post; the author display
 // fields are snapshot from their current hub profile.
@@ -11,14 +16,33 @@ export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as {
+  let body: {
     category?: string;
     body?: string;
     imageUrl?: string | null;
   };
-  const text = (body.body ?? "").trim();
-  const imageUrl = typeof body.imageUrl === "string" && body.imageUrl ? body.imageUrl : null;
+  try {
+    const value = await readJsonBody(req, MAX_POST_BYTES);
+    if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("Invalid body");
+    body = value as typeof body;
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof RequestBodyTooLargeError ? "too_large" : "invalid_body" },
+      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
+    );
+  }
+  const text = typeof body.body === "string" ? body.body.trim() : "";
+  if (text.length > MAX_POST_LENGTH) return NextResponse.json({ error: "too_long" }, { status: 400 });
+  const imageUrl = body.imageUrl ? normalizeHttpUrl(body.imageUrl) : null;
+  if (body.imageUrl && !imageUrl) return NextResponse.json({ error: "invalid_image" }, { status: 400 });
   if (!text && !imageUrl) return NextResponse.json({ error: "empty" }, { status: 400 });
+
+  try {
+    const rate = await consumeRateLimit("community-post", session.email, { limit: 10, windowSeconds: 60 * 60 });
+    if (!rate.allowed) return NextResponse.json({ error: "rate_limit", resetsAt: rate.resetsAt }, { status: 429 });
+  } catch {
+    return NextResponse.json({ error: "temporarily_unavailable" }, { status: 503 });
+  }
 
   const category = isCategory(body.category) ? body.category : "general";
   const hub = await getHubState(session.email);

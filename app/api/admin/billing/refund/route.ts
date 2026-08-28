@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { billingBaseUrl } from "@/lib/billing/config";
 import { BillingRefundError, refundFirstPurchase } from "@/lib/billing/refunds";
+import { reportServerError } from "@/lib/observability/server";
 
 export async function POST(request: Request) {
   const session = await getAdminSession();
@@ -18,7 +19,13 @@ export async function POST(request: Request) {
     await refundFirstPurchase(email, session.email);
     return redirect(baseUrl, "success");
   } catch (error) {
-    console.error("Admin Stripe refund failed:", error);
+    if (!(error instanceof BillingRefundError)) {
+      reportServerError("billing.refund.failed", error, {
+        provider: "stripe",
+        route: "/api/admin/billing/refund",
+        method: "POST",
+      });
+    }
     return redirect(baseUrl, error instanceof BillingRefundError ? error.code : "error");
   }
 }

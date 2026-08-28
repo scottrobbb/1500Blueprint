@@ -387,7 +387,7 @@ function CardField({
           <ImageIcon className="h-3.5 w-3.5" />
           {uploading ? "Uploading…" : imageUrl ? "Replace" : "Image"}
         </button>
-        <input ref={inputRef} type="file" accept="image/*" onChange={onPick} className="hidden" />
+        <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={onPick} className="hidden" />
       </div>
 
       {value.includes("$") && (

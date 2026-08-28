@@ -57,7 +57,9 @@ export function CourseAssetUpload({
       }
       const uploaded = await createClient().storage.from("course-assets").uploadToSignedUrl(signed.path, signed.token, file, { contentType: file.type, cacheControl: "31536000" });
       if (uploaded.error) { setError("Upload failed. Try again."); return; }
-      onUploaded(signed.url, signed.name ?? file.name);
+      const previewResponse = await fetch(`/api/admin/courses/upload?path=${encodeURIComponent(signed.path)}`);
+      const preview = (await previewResponse.json().catch(() => null)) as { url?: string } | null;
+      onUploaded(previewResponse.ok && preview?.url ? preview.url : signed.url, signed.name ?? file.name);
     } catch {
       setError("Upload failed. Check your connection and try again.");
     } finally {

@@ -1,0 +1,420 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import type Stripe from "stripe";
+import {
+  createCheckoutPostHandler,
+  type CheckoutHandlerDeps,
+} from "../../app/api/billing/checkout/handler";
+import {
+  createConfirmGetHandler,
+  type ConfirmCheckout,
+  type ConfirmHandlerDeps,
+} from "../../app/api/billing/confirm/handler";
+import {
+  createPortalPostHandler,
+  type PortalHandlerDeps,
+} from "../../app/api/billing/portal/handler";
+import {
+  createWebhookPostHandler,
+  type WebhookHandlerDeps,
+} from "../../app/api/billing/webhook/handler";
+
+const APP_URL = "https://app.example";
+const NOW = Date.parse("2026-08-28T12:00:00.000Z");
+const RESERVATION_ID = "1cddf8d9-38ff-4d90-8b57-030b91082e18";
+const ACCOUNT = {
+  id: "user_123",
+  email: "student@example.com",
+  name: "Student",
+  status: "active" as const,
+  stripeCustomerId: "cus_123",
+};
+
+function formRequest(path: string, values: Record<string, string>, origin = APP_URL): Request {
+  return new Request(`${APP_URL}${path}`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      origin,
+    },
+    body: new URLSearchParams(values),
+  });
+}
+
+function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHandlerDeps {
+  return {
+    baseUrl: () => APP_URL,
+    livemode: () => false,
+    now: () => NOW,
+    getSession: async () => ({ email: ACCOUNT.email }),
+    findAccount: async () => ACCOUNT,
+    consumeRateLimit: async () => ({ allowed: true }),
+    findActiveSubscriptionCustomer: async () => null,
+    changePlan: async () => ({ kind: "unchanged" }),
+    createPortal: async () => ({ url: "https://billing.stripe.com/p/session" }),
+    claimIntent: async () => ({
+      decision: "claimed",
+      reservationId: RESERVATION_ID,
+      checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
+      checkoutUrl: null,
+    }),
+    ensureCustomer: async () => "cus_123",
+    resolvePrice: async () => "price_core_monthly",
+    createCheckout: async () => ({
+      id: "cs_test_123456789",
+      url: "https://checkout.stripe.com/c/pay/cs_test_123456789",
+    }),
+    storeCheckout: async () => undefined,
+    reportError: () => undefined,
+    ...overrides,
+  };
+}
+
+test("checkout claims before Stripe and uses the durable reservation for metadata, expiry, and idempotency", async () => {
+  const order: string[] = [];
+  let created: Parameters<CheckoutHandlerDeps["createCheckout"]> | null = null;
+  let stored: Parameters<CheckoutHandlerDeps["storeCheckout"]>[0] | null = null;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async (input) => {
+      order.push(`claim:${input.requestToken}`);
+      return {
+        decision: "claimed",
+        reservationId: RESERVATION_ID,
+        checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
+        checkoutUrl: null,
+      };
+    },
+    createCheckout: async (...args) => {
+      order.push("stripe");
+      created = args;
+      return {
+        id: "cs_test_123456789",
+        url: "https://checkout.stripe.com/c/pay/cs_test_123456789",
+      };
+    },
+    storeCheckout: async (input) => {
+      order.push("store");
+      stored = input;
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    cadence: "monthly",
+    checkoutToken: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+  }));
+
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), "https://checkout.stripe.com/c/pay/cs_test_123456789");
+  assert.deepEqual(order, ["claim:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", "stripe", "store"]);
+  assert.ok(created);
+  const [params, key] = created as unknown as Parameters<CheckoutHandlerDeps["createCheckout"]>;
+  assert.equal(key, `blueprint-checkout-${RESERVATION_ID}`);
+  assert.equal(params.expires_at, Math.floor((NOW + 60 * 60 * 1000) / 1000));
+  assert.equal(params.metadata.checkout_reservation_id, RESERVATION_ID);
+  assert.equal(params.metadata.user_id, ACCOUNT.id);
+  assert.deepEqual(stored, {
+    userId: ACCOUNT.id,
+    livemode: false,
+    reservationId: RESERVATION_ID,
+    sessionId: "cs_test_123456789",
+    sessionUrl: "https://checkout.stripe.com/c/pay/cs_test_123456789",
+  });
+});
+
+test("checkout accepts the current Max three-month offer", async () => {
+  let claimed: Parameters<CheckoutHandlerDeps["claimIntent"]>[0] | null = null;
+  let resolved: [string, string] | null = null;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async (input) => {
+      claimed = input;
+      return {
+        decision: "claimed",
+        reservationId: RESERVATION_ID,
+        checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
+        checkoutUrl: null,
+      };
+    },
+    resolvePrice: async (plan, cadence) => {
+      resolved = [plan, cadence];
+      return "price_max_three_month";
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max",
+    cadence: "three_month",
+    checkoutToken: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  }));
+
+  assert.equal(response.status, 303);
+  assert.deepEqual(claimed, {
+    userId: ACCOUNT.id,
+    livemode: false,
+    plan: "max",
+    cadence: "three_month",
+    requestToken: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  });
+  assert.deepEqual(resolved, ["max", "three_month"]);
+});
+
+test("checkout reuses a ready reservation and never creates a second Stripe session", async () => {
+  let stripeCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async () => ({
+      decision: "ready",
+      reservationId: RESERVATION_ID,
+      checkoutExpiresAt: new Date(NOW + 30 * 60 * 1000).toISOString(),
+      checkoutUrl: "https://checkout.stripe.com/c/pay/cs_test_existing",
+    }),
+    createCheckout: async () => {
+      stripeCalls += 1;
+      throw new Error("must not create");
+    },
+  }));
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    checkoutToken: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  }));
+  assert.equal(response.headers.get("location"), "https://checkout.stripe.com/c/pay/cs_test_existing");
+  assert.equal(stripeCalls, 0);
+});
+
+test("checkout maps Stripe payment failures without storing an uncreated session", async () => {
+  const events: string[] = [];
+  let storeCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    createCheckout: async () => {
+      throw Object.assign(new Error("declined"), { type: "StripeCardError", statusCode: 402 });
+    },
+    storeCheckout: async () => { storeCalls += 1; },
+    reportError: (event) => { events.push(event); },
+  }));
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    checkoutToken: "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+  }));
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=payment`);
+  assert.equal(storeCalls, 0);
+  assert.deepEqual(events, ["billing.checkout.failed"]);
+});
+
+function validCheckout(overrides: Partial<ConfirmCheckout> = {}): ConfirmCheckout {
+  return {
+    id: "cs_test_123456789",
+    client_reference_id: ACCOUNT.id,
+    metadata: {
+      platform: "1500_blueprint",
+      user_id: ACCOUNT.id,
+      checkout_reservation_id: RESERVATION_ID,
+    },
+    mode: "subscription",
+    status: "complete",
+    customer: ACCOUNT.stripeCustomerId,
+    subscription: "sub_123",
+    ...overrides,
+  };
+}
+
+function confirmDeps(overrides: Partial<ConfirmHandlerDeps> = {}): ConfirmHandlerDeps {
+  return {
+    baseUrl: () => APP_URL,
+    getSession: async () => ({ email: ACCOUNT.email }),
+    findAccount: async () => ACCOUNT,
+    retrieveCheckout: async () => validCheckout(),
+    retrieveSubscription: async () => ({ id: "sub_123" }),
+    syncSubscription: async () => undefined,
+    markCheckout: async () => true,
+    reportError: () => undefined,
+    ...overrides,
+  };
+}
+
+test("confirm verifies Checkout identity before syncing and marking the reservation", async () => {
+  const order: string[] = [];
+  const handler = createConfirmGetHandler(confirmDeps({
+    retrieveSubscription: async (id) => {
+      order.push(`retrieve:${id}`);
+      return { id };
+    },
+    syncSubscription: async (subscription, accountId) => {
+      order.push(`sync:${(subscription as { id: string }).id}:${accountId}`);
+    },
+    markCheckout: async (sessionId, status, reservationId) => {
+      order.push(`mark:${sessionId}:${status}:${reservationId}`);
+      return true;
+    },
+  }));
+  const response = await handler(new Request(`${APP_URL}/api/billing/confirm?session_id=cs_test_123456789`));
+  assert.equal(response.headers.get("location"), `${APP_URL}/ultimate?billing=success`);
+  assert.deepEqual(order, [
+    "retrieve:sub_123",
+    `sync:sub_123:${ACCOUNT.id}`,
+    `mark:cs_test_123456789:completed:${RESERVATION_ID}`,
+  ]);
+});
+
+test("confirm refuses a Checkout customer owned by another account", async () => {
+  let subscriptionCalls = 0;
+  let markCalls = 0;
+  const handler = createConfirmGetHandler(confirmDeps({
+    retrieveCheckout: async () => validCheckout({ customer: "cus_attacker" }),
+    retrieveSubscription: async () => {
+      subscriptionCalls += 1;
+      return {};
+    },
+    markCheckout: async () => {
+      markCalls += 1;
+      return true;
+    },
+  }));
+  const response = await handler(new Request(`${APP_URL}/api/billing/confirm?session_id=cs_other`));
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=error`);
+  assert.equal(subscriptionCalls, 0);
+  assert.equal(markCalls, 0);
+});
+
+function portalDeps(overrides: Partial<PortalHandlerDeps> = {}): PortalHandlerDeps {
+  return {
+    baseUrl: () => APP_URL,
+    getSession: async () => ({ email: ACCOUNT.email }),
+    findAccount: async () => ACCOUNT,
+    consumeRateLimit: async () => ({ allowed: true }),
+    createPortal: async () => ({ url: "https://billing.stripe.com/p/session" }),
+    reportError: () => undefined,
+    ...overrides,
+  };
+}
+
+test("portal uses only the authenticated account customer and a local return path", async () => {
+  let created: [string, string] | null = null;
+  const handler = createPortalPostHandler(portalDeps({
+    createPortal: async (customer, returnUrl) => {
+      created = [customer, returnUrl];
+      return { url: "https://billing.stripe.com/p/session" };
+    },
+  }));
+  const response = await handler(formRequest("/api/billing/portal", {
+    returnTo: "https://attacker.example/steal",
+  }));
+  assert.equal(response.headers.get("location"), "https://billing.stripe.com/p/session");
+  assert.deepEqual(created, [ACCOUNT.stripeCustomerId, `${APP_URL}/settings/subscription`]);
+});
+
+test("portal failure reports safely and redirects to the requested local surface", async () => {
+  const events: string[] = [];
+  const handler = createPortalPostHandler(portalDeps({
+    createPortal: async () => { throw new Error("provider unavailable"); },
+    reportError: (event) => { events.push(event); },
+  }));
+  const response = await handler(formRequest("/api/billing/portal", { returnTo: "/pricing" }));
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=error`);
+  assert.deepEqual(events, ["billing.portal.failed"]);
+});
+
+function stripeEvent(overrides: Partial<Stripe.Event> = {}): Stripe.Event {
+  return {
+    id: "evt_123",
+    object: "event",
+    api_version: "2026-08-27.basil",
+    created: Math.floor(NOW / 1000),
+    data: { object: { id: "cs_test_123" } as Stripe.Event.Data.Object },
+    livemode: false,
+    pending_webhooks: 1,
+    request: null,
+    type: "checkout.session.completed",
+    ...overrides,
+  } as Stripe.Event;
+}
+
+function webhookRequest(): Request {
+  return new Request(`${APP_URL}/api/billing/webhook`, {
+    method: "POST",
+    headers: { "stripe-signature": "signed" },
+    body: "signed-payload",
+  });
+}
+
+function webhookDeps(overrides: Partial<WebhookHandlerDeps> = {}): WebhookHandlerDeps {
+  return {
+    webhookSecret: () => "whsec_test",
+    constructEvent: () => stripeEvent(),
+    expectedLivemode: () => false,
+    claimEvent: async () => ({ kind: "claimed", attempt: 1 }),
+    processEvent: async () => undefined,
+    finishEvent: async () => undefined,
+    failEvent: async () => undefined,
+    reportError: () => undefined,
+    ...overrides,
+  };
+}
+
+test("webhook verifies, claims, processes, and finishes the same delivery lease", async () => {
+  const order: string[] = [];
+  const handler = createWebhookPostHandler(webhookDeps({
+    constructEvent: (payload, signature, secret) => {
+      order.push(`verify:${payload}:${signature}:${secret}`);
+      return stripeEvent();
+    },
+    claimEvent: async (event) => {
+      order.push(`claim:${event.id}`);
+      return { kind: "claimed", attempt: 3 };
+    },
+    processEvent: async (event) => { order.push(`process:${event.id}`); },
+    finishEvent: async (eventId, attempt) => { order.push(`finish:${eventId}:${attempt}`); },
+  }));
+  const response = await handler(webhookRequest());
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { received: true });
+  assert.deepEqual(order, [
+    "verify:signed-payload:signed:whsec_test",
+    "claim:evt_123",
+    "process:evt_123",
+    "finish:evt_123:3",
+  ]);
+});
+
+test("webhook idempotency returns an acknowledged duplicate without reprocessing", async () => {
+  let processCalls = 0;
+  const handler = createWebhookPostHandler(webhookDeps({
+    claimEvent: async () => ({ kind: "processed", attempt: 2 }),
+    processEvent: async () => { processCalls += 1; },
+  }));
+  const response = await handler(webhookRequest());
+  assert.deepEqual(await response.json(), { received: true, duplicate: true });
+  assert.equal(processCalls, 0);
+});
+
+test("webhook processing failures fail the claimed attempt with PII-safe metadata", async () => {
+  let failed: [string, number, string] | null = null;
+  const events: string[] = [];
+  const handler = createWebhookPostHandler(webhookDeps({
+    claimEvent: async () => ({ kind: "claimed", attempt: 4 }),
+    processEvent: async () => {
+      throw Object.assign(new Error("student@example.com"), { name: "StripeError", code: "api_error" });
+    },
+    failEvent: async (eventId, attempt, message) => { failed = [eventId, attempt, message]; },
+    reportError: (event) => { events.push(event); },
+  }));
+  const response = await handler(webhookRequest());
+  assert.equal(response.status, 500);
+  assert.deepEqual(failed, ["evt_123", 4, "StripeError:api_error"]);
+  assert.deepEqual(events, ["billing.webhook.processing_failed"]);
+});
+
+test("webhook rejects a mode mismatch before claiming the event", async () => {
+  let claims = 0;
+  const events: string[] = [];
+  const handler = createWebhookPostHandler(webhookDeps({
+    constructEvent: () => stripeEvent({ livemode: true }),
+    claimEvent: async () => {
+      claims += 1;
+      return { kind: "claimed", attempt: 1 };
+    },
+    reportError: (event) => { events.push(event); },
+  }));
+  const response = await handler(webhookRequest());
+  assert.equal(response.status, 400);
+  assert.equal(claims, 0);
+  assert.deepEqual(events, ["billing.webhook.mode_mismatch"]);
+});

@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { reportServerError } from "@/lib/observability/server";
 
 export const COMPLIMENTARY_ACCESS_PLAN = "complimentary";
 
@@ -104,8 +105,16 @@ export async function recordLogin(email: string, plan: string | null): Promise<v
       p_email: email,
       p_plan: plan,
     });
-    if (error) console.error("recordLogin failed:", error.message);
+    if (error) {
+      reportServerError("auth.legacy_login_record.failed", error, {
+        provider: "supabase",
+        source: "recordLogin",
+      });
+    }
   } catch (e) {
-    console.error("recordLogin threw:", (e as Error)?.message ?? e);
+    reportServerError("auth.legacy_login_record.failed", e, {
+      provider: "supabase",
+      source: "recordLogin",
+    });
   }
 }

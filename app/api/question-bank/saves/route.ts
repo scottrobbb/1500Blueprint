@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { setQuestionBankSaved } from "@/lib/question-bank/runner-state";
+import { readJsonBody } from "@/lib/security/request";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 type SaveBody = {
   questionId: string;
@@ -20,8 +22,11 @@ async function updateSavedQuestion(request: Request, saved: boolean) {
   if (!session || !isUltimatePreviewEmail(session.email)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  const rate = await checkRateLimit("question-bank-save", session.email, { limit: 600, windowSeconds: 60 * 60 });
+  if (!rate) return NextResponse.json({ error: "Saving is temporarily unavailable" }, { status: 503 });
+  if (!rate.allowed) return NextResponse.json({ error: "Too many save requests", resetsAt: rate.resetsAt }, { status: 429 });
 
-  const input = parseBody(await request.json().catch(() => null));
+  const input = parseBody(await readJsonBody(request, 4 * 1024).catch(() => null));
   if (!input) return NextResponse.json({ error: "Invalid question" }, { status: 400 });
 
   const ok = await setQuestionBankSaved(session.email, input.questionId, saved);

@@ -53,7 +53,7 @@ function scoreProgress(current: number, goal: number): number {
 
 function CardLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="inline-flex min-h-9 items-center gap-1 text-sm font-semibold text-navy hover:underline">
+    <Link href={href} className="inline-flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap text-sm font-semibold text-navy hover:underline">
       {children}
       <ChevronRightIcon className="h-4 w-4" />
     </Link>
@@ -73,8 +73,8 @@ export function HomeProgress({
   const bestScore = testProgress.bestScore;
 
   return (
-    <aside aria-label="SAT progress" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-      <section className="flex min-h-[147px] flex-col rounded-xl border border-navy/12 bg-white p-5">
+    <aside aria-label="SAT progress" className="grid self-start gap-4 sm:grid-cols-2 lg:grid-cols-1">
+      <section className={`flex flex-col rounded-xl border border-navy/12 bg-white ${testDate && testDate.days >= 0 ? "min-h-[147px] p-5" : "p-4"}`}>
         <h3 className="text-sm font-medium text-navy/50">SAT date</h3>
         {testDate && testDate.days >= 0 ? (
           <>
@@ -87,18 +87,16 @@ export function HomeProgress({
             </div>
           </>
         ) : (
-          <>
-            <p className="mt-3 font-display text-xl font-semibold text-navy">
+          <div className="mt-2 flex items-center justify-between gap-4">
+            <p className="font-display text-xl font-semibold text-navy">
               {testDate ? "Date passed" : "Not set"}
             </p>
-            <div className="mt-auto pt-3">
-              <CardLink href="/settings/study-preferences">{testDate ? "Update date" : "Set date"}</CardLink>
-            </div>
-          </>
+            <CardLink href="/settings/study-preferences">{testDate ? "Update date" : "Set date"}</CardLink>
+          </div>
         )}
       </section>
 
-      <section className="flex min-h-[147px] flex-col rounded-xl border border-navy/12 bg-white p-5">
+      <section className={`flex flex-col rounded-xl border border-navy/12 bg-white ${currentScore !== null ? "min-h-[147px] p-5" : "p-4"}`}>
         <h3 className="text-sm font-medium text-navy/50">Score</h3>
         {currentScore !== null ? (
           <>
@@ -131,12 +129,10 @@ export function HomeProgress({
             </div>
           </>
         ) : (
-          <>
-            <p className="mt-3 font-display text-xl font-semibold text-navy">No score yet</p>
-            <div className="mt-auto pt-3">
-              <CardLink href="/practice-test">Take a practice test</CardLink>
-            </div>
-          </>
+          <div className="mt-2 flex items-center justify-between gap-4">
+            <p className="font-display text-xl font-semibold text-navy">No score yet</p>
+            <CardLink href="/practice-test">Take a practice test</CardLink>
+          </div>
         )}
       </section>
     </aside>

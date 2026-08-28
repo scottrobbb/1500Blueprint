@@ -9,6 +9,8 @@ import {
 } from "@/lib/sat/admin-queries";
 import type { ChoiceId, Difficulty } from "@/lib/sat/types";
 import type { QuestionType } from "@/lib/sat/admin-queries";
+import { reportServerError } from "@/lib/observability/server";
+import { readJsonBody } from "@/lib/security/request";
 
 // Single practice-test question CMS endpoint. Every method authorizes with
 // getAdminSession() before the service-role write. Next 16: ctx.params is a
@@ -74,7 +76,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
 
   let body: Record<string, unknown>;
   try {
-    body = (await req.json()) as Record<string, unknown>;
+    body = (await readJsonBody(req, 1024 * 1024)) as Record<string, unknown>;
   } catch {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
@@ -82,8 +84,14 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   try {
     await updateTestQuestion(toQuestionInput(id, body));
   } catch (e) {
-    console.error("update test question failed:", e);
     const invalid = e instanceof TestPublicationError;
+    if (!invalid) {
+      reportServerError("admin.test_question.update_failed", e, {
+        provider: "supabase",
+        route: "/admin/api/test-questions/[id]",
+        method: "PUT",
+      });
+    }
     return NextResponse.json(
       { error: "save failed", detail: invalid ? e.message : "The question could not be saved. No successful save was confirmed." },
       { status: invalid ? 400 : 500 },
@@ -98,8 +106,14 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   try {
     await deleteTestQuestion(id);
   } catch (e) {
-    console.error("delete test question failed:", e);
     const invalid = e instanceof TestPublicationError;
+    if (!invalid) {
+      reportServerError("admin.test_question.delete_failed", e, {
+        provider: "supabase",
+        route: "/admin/api/test-questions/[id]",
+        method: "DELETE",
+      });
+    }
     return NextResponse.json(
       { error: "delete failed", detail: invalid ? e.message : "The question could not be deleted. No deletion was confirmed." },
       { status: invalid ? 400 : 500 },

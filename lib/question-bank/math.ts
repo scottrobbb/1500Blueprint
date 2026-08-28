@@ -13,6 +13,8 @@ export type MathCompletionFilter = "all" | "unanswered" | "attempted";
 export type MathAnswerType = "mc_single" | "grid_in";
 export type QuestionBankLevel = Difficulty | "challenge";
 
+export const MAX_QUESTION_BANK_SESSION_QUESTIONS = 30;
+
 export type MathChoice = {
   id: ChoiceId;
   text: string;
@@ -87,6 +89,25 @@ export function parseQuestionLimit(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number(value);
   return Number.isInteger(parsed) ? Math.max(5, Math.min(30, parsed)) : null;
+}
+
+export function boundedQuestionBankSessionLimit(value: number | null): number {
+  if (value === null) return MAX_QUESTION_BANK_SESSION_QUESTIONS;
+  return Math.max(1, Math.min(Math.floor(value), MAX_QUESTION_BANK_SESSION_QUESTIONS));
+}
+
+export function prioritizeUnattemptedQuestions<T extends { id: string }>(
+  questions: T[],
+  attemptedIds: ReadonlySet<string>,
+): T[] {
+  return questions
+    .map((question, index) => ({
+      question,
+      index,
+      attempted: attemptedIds.has(question.id) ? 1 : 0,
+    }))
+    .sort((a, b) => a.attempted - b.attempted || a.index - b.index)
+    .map(({ question }) => question);
 }
 
 export function prioritizeBoundedQuestions<T extends { id: string }>(

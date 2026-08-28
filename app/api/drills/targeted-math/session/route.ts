@@ -5,6 +5,9 @@ import { canAccessDrillPublication } from "@/lib/drills/loadDrillContent";
 import { awardDrill } from "@/lib/gamification/state";
 import { summarizeDrillQuestionSession } from "@/lib/drills/progress";
 import { START_LIVES, WIN_TARGET } from "@/components/drills/math/mockData";
+import { readJsonBody } from "@/lib/security/request";
+import { reportServerError } from "@/lib/observability/server";
+import { checkRateLimit } from "@/lib/security/rate-limit";
 
 type Body = {
   clientToken?: unknown;
@@ -13,8 +16,11 @@ type Body = {
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const rate = await checkRateLimit("targeted-math-completion", session.email, { limit: 120, windowSeconds: 60 * 60 });
+  if (!rate) return NextResponse.json({ error: "Session saving is temporarily unavailable" }, { status: 503 });
+  if (!rate.allowed) return NextResponse.json({ error: "Too many completion requests", resetsAt: rate.resetsAt }, { status: 429 });
 
-  const body = (await request.json().catch(() => null)) as Body | null;
+  const body = (await readJsonBody(request, 4 * 1024).catch(() => null)) as Body | null;
   if (
     typeof body?.clientToken !== "string"
     || body.clientToken.length === 0
@@ -50,7 +56,13 @@ export async function POST(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     const planLimit = /not included|daily limit/i.test(message);
-    if (!planLimit) console.error("Targeted Math session completion failed", error);
+    if (!planLimit) {
+      reportServerError("drill.targeted_math.session_completion_failed", error, {
+        provider: "supabase",
+        route: "/api/drills/targeted-math/session",
+        method: "POST",
+      });
+    }
     return NextResponse.json(
       { error: planLimit ? "Drill access is not available." : "Your session could not be saved.", code: planLimit ? "plan_limit" : "save_failed" },
       { status: planLimit ? 402 : 500 },

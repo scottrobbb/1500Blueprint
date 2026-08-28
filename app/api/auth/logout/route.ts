@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { appBaseUrl, SESSION_COOKIE } from "@/lib/auth/config";
 import { isPasswordAuthEnabled } from "@/lib/auth/password";
 import { createClient } from "@/utils/supabase/server";
+import { reportServerError } from "@/lib/observability/server";
 
 export async function POST(request: Request) {
   if (isPasswordAuthEnabled()) {
@@ -11,7 +12,11 @@ export async function POST(request: Request) {
       await supabase.auth.signOut({ scope: "local" });
     } catch (error) {
       // Legacy sign-out must always succeed even if Supabase is unavailable.
-      console.error("password sign-out failed:", error);
+      reportServerError("auth.password_logout.failed", error, {
+        provider: "supabase",
+        route: "/api/auth/logout",
+        method: "POST",
+      });
     }
   }
 

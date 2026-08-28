@@ -1,66 +1,69 @@
 import type Stripe from "stripe";
+import { billingLivemode } from "@/lib/billing/config";
 import { syncStripeRefund } from "@/lib/billing/refunds";
 import { billingStripe } from "@/lib/billing/stripe";
-import { syncStripeSubscription } from "@/lib/billing/subscriptions";
+import { markCheckoutSession } from "@/lib/billing/checkout-intents";
+import {
+  stripeSubscriptionPlan,
+  syncStripeSubscription,
+} from "@/lib/billing/subscriptions";
+import {
+  webhookAuditPayload,
+  webhookClaimDecision,
+  type WebhookClaimRow,
+} from "@/lib/billing/workflow";
+import { reportServerError } from "@/lib/observability/server";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { createWebhookPostHandler } from "./handler";
 
-type WebhookEventRow = {
-  processing_status: "processing" | "processed" | "failed";
-  attempts: number;
+type ClaimResult = {
+  kind: "claimed" | "processed" | "processing";
+  attempt: number;
 };
 
-export async function POST(request: Request) {
-  const signature = request.headers.get("stripe-signature");
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-  if (!signature || !webhookSecret) {
-    return Response.json({ error: "Stripe webhook is not configured" }, { status: 400 });
-  }
-
-  let event: Stripe.Event;
-  try {
-    event = billingStripe().webhooks.constructEvent(await request.text(), signature, webhookSecret);
-  } catch (error) {
-    console.error("Stripe webhook signature verification failed:", error);
-    return Response.json({ error: "Invalid webhook signature" }, { status: 400 });
-  }
-
-  try {
-    const claim = await claimEvent(event);
-    if (claim === "processed") return Response.json({ received: true, duplicate: true });
-    if (claim === "processing") {
-      return Response.json({ error: "Webhook event is already processing" }, { status: 409 });
-    }
-
-    await processEvent(event);
-    await finishEvent(event.id);
-    return Response.json({ received: true });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Webhook processing failed";
-    await failEvent(event.id, message);
-    console.error(`Stripe webhook ${event.id} failed:`, error);
-    return Response.json({ error: "Webhook processing failed" }, { status: 500 });
-  }
-}
+export const POST = createWebhookPostHandler({
+  webhookSecret: () => process.env.STRIPE_WEBHOOK_SECRET?.trim() || null,
+  constructEvent: (payload, signature, secret) => billingStripe().webhooks.constructEvent(
+    payload,
+    signature,
+    secret,
+  ),
+  expectedLivemode: billingLivemode,
+  claimEvent,
+  processEvent,
+  finishEvent,
+  failEvent,
+  reportError: reportServerError,
+});
 
 async function processEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
     case "checkout.session.completed": {
       const checkout = event.data.object;
+      if (checkout.metadata?.platform !== "1500_blueprint") return;
       const subscriptionId = stripeId(checkout.subscription);
       const customerId = stripeId(checkout.customer);
       const userId = checkout.client_reference_id || checkout.metadata?.user_id || null;
 
-      if (userId && customerId) {
-        const { error } = await supabaseAdmin()
-          .from("users")
-          .update({
-            [event.livemode ? "stripe_live_customer_id" : "stripe_test_customer_id"]: customerId,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", userId);
-        if (error) throw new Error(`failed to link Checkout customer: ${error.message}`);
+      if (!subscriptionId || !userId || !customerId) {
+        throw new Error("completed subscription Checkout is missing its subscription id");
       }
-      if (subscriptionId) await reconcileSubscription(subscriptionId, userId, event);
+      await reconcileSubscription(subscriptionId, userId, event);
+      await markCheckoutSession(
+        checkout.id,
+        "completed",
+        checkoutReservationId(checkout.metadata?.checkout_reservation_id),
+      );
+      return;
+    }
+    case "checkout.session.expired": {
+      const checkout = event.data.object;
+      if (checkout.metadata?.platform !== "1500_blueprint") return;
+      await markCheckoutSession(
+        checkout.id,
+        "expired",
+        checkoutReservationId(checkout.metadata?.checkout_reservation_id),
+      );
       return;
     }
     case "customer.subscription.created":
@@ -114,11 +117,18 @@ async function reconcileSubscription(
 ): Promise<void> {
   try {
     const subscription = await billingStripe().subscriptions.retrieve(subscriptionId);
+    if (!stripeSubscriptionPlan(subscription) && subscription.metadata.platform !== "1500_blueprint") {
+      return;
+    }
     await syncStripeSubscription(subscription, fallbackUserId, { id: event.id, created: event.created });
   } catch (error) {
     if (stripeErrorCode(error) !== "resource_missing") throw error;
     if (!event.type.startsWith("customer.subscription.")) throw error;
-    await syncStripeSubscription(event.data.object as Stripe.Subscription, fallbackUserId, {
+    const subscription = event.data.object as Stripe.Subscription;
+    if (!stripeSubscriptionPlan(subscription) && subscription.metadata.platform !== "1500_blueprint") {
+      return;
+    }
+    await syncStripeSubscription(subscription, fallbackUserId, {
       id: event.id,
       created: event.created,
     });
@@ -162,68 +172,93 @@ async function clearPendingChange(subscriptionId: string): Promise<void> {
   if (error) throw new Error(`failed to clear completed plan change: ${error.message}`);
 }
 
-async function claimEvent(event: Stripe.Event): Promise<"claimed" | "processed" | "processing"> {
+async function claimEvent(event: Stripe.Event): Promise<ClaimResult> {
+  const processingStartedAt = new Date().toISOString();
   const { error: insertError } = await supabaseAdmin()
     .from("billing_webhook_events")
     .insert({
       stripe_event_id: event.id,
       event_type: event.type,
       livemode: event.livemode,
-      payload: event,
+      payload: webhookAuditPayload(event),
       processing_status: "processing",
       attempts: 1,
+      processing_started_at: processingStartedAt,
       processing_error: null,
       processed_at: null,
     });
-  if (!insertError) return "claimed";
+  if (!insertError) return { kind: "claimed", attempt: 1 };
   if (insertError.code !== "23505") {
     throw new Error(`failed to claim webhook event: ${insertError.message}`);
   }
 
   const { data: existing, error: existingError } = await supabaseAdmin()
     .from("billing_webhook_events")
-    .select("processing_status,attempts")
+    .select("processing_status,attempts,processing_started_at")
     .eq("stripe_event_id", event.id)
-    .single<WebhookEventRow>();
+    .single<WebhookClaimRow>();
   if (existingError) throw new Error(`failed to reload webhook event: ${existingError.message}`);
-  if (existing.processing_status === "processed") return "processed";
-  if (existing.processing_status === "processing") return "processing";
+  const decision = webhookClaimDecision(existing, new Date());
+  if (decision === "processed") return { kind: "processed", attempt: existing.attempts };
+  if (decision === "processing") return { kind: "processing", attempt: existing.attempts };
 
-  const { error: retryError } = await supabaseAdmin()
+  const nextAttempt = existing.attempts + 1;
+  const { data: retried, error: retryError } = await supabaseAdmin()
     .from("billing_webhook_events")
     .update({
       processing_status: "processing",
-      attempts: existing.attempts + 1,
+      attempts: nextAttempt,
+      processing_started_at: processingStartedAt,
       processing_error: null,
       processed_at: null,
     })
     .eq("stripe_event_id", event.id)
-    .eq("processing_status", "failed");
+    .eq("processing_status", existing.processing_status)
+    .eq("attempts", existing.attempts)
+    .select("attempts")
+    .maybeSingle<{ attempts: number }>();
   if (retryError) throw new Error(`failed to retry webhook event: ${retryError.message}`);
-  return "claimed";
+  return retried
+    ? { kind: "claimed", attempt: retried.attempts }
+    : { kind: "processing", attempt: existing.attempts };
 }
 
-async function finishEvent(eventId: string): Promise<void> {
-  const { error } = await supabaseAdmin()
+async function finishEvent(eventId: string, attempt: number): Promise<void> {
+  const { data, error } = await supabaseAdmin()
     .from("billing_webhook_events")
     .update({
       processing_status: "processed",
       processing_error: null,
       processed_at: new Date().toISOString(),
     })
-    .eq("stripe_event_id", eventId);
+    .eq("stripe_event_id", eventId)
+    .eq("processing_status", "processing")
+    .eq("attempts", attempt)
+    .select("stripe_event_id")
+    .maybeSingle<{ stripe_event_id: string }>();
   if (error) throw new Error(`failed to finish webhook event: ${error.message}`);
+  if (!data) throw new Error("webhook processing lease was lost before completion");
 }
 
-async function failEvent(eventId: string, message: string): Promise<void> {
-  await supabaseAdmin()
+async function failEvent(eventId: string, attempt: number, message: string): Promise<void> {
+  const { error } = await supabaseAdmin()
     .from("billing_webhook_events")
     .update({
       processing_status: "failed",
       processing_error: message.slice(0, 500),
       processed_at: null,
     })
-    .eq("stripe_event_id", eventId);
+    .eq("stripe_event_id", eventId)
+    .eq("processing_status", "processing")
+    .eq("attempts", attempt);
+  if (error) {
+    reportServerError("billing.webhook.failure_recording_failed", error, {
+      provider: "supabase",
+      route: "/api/billing/webhook",
+      method: "POST",
+      correlationId: eventId,
+    });
+  }
 }
 
 function invoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
@@ -238,4 +273,10 @@ function stripeErrorCode(error: unknown): string | null {
 function stripeId(value: string | { id: string } | null | undefined): string | null {
   if (!value) return null;
   return typeof value === "string" ? value : value.id;
+}
+
+function checkoutReservationId(value: string | null | undefined): string | null {
+  return value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+    ? value
+    : null;
 }

@@ -6,6 +6,8 @@ import { isComplimentaryAccount } from "@/lib/auth/complimentary";
 import { billingLivemode } from "@/lib/billing/config";
 import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { reportServerError } from "@/lib/observability/server";
+import { readJsonBody } from "@/lib/security/request";
 
 type AccountRow = {
   id: string;
@@ -21,7 +23,7 @@ export async function PATCH(request: NextRequest, context: Context) {
   const adminSession = await getAdminSession();
   if (!adminSession) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const body = (await request.json().catch(() => null)) as { status?: unknown } | null;
+  const body = (await readJsonBody(request, 4 * 1024).catch(() => null)) as { status?: unknown } | null;
   const status = body?.status;
   if (status !== "active" && status !== "suspended") {
     return NextResponse.json({ error: "Choose active or suspended access." }, { status: 400 });
@@ -38,7 +40,11 @@ export async function PATCH(request: NextRequest, context: Context) {
     .maybeSingle<AccountRow>();
 
   if (accountError) {
-    console.error("Could not load complimentary student", { code: accountError.code });
+    reportServerError("admin.student_access.load_failed", accountError, {
+      provider: "supabase",
+      route: "/admin/api/students/[id]/access",
+      method: "PATCH",
+    });
     return NextResponse.json({ error: "The student account could not be loaded." }, { status: 500 });
   }
   if (!account) return NextResponse.json({ error: "Student not found." }, { status: 404 });
@@ -72,10 +78,20 @@ export async function PATCH(request: NextRequest, context: Context) {
     ]);
 
   if (grantError || subscriptionError) {
-    console.error("Could not verify complimentary access", {
-      grantCode: grantError?.code,
-      subscriptionCode: subscriptionError?.code,
-    });
+    if (grantError) {
+      reportServerError("admin.student_access.grant_check_failed", grantError, {
+        provider: "supabase",
+        route: "/admin/api/students/[id]/access",
+        method: "PATCH",
+      });
+    }
+    if (subscriptionError) {
+      reportServerError("admin.student_access.subscription_check_failed", subscriptionError, {
+        provider: "supabase",
+        route: "/admin/api/students/[id]/access",
+        method: "PATCH",
+      });
+    }
     return NextResponse.json({ error: "The student's access could not be verified." }, { status: 500 });
   }
 
@@ -104,7 +120,11 @@ export async function PATCH(request: NextRequest, context: Context) {
     .maybeSingle<{ id: string }>();
 
   if (updateError) {
-    console.error("Could not update complimentary access", { code: updateError.code });
+    reportServerError("admin.student_access.update_failed", updateError, {
+      provider: "supabase",
+      route: "/admin/api/students/[id]/access",
+      method: "PATCH",
+    });
     return NextResponse.json({ error: "The access change could not be saved." }, { status: 500 });
   }
   if (!updated) {

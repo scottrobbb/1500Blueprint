@@ -4,6 +4,8 @@ import { SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isPasswordAuthEnabled } from "@/lib/auth/password";
 import { updateSession as updatePasswordSession } from "@/utils/supabase/proxy";
+import { sessionSecret } from "@/lib/auth/session-secret";
+import { enforceProtectedContentRead } from "@/lib/security/protected-content";
 
 // Paths reachable without a session.
 const PUBLIC_PATHS = ["/login", "/pricing", "/account"];
@@ -26,7 +28,7 @@ async function sessionPayload(request: NextRequest): Promise<JWTPayload | null> 
   const secret = process.env.AUTH_SECRET;
   if (!token || !secret) return null;
   try {
-    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret), {
+    const { payload } = await jwtVerify(token, sessionSecret(secret), {
       algorithms: ["HS256"],
     });
     return payload;
@@ -72,6 +74,32 @@ export async function proxy(request: NextRequest) {
 
   const isAdmin = isAdminEmail(email);
 
+  if (!isAdmin) {
+    const contentRead = await enforceProtectedContentRead(email, pathname);
+    if (!contentRead.allowed) {
+      const retryAfter = contentRead.resetsAt
+        ? Math.max(1, Math.ceil((Date.parse(contentRead.resetsAt) - Date.now()) / 1000))
+        : 60;
+      return responseWithCookies(
+        NextResponse.json(
+          {
+            error: "Too many protected-content requests. Continue after the limit resets.",
+            code: "content_read_limit",
+            resetsAt: contentRead.resetsAt,
+          },
+          {
+            status: 429,
+            headers: {
+              "cache-control": "private, no-store",
+              "retry-after": String(retryAfter),
+            },
+          },
+        ),
+        passwordResponse,
+      );
+    }
+  }
+
   if (isAdminPath(pathname)) {
     if (!isAdmin) {
       // Signed-in non-admin (a student): bounce to the drills hub.
@@ -86,7 +114,10 @@ export async function proxy(request: NextRequest) {
 }
 
 function redirectWithCookies(url: URL, source: NextResponse | null): NextResponse {
-  const response = NextResponse.redirect(url);
+  return responseWithCookies(NextResponse.redirect(url), source);
+}
+
+function responseWithCookies(response: NextResponse, source: NextResponse | null): NextResponse {
   source?.cookies.getAll().forEach((cookie) => response.cookies.set(cookie));
   return response;
 }

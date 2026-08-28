@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PracticeTest } from "@/lib/sat/types";
 import type { TimeMultiplier } from "@/lib/sat/testState";
 import { Logo } from "@/components/Logo";
+import { SettingsIcon } from "@/components/shell/icons";
 import { CloseIcon } from "./icons";
 
 export type ResumeInfo = { sectionLabel: string; timeLabel: string | null };
@@ -267,14 +268,5 @@ export function IntroScreen({
         </div>
       ) : null}
     </main>
-  );
-}
-
-function SettingsIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <path d="M12 8.2a3.8 3.8 0 100 7.6 3.8 3.8 0 000-7.6z" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M19 13.3v-2.6l-2-.7a7.2 7.2 0 00-.7-1.6l.9-1.9-1.8-1.8-1.9.9a7.2 7.2 0 00-1.6-.7l-.7-2H8.7l-.7 2a7.2 7.2 0 00-1.6.7l-1.9-.9-1.8 1.8.9 1.9a7.2 7.2 0 00-.7 1.6l-2 .7v2.6l2 .7c.2.6.4 1.1.7 1.6l-.9 1.9 1.8 1.8 1.9-.9c.5.3 1 .5 1.6.7l.7 2h2.6l.7-2c.6-.2 1.1-.4 1.6-.7l1.9.9 1.8-1.8-.9-1.9c.3-.5.5-1 .7-1.6l1.9-.7z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-    </svg>
   );
 }

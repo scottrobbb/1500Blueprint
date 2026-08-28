@@ -2,6 +2,7 @@ import "server-only";
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { canonicalizeCourseAssetReferences, signCourseAssetReferences } from "@/lib/courses/assets.server";
 
 export type ExplanationTargetType = "question_bank" | "practice_test";
 
@@ -71,7 +72,7 @@ export async function listExplanationQueue(limit = 500): Promise<ExplanationQueu
   const { data, error } = await supabaseAdmin()
     .rpc("get_explanation_queue", { p_limit: Math.max(1, Math.min(limit, 500)) });
   if (error) throw new Error(`failed to load explanation queue: ${error.message}`);
-  const rows = (data ?? []) as unknown as ExplanationQueueRow[];
+  const rows = await signCourseAssetReferences((data ?? []) as unknown as ExplanationQueueRow[]);
   return rows.map((row) => ({
     id: row.id,
     targetType: row.target_type,
@@ -115,7 +116,7 @@ export async function updateExplanation(
     p_editor_email: editorEmail.trim().toLowerCase(),
     p_target_type: targetType,
     p_target_id: targetId,
-    p_explanation: explanation.trim(),
+    p_explanation: canonicalizeCourseAssetReferences(explanation.trim()),
   });
   if (error) throw new Error(`failed to update explanation: ${error.message}`);
 }
@@ -139,9 +140,9 @@ export async function updateQuestionContent(
     p_editor_email: editorEmail.trim().toLowerCase(),
     p_target_type: targetType,
     p_target_id: targetId,
-    p_prompt: edit.prompt ?? null,
-    p_passage: edit.passage ?? null,
-    p_choices: edit.choices ?? null,
+    p_prompt: edit.prompt === undefined ? null : canonicalizeCourseAssetReferences(edit.prompt),
+    p_passage: edit.passage === undefined ? null : canonicalizeCourseAssetReferences(edit.passage),
+    p_choices: edit.choices === undefined ? null : canonicalizeCourseAssetReferences(edit.choices),
   });
   if (error) throw new Error(`failed to update question content: ${error.message}`);
 }

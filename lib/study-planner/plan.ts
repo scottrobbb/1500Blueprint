@@ -6,6 +6,7 @@ import { getMathBankCatalog } from "@/lib/question-bank/math-queries";
 import { getReadingWritingBankCatalog } from "@/lib/question-bank/reading-writing-queries";
 import { listTests } from "@/lib/sat/loadTest";
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import { reportServerError } from "@/lib/observability/server";
 import type { StudyPlannerProfile } from "./profile";
 import {
   generateStudyPlan,
@@ -252,7 +253,12 @@ async function persistPlan(plan: StudyPlan, profile: StudyPlannerProfile): Promi
     if (!profileResult.data) throw new Error("Study planner settings changed while the plan was building.");
   } catch (error) {
     const cleanup = await db.from("study_planner_plans").delete().eq("id", plan.id).eq("email", plan.email);
-    if (cleanup.error) console.error("study planner cleanup failed", cleanup.error);
+    if (cleanup.error) {
+      reportServerError("study_planner.plan_cleanup_failed", cleanup.error, {
+        provider: "supabase",
+        source: "save-study-plan",
+      });
+    }
     throw error;
   }
 }

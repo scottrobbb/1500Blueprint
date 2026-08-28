@@ -6,6 +6,8 @@ import {
   staffQuestionPassageIssue,
   staffQuestionPromptIssue,
 } from "@/lib/explanations/policy";
+import { readJsonBody } from "@/lib/security/request";
+import { reportServerError } from "@/lib/observability/server";
 
 type Context = { params: Promise<{ targetType: string; id: string }> };
 
@@ -26,7 +28,7 @@ export async function PATCH(request: Request, context: Context) {
     return NextResponse.json({ error: "Invalid question target" }, { status: 400 });
   }
 
-  const body = (await request.json().catch(() => null)) as {
+  const body = (await readJsonBody(request, 128 * 1024).catch(() => null)) as {
     prompt?: unknown;
     passage?: unknown;
     choices?: unknown;
@@ -73,7 +75,6 @@ export async function PATCH(request: Request, context: Context) {
     await updateQuestionContent(session.email, normalizedType, id, edit);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("explanation editor question-content update failed", error);
     const message = error instanceof Error ? error.message : "";
     if (/not eligible for staff editing/i.test(message)) {
       return NextResponse.json({ error: "This question is not available to explanation editors." }, { status: 403 });
@@ -81,6 +82,11 @@ export async function PATCH(request: Request, context: Context) {
     if (/choice ids must match/i.test(message)) {
       return NextResponse.json({ error: "Choices changed unexpectedly. Refresh and try again." }, { status: 409 });
     }
+    reportServerError("manager.question_content.update_failed", error, {
+      provider: "supabase",
+      route: "/api/manager/questions/[targetType]/[id]",
+      method: "PATCH",
+    });
     return NextResponse.json({ error: "The question could not be updated." }, { status: 500 });
   }
 }

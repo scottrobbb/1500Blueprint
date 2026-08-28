@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { canEditSet, deleteSet, updateSet } from "@/lib/flashcards/queries";
-import type { CardInput, SetVisibility } from "@/lib/flashcards/types";
+import { MAX_FLASHCARD_SET_BYTES, parseSetInput } from "@/lib/flashcards/input";
+import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
+import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 // Update / delete a single set. Editable by its owner or any admin. Next 16:
 // ctx.params is a Promise.
@@ -13,25 +15,29 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { id } = await ctx.params;
+  if (!id || id.length > 160) return NextResponse.json({ error: "invalid_set" }, { status: 400 });
   if (!(await canEditSet(id, session.email)))
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  const body = (await req.json()) as {
-    title?: string;
-    description?: string | null;
-    cards?: CardInput[];
-    visibility?: SetVisibility;
-  };
+  let value: unknown;
+  try {
+    value = await readJsonBody(req, MAX_FLASHCARD_SET_BYTES);
+  } catch (error) {
+    return NextResponse.json(
+      { error: error instanceof RequestBodyTooLargeError ? "too_large" : "invalid_body" },
+      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
+    );
+  }
+  const input = parseSetInput(value, isAdminEmail(session.email));
+  if (!input) return NextResponse.json({ error: "invalid_set" }, { status: 400 });
+  try {
+    const rate = await consumeRateLimit("flashcard-set-write", session.email, { limit: 60, windowSeconds: 60 * 60 });
+    if (!rate.allowed) return NextResponse.json({ error: "rate_limit", resetsAt: rate.resetsAt }, { status: 429 });
+  } catch {
+    return NextResponse.json({ error: "temporarily_unavailable" }, { status: 503 });
+  }
 
-  const visibility: SetVisibility =
-    body.visibility === "shared" && isAdminEmail(session.email) ? "shared" : "private";
-
-  const ok = await updateSet(id, {
-    title: body.title ?? "",
-    description: body.description ?? null,
-    visibility,
-    cards: Array.isArray(body.cards) ? body.cards : [],
-  });
+  const ok = await updateSet(id, input);
   if (!ok) return NextResponse.json({ error: "update_failed" }, { status: 500 });
   return NextResponse.json({ ok: true });
 }
@@ -41,6 +47,7 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const { id } = await ctx.params;
+  if (!id || id.length > 160) return NextResponse.json({ error: "invalid_set" }, { status: 400 });
   if (!(await canEditSet(id, session.email)))
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
 

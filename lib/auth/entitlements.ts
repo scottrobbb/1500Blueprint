@@ -5,7 +5,6 @@ import {
   accessForPlan,
   accessForTestPersona,
   effectivePlan,
-  hasCourseAccess,
   normalizeLegacyPlanCode,
   normalizePlanCode,
   type StudentAccess,
@@ -14,7 +13,7 @@ import { billingLivemode } from "@/lib/billing/config";
 import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
 
 export type { AccessSource, PlanCode, PlanEntitlements, StudentAccess } from "./plans";
-export { accessForPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
+export { accessForPlan, canAccessCourse, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
 
 type AccountRow = {
   id: string;
@@ -25,6 +24,7 @@ type AccountRow = {
 };
 
 type PlanRow = { plan_code: string };
+type SubscriptionRow = PlanRow & { status: string };
 
 export async function getStudentAccess(email: string): Promise<StudentAccess> {
   const admin = supabaseAdmin();
@@ -59,13 +59,11 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
         .maybeSingle<PlanRow>(),
       admin
         .from("student_subscriptions")
-        .select("plan_code")
+        .select("plan_code,status")
         .eq("user_id", account.id)
         .eq("livemode", billingLivemode())
-        .in("status", [...PAID_ACCESS_STATUSES])
         .order("updated_at", { ascending: false })
-        .limit(1)
-        .maybeSingle<PlanRow>(),
+        .returns<SubscriptionRow[]>(),
     ]);
 
   if (grantError) throw new Error(`failed to load access grant: ${grantError.message}`);
@@ -73,13 +71,20 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
     throw new Error(`failed to load student subscription: ${subscriptionError.message}`);
   }
 
+  const activeStatuses = new Set<string>(PAID_ACCESS_STATUSES);
+  const activeSubscription = (subscription ?? []).find((row) => activeStatuses.has(row.status));
   const grantPlan = grant ? normalizePlanCode(grant.plan_code) : "free";
-  const subscriptionPlan = subscription ? normalizePlanCode(subscription.plan_code) : "free";
+  const subscriptionPlan = activeSubscription ? normalizePlanCode(activeSubscription.plan_code) : "free";
   const legacyPlan = account.plan ? normalizeLegacyPlanCode(account.plan) : "free";
-  const plan = effectivePlan(grant ? grantPlan : null, subscription ? subscriptionPlan : null, legacyPlan);
-  const source = plan === subscriptionPlan && subscription ? "subscription"
+  const plan = effectivePlan(
+    grant ? grantPlan : null,
+    activeSubscription ? subscriptionPlan : null,
+    legacyPlan,
+    (subscription ?? []).length > 0,
+  );
+  const source = plan === subscriptionPlan && activeSubscription ? "subscription"
     : plan === grantPlan && grant ? "grant"
-    : plan === legacyPlan && account.plan ? "legacy"
+    : plan === legacyPlan && account.plan && (subscription ?? []).length === 0 ? "legacy"
     : "free";
   return accessForPlan(plan, source, account.id, true, "active", account.is_test_account);
 }
@@ -103,8 +108,4 @@ export async function getDrillUsageToday(email: string): Promise<number> {
     .gte("created_at", start);
   if (error) throw new Error(`failed to load daily drill usage: ${error.message}`);
   return count ?? 0;
-}
-
-export function canAccessCourse(plan: StudentAccess, courseSlug: string): boolean {
-  return hasCourseAccess(plan.entitlements, courseSlug);
 }

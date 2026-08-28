@@ -43,27 +43,11 @@ export type StoredModuleAttempt = {
 
 export type ModuleBest = { correct: number; total: number; count: number };
 
-// A second submit for the same module within this window returns the existing row.
-const DEDUPE_MS = 10_000;
-
 export async function saveModuleAttempt(
   email: string,
   input: ModuleAttemptInput,
 ): Promise<string> {
   const db = supabaseAdmin();
-
-  const recent = await db
-    .from("module_attempts")
-    .select("id,created_at")
-    .eq("email", email)
-    .eq("test_slug", input.testSlug)
-    .eq("module_key", input.moduleKey)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<{ id: string; created_at: string }>();
-  if (recent.data && Date.now() - Date.parse(recent.data.created_at) < DEDUPE_MS) {
-    return recent.data.id;
-  }
 
   const attemptRow = {
     email,
