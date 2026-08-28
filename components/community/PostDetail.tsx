@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Author, CommunityPost, PostComment } from "@/lib/community/types";
@@ -10,6 +10,30 @@ import { Avatar } from "./Avatar";
 import { Attachment } from "./Attachment";
 import { PostMenu } from "./PostMenu";
 import { RichText } from "./RichText";
+import { createClient } from "@/utils/supabase/client";
+
+type RealtimeChannel = ReturnType<ReturnType<typeof createClient>["channel"]>;
+
+// Ephemeral (not persisted) "someone is typing" indicator, broadcast over a
+// Supabase Realtime channel scoped to this post. Deliberately uses Broadcast
+// rather than postgres_changes: community_comments has no anon RLS policies
+// (service-role-only by design), and Broadcast doesn't need any.
+function typingLabel(names: string[]): string {
+  if (names.length === 0) return "";
+  if (names.length === 1) return `${names[0]} is typing…`;
+  if (names.length === 2) return `${names[0]} and ${names[1]} are typing…`;
+  return "Several people are typing…";
+}
+
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+      <span className="h-1 w-1 animate-bounce rounded-full bg-navy/40" style={{ animationDelay: "0ms" }} />
+      <span className="h-1 w-1 animate-bounce rounded-full bg-navy/40" style={{ animationDelay: "120ms" }} />
+      <span className="h-1 w-1 animate-bounce rounded-full bg-navy/40" style={{ animationDelay: "240ms" }} />
+    </span>
+  );
+}
 
 // Who a reply composer is aimed at: always threads under a ROOT comment (one
 // level deep); `handle` is who gets the @mention prefill.
@@ -20,12 +44,14 @@ function ReplyComposer({
   target,
   onSubmit,
   onCancel,
+  onTyping,
   posting,
 }: {
   user: Author;
   target: ReplyTarget;
   onSubmit: (body: string) => void;
   onCancel: () => void;
+  onTyping: () => void;
   posting: boolean;
 }) {
   const [draft, setDraft] = useState(`@${target.handle} `);
@@ -37,7 +63,7 @@ function ReplyComposer({
         <textarea
           autoFocus
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => { setDraft(e.target.value); onTyping(); }}
           rows={2}
           placeholder={`Reply to @${target.handle}…`}
           // Put the caret after the prefilled mention on mount.
@@ -144,8 +170,68 @@ export function PostDetail({
   const [posting, setPosting] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [pinned, setPinned] = useState(post.pinned);
+  const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
   const cat = CATEGORY[post.category];
   const canModeratePost = isAdmin || post.authorHandle === user.handle;
+
+  const supabase = useMemo(() => createClient(), []);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const typingTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const lastTypingSentRef = useRef(0);
+
+  useEffect(() => {
+    const channel = supabase.channel(`post:${post.id}:typing`, { config: { broadcast: { self: false } } });
+    channelRef.current = channel;
+    const timeouts = typingTimeoutsRef.current;
+
+    function clearTypingFor(handle: string) {
+      const timeout = timeouts.get(handle);
+      if (timeout) { clearTimeout(timeout); timeouts.delete(handle); }
+      setTypingUsers((current) => {
+        if (!current.has(handle)) return current;
+        const next = new Map(current);
+        next.delete(handle);
+        return next;
+      });
+    }
+
+    channel
+      .on("broadcast", { event: "typing" }, ({ payload }) => {
+        const handle = typeof payload?.handle === "string" ? payload.handle : null;
+        const name = typeof payload?.name === "string" ? payload.name : null;
+        if (!handle || !name || handle === user.handle) return;
+        setTypingUsers((current) => new Map(current).set(handle, name));
+        const existing = typingTimeoutsRef.current.get(handle);
+        if (existing) clearTimeout(existing);
+        // Fallback expiry in case a stopped_typing event never arrives
+        // (tab closed, network drop) -- keeps the indicator from sticking.
+        timeouts.set(handle, setTimeout(() => clearTypingFor(handle), 3000));
+      })
+      .on("broadcast", { event: "stopped_typing" }, ({ payload }) => {
+        const handle = typeof payload?.handle === "string" ? payload.handle : null;
+        if (handle) clearTypingFor(handle);
+      })
+      .subscribe();
+
+    return () => {
+      for (const timeout of timeouts.values()) clearTimeout(timeout);
+      timeouts.clear();
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [supabase, post.id, user.handle]);
+
+  function broadcastTyping() {
+    const now = Date.now();
+    if (now - lastTypingSentRef.current < 2000) return;
+    lastTypingSentRef.current = now;
+    void channelRef.current?.send({ type: "broadcast", event: "typing", payload: { handle: user.handle, name: user.name } });
+  }
+
+  function broadcastStoppedTyping() {
+    lastTypingSentRef.current = 0;
+    void channelRef.current?.send({ type: "broadcast", event: "stopped_typing", payload: { handle: user.handle } });
+  }
 
   // One-level threads: top-level comments in order, replies grouped under them.
   const thread = useMemo(() => {
@@ -189,6 +275,7 @@ export function PostDetail({
       if (!res.ok) throw new Error();
       const { comment } = (await res.json()) as { comment: PostComment };
       setComments((prev) => [...prev, comment]);
+      broadcastStoppedTyping();
       if (parentId) setReplyTo(null);
       else setDraft("");
     } catch {
@@ -324,12 +411,20 @@ export function PostDetail({
           <div className="flex-1">
             <textarea
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => { setDraft(e.target.value); broadcastTyping(); }}
               rows={2}
               placeholder="Add a comment…"
               className="w-full resize-none rounded-lg bg-haze px-3.5 py-2.5 text-[14px] leading-[1.55] text-ink outline-none ring-brand/40 transition-shadow placeholder:text-navy/40 focus:ring-2"
             />
-            <div className="mt-2 flex justify-end">
+            <div className="mt-2 flex items-center justify-between">
+              <span className="flex min-h-4 items-center gap-1.5 text-[12px] font-semibold text-navy/45">
+                {typingUsers.size > 0 && (
+                  <>
+                    <TypingDots />
+                    {typingLabel(Array.from(typingUsers.values()))}
+                  </>
+                )}
+              </span>
               <button
                 type="button"
                 onClick={() => submitComment(draft, null)}
@@ -376,6 +471,7 @@ export function PostDetail({
                           posting={posting}
                           onSubmit={(body) => submitComment(body, c.id)}
                           onCancel={() => setReplyTo(null)}
+                          onTyping={broadcastTyping}
                         />
                       )}
                     </div>
