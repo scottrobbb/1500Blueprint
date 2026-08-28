@@ -360,7 +360,16 @@ export default async function PricingPage({
         </div>
 
         <div className={styles.footerBottom}>
-          <p>© 2026 1500 SAT Blueprint. All rights reserved.</p>
+          <div className={styles.footerLegal}>
+            <p>© 2026 1500 SAT Blueprint. All rights reserved.</p>
+            <a
+              href="https://docs.google.com/document/d/1WC-rXW1VE5Cc9YQtHpT4rcHqDZLLz6GtboRWNilb4cY/edit?usp=sharing"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Terms of Service
+            </a>
+          </div>
           <p>
             SAT is a registered trademark of College Board. 1500 SAT Blueprint
             is not affiliated with or endorsed by College Board.

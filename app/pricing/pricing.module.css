@@ -1017,6 +1017,19 @@
   line-height: 1.55;
   margin: 0;
 }
+.footerLegal {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+.footerLegal a {
+  color: rgba(255,255,255,.48);
+  font-size: 11px;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.footerLegal a:hover { color: #fff; }
 
 @media (max-width: 1000px) {
   .header nav { display: none; }
