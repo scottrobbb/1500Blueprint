@@ -39,7 +39,7 @@ export function CourseCover({ src, title, eyebrow, className = "", fill = false,
           decoding="async"
           onError={() => setFailedSrc(normalizedSrc)}
           style={{ "--cover-zoom": zoom } as React.CSSProperties}
-          className="h-full w-full origin-center scale-[var(--cover-zoom)] object-cover transition-transform duration-300 group-hover:scale-[calc(var(--cover-zoom)*1.015)]"
+          className="h-full w-full origin-center object-cover transition-transform duration-300 [transform:scale(var(--cover-zoom))] group-hover:[transform:scale(calc(var(--cover-zoom)*1.015))]"
         />
       ) : (
         <CourseCoverFallback title={title} eyebrow={eyebrow} />
