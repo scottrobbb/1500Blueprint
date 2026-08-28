@@ -17,7 +17,7 @@ import { effectivePlan, normalizeLegacyPlanCode, normalizePlanCode, type AccessS
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { drillAllowance } from "@/lib/auth/access-control";
 import { billingLivemode } from "@/lib/billing/config";
-import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
+import { PAID_ACCESS_STATUSES, scheduledCancellationAt } from "@/lib/billing/policy";
 import { isComplimentaryAccount } from "@/lib/auth/complimentary";
 import type { AnswerMap, ModuleVariant, PracticeTest, SectionId } from "@/lib/sat/types";
 import { parsePracticeTestSnapshot } from "@/lib/sat/testSnapshot";
@@ -638,7 +638,7 @@ export type StudentRow = {
   subscriptionStatus: string | null;
   subscriptionPeriodStart: string | null;
   subscriptionPeriodEnd: string | null;
-  cancelAtPeriodEnd: boolean;
+  cancellationScheduledAt: string | null;
   pendingPlan: PlanCode | null;
   pendingChangeEffectiveAt: string | null;
   grantPlan: PlanCode | null;
@@ -724,6 +724,7 @@ type RosterSubscription = {
   status: string;
   current_period_start: string | null;
   current_period_end: string | null;
+  cancel_at: string | null;
   cancel_at_period_end: boolean;
   pending_plan_code: string | null;
   pending_change_effective_at: string | null;
@@ -769,7 +770,7 @@ export async function listStudents(): Promise<StudentRow[]> {
       .returns<RosterGrant[]>()),
     loadRosterPages<RosterSubscription>("student subscriptions", (from, to) => db
       .from("student_subscriptions")
-      .select("id,user_id,plan_code,status,current_period_start,current_period_end,cancel_at_period_end,pending_plan_code,pending_change_effective_at,updated_at")
+      .select("id,user_id,plan_code,status,current_period_start,current_period_end,cancel_at,cancel_at_period_end,pending_plan_code,pending_change_effective_at,updated_at")
       .eq("livemode", billingLivemode())
       .order("updated_at", { ascending: false })
       .order("id")
@@ -868,7 +869,13 @@ export async function listStudents(): Promise<StudentRow[]> {
       subscriptionStatus: latestSubscription?.status ?? null,
       subscriptionPeriodStart: latestSubscription?.current_period_start ?? null,
       subscriptionPeriodEnd: latestSubscription?.current_period_end ?? null,
-      cancelAtPeriodEnd: latestSubscription?.cancel_at_period_end ?? false,
+      cancellationScheduledAt: latestSubscription
+        ? scheduledCancellationAt({
+            cancelAt: latestSubscription.cancel_at,
+            cancelAtPeriodEnd: latestSubscription.cancel_at_period_end,
+            currentPeriodEnd: latestSubscription.current_period_end,
+          })
+        : null,
       pendingPlan: latestSubscription?.pending_plan_code
         ? normalizePlanCode(latestSubscription.pending_plan_code)
         : null,

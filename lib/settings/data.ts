@@ -7,7 +7,7 @@ import {
 } from "@/lib/auth/entitlements";
 import { normalizePlanCode, type PlanCode, type StudentAccess } from "@/lib/auth/plans";
 import { billingLivemode } from "@/lib/billing/config";
-import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
+import { PAID_ACCESS_STATUSES, scheduledCancellationAt } from "@/lib/billing/policy";
 import type { AchievementCategory } from "@/lib/gamification";
 import { ACHIEVEMENTS, levelProgress, weekStart } from "@/lib/gamification/engine";
 import { supabaseAdmin } from "@/utils/supabase/admin";
@@ -33,7 +33,7 @@ export type SettingsBillingSubscription = {
   status: string;
   currentPeriodStart: string | null;
   currentPeriodEnd: string | null;
-  cancelAtPeriodEnd: boolean;
+  cancellationScheduledAt: string | null;
   pendingPlan: PlanCode | null;
   pendingChangeEffectiveAt: string | null;
 };
@@ -95,6 +95,7 @@ type SubscriptionRow = {
   status: string;
   current_period_start: string | null;
   current_period_end: string | null;
+  cancel_at: string | null;
   cancel_at_period_end: boolean;
   pending_plan_code: string | null;
   pending_change_effective_at: string | null;
@@ -221,7 +222,7 @@ async function getSettingsBillingSubscription(
   const { data, error } = await supabaseAdmin()
     .from("student_subscriptions")
     .select(
-      "plan_code,status,current_period_start,current_period_end,cancel_at_period_end,pending_plan_code,pending_change_effective_at",
+      "plan_code,status,current_period_start,current_period_end,cancel_at,cancel_at_period_end,pending_plan_code,pending_change_effective_at",
     )
     .eq("user_id", accountId)
     .eq("livemode", billingLivemode())
@@ -238,7 +239,11 @@ async function getSettingsBillingSubscription(
     status: data.status,
     currentPeriodStart: data.current_period_start,
     currentPeriodEnd: data.current_period_end,
-    cancelAtPeriodEnd: data.cancel_at_period_end,
+    cancellationScheduledAt: scheduledCancellationAt({
+      cancelAt: data.cancel_at,
+      cancelAtPeriodEnd: data.cancel_at_period_end,
+      currentPeriodEnd: data.current_period_end,
+    }),
     pendingPlan: data.pending_plan_code
       ? normalizePlanCode(data.pending_plan_code)
       : null,

@@ -5,6 +5,7 @@ import {
   isRefundEligible,
   planChangeDirection,
   refundDeadline,
+  scheduledCancellationAt,
 } from "./policy";
 import { billingCheckoutEnabled, planForLegacyProductId, planForPriceId } from "./config";
 import { billingCadenceForInterval, billingOffer } from "./offers";
@@ -21,6 +22,24 @@ test("plan changes use immediate upgrades and scheduled downgrades", () => {
   assert.equal(planChangeDirection("core", "max"), "upgrade");
   assert.equal(planChangeDirection("max", "core"), "downgrade");
   assert.equal(planChangeDirection("max", "max"), "same");
+});
+
+test("scheduled cancellations prefer Stripe cancel_at and preserve period-end compatibility", () => {
+  assert.equal(scheduledCancellationAt({
+    cancelAt: "2026-09-28T19:43:32.000Z",
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: "2026-09-28T19:43:32.000Z",
+  }), "2026-09-28T19:43:32.000Z");
+  assert.equal(scheduledCancellationAt({
+    cancelAt: null,
+    cancelAtPeriodEnd: true,
+    currentPeriodEnd: "2026-09-28T19:43:32.000Z",
+  }), "2026-09-28T19:43:32.000Z");
+  assert.equal(scheduledCancellationAt({
+    cancelAt: null,
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: "2026-09-28T19:43:32.000Z",
+  }), null);
 });
 
 test("refund window is exactly 24 hours from the first purchase", () => {

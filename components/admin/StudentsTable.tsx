@@ -350,8 +350,8 @@ function AccessDetails({
         <p>
           Period {fmtDate(student.subscriptionPeriodStart)}–{fmtDate(student.subscriptionPeriodEnd)}
           {student.subscriptionPeriodEnd
-            ? student.cancelAtPeriodEnd
-              ? ` · cancels ${fmtDate(student.subscriptionPeriodEnd)}`
+            ? student.cancellationScheduledAt
+              ? ` · cancels ${fmtDate(student.cancellationScheduledAt)}`
               : ` · renews ${fmtDate(student.subscriptionPeriodEnd)}`
             : ""}
         </p>

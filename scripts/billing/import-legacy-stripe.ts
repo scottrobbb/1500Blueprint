@@ -170,6 +170,9 @@ async function main() {
         status: subscription.status,
         current_period_start: starts.length ? new Date(Math.min(...starts) * 1000).toISOString() : null,
         current_period_end: ends.length ? new Date(Math.max(...ends) * 1000).toISOString() : null,
+        cancel_at: typeof subscription.cancel_at === "number"
+          ? new Date(subscription.cancel_at * 1000).toISOString()
+          : null,
         cancel_at_period_end: subscription.cancel_at_period_end,
         livemode: subscription.livemode,
         stripe_created_at: createdAt.toISOString(),

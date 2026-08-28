@@ -13,6 +13,8 @@ export function SubscriptionSettingsView({
   billingState?: string;
 }) {
   const { access, account, grant, subscription } = data;
+  const cancellationAt = subscription?.cancellationScheduledAt ?? null;
+  const billingDate = cancellationAt ?? subscription?.currentPeriodEnd ?? null;
 
   return (
     <div className="space-y-12">
@@ -44,14 +46,14 @@ export function SubscriptionSettingsView({
             {subscription ? (
               <PlanDetail
                 label="Plan status"
-                value={subscription.cancelAtPeriodEnd ? "Cancellation scheduled" : statusLabel(subscription.status)}
-                warning={subscription.cancelAtPeriodEnd || subscription.status === "past_due"}
+                value={cancellationAt ? "Cancellation scheduled" : statusLabel(subscription.status)}
+                warning={Boolean(cancellationAt) || subscription.status === "past_due"}
               />
             ) : null}
-            {subscription?.currentPeriodEnd ? (
+            {billingDate ? (
               <PlanDetail
-                label={subscription.cancelAtPeriodEnd ? "Access ends" : subscription.status === "trialing" ? "Trial ends" : "Next renewal"}
-                value={formatDate(subscription.currentPeriodEnd)}
+                label={cancellationAt ? "Access ends" : subscription?.status === "trialing" ? "Trial ends" : "Next renewal"}
+                value={formatDate(billingDate)}
               />
             ) : null}
             {subscription?.pendingPlan ? (
