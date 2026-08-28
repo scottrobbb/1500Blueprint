@@ -62,6 +62,10 @@ export function buildSettingsPlanView(
   const drillIncluded = drillLimit !== null;
   const drillUnlimited = drillLimit === "unlimited";
 
+  const bankLimit = entitlements.questionBankLimit;
+  const finiteBankLimit = typeof bankLimit === "number" ? bankLimit : null;
+  const bankUnlimited = bankLimit === "unlimited";
+
   return {
     usage: [
       {
@@ -69,18 +73,16 @@ export function buildSettingsPlanView(
         title: "Question Bank",
         description: "Lifetime practice attempts across Math and Reading & Writing.",
         included: true,
-        unavailable: usage.questionBankUsed === null,
-        unlimited: false,
-        used: usage.questionBankUsed,
-        limit: entitlements.questionBankLimit,
-        percentage: usagePercentage(
-          usage.questionBankUsed,
-          entitlements.questionBankLimit,
-        ),
-        valueLabel:
-          usage.questionBankUsed === null
+        unavailable: !bankUnlimited && usage.questionBankUsed === null,
+        unlimited: bankUnlimited,
+        used: bankUnlimited ? null : usage.questionBankUsed,
+        limit: finiteBankLimit,
+        percentage: bankUnlimited ? null : usagePercentage(usage.questionBankUsed, finiteBankLimit),
+        valueLabel: bankUnlimited
+          ? "Unlimited"
+          : usage.questionBankUsed === null
             ? "Usage unavailable"
-            : `${usage.questionBankUsed.toLocaleString()} of ${entitlements.questionBankLimit.toLocaleString()} attempts`,
+            : `${usage.questionBankUsed.toLocaleString()} of ${finiteBankLimit?.toLocaleString()} attempts`,
       },
       {
         key: "fullTestLimit",

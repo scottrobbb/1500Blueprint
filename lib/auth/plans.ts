@@ -2,7 +2,7 @@ export type PlanCode = "free" | "core" | "max";
 export type AccessSource = "free" | "legacy" | "subscription" | "grant";
 
 export type PlanEntitlements = {
-  questionBankLimit: number;
+  questionBankLimit: number | "unlimited";
   fullTestLimit: number;
   dailyDrillLimit: number | "unlimited" | null;
   desmos101: boolean;
@@ -50,7 +50,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
     discordRole: "core",
   },
   max: {
-    questionBankLimit: 3000,
+    questionBankLimit: "unlimited",
     fullTestLimit: 4,
     dailyDrillLimit: "unlimited",
     desmos101: true,

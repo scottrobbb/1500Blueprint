@@ -42,6 +42,7 @@ export async function POST(request: Request) {
   if (access && !access.active) {
     return NextResponse.json({ error: "Question Bank access is not active.", code: "plan_limit" }, { status: 402 });
   }
+  const bankLimit = access?.entitlements.questionBankLimit ?? "unlimited";
 
   const existing = await loadAttemptByToken(session.email, input.clientToken);
   if (existing.error) {
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
       domain: gradingQuestion.question.domain,
       skill: gradingQuestion.question.skill ?? null,
       difficulty: gradingQuestion.question.difficulty,
-      limit: access?.entitlements.questionBankLimit ?? null,
+      limit: bankLimit === "unlimited" ? null : bankLimit,
     });
   } catch (error) {
     reportServerError("question_bank.math.attempt_write_failed", error, {
@@ -101,8 +102,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Your answer was graded, but its analytics could not be saved." }, { status: 500 });
   }
   if (!write.allowed) {
-    const limit = access?.entitlements.questionBankLimit ?? 0;
-    return NextResponse.json({ error: `You have used all ${limit} questions included with your plan.`, code: "plan_limit", used: write.used, limit }, { status: 402 });
+    return NextResponse.json({ error: `You have used all ${bankLimit} questions included with your plan.`, code: "plan_limit", used: write.used, limit: bankLimit }, { status: 402 });
   }
   if (write.questionId !== input.questionId || write.response !== input.response) {
     return NextResponse.json({ error: "That answer token was already used." }, { status: 409 });

@@ -41,15 +41,17 @@ const DOMAINS: Record<QuestionBankSection, string[]> = {
   ],
 };
 
-type QuestionBankAccess = { plan: PlanCode; test: boolean; used: number; limit: number; challengeQuestions: boolean };
+type QuestionBankAccess = { plan: PlanCode; test: boolean; used: number; limit: number | "unlimited"; challengeQuestions: boolean };
 
 export function QuestionBankDashboardView({ dashboard, access }: { dashboard: QuestionBankDashboard; access: QuestionBankAccess }) {
   const totalActivity = dashboard.activity.reduce(
     (total, week) => ({ correct: total.correct + week.correct, wrong: total.wrong + week.wrong }),
     { correct: 0, wrong: 0 },
   );
-  const usage = Math.min(access.used, access.limit);
-  const usagePercent = access.limit > 0 ? Math.min(100, Math.round((usage / access.limit) * 100)) : 0;
+  const unlimited = access.limit === "unlimited";
+  const limit = access.limit === "unlimited" ? 0 : access.limit;
+  const usage = unlimited ? 0 : Math.min(access.used, limit);
+  const usagePercent = !unlimited && limit > 0 ? Math.min(100, Math.round((usage / limit) * 100)) : 0;
 
   return (
     <div className="min-h-dvh bg-[#f5f6f8]">
@@ -74,12 +76,16 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
               <PlanBadge plan={access.plan} test={access.test} />
               <span className="rounded-full bg-[#fff4cc] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.11em] text-[#755600]">Math + R&amp;W live</span>
             </div>
-            <div className="mt-3 flex items-end justify-between gap-3">
-              <div><strong className="font-display text-lg font-extrabold text-navy">{usage.toLocaleString()}</strong><span className="text-xs font-semibold text-navy/40"> / {access.limit.toLocaleString()} used</span></div>
-              {access.plan !== "max" ? <Link href="/pricing" className="text-xs font-extrabold text-brand-700 transition-colors hover:text-navy">Compare plans →</Link> : null}
-            </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy/[0.07]" aria-label={`${usagePercent}% of included questions used`}><div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${usagePercent}%` }} /></div>
-            <a href="#analytics" className="mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-haze text-xs font-extrabold text-navy transition-colors hover:bg-ice hover:text-brand-700">View analytics <ChevronDownIcon className="h-4 w-4" /></a>
+            {!unlimited && (
+              <>
+                <div className="mt-3 flex items-end justify-between gap-3">
+                  <div><strong className="font-display text-lg font-extrabold text-navy">{usage.toLocaleString()}</strong><span className="text-xs font-semibold text-navy/40"> / {limit.toLocaleString()} used</span></div>
+                  <Link href="/pricing" className="text-xs font-extrabold text-brand-700 transition-colors hover:text-navy">Compare plans →</Link>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy/[0.07]" aria-label={`${usagePercent}% of included questions used`}><div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${usagePercent}%` }} /></div>
+              </>
+            )}
+            <a href="#analytics" className={`${unlimited ? "mt-1" : "mt-3"} inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl bg-haze text-xs font-extrabold text-navy transition-colors hover:bg-ice hover:text-brand-700`}>View analytics <ChevronDownIcon className="h-4 w-4" /></a>
           </div>
         </header>
 

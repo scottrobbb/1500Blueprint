@@ -12,11 +12,12 @@ export async function canAccessPracticeTest(email: string, testSlug: string): Pr
   return testIndex >= 0 && testIndex < access.entitlements.fullTestLimit;
 }
 
-export async function questionBankAllowance(email: string): Promise<{ allowed: boolean; used: number; limit: number }> {
-  if (isAdminEmail(email)) return { allowed: true, used: 0, limit: Number.MAX_SAFE_INTEGER };
+export async function questionBankAllowance(email: string): Promise<{ allowed: boolean; used: number; limit: number | "unlimited" }> {
+  if (isAdminEmail(email)) return { allowed: true, used: 0, limit: "unlimited" };
   const access = await getStudentAccess(email);
-  const used = await getQuestionBankUsage(email);
   const limit = access.entitlements.questionBankLimit;
+  if (limit === "unlimited") return { allowed: access.active, used: 0, limit };
+  const used = await getQuestionBankUsage(email);
   return { allowed: access.active && used < limit, used, limit };
 }
 

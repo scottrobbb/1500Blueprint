@@ -67,7 +67,9 @@ test("max access renders unlimited drills and all capabilities", () => {
   const bank = view.usage.find((item) => item.key === "questionBankLimit");
   const drills = view.usage.find((item) => item.key === "dailyDrillLimit");
 
-  assert.equal(bank?.unavailable, true);
+  assert.equal(bank?.unavailable, false);
+  assert.equal(bank?.unlimited, true);
+  assert.equal(bank?.valueLabel, "Unlimited");
   assert.equal(drills?.unlimited, true);
   assert.equal(drills?.valueLabel, "Unlimited");
   assert.equal(view.features.every((item) => item.included), true);
