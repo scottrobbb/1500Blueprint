@@ -59,7 +59,7 @@ function CourseCoverFallback({ title, eyebrow }: { title: string; eyebrow?: stri
   return (
     <div aria-hidden="true" className="absolute inset-0 flex items-center gap-4 px-5 sm:px-6">
       <span className="absolute inset-y-0 left-0 w-1.5 bg-brand" />
-      <span className="grid h-12 w-12 flex-none place-items-center rounded-xl border border-brand/15 bg-white font-display text-base font-semibold tracking-[-0.03em] text-brand-700 shadow-sm">
+      <span className="grid h-11 w-11 flex-none place-items-center rounded-xl border border-brand/15 bg-white font-display text-base font-semibold tracking-[-0.03em] text-brand-700 shadow-sm">
         {initials}
       </span>
       <span className="min-w-0">

@@ -126,7 +126,16 @@ export function accessForTestPersona(
   return null;
 }
 
+// Free courses (available on every plan) are keyed by the entitlement flag
+// that gates them. Everything else (Blueprint Foundations, subtopic courses)
+// requires allCourses (Max).
+const FREE_COURSE_ENTITLEMENTS: Record<string, keyof PlanEntitlements> = {
+  "desmos-101": "desmos101",
+  "reading-101": "readingWriting101",
+};
+
 export function hasCourseAccess(entitlements: PlanEntitlements, courseSlug: string): boolean {
-  if (entitlements.allCourses || courseSlug === "blueprint-foundations") return true;
-  return courseSlug === "desmos-101" && entitlements.desmos101;
+  if (entitlements.allCourses) return true;
+  const flag = FREE_COURSE_ENTITLEMENTS[courseSlug];
+  return flag ? Boolean(entitlements[flag]) : false;
 }

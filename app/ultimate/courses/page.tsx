@@ -4,12 +4,19 @@ import { PageHeader } from "@/components/ultimate/PageHeader";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { listCoursesForStudent } from "@/lib/courses/queries";
-import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
+import type { Course } from "@/lib/courses/types";
+import { canAccessCourse, getStudentAccess, type StudentAccess } from "@/lib/auth/entitlements";
 import { LockedBadge, UpgradePrompt } from "@/components/account/UpgradePrompt";
 import { CourseCover } from "@/components/ultimate/courses/CourseCover";
 
 export const metadata = { title: "Courses" };
 export const dynamic = "force-dynamic";
+
+const COURSE_SECTIONS = [
+  { title: "Blueprint courses", slugs: ["blueprint-foundations"] },
+  { title: "Subtopic courses", slugs: ["math-subtopic-course", "reading-writing-subtopic-course"] },
+  { title: "Free courses", slugs: ["desmos-101", "reading-101"] },
+] as const;
 
 export default async function UltimateCoursesPage() {
   const session = await getSession();
@@ -18,6 +25,12 @@ export default async function UltimateCoursesPage() {
   const unlockedCourses = courses.filter((course) => canAccessCourse(access, course.slug));
   const totalLessons = unlockedCourses.reduce((sum, course) => sum + course.totalLessons, 0);
   const completedLessons = unlockedCourses.reduce((sum, course) => sum + course.completedLessons, 0);
+
+  const sections = COURSE_SECTIONS.map((section) => ({
+    ...section,
+    courses: courses.filter((course) => (section.slugs as readonly string[]).includes(course.slug)),
+  })).filter((section) => section.courses.length > 0);
+  const firstCourseId = sections[0]?.courses[0]?.id ?? null;
 
   return (
     <div className="mx-auto w-full max-w-[1160px] px-4 py-7 sm:px-7 sm:py-10">
@@ -39,31 +52,18 @@ export default async function UltimateCoursesPage() {
               className="mb-6"
             />
           ) : null}
-          <section className="grid gap-5 md:grid-cols-2">
-            {courses.map((course, courseIndex) => {
-              const locked = !canAccessCourse(access, course.slug);
-              return (
-              <Link key={course.id} href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group relative overflow-hidden rounded-[20px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25 hover:border-gold/45" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35"}`}>
-                <div className="relative min-h-60 overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
-                  <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} zoom={course.coverZoom} priority={courseIndex === 0} fill className="absolute inset-0 h-full w-full" />
-                  <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-navy/95 via-navy/35 to-navy/5" />
-                  <div className="relative">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-sky">{course.eyebrow ?? "1500 Blueprint course"}</p>
-                    <h2 className="mt-2 max-w-lg font-display text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{course.title}</h2>
-                    <p className="mt-3 text-xs font-semibold text-white/60">{course.modules.length} modules · {course.totalLessons} lessons</p>{locked ? <span className="mt-4 inline-flex"><LockedBadge plan="max" dark /></span> : null}
-                  </div>
+          <div className="space-y-10">
+            {sections.map((section) => (
+              <section key={section.title}>
+                <h2 className="mb-4 font-display text-lg font-extrabold tracking-[-0.02em] text-navy">{section.title}</h2>
+                <div className="grid gap-5 md:grid-cols-2">
+                  {section.courses.map((course) => (
+                    <CourseCard key={course.id} course={course} access={access} priority={course.id === firstCourseId} />
+                  ))}
                 </div>
-                <div className="p-5">
-                  <p className="line-clamp-2 min-h-10 text-sm leading-5 text-navy/55">{course.description ?? "Open the curriculum and start with the first lesson."}</p>
-                  <div className="mt-5 flex items-center gap-3">
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-navy/[0.07]"><div className="h-full rounded-full bg-brand" style={{ width: `${course.progress}%` }} /></div>
-                    <span className="text-xs font-bold tabular-nums text-navy/45">{course.progress}%</span>
-                  </div>
-                  <span className="mt-4 inline-flex min-h-11 items-center text-sm font-extrabold text-brand-600">{locked ? "Upgrade to unlock" : course.progress > 0 ? "Continue course" : "Start course"} <span className="ml-2 transition-transform group-hover:translate-x-1">→</span></span>
-                </div>
-              </Link>
-            );})}
-          </section>
+              </section>
+            ))}
+          </div>
         </>
       ) : (
         <section className="grid min-h-72 place-items-center rounded-[20px] border border-dashed border-navy/15 bg-white px-6 text-center">
@@ -71,6 +71,31 @@ export default async function UltimateCoursesPage() {
         </section>
       )}
     </div>
+  );
+}
+
+function CourseCard({ course, access, priority }: { course: Course; access: StudentAccess; priority: boolean }) {
+  const locked = !canAccessCourse(access, course.slug);
+  return (
+    <Link href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group relative overflow-hidden rounded-[20px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25 hover:border-gold/45" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35"}`}>
+      <div className="relative min-h-60 overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
+        <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} zoom={course.coverZoom} priority={priority} fill className="absolute inset-0 h-full w-full" />
+        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-navy/95 via-navy/35 to-navy/5" />
+        <div className="relative">
+          <p className="text-[10px] font-bold uppercase tracking-[0.17em] text-sky">{course.eyebrow ?? "1500 Blueprint course"}</p>
+          <h3 className="mt-2 max-w-lg font-display text-[26px] font-extrabold leading-tight tracking-[-0.03em]">{course.title}</h3>
+          <p className="mt-3 text-xs font-semibold text-white/60">{course.modules.length} modules · {course.totalLessons} lessons</p>{locked ? <span className="mt-4 inline-flex"><LockedBadge plan="max" dark /></span> : null}
+        </div>
+      </div>
+      <div className="p-5">
+        <p className="line-clamp-2 min-h-10 text-sm leading-5 text-navy/55">{course.description ?? "Open the curriculum and start with the first lesson."}</p>
+        <div className="mt-5 flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-navy/[0.07]"><div className="h-full rounded-full bg-brand" style={{ width: `${course.progress}%` }} /></div>
+          <span className="text-xs font-bold tabular-nums text-navy/45">{course.progress}%</span>
+        </div>
+        <span className="mt-4 inline-flex min-h-11 items-center text-sm font-extrabold text-brand-600">{locked ? "Upgrade to unlock" : course.progress > 0 ? "Continue course" : "Start course"} <span className="ml-2 transition-transform group-hover:translate-x-1">→</span></span>
+      </div>
+    </Link>
   );
 }
 
