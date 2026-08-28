@@ -30,7 +30,7 @@ export async function PUT(request: NextRequest, context: Context) {
         if (block.kind === "practice") {
           const practice = block.content.practice;
           if (!practice || !Array.isArray(practice.questions) || practice.questions.length > 500 || practice.passingScore < 0 || practice.passingScore > 100) return NextResponse.json({ error: "invalid_practice", detail: `The practice inside “${lesson.title}” has invalid settings.` }, { status: 400 });
-          if (practice.questions.some((question) => !question.id || !["multiple_choice", "free_response"].includes(question.type) || !Array.isArray(question.choices))) return NextResponse.json({ error: "invalid_practice_question", detail: `The practice inside “${lesson.title}” contains an invalid question.` }, { status: 400 });
+          if (practice.questions.some((question) => !question.id || !["multiple_choice", "checkbox", "free_response"].includes(question.type) || !Array.isArray(question.choices))) return NextResponse.json({ error: "invalid_practice_question", detail: `The practice inside “${lesson.title}” contains an invalid question.` }, { status: 400 });
         }
       }
     }
