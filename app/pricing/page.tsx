@@ -46,13 +46,13 @@ const freeFeatures: PlanFeature[] = [
 
 const coreFeatures: PlanFeature[] = [
   { label: "1250+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
-  { label: "2 full-length digital SATs", icon: "file" },
+  { label: "2 full-length adaptive digital SATs", icon: "file" },
   { label: "20 practice drills each day", icon: "bolt" },
   { label: "Everything in Free", icon: "check" },
 ];
 
 const maxFeatures: PlanFeature[] = [
-  { label: "4 full-length digital SATs", icon: "file" },
+  { label: "4 full-length adaptive digital SATs", icon: "file" },
   { label: "Unlimited daily drills", icon: "bolt" },
   { label: "Access to all courses, quizzes, and flashcards", icon: "book" },
   { label: "Weekly group calls with Scott (recorded)", icon: "star" },
