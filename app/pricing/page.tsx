@@ -369,6 +369,13 @@ export default async function PricingPage({
             >
               Terms of Service
             </a>
+            <a
+              href="https://docs.google.com/document/d/e/2PACX-1vQ86GanKtOzKMzzOvBV84B0zi3u5DrlLEQpgsL1qIBw4kykz9XoIs7o3O82bCJzpT6YnB9UMCEvqFUc/pub"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Privacy Policy
+            </a>
           </div>
           <p>
             SAT is a registered trademark of College Board. 1500 SAT Blueprint
