@@ -32,21 +32,14 @@ export function CoursePracticeRunner({
   const [questions, setQuestions] = useState<CoursePracticeQuestion[]>(() => practice.randomizeQuestions ? shuffled(practice.questions) : practice.questions);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  // Keyed by question id (not a single boolean) so jumping between steps
-  // preserves each question's own checked/unchecked state independently.
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set());
+  const [checked, setChecked] = useState(false);
   const [grade, setGrade] = useState<Grade | null>(() => initialAttempt ? { ...initialAttempt, results: {} } : null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [clientToken, setClientToken] = useState<string | null>(null);
   const question = questions[currentIndex];
   const answer = question ? answers[question.id] ?? "" : "";
-  const checked = question ? checkedIds.has(question.id) : false;
   const locallyCorrect = question ? isCoursePracticeAnswerCorrect(question, answer) : false;
-
-  function goToStep(index: number) {
-    if (index >= 0 && index < questions.length) setCurrentIndex(index);
-  }
 
   function setAnswer(value: string) {
     if (checked || !question) return;
@@ -83,14 +76,14 @@ export function CoursePracticeRunner({
 
   async function nextQuestion() {
     if (currentIndex === questions.length - 1) await finish();
-    else setCurrentIndex((index) => index + 1);
+    else { setCurrentIndex((index) => index + 1); setChecked(false); }
   }
 
   function retry() {
     setQuestions(practice.randomizeQuestions ? shuffled(practice.questions) : practice.questions);
     setCurrentIndex(0);
     setAnswers({});
-    setCheckedIds(new Set());
+    setChecked(false);
     setGrade(null);
     setSaveError(false);
     setClientToken(null);
@@ -115,26 +108,6 @@ export function CoursePracticeRunner({
       <header className="border-b border-navy/10 bg-haze/55 px-5 py-4 sm:px-7">
         <div className="flex items-center justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.15em] text-brand-600">Course practice</p><h2 className="mt-1 font-display text-xl font-extrabold text-navy">{practice.title}</h2></div><span className="rounded-full border border-navy/10 bg-white px-3 py-1.5 text-xs font-bold text-navy/55">{currentIndex + 1} / {questions.length}</span></div>
         {currentIndex === 0 && practice.instructions ? <p className="mt-2 max-w-2xl text-sm leading-6 text-navy/50">{practice.instructions}</p> : null}
-        <div className="mt-4 flex flex-wrap gap-1.5" role="tablist" aria-label="Questions">
-          {questions.map((step, stepIndex) => {
-            const stepChecked = checkedIds.has(step.id);
-            const stepCorrect = stepChecked && isCoursePracticeAnswerCorrect(step, answers[step.id] ?? "");
-            const active = stepIndex === currentIndex;
-            return (
-              <button
-                key={step.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                aria-label={`Question ${stepIndex + 1}`}
-                onClick={() => goToStep(stepIndex)}
-                className={`grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-full border text-xs font-extrabold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand ${active ? "border-brand bg-brand text-white" : stepChecked ? stepCorrect ? "border-success/40 bg-success-bg text-success-600" : "border-danger/40 bg-danger-bg text-danger-600" : "border-navy/15 bg-white text-navy/55 hover:border-brand/40 hover:bg-ice/45"}`}
-              >
-                {stepIndex + 1}
-              </button>
-            );
-          })}
-        </div>
         <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-navy/[0.08]"><div className="h-full rounded-full bg-brand transition-[width] duration-200 motion-reduce:transition-none" style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }} /></div>
       </header>
       <div className="px-5 py-6 sm:px-7 sm:py-7">
@@ -163,7 +136,7 @@ export function CoursePracticeRunner({
         )}
         {checked ? <div role="status" className={`mt-5 rounded-2xl border px-4 py-4 ${locallyCorrect ? "border-success/25 bg-success-bg" : "border-danger/25 bg-danger-bg"}`}><strong className={`block text-sm ${locallyCorrect ? "text-success-600" : "text-danger-600"}`}>{locallyCorrect ? "Correct" : `Correct answer: ${question.type === "checkbox" ? parseCheckboxAnswer(question.correctAnswer).join(", ") : [question.correctAnswer, ...(question.acceptedAnswers ?? []).filter(Boolean)].join(" or ")}`}</strong>{question.explanation ? <div className="mt-1.5 text-sm leading-6 text-navy/65">{renderPracticeExplanation(question.explanation)}</div> : null}</div> : null}
         {saveError ? <p role="alert" className="mt-4 rounded-xl bg-danger-bg px-4 py-3 text-sm font-semibold text-danger-600">Your score could not be saved. Try finishing again.</p> : null}
-        <div className="mt-6 flex justify-end"><button type="button" disabled={!answer.trim() || saving} onClick={checked ? nextQuestion : () => setCheckedIds((current) => new Set(current).add(question.id))} className="min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-navy/15 disabled:text-navy/35">{saving ? "Saving…" : checked ? currentIndex === questions.length - 1 ? "Finish practice" : "Next question" : "Check answer"}</button></div>
+        <div className="mt-6 flex justify-end"><button type="button" disabled={!answer.trim() || saving} onClick={checked ? nextQuestion : () => setChecked(true)} className="min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-600 disabled:cursor-not-allowed disabled:bg-navy/15 disabled:text-navy/35">{saving ? "Saving…" : checked ? currentIndex === questions.length - 1 ? "Finish practice" : "Next question" : "Check answer"}</button></div>
       </div>
     </section>
   );
