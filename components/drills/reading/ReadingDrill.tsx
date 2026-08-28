@@ -12,6 +12,7 @@ import { KeyPointsChecklist, ReadingCard, RecallHeading } from "./ReadingPieces"
 import { READING_PASS_SCORE, type ReadingProgressState } from "@/lib/drills/readingProgress";
 import type { KeyPoint, ReadingPassage } from "./mock";
 import { readingPassage } from "./mock";
+import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 
 // One passage the drill can run. Mirrors ReadingContent on a DrillQuestion: the
 // page maps a DB question -> this shape ({ id, body, readSeconds, keyPoints }).
@@ -151,13 +152,16 @@ export function ReadingDrill({
     phase === "read" ? <DigitalTimer seconds={secondsLeft} warning={lowTime} /> : null;
 
   const right = (
-    <span className="hidden items-center gap-2.5 text-sm text-navy/55 sm:inline-flex">
-      Streak
-      <StreakDots streak={progress.streak} target={progress.streakTarget} />
-      <span className="tabular-nums text-navy/40">
-        {progress.streak}/{progress.streakTarget}
+    <div className="flex items-center gap-2.5">
+      {item.id ? <ReportQuestionButton compact questionId={item.id} targetType="question-bank" /> : null}
+      <span className="hidden items-center gap-2.5 text-sm text-navy/55 sm:inline-flex">
+        Streak
+        <StreakDots streak={progress.streak} target={progress.streakTarget} />
+        <span className="tabular-nums text-navy/40">
+          {progress.streak}/{progress.streakTarget}
+        </span>
       </span>
-    </span>
+    </div>
   );
 
   return (

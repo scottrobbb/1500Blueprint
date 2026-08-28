@@ -9,6 +9,7 @@ import { chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
 import { CalculatorIcon, CloseIcon, ReferenceIcon } from "@/components/test/icons";
 import { MathText } from "@/components/test/MathText";
 import { CalculatorPanel } from "@/components/test/CalculatorPanel";
+import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 import { TrophyIcon, XCircleIcon } from "../shared/icons";
 import { DirectionsPanel } from "./DirectionsPanel";
 import {
@@ -260,6 +261,7 @@ function TargetedMathSession({
 
   const right = (
     <div className="flex items-center gap-1.5">
+      <ReportQuestionButton compact questionId={question.id} targetType="question-bank" />
       <ToolButton icon={<CalculatorIcon className="h-4 w-4" />} text="Calculator" onClick={() => setOverlay("calculator")} />
       <ToolButton icon={<ReferenceIcon className="h-4 w-4" />} text="Reference" onClick={() => setOverlay("reference")} />
     </div>

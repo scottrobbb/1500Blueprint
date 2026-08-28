@@ -7,6 +7,7 @@ import { ExplanationText } from "@/components/test/ExplanationText";
 import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import { ReferenceModal } from "@/components/test/ReferenceModal";
+import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 import { normalizeGridInInput } from "@/lib/sat/gridIn";
 import {
   nextQuestionBankAttemptState,
@@ -194,6 +195,7 @@ function ObjectiveBankRunner({
   const correctCount = Object.values(results).filter((item) => item.correct).length;
   const questionStrip = (
     <QuestionStrip
+      questionId={question.id}
       index={currentIndex}
       marked={marked.has(question.id)}
       saving={savingQuestion}
@@ -410,7 +412,7 @@ function ToolButton({ label, active, onClick, children }: { label: string; activ
   );
 }
 
-function QuestionStrip({ index, marked, saving, saveError, eliminatorOn, onToggleMarked, onToggleEliminator }: { index: number; marked: boolean; saving: boolean; saveError: string | null; eliminatorOn: boolean; onToggleMarked: () => void; onToggleEliminator: () => void }) {
+function QuestionStrip({ questionId, index, marked, saving, saveError, eliminatorOn, onToggleMarked, onToggleEliminator }: { questionId: string; index: number; marked: boolean; saving: boolean; saveError: string | null; eliminatorOn: boolean; onToggleMarked: () => void; onToggleEliminator: () => void }) {
   return (
     <div className="flex min-h-[52px] overflow-hidden rounded-[9px] bg-[#f3f3f3]">
       <span className="grid w-[52px] flex-none place-items-center bg-black text-xl font-semibold text-white">{index + 1}</span>
@@ -423,6 +425,7 @@ function QuestionStrip({ index, marked, saving, saveError, eliminatorOn, onToggl
           {saveError && <p role="alert" className="-mt-1 text-[11px] font-semibold text-[#dc2626]">{saveError}</p>}
         </div>
         <div className="flex items-center gap-1 text-[#777]">
+          <ReportQuestionButton compact questionId={questionId} targetType="question-bank" className="h-10 min-h-10 w-10 border-[#d7d7d7] px-0 text-[#666] hover:border-[#aaa] hover:bg-white" />
           <button type="button" onClick={onToggleEliminator} aria-pressed={eliminatorOn} aria-label="Toggle answer eliminator" title="Answer eliminator" className={`grid h-10 w-10 place-items-center rounded-[9px] ${eliminatorOn ? "bg-[#161616] text-white" : "bg-black text-white hover:bg-[#333]"}`}><EliminateIcon className="h-5 w-5" /></button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 import type { AnswerValue, ChoiceId, Question, Section } from "@/lib/sat/types";
 import { AnswerChoices } from "./AnswerChoices";
 import { GridIn } from "./GridIn";
@@ -30,12 +31,14 @@ type Props = {
 };
 
 function QuestionStrip({
+  questionId,
   index,
   marked,
   eliminatorOn,
   onToggleMark,
   onToggleEliminator,
 }: {
+  questionId: string;
   index: number;
   marked: boolean;
   eliminatorOn: boolean;
@@ -68,20 +71,28 @@ function QuestionStrip({
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={onToggleEliminator}
-          aria-pressed={eliminatorOn}
-          aria-label="Toggle answer eliminator"
-          title="Cross out answer choices"
-          className={`flex h-7 cursor-pointer items-center rounded-md border-2 border-exam-blue px-2.5 text-[13px] font-bold leading-none transition-colors ${
-            eliminatorOn
-              ? "bg-exam-blue text-white"
-              : "bg-white text-exam-blue hover:bg-exam-tint"
-          }`}
-        >
-          <span className="line-through decoration-2">ABC</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          <ReportQuestionButton
+            compact
+            questionId={questionId}
+            targetType="practice-test"
+            className="min-h-7 h-7 rounded-md border-exam-blue px-2 text-exam-blue hover:bg-exam-tint"
+          />
+          <button
+            type="button"
+            onClick={onToggleEliminator}
+            aria-pressed={eliminatorOn}
+            aria-label="Toggle answer eliminator"
+            title="Cross out answer choices"
+            className={`flex h-7 cursor-pointer items-center rounded-md border-2 border-exam-blue px-2.5 text-[13px] font-bold leading-none transition-colors ${
+              eliminatorOn
+                ? "bg-exam-blue text-white"
+                : "bg-white text-exam-blue hover:bg-exam-tint"
+            }`}
+          >
+            <span className="line-through decoration-2">ABC</span>
+          </button>
+        </div>
       </div>
       <div className="bb-perf" />
     </div>
@@ -152,6 +163,7 @@ export function QuestionScreen(props: Props) {
 
   const strip = (
     <QuestionStrip
+      questionId={question.id}
       index={index}
       marked={marked}
       eliminatorOn={eliminatorOn}

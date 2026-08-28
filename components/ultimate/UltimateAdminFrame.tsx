@@ -2,11 +2,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ShieldIcon } from "@/components/shell/icons";
 
-export type UltimateAdminSection = "courses" | "bank" | "tests" | "sets" | "community" | "calls" | "students" | "staff" | "drills";
+export type UltimateAdminSection = "courses" | "bank" | "reports" | "tests" | "sets" | "community" | "calls" | "students" | "staff" | "drills";
 
 const sections: { key: UltimateAdminSection; label: string; href: string }[] = [
   { key: "courses", label: "Courses", href: "/ultimate/admin/courses" },
   { key: "bank", label: "Question Bank", href: "/ultimate/admin" },
+  { key: "reports", label: "Reports", href: "/ultimate/admin/reports" },
   { key: "tests", label: "Practice Tests", href: "/ultimate/admin/tests" },
   { key: "sets", label: "Flashcards", href: "/ultimate/admin/sets" },
   { key: "community", label: "Community", href: "/ultimate/admin/community" },

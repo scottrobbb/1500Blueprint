@@ -52,6 +52,7 @@ declare
     'question_bank_attempts',
     'question_bank_catalog',
     'question_bank_saves',
+    'question_reports',
     'question_content_edit_log',
     'questions',
     'sat_skills',

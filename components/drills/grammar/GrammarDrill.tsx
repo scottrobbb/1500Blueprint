@@ -17,6 +17,7 @@ import { ScoreBanner } from "../shared/ScoreBanner";
 import { CheckCircleIcon } from "../shared/icons";
 import { GrammarQuestionView } from "./GrammarQuestion";
 import { FlameIcon, ZapIcon } from "@/components/shell/icons";
+import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 
 type Phase = "question" | "grading" | "feedback";
 
@@ -155,6 +156,7 @@ export function GrammarDrill({
 
   const right = (
     <div className="flex items-center gap-4">
+      <ReportQuestionButton compact questionId={q.id} targetType="question-bank" />
       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-flag">
         <FlameIcon className="h-4 w-4" />
         {streak}

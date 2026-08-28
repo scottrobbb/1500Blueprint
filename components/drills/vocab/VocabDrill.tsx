@@ -6,6 +6,7 @@ import { DrillShell } from "../shared/DrillShell";
 import { ProgressBar, formatClock } from "../shared/Hud";
 import { TrophyIcon, FlameIcon } from "../shared/icons";
 import { ClockIcon, CloseIcon } from "@/components/test/icons";
+import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 import { vocabItems, type VocabItem } from "./mock";
 import { VocabQuestion } from "./VocabQuestion";
 import { VocabSummary, type VocabSessionAnswer } from "./VocabSummary";
@@ -363,7 +364,12 @@ export function VocabDrill({
       eyebrow="Vocabulary"
       exitHref={returnHref}
       center={center}
-      right={<ExitButton href={returnHref} />}
+      right={(
+        <div className="flex items-center gap-2">
+          <ReportQuestionButton compact questionId={item.id} targetType="question-bank" />
+          <ExitButton href={returnHref} />
+        </div>
+      )}
     >
       <div className="-mt-2 mb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
