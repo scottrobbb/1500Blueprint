@@ -131,7 +131,7 @@ const faqItems = [
   {
     question: "What happens on the weekly Max calls?",
     answer:
-      "Max members can join Scott's weekly group call and watch the recording afterward. The library also includes recordings from earlier calls on Reading & Writing, math, Desmos, vocabulary, and recent SATs.",
+      "Each week, Scott hosts a live SAT strategy and problem-solving session covering topics like Math, Reading & Writing, Desmos, vocabulary, test strategy, and recent SAT questions. You can ask questions live, work through difficult problems, and get direct help with anything you're struggling with.\n\nCan't make it live? Every call is recorded, and Max members also get access to the full library of past sessions.",
   },
   {
     question: "Will I lose progress if I cancel?",
