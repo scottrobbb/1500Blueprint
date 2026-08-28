@@ -1,11 +1,11 @@
-export type TestAwardRpcRow = {
+export type AwardRpcRow = {
   attempt_id: string;
   inserted: boolean;
   xp_awarded: number;
   new_achievement_ids: string[];
 };
 
-export function parseTestAwardRpcRow(value: unknown): TestAwardRpcRow | null {
+export function parseAwardRpcRow(value: unknown): AwardRpcRow | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
   if (
@@ -19,5 +19,5 @@ export function parseTestAwardRpcRow(value: unknown): TestAwardRpcRow | null {
   ) {
     return null;
   }
-  return row as TestAwardRpcRow;
+  return row as AwardRpcRow;
 }

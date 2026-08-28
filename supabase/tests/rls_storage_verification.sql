@@ -85,6 +85,7 @@ declare
     'get_student_progress',
     'increment_post_views',
     'mark_billing_checkout_session',
+    'record_drill_award',
     'record_login',
     'record_objective_drill_answer',
     'record_password_login',

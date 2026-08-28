@@ -27,16 +27,13 @@ import {
   ACHIEVEMENTS,
   ACHIEVEMENT_CATEGORIES,
   achievementRules,
-  advanceStreak,
   dateKey,
   drillXpFor,
   levelProgress,
   mondayIndex,
-  satisfiedAchievements,
   weekStart,
-  type Stats,
 } from "./engine";
-import { parseTestAwardRpcRow } from "./award-contract";
+import { parseAwardRpcRow } from "./award-contract";
 
 const SEASON = "Season 4 · Spring Sprint";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -305,82 +302,6 @@ export async function getHubState(email: string): Promise<HubState> {
   };
 }
 
-// Compute the full stat snapshot used to evaluate achievements.
-async function computeStats(email: string, user: UserRow): Promise<Stats> {
-  const db = supabaseAdmin();
-  const [drills, tests, perfect, best, days] = await Promise.all([
-    db.from("drill_attempts").select("id", { count: "exact", head: true }).eq("email", email),
-    db.from("test_attempts").select("id", { count: "exact", head: true }).eq("email", email),
-    db.from("drill_attempts").select("id", { count: "exact", head: true }).eq("email", email).eq("score", 100),
-    db.from("test_attempts").select("total_score").eq("email", email).order("total_score", { ascending: false }).limit(1).maybeSingle<{ total_score: number | null }>(),
-    db.from("drill_attempts").select("created_at").eq("email", email).returns<{ created_at: string }[]>(),
-  ]);
-
-  const byDay: Record<string, number> = {};
-  for (const r of days.data ?? []) {
-    const k = r.created_at.slice(0, 10);
-    byDay[k] = (byDay[k] ?? 0) + 1;
-  }
-  const dailyGoalsHit = Object.values(byDay).filter((c) => c >= user.daily_goal_target).length;
-
-  const prog = levelProgress(user.xp);
-  return {
-    xp: user.xp,
-    level: prog.level,
-    streakCurrent: user.streak_current,
-    streakLongest: user.streak_longest,
-    drillsCompleted: drills.count ?? 0,
-    testsCompleted: tests.count ?? 0,
-    dailyGoalsHit,
-    bestTestScore: best.data?.total_score ?? 0,
-    perfectDrills: perfect.count ?? 0,
-  };
-}
-
-// Credit a streak DAY only once the daily goal is met (or a test is finished).
-// Consistency keeps the flame — a single low-graded rep does not.
-async function creditStreak(email: string): Promise<void> {
-  const db = supabaseAdmin();
-  const user = await loadUser(email);
-  if (!user) return;
-  const today = dateKey(new Date());
-  if (user.last_active_date === today) return; // already credited today
-
-  const startIso = `${today}T00:00:00Z`;
-  const [drills, tests] = await Promise.all([
-    db.from("drill_attempts").select("id", { count: "exact", head: true }).eq("email", email).gte("created_at", startIso),
-    db.from("test_attempts").select("id", { count: "exact", head: true }).eq("email", email).gte("created_at", startIso),
-  ]);
-  const goalMet = (drills.count ?? 0) >= user.daily_goal_target || (tests.count ?? 0) >= 1;
-  if (!goalMet) return;
-
-  const res = advanceStreak(user.streak_current, user.streak_longest, user.last_active_date, today);
-  await db
-    .from("users")
-    .update({ streak_current: res.streak, streak_longest: res.longest, last_active_date: today })
-    .eq("email", email);
-}
-
-// Persist any achievements the current stats newly satisfy; return the new ids.
-async function unlockNewAchievements(email: string): Promise<string[]> {
-  const db = supabaseAdmin();
-  const user = await loadUser(email);
-  if (!user) return [];
-  const stats = await computeStats(email, user);
-  const satisfied = satisfiedAchievements(stats);
-  const { data: existing } = await db
-    .from("user_achievements")
-    .select("achievement_id")
-    .eq("email", email)
-    .returns<{ achievement_id: string }[]>();
-  const have = new Set((existing ?? []).map((r) => r.achievement_id));
-  const newly = satisfied.filter((id) => !have.has(id));
-  if (newly.length) {
-    await db.from("user_achievements").insert(newly.map((achievement_id) => ({ email, achievement_id })));
-  }
-  return newly;
-}
-
 export type DrillResult = {
   drillSlug: string;
   correct?: number | null;
@@ -389,21 +310,11 @@ export type DrillResult = {
   clientToken?: string | null;
 };
 
-// Record a completed drill, award XP, advance the streak, unlock achievements.
+// Record a completed drill, award XP, advance the streak, unlock achievements —
+// one atomic transaction (record_drill_award), so a crash or network failure
+// partway through can never leave the attempt recorded without its XP/streak/
+// achievement awards, or vice versa. Idempotent on clientToken.
 export async function awardDrill(email: string, result: DrillResult): Promise<AwardOutcome> {
-  const db = supabaseAdmin();
-  if (result.clientToken) {
-    const duplicate = await db
-      .from("drill_attempts")
-      .select("id")
-      .eq("email", email)
-      .eq("client_token", result.clientToken)
-      .maybeSingle<{ id: string }>();
-    if (duplicate.error) {
-      throw new Error(`Could not verify drill attempt [${duplicate.error.code}]: ${duplicate.error.message}`);
-    }
-    if (duplicate.data) return { xpAwarded: 0, newAchievements: [] };
-  }
   const allowance = await drillAllowance(email);
   if (!allowance.allowed) throw new Error("This drill is not included with the student's plan or the daily limit has been reached.");
   // Quality drives XP: the AI grade for graded drills, accuracy for objective ones.
@@ -411,44 +322,24 @@ export async function awardDrill(email: string, result: DrillResult): Promise<Aw
     result.score ?? (result.total ? Math.round(((result.correct ?? 0) / result.total) * 100) : null);
   const amount = drillXpFor(result.drillSlug, quality);
 
-  const attemptRow: {
-    email: string;
-    drill_slug: string;
-    correct: number | null;
-    total: number | null;
-    score: number | null;
-    xp_awarded: number;
-    client_token?: string;
-  } = {
-    email,
-    drill_slug: result.drillSlug,
-    correct: result.correct ?? null,
-    total: result.total ?? null,
-    score: quality,
-    xp_awarded: amount,
-  };
-  if (result.clientToken) attemptRow.client_token = result.clientToken;
-  const { error: attemptError } = await db.from("drill_attempts").insert(attemptRow);
-  if (attemptError) {
-    if (attemptError.code === "23505" && result.clientToken) {
-      const duplicate = await db
-        .from("drill_attempts")
-        .select("id")
-        .eq("email", email)
-        .eq("client_token", result.clientToken)
-        .maybeSingle<{ id: string }>();
-      if (duplicate.error) {
-        throw new Error(`Could not verify drill attempt [${duplicate.error.code}]: ${duplicate.error.message}`);
-      }
-      if (duplicate.data) return { xpAwarded: 0, newAchievements: [] };
-    }
-    throw new Error(`Could not save drill attempt [${attemptError.code}]: ${attemptError.message}`);
+  const { data, error } = await supabaseAdmin()
+    .rpc("record_drill_award", {
+      p_email: email,
+      p_drill_slug: result.drillSlug,
+      p_correct: result.correct ?? null,
+      p_total: result.total ?? null,
+      p_score: quality,
+      p_xp_amount: amount,
+      p_client_token: result.clientToken ?? null,
+      p_achievement_rules: achievementRules(),
+    })
+    .single();
+  if (error) {
+    throw new Error(`Could not save drill attempt [${error.code}]: ${error.message}`);
   }
-  await db.from("xp_events").insert({ email, amount, reason: "drill", ref: result.drillSlug });
-  await db.rpc("add_xp", { p_email: email, p_amount: amount });
-  await creditStreak(email);
-  const newAchievements = await unlockNewAchievements(email);
-  return { xpAwarded: amount, newAchievements };
+  const parsed = parseAwardRpcRow(data);
+  if (!parsed) throw new Error("The drill award transaction returned an invalid result");
+  return { xpAwarded: parsed.xp_awarded, newAchievements: parsed.new_achievement_ids };
 }
 
 export type TestResultInput = {
@@ -493,7 +384,7 @@ export async function awardTest(email: string, input: TestResultInput): Promise<
   if (error) {
     throw new Error(`Could not record test award [${error.code}]: ${error.message}`);
   }
-  const result = parseTestAwardRpcRow(data);
+  const result = parseAwardRpcRow(data);
   if (!result) throw new Error("The test award transaction returned an invalid result");
   return {
     attemptId: result.attempt_id,

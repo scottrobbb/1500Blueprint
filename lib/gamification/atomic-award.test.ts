@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { parseTestAwardRpcRow } from "./award-contract";
+import { parseAwardRpcRow } from "./award-contract";
 import {
   ACHIEVEMENTS,
   achievementRules,
@@ -11,6 +11,10 @@ import {
 
 const migration = readFileSync(
   new URL("../../supabase/migrations/20260827220000_atomic_test_awards_and_checkout_intents.sql", import.meta.url),
+  "utf8",
+);
+const drillMigration = readFileSync(
+  new URL("../../supabase/migrations/20260828200000_atomic_drill_awards.sql", import.meta.url),
   "utf8",
 );
 
@@ -39,7 +43,7 @@ test("serializable achievement rules exactly match every catalog predicate", () 
 });
 
 test("atomic award results preserve first-write and retry contracts", () => {
-  assert.deepEqual(parseTestAwardRpcRow({
+  assert.deepEqual(parseAwardRpcRow({
     attempt_id: "attempt-1",
     inserted: true,
     xp_awarded: 425,
@@ -50,7 +54,7 @@ test("atomic award results preserve first-write and retry contracts", () => {
     xp_awarded: 425,
     new_achievement_ids: ["tests-1"],
   });
-  assert.deepEqual(parseTestAwardRpcRow({
+  assert.deepEqual(parseAwardRpcRow({
     attempt_id: "attempt-1",
     inserted: false,
     xp_awarded: 0,
@@ -61,7 +65,7 @@ test("atomic award results preserve first-write and retry contracts", () => {
     xp_awarded: 0,
     new_achievement_ids: [],
   });
-  assert.equal(parseTestAwardRpcRow({
+  assert.equal(parseAwardRpcRow({
     attempt_id: "attempt-1",
     inserted: false,
     xp_awarded: -1,
@@ -75,6 +79,19 @@ test("migration keeps the attempt ledger and all awards inside one locked transa
   assert.match(migration, /insert into public\.test_attempts[\s\S]+insert into public\.xp_events[\s\S]+update public\.users[\s\S]+insert into public\.user_achievements/i);
   assert.match(migration, /attempt\.client_token = p_client_token[\s\S]+select v_existing_attempt_id, false, 0/i);
   assert.match(migration, /revoke all on function public\.record_test_award[\s\S]+grant execute[\s\S]+to service_role/i);
+});
+
+test("drill migration keeps the attempt ledger and all awards inside one locked transaction", () => {
+  assert.match(drillMigration, /function public\.record_drill_award[\s\S]+security definer/i);
+  assert.match(drillMigration, /from public\.users account[\s\S]+for update/i);
+  assert.match(drillMigration, /insert into public\.drill_attempts[\s\S]+insert into public\.xp_events[\s\S]+update public\.users[\s\S]+insert into public\.user_achievements/i);
+  assert.match(drillMigration, /attempt\.client_token = p_client_token[\s\S]+select v_existing_attempt_id, false, 0/i);
+  assert.match(drillMigration, /revoke all on function public\.record_drill_award[\s\S]+grant execute[\s\S]+to service_role/i);
+});
+
+test("drill streak credit is gated on the daily goal, not on every rep", () => {
+  assert.match(drillMigration, /v_goal_met := v_drills_today >= v_user\.daily_goal_target or v_tests_today >= 1/i);
+  assert.match(drillMigration, /elsif v_goal_met then/i);
 });
 
 test("checkout reservations are account-mode scoped and reuse one Stripe identity during a lease recovery", () => {
