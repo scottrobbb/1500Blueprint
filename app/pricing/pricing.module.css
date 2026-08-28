@@ -322,6 +322,10 @@
   transform: translateZ(0);
   z-index: -1;
 }
+.priceCard.free,
+.priceCard.core {
+  min-height: 440px;
+}
 .priceCard.core {
   border-color: rgba(47,159,233,.4);
 }
@@ -1055,6 +1059,8 @@
   .planFootnote { max-width: 550px; }
   .priceCard,
   .priceCard.max { padding: 28px; }
+  .priceCard.free,
+  .priceCard.core { min-height: 0; }
   .planDescription { min-height: 0; }
   .savingsPanel { padding: 34px; }
   .writtenStoriesIntro,
