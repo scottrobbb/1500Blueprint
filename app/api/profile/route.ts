@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth/session";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { validateProfileName } from "@/lib/settings/profile-name";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { readJsonBody } from "@/lib/security/request";
@@ -17,7 +18,7 @@ export async function PATCH(request: Request) {
   const body = (await readJsonBody(request, 4 * 1024).catch(() => null)) as
     | { name?: unknown }
     | null;
-  const validation = validateProfileName(body?.name);
+  const validation = validateProfileName(body?.name, { allowReserved: isAdminEmail(session.email) });
   if (!validation.valid) {
     return NextResponse.json(
       { error: validation.error, message: validation.message },

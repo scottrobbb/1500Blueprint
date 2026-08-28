@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { ProfileSettingsCard } from "@/components/settings/ProfileSettingsCard";
 import { SettingsPageHeading } from "@/components/settings/SettingsPageHeading";
 import { getSession } from "@/lib/auth/session";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { getAccountSettings } from "@/lib/settings/data";
 
 export default async function AccountSettingsPage() {
@@ -33,6 +34,7 @@ export default async function AccountSettingsPage() {
           achievementTotal={data.achievementTotal}
           achievements={data.achievements}
           testDate={data.testDate}
+          allowReservedName={isAdminEmail(session.email)}
         />
       ) : (
         <section className="rounded-2xl border border-flag/20 bg-flag-bg p-5">

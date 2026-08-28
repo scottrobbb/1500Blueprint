@@ -27,6 +27,7 @@ type ProfileSettingsCardProps = {
   achievementTotal: number;
   achievements: AccountAchievement[];
   testDate: string | null;
+  allowReservedName?: boolean;
 };
 
 export function ProfileSettingsCard({
@@ -44,6 +45,7 @@ export function ProfileSettingsCard({
   achievementTotal,
   achievements,
   testDate,
+  allowReservedName = false,
 }: ProfileSettingsCardProps) {
   const router = useRouter();
   const [savedName, setSavedName] = useState(name ?? "");
@@ -74,7 +76,7 @@ export function ProfileSettingsCard({
     setProfileError(null);
     setProfileMessage(null);
 
-    const validation = validateProfileName(draftName);
+    const validation = validateProfileName(draftName, { allowReserved: allowReservedName });
     if (!validation.valid) {
       setProfileError(validation.message);
       return;
