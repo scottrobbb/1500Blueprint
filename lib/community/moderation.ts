@@ -1,37 +1,20 @@
-// Blocks racial slurs from post/comment bodies at write time (see
-// app/api/community/posts/route.ts and .../comments/route.ts). This is a
-// curated list of unambiguous, severe slurs only — deliberately excludes
-// mild or context-dependent terms (e.g. "cracker", "gyp") that collide with
-// common non-slur usage, and "slope" specifically because this app's
-// community constantly discusses math slope. Digit leetspeak (0/1/3/4/5/7)
-// and separator characters (spaces, dots, dashes) between letters are
-// tolerated so spaced-out or numeral-substituted evasions still match; this
-// is not resistant to Unicode homoglyph tricks.
+// Blocks a specific set of slurs + "rape" from post/comment bodies at write
+// time (see app/api/community/posts/route.ts and .../comments/route.ts).
+// This list is intentionally short and explicit, per direct instruction —
+// not a general-purpose profanity filter. Digit leetspeak (0/1/3/4/5/7) and
+// separator characters (spaces, dots, dashes) between letters are tolerated
+// so spaced-out or numeral-substituted evasions still match; this is not
+// resistant to Unicode homoglyph tricks.
 
 const SLUR_ROOTS = [
   "nigger",
   "nigga",
-  "chink",
-  "gook",
-  "spic",
-  "wetback",
   "beaner",
-  "kike",
-  "coon",
-  "jigaboo",
-  "porch monkey",
-  "jungle bunny",
-  "sand nigger",
-  "raghead",
-  "towelhead",
-  "zipperhead",
-  "camel jockey",
-  "curry muncher",
-  "redskin",
-  "squaw",
-  "injun",
-  "honky",
-  "abo",
+  "faggot",
+  "fag",
+  "tranny",
+  "gook",
+  "rape",
 ];
 
 const LEET: Record<string, string> = {
