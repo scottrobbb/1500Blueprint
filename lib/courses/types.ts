@@ -1,12 +1,15 @@
 export type CourseStatus = "draft" | "published";
 export type LessonBlockKind = "text" | "video" | "image" | "file" | "practice";
-export type CoursePracticeQuestionType = "multiple_choice" | "free_response";
+export type CoursePracticeQuestionType = "multiple_choice" | "checkbox" | "free_response";
 
 export type CoursePracticeQuestion = {
   id: string;
   type: CoursePracticeQuestionType;
   prompt: string;
   choices: string[];
+  // For "checkbox" questions this holds the set of correct choice texts
+  // joined with "\n" (see serializeCheckboxAnswer/parseCheckboxAnswer in
+  // lib/courses/practice.ts) instead of a single value.
   correctAnswer: string;
   acceptedAnswers?: string[];
   explanation: string;
