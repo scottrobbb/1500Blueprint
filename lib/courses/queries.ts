@@ -161,7 +161,7 @@ export async function saveCourse(input: CourseInput): Promise<boolean> {
   const courseResult = await db.from("courses").upsert({
     id: input.id, slug: input.slug.trim(), title: input.title.trim() || "Untitled course",
     description: input.description?.trim() || null, eyebrow: input.eyebrow?.trim() || null,
-    cover_url: input.coverUrl?.trim() || null, cover_zoom: Math.min(3, Math.max(1, input.coverZoom || 1)), position: input.position,
+    cover_url: input.coverUrl?.trim() || null, cover_zoom: Math.min(6, Math.max(1, input.coverZoom || 1)), position: input.position,
     estimated_minutes: input.estimatedMinutes, status: input.status, updated_at: new Date().toISOString(),
   });
   if (courseResult.error) return false;

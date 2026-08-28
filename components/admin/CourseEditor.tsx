@@ -218,7 +218,7 @@ function CourseCoverEditor({ course, onChange }: { course: Course; onChange: Rea
                 id={`course-cover-zoom-${course.id}`}
                 type="range"
                 min={1}
-                max={3}
+                max={6}
                 step={0.05}
                 value={course.coverZoom}
                 onChange={(event) => onChange((current) => ({ ...current, coverZoom: Number(event.target.value) }))}
