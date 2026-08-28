@@ -39,6 +39,11 @@ turning signup off.
 Both flows are available by default during local development and can be forced
 off there by setting either flag to `false`.
 
+Vercel Preview auth links use the deployment's `VERCEL_URL` automatically. Set
+`AUTH_PREVIEW_URL` only when a stable public preview alias should replace that
+deployment-specific URL, and allow the preview `/account/confirm` URL in Supabase
+Auth redirect settings before testing registration.
+
 ## Stripe billing
 
 Core is $50 monthly or $120 every three months. Max is $80 monthly or $210
