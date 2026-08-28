@@ -9,8 +9,8 @@ import {
   REFUND_WINDOW_HOURS,
   type BillablePlan,
 } from "./config";
-import { billingCadenceForInterval, type BillingCadence } from "./offers";
-import { refundDeadline } from "./policy";
+import { billingCadenceForInterval, isBillingCadence, type BillingCadence } from "./offers";
+import { pendingChangeHasTakenEffect, refundDeadline } from "./policy";
 import { subscriptionIdentityConflict } from "./workflow";
 
 type StripeEventContext = {
@@ -24,6 +24,7 @@ type ExistingSubscriptionRow = {
   livemode: boolean;
   refundable_until: string | null;
   pending_plan_code: string | null;
+  pending_billing_cadence: string | null;
   pending_change_effective_at: string | null;
   stripe_schedule_id: string | null;
   last_stripe_event_created_at: number | null;
@@ -117,7 +118,7 @@ export async function syncStripeSubscription(
   const createdAt = new Date(subscription.created * 1000);
   const { data: existingSubscription, error: purchaseError } = await supabaseAdmin()
     .from("student_subscriptions")
-    .select("user_id,stripe_customer_id,livemode,refundable_until,pending_plan_code,pending_change_effective_at,stripe_schedule_id,last_stripe_event_created_at,last_stripe_event_id")
+    .select("user_id,stripe_customer_id,livemode,refundable_until,pending_plan_code,pending_billing_cadence,pending_change_effective_at,stripe_schedule_id,last_stripe_event_created_at,last_stripe_event_id")
     .eq("stripe_subscription_id", subscription.id)
     .maybeSingle<ExistingSubscriptionRow>();
   if (purchaseError) throw new Error(`failed to load refund window: ${purchaseError.message}`);
@@ -165,9 +166,21 @@ export async function syncStripeSubscription(
       ? null
       : refundDeadline(createdAt, REFUND_WINDOW_HOURS);
   const scheduleId = stripeId(subscription.schedule);
-  const pendingPlan = existingSubscription?.pending_plan_code === plan || !scheduleId
-    ? null
-    : existingSubscription?.pending_plan_code ?? null;
+  const existingPendingPlan = existingSubscription?.pending_plan_code === "core"
+    || existingSubscription?.pending_plan_code === "max"
+    ? existingSubscription.pending_plan_code
+    : null;
+  const existingPendingCadence = isBillingCadence(existingSubscription?.pending_billing_cadence)
+    ? existingSubscription.pending_billing_cadence
+    : null;
+  const pendingApplied = pendingChangeHasTakenEffect({
+    currentPlan: plan,
+    currentCadence: stripeSubscriptionCadence(subscription),
+    pendingPlan: existingPendingPlan,
+    pendingCadence: existingPendingCadence,
+  });
+  const pendingPlan = !scheduleId || pendingApplied ? null : existingPendingPlan;
+  const pendingCadence = pendingPlan ? existingPendingCadence : null;
 
   const { error } = await supabaseAdmin()
     .from("student_subscriptions")
@@ -191,6 +204,7 @@ export async function syncStripeSubscription(
         stripe_created_at: createdAt.toISOString(),
         refundable_until: refundableUntil?.toISOString() ?? null,
         pending_plan_code: pendingPlan,
+        pending_billing_cadence: pendingCadence,
         pending_change_effective_at: pendingPlan
           ? existingSubscription?.pending_change_effective_at ?? null
           : null,

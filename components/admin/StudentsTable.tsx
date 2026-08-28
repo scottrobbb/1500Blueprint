@@ -358,7 +358,7 @@ function AccessDetails({
       ) : null}
       {student.pendingPlan ? (
         <p className="font-semibold text-[#8a6500]">
-          Pending {student.pendingPlan.toUpperCase()}{student.pendingChangeEffectiveAt ? ` · ${fmtDate(student.pendingChangeEffectiveAt)}` : ""}
+          Pending {student.pendingPlan.toUpperCase()}{student.pendingCadence ? ` · ${student.pendingCadence === "three_month" ? "3 months" : "monthly"}` : ""}{student.pendingChangeEffectiveAt ? ` · ${fmtDate(student.pendingChangeEffectiveAt)}` : ""}
         </p>
       ) : null}
       {student.grantPlan ? (

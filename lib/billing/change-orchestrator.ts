@@ -32,7 +32,7 @@ export type PlanChangeDeps = {
   countSchedules: (customerId: string) => Promise<number>;
   createSchedule: (subscriptionId: string, idempotencyKey: string) => Promise<{ id: string }>;
   updateSchedule: (id: string, params: Stripe.SubscriptionScheduleUpdateParams) => Promise<void>;
-  savePending: (subscriptionId: string, input: { plan: BillablePlan; effectiveAt: string; scheduleId: string; updatedAt: string }) => Promise<void>;
+  savePending: (subscriptionId: string, input: { plan: BillablePlan; cadence: BillingCadence; effectiveAt: string; scheduleId: string; updatedAt: string }) => Promise<void>;
 };
 
 export async function changeBillingPlanWithDeps(
@@ -136,6 +136,7 @@ export async function changeBillingPlanWithDeps(
   const effectiveAt = new Date(periodEnd * 1000).toISOString();
   await deps.savePending(subscription.id, {
     plan: targetPlan,
+    cadence: targetCadence,
     effectiveAt,
     scheduleId: schedule.id,
     updatedAt: deps.now().toISOString(),

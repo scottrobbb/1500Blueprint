@@ -164,6 +164,7 @@ async function clearPendingChange(subscriptionId: string): Promise<void> {
     .from("student_subscriptions")
     .update({
       pending_plan_code: null,
+      pending_billing_cadence: null,
       pending_change_effective_at: null,
       stripe_schedule_id: null,
       updated_at: new Date().toISOString(),

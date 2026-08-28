@@ -1,4 +1,5 @@
 import type { BillablePlan } from "./config";
+import type { BillingCadence } from "./offers";
 
 export const PAID_ACCESS_STATUSES = ["active", "trialing", "past_due"] as const;
 
@@ -24,6 +25,21 @@ export function scheduledCancellationAt({
   currentPeriodEnd: string | null;
 }): string | null {
   return cancelAt ?? (cancelAtPeriodEnd ? currentPeriodEnd : null);
+}
+
+export function pendingChangeHasTakenEffect({
+  currentPlan,
+  currentCadence,
+  pendingPlan,
+  pendingCadence,
+}: {
+  currentPlan: BillablePlan;
+  currentCadence: BillingCadence;
+  pendingPlan: BillablePlan | null;
+  pendingCadence: BillingCadence | null;
+}): boolean {
+  return pendingPlan === currentPlan
+    && (pendingCadence === null || pendingCadence === currentCadence);
 }
 
 export function refundDeadline(firstPurchaseAt: Date, windowHours: number): Date {

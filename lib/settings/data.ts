@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth/entitlements";
 import { normalizePlanCode, type PlanCode, type StudentAccess } from "@/lib/auth/plans";
 import { billingLivemode } from "@/lib/billing/config";
+import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
 import { PAID_ACCESS_STATUSES, scheduledCancellationAt } from "@/lib/billing/policy";
 import type { AchievementCategory } from "@/lib/gamification";
 import { ACHIEVEMENTS, levelProgress, weekStart } from "@/lib/gamification/engine";
@@ -35,6 +36,7 @@ export type SettingsBillingSubscription = {
   currentPeriodEnd: string | null;
   cancellationScheduledAt: string | null;
   pendingPlan: PlanCode | null;
+  pendingCadence: BillingCadence | null;
   pendingChangeEffectiveAt: string | null;
 };
 
@@ -98,6 +100,7 @@ type SubscriptionRow = {
   cancel_at: string | null;
   cancel_at_period_end: boolean;
   pending_plan_code: string | null;
+  pending_billing_cadence: string | null;
   pending_change_effective_at: string | null;
 };
 
@@ -222,7 +225,7 @@ async function getSettingsBillingSubscription(
   const { data, error } = await supabaseAdmin()
     .from("student_subscriptions")
     .select(
-      "plan_code,status,current_period_start,current_period_end,cancel_at,cancel_at_period_end,pending_plan_code,pending_change_effective_at",
+      "plan_code,status,current_period_start,current_period_end,cancel_at,cancel_at_period_end,pending_plan_code,pending_billing_cadence,pending_change_effective_at",
     )
     .eq("user_id", accountId)
     .eq("livemode", billingLivemode())
@@ -246,6 +249,9 @@ async function getSettingsBillingSubscription(
     }),
     pendingPlan: data.pending_plan_code
       ? normalizePlanCode(data.pending_plan_code)
+      : null,
+    pendingCadence: isBillingCadence(data.pending_billing_cadence)
+      ? data.pending_billing_cadence
       : null,
     pendingChangeEffectiveAt: data.pending_change_effective_at,
   };

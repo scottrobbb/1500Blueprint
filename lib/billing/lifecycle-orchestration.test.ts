@@ -131,6 +131,7 @@ test("a failed Stripe upgrade cannot clear or sync local subscription state", as
 test("scheduled downgrades carry ownership metadata and expose partial DB-save failures", async () => {
   const order: string[] = [];
   let scheduleKey = "";
+  let savedCadence = "";
   const deps = changeDeps({
     retrieveSubscription: async () => subscription({
       metadata: { user_id: USER_ID, plan_code: "max", billing_cadence: "monthly" },
@@ -144,13 +145,15 @@ test("scheduled downgrades carry ownership metadata and expose partial DB-save f
       const metadata = params.metadata as Stripe.MetadataParam;
       order.push(`update:${metadata.user_id}:${metadata.target_plan}`);
     },
-    savePending: async () => {
+    savePending: async (_id, input) => {
       order.push("save");
+      savedCadence = input.cadence;
       throw new Error("database unavailable");
     },
   });
   await assert.rejects(changeBillingPlanWithDeps(deps, USER_ID, "core", "monthly"), /database unavailable/);
   assert.equal(scheduleKey, "blueprint-downgrade-schedule-sub_123-1802592000-core-monthly-3");
+  assert.equal(savedCadence, "monthly");
   assert.deepEqual(order, ["create", `update:${USER_ID}:core`, "save"]);
 });
 

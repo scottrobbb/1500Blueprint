@@ -3,6 +3,7 @@ import test from "node:test";
 import {
   hasPaidAccessStatus,
   isRefundEligible,
+  pendingChangeHasTakenEffect,
   planChangeDirection,
   refundDeadline,
   scheduledCancellationAt,
@@ -40,6 +41,27 @@ test("scheduled cancellations prefer Stripe cancel_at and preserve period-end co
     cancelAtPeriodEnd: false,
     currentPeriodEnd: "2026-09-28T19:43:32.000Z",
   }), null);
+});
+
+test("same-plan cadence changes remain pending until both plan and cadence match", () => {
+  assert.equal(pendingChangeHasTakenEffect({
+    currentPlan: "max",
+    currentCadence: "three_month",
+    pendingPlan: "max",
+    pendingCadence: "monthly",
+  }), false);
+  assert.equal(pendingChangeHasTakenEffect({
+    currentPlan: "max",
+    currentCadence: "monthly",
+    pendingPlan: "max",
+    pendingCadence: "monthly",
+  }), true);
+  assert.equal(pendingChangeHasTakenEffect({
+    currentPlan: "core",
+    currentCadence: "monthly",
+    pendingPlan: "core",
+    pendingCadence: null,
+  }), true);
 });
 
 test("refund window is exactly 24 hours from the first purchase", () => {

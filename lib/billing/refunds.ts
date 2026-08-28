@@ -196,6 +196,7 @@ async function markSubscriptionRefunded(
       refundable_until: null,
       cancel_at: null,
       pending_plan_code: null,
+      pending_billing_cadence: null,
       pending_change_effective_at: null,
       stripe_schedule_id: null,
       updated_at: refundedAt,

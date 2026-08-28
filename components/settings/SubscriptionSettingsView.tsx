@@ -59,7 +59,7 @@ export function SubscriptionSettingsView({
             {subscription?.pendingPlan ? (
               <PlanDetail
                 label="Scheduled change"
-                value={`${planName(subscription.pendingPlan)}${subscription.pendingChangeEffectiveAt ? ` on ${formatDate(subscription.pendingChangeEffectiveAt)}` : ""}`}
+                value={`${planName(subscription.pendingPlan)}${subscription.pendingCadence ? ` · ${cadenceName(subscription.pendingCadence)}` : ""}${subscription.pendingChangeEffectiveAt ? ` on ${formatDate(subscription.pendingChangeEffectiveAt)}` : ""}`}
                 warning
               />
             ) : null}
@@ -181,6 +181,10 @@ function planName(plan: PlanCode): string {
   if (plan === "max") return "1500 Blueprint Max";
   if (plan === "core") return "1500 Blueprint Core";
   return "1500 Blueprint Free";
+}
+
+function cadenceName(cadence: "monthly" | "three_month"): string {
+  return cadence === "three_month" ? "Every 3 months" : "Monthly";
 }
 
 function formatDate(value: string): string {

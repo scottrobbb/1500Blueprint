@@ -88,6 +88,7 @@ async function clearPendingChange(subscriptionId: string): Promise<void> {
     .from("student_subscriptions")
     .update({
       pending_plan_code: null,
+      pending_billing_cadence: null,
       pending_change_effective_at: null,
       stripe_schedule_id: null,
       updated_at: new Date().toISOString(),
@@ -98,12 +99,13 @@ async function clearPendingChange(subscriptionId: string): Promise<void> {
 
 async function savePendingChange(
   subscriptionId: string,
-  input: { plan: BillablePlan; effectiveAt: string; scheduleId: string; updatedAt: string },
+  input: { plan: BillablePlan; cadence: BillingCadence; effectiveAt: string; scheduleId: string; updatedAt: string },
 ): Promise<void> {
   const { error } = await supabaseAdmin()
     .from("student_subscriptions")
     .update({
       pending_plan_code: input.plan,
+      pending_billing_cadence: input.cadence,
       pending_change_effective_at: input.effectiveAt,
       stripe_schedule_id: input.scheduleId,
       updated_at: input.updatedAt,
