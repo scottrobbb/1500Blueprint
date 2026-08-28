@@ -11,6 +11,7 @@ import {
   isPasswordSignupEnabled,
   isValidEmail,
   normalizeEmail,
+  passwordSignupAttemptLimit,
   safeNextPath,
   validatePassword,
 } from "@/lib/auth/password";
@@ -212,7 +213,8 @@ async function createPasswordAccount(
   if (password !== confirmPassword) {
     return fieldError("confirmPassword", "The passwords do not match.");
   }
-  if (!(await authActionAllowed(lockedEmail ? "password-claim" : "password-signup", email, lockedEmail ? 5 : 3, 60 * 60))) {
+  const attemptLimit = lockedEmail ? 5 : passwordSignupAttemptLimit();
+  if (!(await authActionAllowed(lockedEmail ? "password-claim" : "password-signup", email, attemptLimit, 60 * 60))) {
     return {
       status: "error",
       message: "Too many attempts. Wait a while and try again.",

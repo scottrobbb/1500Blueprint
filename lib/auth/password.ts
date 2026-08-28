@@ -1,5 +1,7 @@
 export const PASSWORD_MIN_LENGTH = 10;
 export const PASSWORD_MAX_LENGTH = 128;
+const PASSWORD_SIGNUP_ATTEMPT_LIMIT = 3;
+const PREVIEW_PASSWORD_SIGNUP_ATTEMPT_LIMIT = 50;
 
 export type PasswordValidation =
   | { valid: true }
@@ -18,6 +20,14 @@ export function isPasswordSignupEnabled(): boolean {
   if (configured === "true") return true;
   if (configured === "false") return false;
   return process.env.NODE_ENV === "development";
+}
+
+export function passwordSignupAttemptLimit(
+  vercelEnvironment = process.env.VERCEL_ENV,
+): number {
+  return vercelEnvironment === "preview"
+    ? PREVIEW_PASSWORD_SIGNUP_ATTEMPT_LIMIT
+    : PASSWORD_SIGNUP_ATTEMPT_LIMIT;
 }
 
 export function normalizeEmail(value: FormDataEntryValue | null): string {
