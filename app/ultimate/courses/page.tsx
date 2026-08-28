@@ -78,7 +78,7 @@ function CourseCard({ course, access, priority }: { course: Course; access: Stud
   const locked = !canAccessCourse(access, course.slug);
   return (
     <Link href={locked ? "/pricing" : `/ultimate/courses/${course.slug}`} className={`group relative overflow-hidden rounded-[20px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25 hover:border-gold/45" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35"}`}>
-      <div className="relative min-h-48 overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
+      <div className="relative aspect-square overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-6 text-white">
         <CourseCover src={course.coverUrl} title={course.title} eyebrow={course.eyebrow} zoom={course.coverZoom} priority={priority} fill className="absolute inset-0 h-full w-full" />
         <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-navy/95 via-navy/35 to-navy/5" />
         <div className="relative">
