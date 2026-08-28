@@ -43,6 +43,7 @@ export type CommunityPost = {
   authorHandle: string; // duplicated flat for the client delete check
   category: CommunityCategory;
   timeAgo: string;
+  title: string;
   body: string;
   shot?: PostShot;
   likes: number;

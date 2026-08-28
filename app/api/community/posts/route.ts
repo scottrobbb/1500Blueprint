@@ -9,6 +9,7 @@ import { normalizeHttpUrl, readJsonBody, RequestBodyTooLargeError } from "@/lib/
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 
 const MAX_POST_LENGTH = 10_000;
+const MAX_TITLE_LENGTH = 200;
 const MAX_POST_BYTES = 16 * 1024;
 
 // Create a community post. Any signed-in member can post; the author display
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
 
   let body: {
     category?: string;
+    title?: string;
     body?: string;
     imageUrl?: string | null;
   };
@@ -32,12 +34,14 @@ export async function POST(req: NextRequest) {
       { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
     );
   }
+  const title = typeof body.title === "string" ? body.title.trim().replace(/\s+/g, " ") : "";
+  if (!title) return NextResponse.json({ error: "title_required" }, { status: 400 });
+  if (title.length > MAX_TITLE_LENGTH) return NextResponse.json({ error: "title_too_long" }, { status: 400 });
   const text = typeof body.body === "string" ? body.body.trim() : "";
   if (text.length > MAX_POST_LENGTH) return NextResponse.json({ error: "too_long" }, { status: 400 });
   const imageUrl = body.imageUrl ? normalizeHttpUrl(body.imageUrl) : null;
   if (body.imageUrl && !imageUrl) return NextResponse.json({ error: "invalid_image" }, { status: 400 });
-  if (!text && !imageUrl) return NextResponse.json({ error: "empty" }, { status: 400 });
-  if (containsSlur(text)) return NextResponse.json({ error: "blocked_content" }, { status: 400 });
+  if (containsSlur(title) || containsSlur(text)) return NextResponse.json({ error: "blocked_content" }, { status: 400 });
 
   try {
     const rate = await consumeRateLimit("community-post", session.email, { limit: 10, windowSeconds: 60 * 60 });
@@ -57,11 +61,11 @@ export async function POST(req: NextRequest) {
     avatarUrl: hub.player.avatarUrl,
   };
 
-  const post = await createPost(author, { category, body: text, imageUrl });
+  const post = await createPost(author, { category, title, body: text, imageUrl });
   if (!post) return NextResponse.json({ error: "create_failed" }, { status: 500 });
 
-  // Notify anyone @mentioned. Best-effort — never fails the post.
-  await notifyForPost(author, post.id, text);
+  // Notify anyone @mentioned in the title or body. Best-effort — never fails the post.
+  await notifyForPost(author, post.id, `${title}\n${text}`.trim());
 
   return NextResponse.json({ post }, { status: 201 });
 }

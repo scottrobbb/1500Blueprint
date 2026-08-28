@@ -33,6 +33,7 @@ function imageFromTransfer(data: DataTransfer | null): File | null {
 // to the feed to prepend.
 function Composer({ user, onCreated, variant = "default" }: { user: Author; onCreated: (post: CommunityPost) => void; variant?: "default" | "ultimate" }) {
   const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
   const [text, setText] = useState("");
   const [category, setCategory] = useState<CommunityCategory>("general");
   const [file, setFile] = useState<File | null>(null);
@@ -42,6 +43,7 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
   const fileInput = useRef<HTMLInputElement>(null);
 
   function reset() {
+    setTitle("");
     setText("");
     setCategory("general");
     clearFile();
@@ -72,7 +74,7 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
   }
 
   async function submit() {
-    if ((!text.trim() && !file) || submitting) return;
+    if (!title.trim() || submitting) return;
     setSubmitting(true);
     setError("");
     try {
@@ -87,17 +89,30 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
       const res = await fetch("/api/community/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, body: text.trim(), imageUrl }),
+        body: JSON.stringify({ category, title: title.trim(), body: text.trim(), imageUrl }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(data?.error === "blocked_content" ? "blocked_content" : "create");
+        throw new Error(
+          data?.error === "blocked_content"
+            ? "blocked_content"
+            : data?.error === "title_required"
+              ? "title_required"
+              : "create",
+        );
       }
       const { post } = (await res.json()) as { post: CommunityPost };
       onCreated(post);
       reset();
     } catch (err) {
-      setError(err instanceof Error && err.message === "blocked_content" ? "That post contains language that isn't allowed here." : "Could not post. Please try again.");
+      const message = err instanceof Error ? err.message : "";
+      setError(
+        message === "blocked_content"
+          ? "That post contains language that isn't allowed here."
+          : message === "title_required"
+            ? "Give your post a title."
+            : "Could not post. Please try again.",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -138,17 +153,26 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
     >
       <div className="flex items-start gap-2.5">
         <Avatar src={user.avatarUrl} initials={user.initials} size={38} />
-        <textarea
-          autoFocus
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onPaste={(e) => {
-            if (takeImageFrom(e.clipboardData)) e.preventDefault();
-          }}
-          rows={4}
-          placeholder="What do you want to share with the community?"
-          className="min-h-[92px] flex-1 resize-none rounded-lg bg-haze px-3.5 py-3 text-[14px] leading-[1.6] text-ink outline-none ring-brand/40 transition-shadow placeholder:text-navy/40 focus:ring-2"
-        />
+        <div className="flex-1">
+          <input
+            autoFocus
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+            placeholder="Title"
+            className="w-full bg-transparent px-1 py-1 font-display text-[19px] font-extrabold text-ink outline-none placeholder:text-navy/35"
+          />
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onPaste={(e) => {
+              if (takeImageFrom(e.clipboardData)) e.preventDefault();
+            }}
+            rows={4}
+            placeholder="Write something…"
+            className="mt-1 min-h-[92px] w-full resize-none rounded-lg bg-haze px-3.5 py-3 text-[14px] leading-[1.6] text-ink outline-none ring-brand/40 transition-shadow placeholder:text-navy/40 focus:ring-2"
+          />
+        </div>
       </div>
 
       <input
@@ -212,7 +236,7 @@ function Composer({ user, onCreated, variant = "default" }: { user: Author; onCr
           <button
             type="button"
             onClick={submit}
-            disabled={(!text.trim() && !file) || submitting}
+            disabled={!title.trim() || submitting}
             className="rounded-lg bg-brand px-5 py-2 text-sm font-bold text-white shadow-[0_2px_0_#2b8fe0] transition-transform active:translate-y-px disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             {submitting ? "Posting…" : "Post"}

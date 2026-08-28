@@ -119,10 +119,15 @@ export function PostCard({
             <span className="sr-only">Open discussion</span>
           </Link>
           <div className="pointer-events-none relative flex items-start gap-3">
-            <RichText
-              text={post.body}
-              className="line-clamp-2 min-w-0 flex-1 text-[14px] leading-[1.6] text-ink/85 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10"
-            />
+            <div className="min-w-0 flex-1">
+              {post.title ? (
+                <h3 className="truncate font-display text-[15px] font-extrabold text-ink">{post.title}</h3>
+              ) : null}
+              <RichText
+                text={post.body}
+                className="line-clamp-2 text-[14px] leading-[1.6] text-ink/85 [&_a]:pointer-events-auto [&_a]:relative [&_a]:z-10"
+              />
+            </div>
             {post.shot ? <Attachment shot={post.shot} variant="thumb" /> : null}
           </div>
         </div>

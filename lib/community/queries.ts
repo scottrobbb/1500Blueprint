@@ -29,6 +29,7 @@ type PostRow = {
   author_handle: string;
   author_level: number;
   category: string;
+  title: string;
   body: string;
   image_url: string | null;
   view_count: number;
@@ -58,7 +59,7 @@ type CommentRow = {
 };
 
 const POST_BASE =
-  "id,author_email,author_name,author_initials,author_handle,author_level,category,body,image_url,view_count,created_at";
+  "id,author_email,author_name,author_initials,author_handle,author_level,category,title,body,image_url,view_count,created_at";
 // recent_comments is an aliased second embed of the same comments table so
 // PostgREST returns each post's own newest-first slice (referencedTable
 // order/limit in listPosts) — no separate query needed for the avatar stack.
@@ -124,6 +125,7 @@ function mapPost(row: PostRow, liked: Set<string>, avatars: Map<string, string |
     authorHandle: row.author_handle,
     category: row.category as CommunityCategory,
     timeAgo: relativeTime(row.created_at),
+    title: row.title ?? "",
     body: row.body,
     shot: row.image_url
       ? { kind: "image", url: row.image_url, alt: `Screenshot from ${row.author_name}` }
@@ -319,7 +321,7 @@ export async function canModerateComment(id: string, email: string): Promise<boo
 
 export async function createPost(
   author: PostAuthor,
-  input: { category: CommunityCategory; body: string; imageUrl: string | null },
+  input: { category: CommunityCategory; title: string; body: string; imageUrl: string | null },
 ): Promise<CommunityPost | null> {
   const { data, error } = await supabaseAdmin()
     .from("community_posts")
@@ -330,6 +332,7 @@ export async function createPost(
       author_handle: author.handle,
       author_level: author.level,
       category: input.category,
+      title: input.title,
       body: input.body,
       image_url: input.imageUrl,
     })

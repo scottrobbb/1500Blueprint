@@ -384,7 +384,8 @@ export function PostDetail({
           </div>
         </header>
 
-        <RichText text={post.body} className="mt-3 text-[15px] leading-[1.65] text-ink/90" />
+        {post.title ? <h1 className="mt-3 font-display text-xl font-extrabold text-ink">{post.title}</h1> : null}
+        <RichText text={post.body} className="mt-2 text-[15px] leading-[1.65] text-ink/90" />
         {post.shot && <Attachment shot={post.shot} variant="full" />}
 
         <div className="mt-4 flex items-center gap-2 border-t border-navy/[0.07] pt-3">
