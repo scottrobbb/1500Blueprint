@@ -4,12 +4,13 @@
  *
  * npx tsx scripts/billing/import-legacy-stripe.ts --mode=live
  * STRIPE_LEGACY_MAX_PRODUCT_IDS=prod_... npx tsx scripts/billing/import-legacy-stripe.ts --mode=live
- * npx tsx scripts/billing/import-legacy-stripe.ts --mode=live --core-price=price_... --max-price=price_... --apply
+ * ALLOW_STRIPE_IMPORT_WRITE=true npx tsx scripts/billing/import-legacy-stripe.ts --mode=live --apply
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
 import Stripe from "stripe";
 import { createClient } from "@supabase/supabase-js";
+import { legacyImportBlockingReasons } from "../../lib/billing/workflow";
 
 function loadEnv(file: string) {
   if (!fs.existsSync(file)) return;
@@ -25,9 +26,12 @@ loadEnv(path.resolve(".env.local"));
 
 type Plan = "core" | "max";
 type Account = { id: string; email: string };
+type MappedSubscription = { subscription: Stripe.Subscription; plan: Plan };
+type CustomerMatch = { customer: Stripe.Customer; subscriptions: MappedSubscription[] };
+type AccountMatch = { account: Account; customers: CustomerMatch[] };
 
 const args = process.argv.slice(2);
-const mode = option("mode") === "test" ? "test" : "live";
+const mode = importMode(option("mode"));
 const apply = args.includes("--apply");
 const stripeKey = mode === "test"
   ? process.env.STRIPE_BILLING_KEY
@@ -36,7 +40,9 @@ const supabaseUrl = process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
 const configuredPrices = new Map<string, Plan>([
   [option("core-price") ?? process.env.STRIPE_CORE_PRICE_ID ?? "", "core"],
+  [process.env.STRIPE_CORE_THREE_MONTH_PRICE_ID ?? "", "core"],
   [option("max-price") ?? process.env.STRIPE_MAX_PRICE_ID ?? "", "max"],
+  [process.env.STRIPE_MAX_THREE_MONTH_PRICE_ID ?? "", "max"],
 ].filter(([price]) => Boolean(price)) as [string, Plan][]);
 const configuredProducts = new Map<string, Plan>([
   ...configuredIds(option("core-products") ?? process.env.STRIPE_LEGACY_CORE_PRODUCT_IDS).map(
@@ -49,6 +55,9 @@ const configuredProducts = new Map<string, Plan>([
 
 if (!stripeKey || !supabaseUrl || !supabaseKey) {
   throw new Error("Stripe and Supabase service credentials are required");
+}
+if (!stripeKey.includes(`_${mode}_`)) {
+  throw new Error(`The Stripe key does not match --mode=${mode}`);
 }
 if (apply && process.env.ALLOW_STRIPE_IMPORT_WRITE !== "true") {
   throw new Error("Set ALLOW_STRIPE_IMPORT_WRITE=true together with --apply to authorize writes");
@@ -68,11 +77,10 @@ async function main() {
 
   let customersScanned = 0;
   let customersMatched = 0;
-  let customersWithMultipleMatches = 0;
   let subscriptionsMapped = 0;
   let subscriptionsUnknown = 0;
   const unknownPrices = new Set<string>();
-  const customerByUser = new Map<string, Stripe.Customer>();
+  const matchesByUser = new Map<string, AccountMatch>();
 
   for await (const customer of stripe.customers.list({ limit: 100 })) {
     customersScanned += 1;
@@ -80,11 +88,8 @@ async function main() {
     const account = accountByEmail.get(customer.email.trim().toLowerCase());
     if (!account) continue;
     customersMatched += 1;
-    if (customerByUser.has(account.id)) customersWithMultipleMatches += 1;
-    const chosen = customerByUser.get(account.id);
-    if (!chosen || customer.created > chosen.created) customerByUser.set(account.id, customer);
 
-    const mappedForUser: Array<{ subscription: Stripe.Subscription; plan: Plan }> = [];
+    const mappedForCustomer: MappedSubscription[] = [];
     for await (const subscription of stripe.subscriptions.list({ customer: customer.id, status: "all", limit: 100 })) {
       const plan = await planForSubscription(subscription);
       if (!plan) {
@@ -94,20 +99,62 @@ async function main() {
         continue;
       }
       subscriptionsMapped += 1;
-      mappedForUser.push({ subscription, plan });
+      mappedForCustomer.push({ subscription, plan });
     }
 
-    if (!apply) continue;
-    const customerColumn = mode === "live" ? "stripe_live_customer_id" : "stripe_test_customer_id";
+    const match = matchesByUser.get(account.id) ?? { account, customers: [] };
+    match.customers.push({ customer, subscriptions: mappedForCustomer });
+    matchesByUser.set(account.id, match);
+  }
+
+  const customersWithMultipleMatches = [...matchesByUser.values()]
+    .filter((match) => match.customers.length > 1)
+    .length;
+  const paidStatuses = new Set(["active", "trialing", "past_due"]);
+  const duplicateActiveSubscriptionAccounts = [...matchesByUser.values()]
+    .filter((match) => match.customers
+      .flatMap((customer) => customer.subscriptions)
+      .filter(({ subscription }) => paidStatuses.has(subscription.status))
+      .length > 1)
+    .length;
+  const blockers = legacyImportBlockingReasons({
+    duplicateCustomerAccounts: customersWithMultipleMatches,
+    duplicateActiveSubscriptionAccounts,
+    unknownSubscriptions: subscriptionsUnknown,
+  });
+
+  console.log(`Mode: ${mode}; write mode: ${apply ? "APPLY" : "DRY RUN"}`);
+  console.log(`Stripe customers scanned: ${customersScanned}`);
+  console.log(`Stripe customers matched to Blueprint accounts: ${customersMatched}`);
+  console.log(`Blueprint accounts matched: ${matchesByUser.size}`);
+  console.log(`Accounts with multiple Stripe customer matches: ${customersWithMultipleMatches}`);
+  console.log(`Accounts with multiple active Stripe subscriptions: ${duplicateActiveSubscriptionAccounts}`);
+  console.log(`Subscriptions mapped to Core/Max: ${subscriptionsMapped}`);
+  console.log(`Subscriptions requiring a price mapping: ${subscriptionsUnknown}`);
+  if (unknownPrices.size) console.log(`Unknown price IDs: ${[...unknownPrices].sort().join(", ")}`);
+  if (!apply) {
+    console.log(blockers.length
+      ? `Dry-run blocked: ${blockers.join("; ")}. No database or Stripe objects were changed.`
+      : "Dry-run complete; no database or Stripe objects were changed. The scan is safe to apply.");
+    return;
+  }
+  if (blockers.length) throw new Error(`Legacy Stripe import blocked: ${blockers.join("; ")}`);
+
+  const customerColumn = mode === "live" ? "stripe_live_customer_id" : "stripe_test_customer_id";
+  for (const match of matchesByUser.values()) {
+    const matchedCustomer = match.customers[0];
+    if (!matchedCustomer) continue;
+    const { account } = match;
+    const { customer } = matchedCustomer;
     const { error: customerError } = await supabase
       .from("users")
       .update({ [customerColumn]: customer.id, updated_at: new Date().toISOString() })
       .eq("id", account.id);
     if (customerError) throw customerError;
 
-    mappedForUser.sort((a, b) => a.subscription.created - b.subscription.created);
-    for (let index = 0; index < mappedForUser.length; index += 1) {
-      const { subscription, plan } = mappedForUser[index];
+    matchedCustomer.subscriptions.sort((a, b) => a.subscription.created - b.subscription.created);
+    for (let index = 0; index < matchedCustomer.subscriptions.length; index += 1) {
+      const { subscription, plan } = matchedCustomer.subscriptions[index];
       const item = subscription.items.data[0];
       const starts = subscription.items.data.map((entry) => entry.current_period_start);
       const ends = subscription.items.data.map((entry) => entry.current_period_end);
@@ -134,15 +181,7 @@ async function main() {
       if (subscriptionError) throw subscriptionError;
     }
   }
-
-  console.log(`Mode: ${mode}; write mode: ${apply ? "APPLY" : "DRY RUN"}`);
-  console.log(`Stripe customers scanned: ${customersScanned}`);
-  console.log(`Blueprint accounts matched by verified email: ${customersMatched}`);
-  console.log(`Accounts with multiple Stripe customer matches: ${customersWithMultipleMatches}`);
-  console.log(`Subscriptions mapped to Core/Max: ${subscriptionsMapped}`);
-  console.log(`Subscriptions requiring a price mapping: ${subscriptionsUnknown}`);
-  if (unknownPrices.size) console.log(`Unknown price IDs: ${[...unknownPrices].sort().join(", ")}`);
-  if (!apply) console.log("Dry-run complete; no database or Stripe objects were changed.");
+  console.log(`Applied ${matchesByUser.size} Blueprint account reconciliation record(s).`);
 }
 
 async function planForSubscription(subscription: Stripe.Subscription): Promise<Plan | null> {
@@ -176,6 +215,12 @@ async function planForSubscription(subscription: Stripe.Subscription): Promise<P
 function option(name: string): string | null {
   const prefix = `--${name}=`;
   return args.find((arg) => arg.startsWith(prefix))?.slice(prefix.length) ?? null;
+}
+
+function importMode(value: string | null): "test" | "live" {
+  if (value === "test" || value === "live") return value;
+  console.error("Pass an explicit --mode=test or --mode=live");
+  process.exit(1);
 }
 
 function stripeId(value: string | { id: string } | null | undefined): string | null {

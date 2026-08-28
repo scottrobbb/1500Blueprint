@@ -21,6 +21,12 @@ export type CheckoutIntentClaim = {
   checkoutUrl: string | null;
 };
 
+export type LegacyImportAudit = {
+  duplicateCustomerAccounts: number;
+  duplicateActiveSubscriptionAccounts: number;
+  unknownSubscriptions: number;
+};
+
 export function checkoutRequestToken(token: unknown): string | null {
   return readIdempotencyToken(token, { minLength: 16, maxLength: 100 });
 }
@@ -104,4 +110,18 @@ export function subscriptionIdentityConflict(
   if (existing.customerId !== incoming.customerId) return "customer";
   if (existing.livemode !== incoming.livemode) return "mode";
   return null;
+}
+
+export function legacyImportBlockingReasons(audit: LegacyImportAudit): string[] {
+  return [
+    ...(audit.duplicateCustomerAccounts > 0
+      ? [`${audit.duplicateCustomerAccounts} account(s) match multiple Stripe customers`]
+      : []),
+    ...(audit.duplicateActiveSubscriptionAccounts > 0
+      ? [`${audit.duplicateActiveSubscriptionAccounts} account(s) have multiple active subscriptions`]
+      : []),
+    ...(audit.unknownSubscriptions > 0
+      ? [`${audit.unknownSubscriptions} subscription(s) have no Core/Max mapping`]
+      : []),
+  ];
 }

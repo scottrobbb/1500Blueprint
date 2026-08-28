@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
+import { billingCheckoutEnabled } from "@/lib/billing/config";
 import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { EnrollButton } from "./EnrollButton";
 import { ExamCountdown } from "./ExamCountdown";
@@ -173,11 +174,7 @@ export default async function PricingPage({
   const session = await getSession();
   const access = session ? await getStudentAccess(session.email) : null;
   const { billing, plan, cadence } = await searchParams;
-  const billingEnabled = Boolean(
-    process.env.STRIPE_BILLING_KEY
-      && process.env.STRIPE_CORE_PRICE_ID
-      && process.env.STRIPE_MAX_PRICE_ID,
-  );
+  const billingEnabled = billingCheckoutEnabled();
   const initialCadence: BillingCadence = (plan === "core" || plan === "max") && isBillingCadence(cadence)
     ? cadence
     : "monthly";
@@ -456,6 +453,8 @@ function BillingNotice({ state }: { state: string }) {
     payment: "Stripe could not collect the prorated upgrade charge, so your current plan was not changed.",
     managed: "Your subscription is already on that plan.",
     ready: "You’re signed in. Your selected paid plan is ready below.",
+    unavailable: "Billing is not open yet. Nothing was charged.",
+    legacy: "We found existing Blueprint billing history that must be linked before changing plans. Nothing was charged.",
   };
   const message = messages[state] ?? "Billing could not be opened. Please try again.";
   return <div className={styles.billingNotice} role="status">{message}</div>;

@@ -5,12 +5,18 @@ const stripeKey = process.env.STRIPE_BILLING_KEY?.trim();
 if (!stripeKey?.startsWith("rk_test_")) {
   throw new Error("A restricted Stripe sandbox key is required");
 }
+const maxAnchorPriceId = process.env.STRIPE_MAX_PRICE_ID?.trim();
+if (!maxAnchorPriceId?.startsWith("price_")) {
+  throw new Error("STRIPE_MAX_PRICE_ID must point to the existing Blueprint sandbox price");
+}
+const configuredMaxAnchorPriceId = maxAnchorPriceId;
 
 const stripe = new Stripe(stripeKey, { maxNetworkRetries: 2 });
 async function main() {
-  const configured = await setupStripeBilling(stripe);
+  const configured = await setupStripeBilling(stripe, { maxAnchorPriceId: configuredMaxAnchorPriceId });
   for (const [plan, values] of Object.entries(configured)) {
     console.log(`STRIPE_${plan.toUpperCase()}_PRODUCT_ID=${values.productId}`);
+    if (plan === "max") console.log(`STRIPE_LEGACY_MAX_PRODUCT_IDS=${values.productId}`);
     for (const [cadence, priceId] of Object.entries(values.prices)) {
       const variable = cadence === "three_month"
         ? `STRIPE_${plan.toUpperCase()}_THREE_MONTH_PRICE_ID`

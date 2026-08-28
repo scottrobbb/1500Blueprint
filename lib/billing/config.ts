@@ -6,8 +6,24 @@ export type BillablePlan = Extract<PlanCode, "core" | "max">;
 
 export const REFUND_WINDOW_HOURS = 24;
 
+const CHECKOUT_REQUIRED_ENV = [
+  "STRIPE_BILLING_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  "STRIPE_CORE_PRICE_ID",
+  "STRIPE_CORE_THREE_MONTH_PRICE_ID",
+  "STRIPE_MAX_PRICE_ID",
+  "STRIPE_MAX_THREE_MONTH_PRICE_ID",
+  "STRIPE_LEGACY_MAX_PRODUCT_IDS",
+] as const;
+
+export function billingCheckoutEnabled(): boolean {
+  if (process.env.BILLING_ENABLED?.trim().toLowerCase() !== "true") return false;
+  if (!configuredBillingMode()) return false;
+  return CHECKOUT_REQUIRED_ENV.every((name) => Boolean(process.env[name]?.trim()));
+}
+
 export function billingLivemode(): boolean {
-  const configuredMode = process.env.STRIPE_BILLING_MODE?.trim().toLowerCase();
+  const configuredMode = configuredBillingMode();
   if (configuredMode === "test") return false;
   if (configuredMode === "live") return true;
   return process.env.VERCEL_ENV === "production";
@@ -47,6 +63,11 @@ function configuredIds(name: string): Set<string> {
       .map((value) => value.trim())
       .filter(Boolean) ?? [],
   );
+}
+
+function configuredBillingMode(): "test" | "live" | null {
+  const value = process.env.STRIPE_BILLING_MODE?.trim().toLowerCase();
+  return value === "test" || value === "live" ? value : null;
 }
 
 export function billingBaseUrl(requestUrl: string): string {

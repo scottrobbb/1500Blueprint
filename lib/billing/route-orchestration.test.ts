@@ -26,6 +26,7 @@ const ACCOUNT = {
   id: "user_123",
   email: "student@example.com",
   name: "Student",
+  legacyPlan: "free",
   status: "active" as const,
   stripeCustomerId: "cus_123",
 };
@@ -44,12 +45,18 @@ function formRequest(path: string, values: Record<string, string>, origin = APP_
 function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHandlerDeps {
   return {
     baseUrl: () => APP_URL,
+    billingEnabled: () => true,
     livemode: () => false,
     now: () => NOW,
     getSession: async () => ({ email: ACCOUNT.email }),
     findAccount: async () => ACCOUNT,
     consumeRateLimit: async () => ({ allowed: true }),
-    findActiveSubscriptionCustomer: async () => null,
+    findSubscriptionState: async () => ({
+      activeCustomerId: null,
+      trackedCustomerId: null,
+      hasTrackedSubscriptions: false,
+    }),
+    hasUntrackedBilling: async () => false,
     changePlan: async () => ({ kind: "unchanged" }),
     createPortal: async () => ({ url: "https://billing.stripe.com/p/session" }),
     claimIntent: async () => ({
@@ -69,6 +76,143 @@ function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHan
     ...overrides,
   };
 }
+
+test("checkout stays closed before any account or Stripe work when billing is disabled", async () => {
+  let sessionCalls = 0;
+  let checkoutCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    billingEnabled: () => false,
+    getSession: async () => {
+      sessionCalls += 1;
+      return { email: ACCOUNT.email };
+    },
+    createCheckout: async () => {
+      checkoutCalls += 1;
+      return { id: "cs_test_unexpected", url: "https://checkout.stripe.com/c/pay/cs_test_unexpected" };
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    cadence: "monthly",
+    checkoutToken: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+  }));
+
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=unavailable`);
+  assert.equal(sessionCalls, 0);
+  assert.equal(checkoutCalls, 0);
+});
+
+test("checkout blocks unreconciled legacy billing before reserving or creating anything", async () => {
+  let claims = 0;
+  let checkoutCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    hasUntrackedBilling: async () => true,
+    claimIntent: async () => {
+      claims += 1;
+      throw new Error("must not reserve");
+    },
+    createCheckout: async () => {
+      checkoutCalls += 1;
+      throw new Error("must not create");
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max",
+    cadence: "monthly",
+    checkoutToken: "ffffffff-ffff-4fff-8fff-ffffffffffff",
+  }));
+
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=legacy`);
+  assert.equal(claims, 0);
+  assert.equal(checkoutCalls, 0);
+});
+
+test("a tracked canceled subscription can start Checkout after Stripe confirms no active billing", async () => {
+  let legacyLookups = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    findSubscriptionState: async () => ({
+      activeCustomerId: null,
+      trackedCustomerId: ACCOUNT.stripeCustomerId,
+      hasTrackedSubscriptions: true,
+    }),
+    hasUntrackedBilling: async () => {
+      legacyLookups += 1;
+      return false;
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    cadence: "monthly",
+    checkoutToken: "abababab-abab-4bab-8bab-abababababab",
+  }));
+
+  assert.equal(response.headers.get("location"), "https://checkout.stripe.com/c/pay/cs_test_123456789");
+  assert.equal(legacyLookups, 1);
+});
+
+test("tracked billing with a mismatched customer link fails closed", async () => {
+  let legacyLookups = 0;
+  let checkoutCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    findSubscriptionState: async () => ({
+      activeCustomerId: null,
+      trackedCustomerId: "cus_different",
+      hasTrackedSubscriptions: true,
+    }),
+    hasUntrackedBilling: async () => {
+      legacyLookups += 1;
+      return false;
+    },
+    createCheckout: async () => {
+      checkoutCalls += 1;
+      throw new Error("must not create");
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    cadence: "monthly",
+    checkoutToken: "efefefef-efef-4fef-8fef-efefefefefef",
+  }));
+
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=legacy`);
+  assert.equal(legacyLookups, 0);
+  assert.equal(checkoutCalls, 0);
+});
+
+test("an active tracked subscription uses plan management instead of a new Checkout", async () => {
+  let changes = 0;
+  let checkoutCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    findSubscriptionState: async () => ({
+      activeCustomerId: ACCOUNT.stripeCustomerId,
+      trackedCustomerId: ACCOUNT.stripeCustomerId,
+      hasTrackedSubscriptions: true,
+    }),
+    changePlan: async () => {
+      changes += 1;
+      return { kind: "unchanged" };
+    },
+    createCheckout: async () => {
+      checkoutCalls += 1;
+      throw new Error("must not create");
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max",
+    cadence: "monthly",
+    checkoutToken: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd",
+  }));
+
+  assert.equal(response.headers.get("location"), "https://billing.stripe.com/p/session");
+  assert.equal(changes, 1);
+  assert.equal(checkoutCalls, 0);
+});
 
 test("checkout claims before Stripe and uses the durable reservation for metadata, expiry, and idempotency", async () => {
   const order: string[] = [];

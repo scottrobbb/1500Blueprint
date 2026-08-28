@@ -6,7 +6,7 @@ import {
   planChangeDirection,
   refundDeadline,
 } from "./policy";
-import { planForLegacyProductId, planForPriceId } from "./config";
+import { billingCheckoutEnabled, planForLegacyProductId, planForPriceId } from "./config";
 import { billingCadenceForInterval, billingOffer } from "./offers";
 
 test("paid access includes Stripe retry grace but excludes terminal statuses", () => {
@@ -45,6 +45,51 @@ test("refund window is exactly 24 hours from the first purchase", () => {
     alreadyRefunded: false,
     now: purchased,
   }), false);
+});
+
+test("billing checkout requires an explicit launch flag, mode, webhook, and every price", () => {
+  const names = [
+    "BILLING_ENABLED",
+    "STRIPE_BILLING_MODE",
+    "STRIPE_BILLING_KEY",
+    "STRIPE_WEBHOOK_SECRET",
+    "STRIPE_CORE_PRICE_ID",
+    "STRIPE_CORE_THREE_MONTH_PRICE_ID",
+    "STRIPE_MAX_PRICE_ID",
+    "STRIPE_MAX_THREE_MONTH_PRICE_ID",
+    "STRIPE_LEGACY_MAX_PRODUCT_IDS",
+  ] as const;
+  const original = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+
+  try {
+    names.forEach((name) => delete process.env[name]);
+    assert.equal(billingCheckoutEnabled(), false);
+
+    process.env.BILLING_ENABLED = "true";
+    process.env.STRIPE_BILLING_MODE = "test";
+    process.env.STRIPE_BILLING_KEY = "rk_test_example";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_example";
+    process.env.STRIPE_CORE_PRICE_ID = "price_core";
+    process.env.STRIPE_CORE_THREE_MONTH_PRICE_ID = "price_core_three_month";
+    process.env.STRIPE_MAX_PRICE_ID = "price_max";
+    process.env.STRIPE_MAX_THREE_MONTH_PRICE_ID = "price_max_three_month";
+    process.env.STRIPE_LEGACY_MAX_PRODUCT_IDS = "prod_blueprint";
+    assert.equal(billingCheckoutEnabled(), true);
+
+    delete process.env.STRIPE_WEBHOOK_SECRET;
+    assert.equal(billingCheckoutEnabled(), false);
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_example";
+
+    process.env.STRIPE_BILLING_MODE = "preview";
+    assert.equal(billingCheckoutEnabled(), false);
+    process.env.STRIPE_BILLING_MODE = "live";
+    assert.equal(billingCheckoutEnabled(), true);
+
+    process.env.BILLING_ENABLED = "false";
+    assert.equal(billingCheckoutEnabled(), false);
+  } finally {
+    names.forEach((name) => restoreEnvironmentVariable(name, original[name]));
+  }
 });
 
 test("billing recognizes canonical prices and stable legacy products", () => {

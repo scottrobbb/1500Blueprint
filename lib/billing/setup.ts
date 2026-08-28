@@ -31,28 +31,28 @@ const plans = [
         intervalCount: 1,
         lookupKey: "blueprint_max_monthly_8000",
       },
+      {
+        cadence: "three_month",
+        amount: 21_000,
+        intervalCount: 3,
+        lookupKey: "blueprint_max_three_month_21000",
+      },
     ],
   },
 ] as const;
 
-export async function setupStripeBilling(stripe: Stripe) {
+export async function setupStripeBilling(
+  stripe: Stripe,
+  options: { maxAnchorPriceId: string },
+) {
   const products = await stripe.products.list({ active: true, limit: 100 });
+  const maxProduct = await existingMaxProduct(stripe, options.maxAnchorPriceId);
+  const coreProduct = await findOrCreateCoreProduct(stripe, products.data, maxProduct.id);
+  const productByPlan = { core: coreProduct, max: maxProduct } as const;
   const configured: Record<string, { productId: string; prices: Record<string, string> }> = {};
 
   for (const plan of plans) {
-    let product = products.data.find(
-      (item) => item.metadata.platform === "1500_blueprint" && item.metadata.plan_code === plan.code,
-    );
-    if (!product) {
-      product = await stripe.products.create(
-        {
-          name: plan.name,
-          description: plan.description,
-          metadata: { platform: "1500_blueprint", plan_code: plan.code },
-        },
-        { idempotencyKey: `1500-blueprint-${plan.code}-product-v1` },
-      );
-    }
+    const product = productByPlan[plan.code];
 
     const prices = await stripe.prices.list({
       product: product.id,
@@ -96,4 +96,51 @@ export async function setupStripeBilling(stripe: Stripe) {
   }
 
   return configured;
+}
+
+async function findOrCreateCoreProduct(
+  stripe: Stripe,
+  products: Stripe.Product[],
+  maxProductId: string,
+): Promise<Stripe.Product> {
+  const existing = products.find(
+    (item) => item.metadata.platform === "1500_blueprint" && item.metadata.plan_code === "core",
+  );
+  if (existing) {
+    if (existing.id === maxProductId) throw new Error("Core and Max cannot use the same Stripe product");
+    return existing;
+  }
+  const plan = plans[0];
+  return stripe.products.create(
+    {
+      name: plan.name,
+      description: plan.description,
+      metadata: { platform: "1500_blueprint", plan_code: plan.code },
+    },
+    { idempotencyKey: "1500-blueprint-core-product-v1" },
+  );
+}
+
+async function existingMaxProduct(
+  stripe: Stripe,
+  anchorPriceId: string,
+): Promise<Stripe.Product> {
+  if (!anchorPriceId.startsWith("price_")) {
+    throw new Error("STRIPE_MAX_PRICE_ID must identify the existing Blueprint price");
+  }
+  const anchor = await stripe.prices.retrieve(anchorPriceId);
+  const productId = stripeId(anchor.product);
+  if (!productId) throw new Error("The existing Blueprint price has no Stripe product");
+
+  const product = await stripe.products.retrieve(productId);
+  if (!product.active) throw new Error("The existing Blueprint product is not active");
+  if (product.metadata.plan_code === "core") {
+    throw new Error("The existing Blueprint product is already marked as Core");
+  }
+  return product;
+}
+
+function stripeId(value: string | { id: string } | null): string | null {
+  if (!value) return null;
+  return typeof value === "string" ? value : value.id;
 }

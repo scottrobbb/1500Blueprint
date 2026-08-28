@@ -41,18 +41,46 @@ off there by setting either flag to `false`.
 
 ## Stripe billing
 
-Core is $50 monthly or $120 every three months. Max remains $80 monthly. The
-billing runtime reuses the configured Stripe product and resolves or creates the
-matching recurring Price before Checkout.
+Core is $50 monthly or $120 every three months. Max is $80 monthly or $210
+every three months. Checkout stays closed unless billing is explicitly launched
+with a complete mode, webhook, key, and Price configuration.
+
+The existing Blueprint Stripe product is Max. The sandbox setup command requires
+its current monthly Price in `STRIPE_MAX_PRICE_ID`, creates only the Core product,
+and ensures the canonical monthly and three-month Prices exist on both products.
+Runtime checkout never creates Stripe catalog objects.
 
 ```text
+BILLING_ENABLED=false
 STRIPE_BILLING_KEY=
 STRIPE_WEBHOOK_SECRET=
 STRIPE_BILLING_MODE=live
 STRIPE_CORE_PRICE_ID=
-STRIPE_CORE_THREE_MONTH_PRICE_ID= # optional; resolved from the Core product
+STRIPE_CORE_THREE_MONTH_PRICE_ID=
 STRIPE_MAX_PRICE_ID=
+STRIPE_MAX_THREE_MONTH_PRICE_ID=
+STRIPE_LEGACY_MAX_PRODUCT_IDS=
 ```
+
+Provision sandbox Core and Max Prices only after `STRIPE_MAX_PRICE_ID` points to
+an existing Blueprint sandbox Price:
+
+```bash
+npx tsx --env-file=.env.local scripts/setup-stripe-billing.ts
+```
+
+The command prints the canonical Product and Price IDs to copy into the sandbox
+environment. It never accepts a live key. Reconcile legacy subscribers separately,
+starting with a mandatory dry run:
+
+```bash
+STRIPE_LEGACY_MAX_PRODUCT_IDS=prod_existing_blueprint \
+  npx tsx scripts/billing/import-legacy-stripe.ts --mode=live
+```
+
+`--apply` also requires `ALLOW_STRIPE_IMPORT_WRITE=true` and aborts before any
+write when a Blueprint account matches multiple Stripe customers, has multiple
+active subscriptions, or contains a subscription with no Core/Max mapping.
 
 ## Weekly Calls and Google Calendar
 

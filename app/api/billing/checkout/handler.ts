@@ -22,14 +22,22 @@ type CheckoutCreateParams = {
   expires_at: number;
 };
 
+export type BillingSubscriptionState = {
+  activeCustomerId: string | null;
+  trackedCustomerId: string | null;
+  hasTrackedSubscriptions: boolean;
+};
+
 export type CheckoutHandlerDeps = {
   baseUrl: (requestUrl: string) => string;
+  billingEnabled: () => boolean;
   livemode: () => boolean;
   now: () => number;
   getSession: () => Promise<{ email: string } | null>;
   findAccount: (email: string) => Promise<BillingAccount | null>;
   consumeRateLimit: (scope: string, key: string, options: { limit: number; windowSeconds: number }) => Promise<{ allowed: boolean }>;
-  findActiveSubscriptionCustomer: (userId: string, livemode: boolean) => Promise<string | null>;
+  findSubscriptionState: (userId: string, livemode: boolean) => Promise<BillingSubscriptionState>;
+  hasUntrackedBilling: (account: BillingAccount, hasTrackedSubscriptions: boolean) => Promise<boolean>;
   changePlan: (userId: string, plan: BillablePlan, cadence: BillingCadence) => Promise<{ kind: "unchanged" | "upgrade" | "downgrade" | "pending-change-canceled" }>;
   createPortal: (customerId: string, returnUrl: string) => Promise<{ url: string }>;
   claimIntent: (input: { userId: string; livemode: boolean; plan: BillablePlan; cadence: BillingCadence; requestToken: string }) => Promise<CheckoutIntentClaim>;
@@ -44,6 +52,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
   return async function checkoutPost(request: Request): Promise<Response> {
     const baseUrl = deps.baseUrl(request.url);
     if (!isSameOriginRequest(request, baseUrl)) return new Response("Forbidden", { status: 403 });
+    if (!deps.billingEnabled()) return redirect(baseUrl, "/pricing?billing=unavailable");
 
     let formData: URLSearchParams;
     try {
@@ -77,8 +86,15 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
       const requestToken = checkoutRequestToken(formData.get("checkoutToken"));
       if (!requestToken) return redirect(baseUrl, "/pricing?billing=invalid");
       const livemode = deps.livemode();
-      const existingCustomer = await deps.findActiveSubscriptionCustomer(account.id, livemode);
+      const subscriptionState = await deps.findSubscriptionState(account.id, livemode);
+      const existingCustomer = subscriptionState.activeCustomerId;
 
+      if (
+        subscriptionState.hasTrackedSubscriptions
+        && subscriptionState.trackedCustomerId !== account.stripeCustomerId
+      ) {
+        return redirect(baseUrl, "/pricing?billing=legacy");
+      }
       if (existingCustomer) {
         const result = await deps.changePlan(account.id, plan, cadence);
         if (result.kind !== "unchanged") {
@@ -91,6 +107,9 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         }
         const portal = await deps.createPortal(existingCustomer, `${baseUrl}/pricing`);
         return NextResponse.redirect(portal.url, 303);
+      }
+      if (await deps.hasUntrackedBilling(account, subscriptionState.hasTrackedSubscriptions)) {
+        return redirect(baseUrl, "/pricing?billing=legacy");
       }
 
       const intent = await deps.claimIntent({

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   checkoutRequestToken,
+  legacyImportBlockingReasons,
   parseCheckoutIntentClaim,
   stripeCheckoutIdempotencyKey,
   subscriptionIdentityConflict,
@@ -60,6 +61,23 @@ test("subscription synchronization refuses identity reassignment", () => {
   assert.equal(subscriptionIdentityConflict(current, { ...current, userId: "user_2" }), "user");
   assert.equal(subscriptionIdentityConflict(current, { ...current, customerId: "cus_2" }), "customer");
   assert.equal(subscriptionIdentityConflict(current, { ...current, livemode: true }), "mode");
+});
+
+test("legacy import applies only after every customer and subscription is unambiguous", () => {
+  assert.deepEqual(legacyImportBlockingReasons({
+    duplicateCustomerAccounts: 0,
+    duplicateActiveSubscriptionAccounts: 0,
+    unknownSubscriptions: 0,
+  }), []);
+  assert.deepEqual(legacyImportBlockingReasons({
+    duplicateCustomerAccounts: 2,
+    duplicateActiveSubscriptionAccounts: 1,
+    unknownSubscriptions: 3,
+  }), [
+    "2 account(s) match multiple Stripe customers",
+    "1 account(s) have multiple active subscriptions",
+    "3 subscription(s) have no Core/Max mapping",
+  ]);
 });
 
 test("webhook claims retry failures and expired leases but not active workers", () => {
