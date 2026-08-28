@@ -110,6 +110,28 @@ export function BackIcon({ className }: IconProps) {
   );
 }
 
+export function ExpandIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">
+      <path
+        d="M9 4H4v5M15 20h5v-5M20 4h-5v0M4 15v5h0"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export function CloseIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true" fill="none">
+      <path d="M5 5l14 14M19 5 5 19" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 // Community tab glyph (chat bubbles) for the nav.
 export function CommunityIcon({ className }: IconProps) {
   return (
