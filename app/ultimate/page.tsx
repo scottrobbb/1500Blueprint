@@ -152,7 +152,7 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
           <h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">Learn, practice, then measure.</h2>
         </div>
         <div className="grid overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-[0_1px_3px_rgba(11,42,91,0.04)] md:grid-cols-3 md:divide-x md:divide-navy/10">
-          <PathCard step="1" href="/ultimate/courses" title="Learn the method" detail={`${courses.length} ${courses.length === 1 ? "course" : "courses"} available · ${completedLessons}/${totalLessons} lessons complete`} Icon={BookIcon} />
+          <PathCard step="1" href="/ultimate/courses" title="Learn the method" detail={`${availableCourses.length} ${availableCourses.length === 1 ? "course" : "courses"} available · ${completedLessons}/${totalLessons} lessons complete`} Icon={BookIcon} />
           <PathCard step="2" href={drillsLocked ? "/pricing" : "/ultimate/drills"} title="Practice the skill" detail={drillsLocked ? "Daily drills unlock with Core" : `${history.length} unique drill questions · ${masteryRate}% mastered`} Icon={DrillsIcon} locked={drillsLocked} requiredPlan="core" />
           <PathCard step="3" href="/ultimate/tests" title="Measure your score" detail={progress.tests.bestScore ? `Best score ${progress.tests.bestScore} · ${progress.tests.count} tests complete` : "Take your first full-length practice test"} Icon={TestsIcon} />
         </div>

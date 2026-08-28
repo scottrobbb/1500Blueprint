@@ -5,6 +5,7 @@ import {
   accessForPlan,
   accessForTestPersona,
   effectivePlan,
+  hasCourseAccess,
   normalizeLegacyPlanCode,
   normalizePlanCode,
   type StudentAccess,
@@ -105,5 +106,5 @@ export async function getDrillUsageToday(email: string): Promise<number> {
 }
 
 export function canAccessCourse(plan: StudentAccess, courseSlug: string): boolean {
-  return plan.entitlements.allCourses || courseSlug === "blueprint-foundations";
+  return hasCourseAccess(plan.entitlements, courseSlug);
 }

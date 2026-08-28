@@ -118,3 +118,8 @@ export function accessForTestPersona(
   }
   return null;
 }
+
+export function hasCourseAccess(entitlements: PlanEntitlements, courseSlug: string): boolean {
+  if (entitlements.allCourses || courseSlug === "blueprint-foundations") return true;
+  return courseSlug === "desmos-101" && entitlements.desmos101;
+}

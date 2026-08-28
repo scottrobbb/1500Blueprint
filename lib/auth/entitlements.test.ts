@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { accessForPlan, accessForTestPersona, effectivePlan, highestPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
+import { accessForPlan, accessForTestPersona, effectivePlan, hasCourseAccess, highestPlan, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
 import { isUltimatePreviewEmail } from "./ultimate";
 
 test("legacy Stripe labels normalize to stable plan codes", () => {
@@ -58,4 +58,11 @@ test("every authenticated student can enter the entitlement-gated Ultimate works
   assert.equal(isUltimatePreviewEmail("new-student@example.com"), true);
   assert.equal(isUltimatePreviewEmail("  "), false);
   assert.equal(isUltimatePreviewEmail(null), false);
+});
+
+test("Desmos 101 and Blueprint Foundation remain available on every plan", () => {
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "desmos-101"), true);
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "blueprint-foundations"), true);
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "math-subtopic-course"), false);
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.max, "math-subtopic-course"), true);
 });
