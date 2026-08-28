@@ -10,6 +10,7 @@ import { ExamCountdown } from "./ExamCountdown";
 import { FeatureGlyph, type FeatureIcon } from "./FeatureGlyph";
 import { PlansPanel } from "./PlansPanel";
 import { SavingsCalculator } from "./SavingsCalculator";
+import { SmoothScrollLink } from "./SmoothScrollLink";
 import { TestimonialReel } from "./TestimonialReel";
 import { TestimonialWall } from "./TestimonialWall";
 import styles from "./pricing.module.css";
@@ -189,9 +190,9 @@ export default async function PricingPage({
           <span>1500 SAT Blueprint</span>
         </Link>
         <nav aria-label="Pricing navigation">
-          <Link href="#inside">What you get</Link>
-          <Link href="#stories">Student stories</Link>
-          <Link href="#faq">FAQ</Link>
+          <SmoothScrollLink href="#inside">What you get</SmoothScrollLink>
+          <SmoothScrollLink href="#stories">Student stories</SmoothScrollLink>
+          <SmoothScrollLink href="#faq">FAQ</SmoothScrollLink>
         </nav>
         <Link href="/account/login?next=/ultimate" className={styles.openApp}>
           Log in <ArrowIcon />
@@ -330,9 +331,9 @@ export default async function PricingPage({
             <div className={styles.footerColumn}>
               <h3>Explore</h3>
               <Link href="/">Home</Link>
-              <Link href="#plans">Pricing</Link>
+              <SmoothScrollLink href="#plans">Pricing</SmoothScrollLink>
               <Link href="/practice-test">Practice tests</Link>
-              <Link href="#stories">Student stories</Link>
+              <SmoothScrollLink href="#stories">Student stories</SmoothScrollLink>
             </div>
             <div className={styles.footerColumn}>
               <h3>Study tools</h3>
@@ -350,7 +351,7 @@ export default async function PricingPage({
             </div>
             <div className={styles.footerColumn}>
               <h3>More</h3>
-              <Link href="#faq">FAQ</Link>
+              <SmoothScrollLink href="#faq">FAQ</SmoothScrollLink>
               <Link href="/community">Community</Link>
               <Link href="/ultimate/planner">Study planner</Link>
               <Link href="/ultimate/live-calls">Weekly calls</Link>
