@@ -426,7 +426,6 @@
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-.priceCard.max .priceRow strong { font-size: 54px; }
 .priceRow em {
   color: rgba(255,255,255,.6);
   font-size: 16px;
