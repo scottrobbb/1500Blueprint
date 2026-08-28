@@ -22,15 +22,20 @@ test("math bank filters reject unsupported query values", () => {
   assert.equal(parseCompletionFilter("correct"), "all");
   assert.equal(parseQuestionLimit("12"), 12);
   assert.equal(parseQuestionLimit("2"), 5);
-  assert.equal(parseQuestionLimit("100"), 30);
+  assert.equal(parseQuestionLimit("100"), 100);
+  assert.equal(parseQuestionLimit("1000"), 500);
   assert.equal(parseQuestionLimit("all"), null);
   assert.equal(parseQuestionLimit(undefined), null);
 });
 
-test("question bank delivery is capped even when the UI requests all questions", () => {
-  assert.equal(boundedQuestionBankSessionLimit(null), 30);
-  assert.equal(boundedQuestionBankSessionLimit(12), 12);
-  assert.equal(boundedQuestionBankSessionLimit(1_000), 30);
+test("an unfiltered 'all topics' session stays capped, but a topic-filtered session is not", () => {
+  assert.equal(boundedQuestionBankSessionLimit(null, false), 30);
+  assert.equal(boundedQuestionBankSessionLimit(12, false), 12);
+  assert.equal(boundedQuestionBankSessionLimit(1_000, false), 30);
+
+  assert.equal(boundedQuestionBankSessionLimit(null, true), 500);
+  assert.equal(boundedQuestionBankSessionLimit(12, true), 12);
+  assert.equal(boundedQuestionBankSessionLimit(1_000, true), 500);
 });
 
 test("bounded sessions advance unseen questions before recycling attempted ones", () => {

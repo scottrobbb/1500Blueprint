@@ -93,7 +93,7 @@ export async function getReadingWritingRunnerQuestions(
   const preferredRows = completionRows.filter((row) => (
     filters.difficulty === "all" || row.difficulty === filters.difficulty
   ));
-  const sessionLimit = boundedQuestionBankSessionLimit(limit);
+  const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
   const preferred = toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
   if (preferred.length >= sessionLimit) return preferred.slice(0, sessionLimit);
 

@@ -13,7 +13,12 @@ export type MathCompletionFilter = "all" | "unanswered" | "attempted";
 export type MathAnswerType = "mc_single" | "grid_in";
 export type QuestionBankLevel = Difficulty | "challenge";
 
+// Applies only when no skill is selected ("Start all topics") — an unfocused
+// session across the whole bank still needs a sane size. A skill-filtered
+// session (clicking one or more specific topics) should include everything
+// available for that topic, up to MAX_FILTERED_QUESTION_BANK_SESSION_QUESTIONS.
 export const MAX_QUESTION_BANK_SESSION_QUESTIONS = 30;
+export const MAX_FILTERED_QUESTION_BANK_SESSION_QUESTIONS = 500;
 
 export type MathChoice = {
   id: ChoiceId;
@@ -88,12 +93,13 @@ export function parseSkillFilter(value: string | undefined): string[] {
 export function parseQuestionLimit(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number(value);
-  return Number.isInteger(parsed) ? Math.max(5, Math.min(30, parsed)) : null;
+  return Number.isInteger(parsed) ? Math.max(5, Math.min(MAX_FILTERED_QUESTION_BANK_SESSION_QUESTIONS, parsed)) : null;
 }
 
-export function boundedQuestionBankSessionLimit(value: number | null): number {
-  if (value === null) return MAX_QUESTION_BANK_SESSION_QUESTIONS;
-  return Math.max(1, Math.min(Math.floor(value), MAX_QUESTION_BANK_SESSION_QUESTIONS));
+export function boundedQuestionBankSessionLimit(value: number | null, hasSkillFilter: boolean): number {
+  const ceiling = hasSkillFilter ? MAX_FILTERED_QUESTION_BANK_SESSION_QUESTIONS : MAX_QUESTION_BANK_SESSION_QUESTIONS;
+  if (value === null) return ceiling;
+  return Math.max(1, Math.min(Math.floor(value), ceiling));
 }
 
 export function prioritizeUnattemptedQuestions<T extends { id: string }>(
