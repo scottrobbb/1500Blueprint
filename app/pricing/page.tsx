@@ -383,6 +383,13 @@ export default async function PricingPage({
             >
               Refund & Cancellation Policy
             </a>
+            <a
+              href="https://docs.google.com/document/d/e/2PACX-1vS7LxJuIaWzEAyJ5b75vqhZ5yQ8d2-cMewm4boddfHfT8PxIbveUZ-Jlwu47RZArskjeRVvA2eOgD0x/pub"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Cookie Policy
+            </a>
           </div>
           <p>
             SAT is a registered trademark of College Board. 1500 SAT Blueprint
