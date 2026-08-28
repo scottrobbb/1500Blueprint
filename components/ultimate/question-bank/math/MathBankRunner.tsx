@@ -28,6 +28,7 @@ type BankRunnerProps = {
   filters: MathSessionFilters;
   initialState: QuestionBankRunnerState;
   returnHref?: string;
+  isAdmin?: boolean;
 };
 
 export function MathBankRunner({
@@ -35,12 +36,13 @@ export function MathBankRunner({
   filters,
   initialState,
   returnHref,
+  isAdmin,
 }: BankRunnerProps) {
-  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} subject="math" />;
+  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} isAdmin={isAdmin} subject="math" />;
 }
 
-export function ReadingWritingBankRunner({ questions, filters, initialState, returnHref }: BankRunnerProps) {
-  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} subject="reading-writing" />;
+export function ReadingWritingBankRunner({ questions, filters, initialState, returnHref, isAdmin }: BankRunnerProps) {
+  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} isAdmin={isAdmin} subject="reading-writing" />;
 }
 
 function ObjectiveBankRunner({
@@ -48,6 +50,7 @@ function ObjectiveBankRunner({
   filters,
   initialState,
   returnHref,
+  isAdmin,
   subject,
 }: BankRunnerProps & { subject: BankSubject }) {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -319,6 +322,7 @@ function ObjectiveBankRunner({
         nextLabel={currentIndex === questions.length - 1 ? "Finish" : "Next"}
         finished={finished}
         navigatorOpen={navigatorOpen}
+        editHref={isAdmin && !finished ? `/ultimate/admin/questions/${question.id}` : undefined}
         onPrevious={() => goTo(currentIndex - 1)}
         onNext={goNext}
         onToggleNavigator={() => setNavigatorOpen((value) => !value)}
@@ -512,7 +516,7 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
   );
 }
 
-function RunnerFooter({ currentIndex, total, canGoPrevious, nextLabel, finished, navigatorOpen, onPrevious, onNext, onToggleNavigator }: { currentIndex: number; total: number; canGoPrevious: boolean; nextLabel: string; finished: boolean; navigatorOpen: boolean; onPrevious: () => void; onNext: () => void; onToggleNavigator: () => void }) {
+function RunnerFooter({ currentIndex, total, canGoPrevious, nextLabel, finished, navigatorOpen, editHref, onPrevious, onNext, onToggleNavigator }: { currentIndex: number; total: number; canGoPrevious: boolean; nextLabel: string; finished: boolean; navigatorOpen: boolean; editHref?: string; onPrevious: () => void; onNext: () => void; onToggleNavigator: () => void }) {
   return (
     <footer className="relative z-20 border-t border-[#e8e8e8] bg-white px-3 py-3 sm:px-6">
       <div className="mx-auto grid max-w-[1170px] grid-cols-[auto_1fr_auto] items-center gap-3">
@@ -521,6 +525,11 @@ function RunnerFooter({ currentIndex, total, canGoPrevious, nextLabel, finished,
         </button>
         <p className="hidden text-center text-xs font-medium text-[#777] sm:block">Use the question menu to jump or review marked items.</p>
         <div className="flex items-center gap-2">
+          {editHref && (
+            <Link href={editHref} target="_blank" rel="noopener noreferrer" className="min-h-11 rounded-[10px] border border-brand/30 bg-brand/5 px-4 text-sm font-semibold text-brand-600 hover:bg-brand/10 sm:px-6 flex items-center">
+              Edit
+            </Link>
+          )}
           <button type="button" onClick={onPrevious} disabled={!canGoPrevious} className="min-h-11 rounded-[10px] border border-[#d6d6d6] px-4 text-sm font-semibold text-[#555] hover:bg-[#f7f7f7] disabled:cursor-not-allowed disabled:text-[#c8c8c8] sm:px-6">Previous</button>
           {!finished && <button type="button" onClick={onNext} className="min-h-11 rounded-[10px] border border-[#d6d6d6] bg-white px-5 text-sm font-semibold text-[#555] hover:bg-[#f7f7f7] sm:px-7">{nextLabel}</button>}
         </div>

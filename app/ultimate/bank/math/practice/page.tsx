@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { MathBankRunner } from "@/components/ultimate/question-bank/math/MathBankRunner";
 import { getSession } from "@/lib/auth/session";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import {
   parseCompletionFilter,
@@ -37,7 +38,15 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
   const questions = await getMathRunnerQuestions(session.email, filters, limit, { includeChallenge: access.entitlements.challengeQuestions });
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
-  return <MathBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined} />;
+  return (
+    <MathBankRunner
+      questions={questions}
+      filters={filters}
+      initialState={initialState}
+      returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined}
+      isAdmin={isAdminEmail(session.email)}
+    />
+  );
 }
 
 function readParam(value: string | string[] | undefined): string | undefined {
