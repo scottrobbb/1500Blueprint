@@ -129,7 +129,9 @@ export async function POST(req: NextRequest) {
     if (!allowance.allowed) {
       const error = allowance.limit === null
         ? "Daily drills are included with Core and Max."
-        : `You have completed all ${allowance.limit} drills included today.`;
+        : allowance.limit === "unlimited"
+          ? "Drill access is temporarily limited. Please try again soon."
+          : `You have completed all ${allowance.limit} drills included today.`;
       return NextResponse.json({ error, code: "plan_limit", ...allowance }, { status: 402 });
     }
   }

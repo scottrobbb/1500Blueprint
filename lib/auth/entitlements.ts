@@ -109,3 +109,18 @@ export async function getDrillUsageToday(email: string): Promise<number> {
   if (error) throw new Error(`failed to load daily drill usage: ${error.message}`);
   return count ?? 0;
 }
+
+// Calendar-month count, UTC. Used only as a hidden abuse/cost backstop for
+// plans with an "unlimited" displayed drill limit — see MAX_HIDDEN_MONTHLY_DRILL_CAP
+// in access-control.ts.
+export async function getDrillUsageThisMonth(email: string): Promise<number> {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+  const { count, error } = await supabaseAdmin()
+    .from("drill_attempts")
+    .select("id", { count: "exact", head: true })
+    .eq("email", email.trim().toLowerCase())
+    .gte("created_at", start);
+  if (error) throw new Error(`failed to load monthly drill usage: ${error.message}`);
+  return count ?? 0;
+}

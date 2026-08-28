@@ -1,8 +1,13 @@
 import "server-only";
 
 import { isAdminEmail } from "./admin";
-import { getDrillUsageToday, getQuestionBankUsage, getStudentAccess } from "./entitlements";
+import { getDrillUsageThisMonth, getDrillUsageToday, getQuestionBankUsage, getStudentAccess } from "./entitlements";
 import { listTests } from "@/lib/sat/loadTest";
+
+// Max's drill limit displays as "Unlimited" (see plan-view.ts / PLAN_ENTITLEMENTS)
+// and stays that way in every response below — this cap is a hidden cost/abuse
+// backstop, not a product tier boundary, so it must never surface as a number.
+const MAX_HIDDEN_MONTHLY_DRILL_CAP = 500;
 
 export async function canAccessPracticeTest(email: string, testSlug: string): Promise<boolean> {
   if (isAdminEmail(email)) return true;
@@ -26,7 +31,10 @@ export async function drillAllowance(email: string): Promise<{ allowed: boolean;
   const access = await getStudentAccess(email);
   const limit = access.entitlements.dailyDrillLimit;
   if (!access.active || limit === null) return { allowed: false, used: 0, limit };
-  if (limit === "unlimited") return { allowed: true, used: 0, limit };
+  if (limit === "unlimited") {
+    const usedThisMonth = await getDrillUsageThisMonth(email);
+    return { allowed: usedThisMonth < MAX_HIDDEN_MONTHLY_DRILL_CAP, used: 0, limit };
+  }
   const used = await getDrillUsageToday(email);
   return { allowed: used < limit, used, limit };
 }
