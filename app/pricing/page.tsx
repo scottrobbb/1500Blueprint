@@ -111,7 +111,7 @@ const faqItems = [
   {
     question: "Are Core and Max billed monthly?",
     answer:
-      "Core is $50 month to month or $120 billed every three months, which works out to $40 per month. Max is $80 per month. You can cancel at any time, and your access continues through the end of the paid billing period.",
+      "Yes. Core is available for $50/month, or $120 every 3 months — saving you $30 and bringing the effective price down to $40/month.\n\nMax is $80/month, billed monthly.\n\nBoth plans are cancel anytime, and you'll keep access through the end of your current billing period.",
   },
   {
     question: "Can I change plans later?",
@@ -279,7 +279,9 @@ export default async function PricingPage({
                   <span>{item.question}</span>
                   <i aria-hidden="true" />
                 </summary>
-                <p>{item.answer}</p>
+                {item.answer.split("\n\n").map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
               </details>
             ))}
           </div>
