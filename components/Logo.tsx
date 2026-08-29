@@ -8,11 +8,11 @@ export function Logo({ className, withWordmark = true }: LogoProps) {
   return (
     <span className={`inline-flex items-center gap-2.5 ${className ?? ""}`}>
       <Image
-        src="/images/blu-idle.png"
+        src="/images/blu-favicon.png"
         alt="1500 Blueprint"
-        width={40}
+        width={36}
         height={36}
-        className="h-8 w-[35px] shrink-0 object-contain"
+        className="h-8 w-8 shrink-0 object-contain"
       />
       {withWordmark && (
         <span className="font-display font-extrabold leading-none tracking-tight">
