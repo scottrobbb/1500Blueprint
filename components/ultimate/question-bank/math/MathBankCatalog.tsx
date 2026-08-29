@@ -6,6 +6,7 @@ import { UpgradePrompt } from "@/components/account/UpgradePrompt";
 import type { PlanCode } from "@/lib/auth/plans";
 import {
   MATH_DOMAINS,
+  skillMetricForDifficulty,
   type MathBankCatalog,
   type MathCompletionFilter,
   type MathDifficultyFilter,
@@ -52,11 +53,14 @@ export function SubjectBankCatalogView({
 
   const selectedAvailable = useMemo(
     () => catalog.skills.reduce(
-      (total, skill) => total + (selectedSkills.has(skill.name) ? skill.available : 0),
+      (total, skill) => total + (selectedSkills.has(skill.name) ? skillMetricForDifficulty(skill, difficulty).available : 0),
       0,
     ),
-    [catalog.skills, selectedSkills],
+    [catalog.skills, selectedSkills, difficulty],
   );
+  const totalAvailable = difficulty === "all"
+    ? catalog.totalAvailable
+    : catalog.skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty).available, 0);
   const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills]);
   const allPracticeHref = buildPracticeHref(basePath, difficulty, completion, []);
 
@@ -90,7 +94,7 @@ export function SubjectBankCatalogView({
             </p>
           </div>
           <div className="rounded-2xl border border-navy/10 bg-white px-4 py-3 text-right shadow-pop">
-            <p className="font-display text-2xl font-extrabold text-navy">{catalog.totalAvailable}</p>
+            <p className="font-display text-2xl font-extrabold text-navy">{totalAvailable}</p>
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-navy/40">questions available</p>
           </div>
         </header>
@@ -171,7 +175,7 @@ export function SubjectBankCatalogView({
                     {domain}
                   </h2>
                   <span className="text-xs font-semibold text-navy/35">
-                    {skills.reduce((total, skill) => total + skill.available, 0)} questions
+                    {skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty).available, 0)} questions
                   </span>
                 </div>
                 <ul className="space-y-2">
@@ -179,6 +183,7 @@ export function SubjectBankCatalogView({
                     <SkillRow
                       key={skill.name}
                       skill={skill}
+                      difficulty={difficulty}
                       checked={selectedSkills.has(skill.name)}
                       onToggle={() => toggleSkill(skill.name)}
                     />
@@ -214,14 +219,17 @@ export default SubjectBankCatalogView;
 
 function SkillRow({
   skill,
+  difficulty,
   checked,
   onToggle,
 }: {
   skill: BankSkillMetric;
+  difficulty: MathDifficultyFilter;
   checked: boolean;
   onToggle: () => void;
 }) {
-  const progress = skill.available > 0 ? Math.round((skill.attempted / skill.available) * 100) : 0;
+  const view = skillMetricForDifficulty(skill, difficulty);
+  const progress = view.available > 0 ? Math.round((view.attempted / view.available) * 100) : 0;
 
   return (
     <li>
@@ -240,7 +248,11 @@ function SkillRow({
           />
           <span>
             <span className="block text-sm font-bold leading-5 text-navy sm:text-[15px]">{skill.name}</span>
-            {skill.available === 0 && <span className="mt-1 block text-xs font-semibold text-navy/35">Content queued</span>}
+            {skill.available === 0 ? (
+              <span className="mt-1 block text-xs font-semibold text-navy/35">Content queued</span>
+            ) : view.available === 0 ? (
+              <span className="mt-1 block text-xs font-semibold text-navy/35">No {difficulty} questions yet</span>
+            ) : null}
           </span>
         </span>
         <span className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 pl-8 md:pl-0">
@@ -248,12 +260,12 @@ function SkillRow({
             <span className="block h-full rounded-full bg-brand" style={{ width: `${progress}%` }} />
           </span>
           <span className="min-w-[60px] text-right text-xs font-semibold tabular-nums text-navy/50">
-            {skill.attempted}/{skill.available}
+            {view.attempted}/{view.available}
           </span>
         </span>
         <span className="flex items-center gap-2 pl-8 text-sm font-extrabold tabular-nums text-navy md:pl-0">
-          <span className={`h-2 w-2 rounded-full ${accuracyTone(skill.accuracy)}`} />
-          {skill.accuracy == null ? "-" : `${skill.accuracy}%`}
+          <span className={`h-2 w-2 rounded-full ${accuracyTone(view.accuracy)}`} />
+          {view.accuracy == null ? "-" : `${view.accuracy}%`}
         </span>
       </label>
     </li>

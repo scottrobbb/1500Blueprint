@@ -25,6 +25,12 @@ export type MathChoice = {
   text: string;
 };
 
+export type QuestionBankDifficultyBreakdown = Record<Difficulty, {
+  available: number;
+  attempted: number;
+  accuracy: number | null;
+}>;
+
 export type MathSkillMetric = {
   domain: MathDomain;
   name: string;
@@ -34,7 +40,27 @@ export type MathSkillMetric = {
   attempts: number;
   correct: number;
   accuracy: number | null;
+  byDifficulty: QuestionBankDifficultyBreakdown;
 };
+
+export function emptyDifficultyBreakdown(): QuestionBankDifficultyBreakdown {
+  return {
+    easy: { available: 0, attempted: 0, accuracy: null },
+    medium: { available: 0, attempted: 0, accuracy: null },
+    hard: { available: 0, attempted: 0, accuracy: null },
+  };
+}
+
+// A skill row's overview numbers (progress bar, accuracy dot) should reflect
+// whichever difficulty the catalog page's filter is set to, not always the
+// skill's all-difficulty total.
+export function skillMetricForDifficulty(
+  metric: { available: number; attempted: number; accuracy: number | null; byDifficulty: QuestionBankDifficultyBreakdown },
+  difficulty: MathDifficultyFilter,
+): { available: number; attempted: number; accuracy: number | null } {
+  if (difficulty === "all") return { available: metric.available, attempted: metric.attempted, accuracy: metric.accuracy };
+  return metric.byDifficulty[difficulty];
+}
 
 export type MathBankCatalog = {
   totalAvailable: number;

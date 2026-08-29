@@ -15,6 +15,7 @@ import {
   boundedQuestionBankSessionLimit,
   calculateAccuracy,
   canAccessQuestionBankLevel,
+  emptyDifficultyBreakdown,
   prioritizeBoundedQuestions,
   prioritizeUnattemptedQuestions,
   questionBankLevel,
@@ -286,23 +287,45 @@ function buildSkillMetrics(
       attempts: 0,
       correct: 0,
       accuracy: null,
+      byDifficulty: emptyDifficultyBreakdown(),
     }));
   const byName = new Map(metrics.map((metric) => [metric.name, metric]));
+  const byDifficultyAttempts = new Map<string, Record<Difficulty, { attempts: number; correct: number }>>();
 
   for (const question of questions) {
     const metric = question.skill ? byName.get(question.skill) : undefined;
     if (!metric || metric.domain !== question.domain) continue;
     metric.available += 1;
-    if (activity.attemptedIds.has(question.id)) metric.attempted += 1;
+    const attempted = activity.attemptedIds.has(question.id);
+    if (attempted) metric.attempted += 1;
     const questionActivity = activity.attemptsByQuestion.get(question.id);
     if (questionActivity) {
       metric.attempts += questionActivity.attempts;
       metric.correct += questionActivity.correct;
     }
+
+    if (isDifficulty(question.difficulty)) {
+      const bucket = metric.byDifficulty[question.difficulty];
+      bucket.available += 1;
+      if (attempted) bucket.attempted += 1;
+      if (questionActivity) {
+        const attemptTotals = byDifficultyAttempts.get(metric.name) ?? { easy: { attempts: 0, correct: 0 }, medium: { attempts: 0, correct: 0 }, hard: { attempts: 0, correct: 0 } };
+        attemptTotals[question.difficulty].attempts += questionActivity.attempts;
+        attemptTotals[question.difficulty].correct += questionActivity.correct;
+        byDifficultyAttempts.set(metric.name, attemptTotals);
+      }
+    }
   }
 
   for (const metric of metrics) {
     metric.accuracy = activity.hasAccuracy ? calculateAccuracy(metric.correct, metric.attempts) : null;
+    const attemptTotals = byDifficultyAttempts.get(metric.name);
+    for (const difficulty of ["easy", "medium", "hard"] as const) {
+      const totals = attemptTotals?.[difficulty];
+      metric.byDifficulty[difficulty].accuracy = activity.hasAccuracy && totals
+        ? calculateAccuracy(totals.correct, totals.attempts)
+        : null;
+    }
   }
 
   return metrics.sort((a, b) => {

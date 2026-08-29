@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { Course } from "@/lib/courses/types";
 import type { CompletedTestAttempt } from "@/lib/gamification/state";
-import type { MathBankCatalog, MathSkillMetric } from "@/lib/question-bank/math";
+import { emptyDifficultyBreakdown, type MathBankCatalog, type MathSkillMetric } from "@/lib/question-bank/math";
 import type {
   ReadingWritingBankCatalog,
   ReadingWritingSkillMetric,
@@ -381,6 +381,7 @@ function mathSkill(
     attempts: 0,
     correct: 0,
     accuracy: null,
+    byDifficulty: emptyDifficultyBreakdown(),
     ...overrides,
   };
 }
@@ -398,6 +399,7 @@ function readingSkill(
     attempts: 0,
     correct: 0,
     accuracy: null,
+    byDifficulty: emptyDifficultyBreakdown(),
     ...overrides,
   };
 }

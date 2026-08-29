@@ -1,5 +1,5 @@
 import type { ChoiceId, Difficulty } from "@/lib/sat/types";
-import type { QuestionBankLevel } from "@/lib/question-bank/math";
+import type { QuestionBankDifficultyBreakdown, QuestionBankLevel } from "@/lib/question-bank/math";
 
 export const READING_WRITING_DOMAINS = [
   "Craft and Structure",
@@ -39,6 +39,7 @@ export type ReadingWritingSkillMetric = {
   attempts: number;
   correct: number;
   accuracy: number | null;
+  byDifficulty: QuestionBankDifficultyBreakdown;
 };
 
 export type ReadingWritingBankCatalog = {
