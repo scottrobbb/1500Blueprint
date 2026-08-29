@@ -53,17 +53,51 @@ function ObjectiveBankRunner({
   isAdmin,
   subject,
 }: BankRunnerProps & { subject: BankSubject }) {
+  // The server re-sorts "unattempted first" on every fetch, so a plain
+  // refresh (which re-fetches) would reshuffle every question's number as
+  // soon as one gets attempted. Lock in the order the first time this
+  // filter set loads in a session, and reuse it on subsequent loads --
+  // new/removed questions are reconciled against the saved id list rather
+  // than trusting the freshly-fetched order.
+  const orderKey = `qb-order:${subject}:${filters.difficulty}:${filters.completion}:${[...filters.skills].sort().join(",")}`;
+  const [orderedQuestions] = useState<BankRunnerQuestion[]>(() => {
+    if (typeof window === "undefined") return questions;
+    try {
+      const raw = window.sessionStorage.getItem(orderKey);
+      if (!raw) {
+        window.sessionStorage.setItem(orderKey, JSON.stringify(questions.map((item) => item.id)));
+        return questions;
+      }
+      const savedIds = JSON.parse(raw) as string[];
+      const remaining = new Map(questions.map((item) => [item.id, item]));
+      const ordered: BankRunnerQuestion[] = [];
+      for (const id of savedIds) {
+        const found = remaining.get(id);
+        if (found) {
+          ordered.push(found);
+          remaining.delete(id);
+        }
+      }
+      for (const item of questions) {
+        if (remaining.has(item.id)) ordered.push(item);
+      }
+      window.sessionStorage.setItem(orderKey, JSON.stringify(ordered.map((item) => item.id)));
+      return ordered;
+    } catch {
+      return questions;
+    }
+  });
+
   // Resume on the same question after a refresh. Keyed by subject + filters
-  // (not a raw index -- answering a question can reshuffle "unattempted
-  // first" ordering on the next load, so the saved question id is
-  // re-located in the freshly-fetched list rather than trusted as a slot).
+  // (not a raw index -- the saved question id is re-located in the ordered
+  // list rather than trusted as a slot).
   const positionKey = `qb-position:${subject}:${filters.difficulty}:${filters.completion}:${[...filters.skills].sort().join(",")}`;
   const [currentIndex, setCurrentIndex] = useState(() => {
     if (typeof window === "undefined") return 0;
     try {
       const savedId = window.sessionStorage.getItem(positionKey);
       if (!savedId) return 0;
-      const index = questions.findIndex((item) => item.id === savedId);
+      const index = orderedQuestions.findIndex((item) => item.id === savedId);
       return index > 0 ? index : 0;
     } catch {
       return 0;
@@ -90,7 +124,7 @@ function ObjectiveBankRunner({
   const enteredQuestionAt = useRef(0);
   const sessionId = useRef<string | null>(null);
   const attemptTokens = useRef<Record<string, { response: string; token: string }>>({});
-  const question = questions[currentIndex];
+  const question = orderedQuestions[currentIndex];
   const answer = question ? answers[question.id] ?? "" : "";
   const result = question ? results[question.id] : undefined;
 
@@ -106,14 +140,14 @@ function ObjectiveBankRunner({
 
   useEffect(() => {
     if (typeof window === "undefined" || finished) return;
-    const current = questions[currentIndex];
+    const current = orderedQuestions[currentIndex];
     if (!current) return;
     try {
       window.sessionStorage.setItem(positionKey, current.id);
     } catch {
       // Storage unavailable -- position just won't survive a refresh.
     }
-  }, [currentIndex, questions, finished, positionKey]);
+  }, [currentIndex, orderedQuestions, finished, positionKey]);
 
   useEffect(() => {
     if (typeof window === "undefined" || !finished) return;
@@ -181,14 +215,14 @@ function ObjectiveBankRunner({
     enteredQuestionAt.current = Date.now();
     setSubmitError(null);
     setSaveError(null);
-    setCurrentIndex(Math.max(0, Math.min(index, questions.length - 1)));
+    setCurrentIndex(Math.max(0, Math.min(index, orderedQuestions.length - 1)));
     setNavigatorOpen(false);
     setFinished(false);
     setExplanationOpen(false);
   }
 
   function goNext() {
-    if (currentIndex >= questions.length - 1) setFinished(true);
+    if (currentIndex >= orderedQuestions.length - 1) setFinished(true);
     else goTo(currentIndex + 1);
   }
 
@@ -239,7 +273,7 @@ function ObjectiveBankRunner({
     }
   }
 
-  if (questions.length === 0) {
+  if (orderedQuestions.length === 0) {
     return <EmptySession filters={filters} subject={subject} />;
   }
 
@@ -301,7 +335,7 @@ function ObjectiveBankRunner({
       {finished ? (
         <SessionSummary
           subject={subject}
-          total={questions.length}
+          total={orderedQuestions.length}
           answered={Object.keys(results).length}
           correct={correctCount}
           marked={marked.size}
@@ -365,9 +399,9 @@ function ObjectiveBankRunner({
 
       <RunnerFooter
         currentIndex={currentIndex}
-        total={questions.length}
+        total={orderedQuestions.length}
         canGoPrevious={!finished && currentIndex > 0}
-        nextLabel={currentIndex === questions.length - 1 ? "Finish" : "Next"}
+        nextLabel={currentIndex === orderedQuestions.length - 1 ? "Finish" : "Next"}
         finished={finished}
         navigatorOpen={navigatorOpen}
         editHref={isAdmin && !finished ? `/ultimate/admin/questions/${question.id}` : undefined}
@@ -378,7 +412,7 @@ function ObjectiveBankRunner({
 
       {navigatorOpen && (
         <RunnerNavigator
-          questions={questions}
+          questions={orderedQuestions}
           currentIndex={currentIndex}
           attempts={attempts}
           marked={marked}
