@@ -348,6 +348,16 @@
     0 16px 32px -18px rgba(47,159,233,.35),
     0 16px 32px -18px rgba(255,200,61,.25);
 }
+.maxPeek {
+  filter: drop-shadow(0 10px 16px rgba(0,0,0,.5));
+  height: auto;
+  pointer-events: none;
+  position: absolute;
+  right: -2px;
+  top: -52px;
+  width: 110px;
+  z-index: 2;
+}
 .planName {
   align-items: center;
   display: flex;

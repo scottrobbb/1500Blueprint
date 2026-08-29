@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import type { PlanCode } from "@/lib/auth/plans";
 import type { BillingCadence } from "@/lib/billing/offers";
@@ -124,6 +125,9 @@ function PriceCard({
 
   return (
     <article className={`${styles.priceCard} ${styles[tier]}`}>
+      {tier === "max" ? (
+        <Image src="/images/blu-peek-pricing.png" alt="" width={220} height={220} className={styles.maxPeek} />
+      ) : null}
       <div className={styles.planName}>
         <h3>{name}</h3>
       </div>
