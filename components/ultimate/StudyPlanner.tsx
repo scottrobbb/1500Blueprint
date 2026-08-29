@@ -70,7 +70,7 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
       {profileExpired && profile ? (
         <ExpiredPlan profile={profile} onEdit={() => setSetupOpen(true)} />
       ) : plan && profile ? (
-        <ActivePlan plan={plan} profile={profile} retuning={retuning} onRetune={() => void retunePlan()} />
+        <ActivePlan plan={plan} profile={profile} />
       ) : profile ? (
         <PlanUnavailable retuning={retuning} onRetune={() => void retunePlan()} />
       ) : (
@@ -116,7 +116,6 @@ function PlannerHeader({
         </span>
         <div className="min-w-0">
           <h1 className="font-display text-[28px] font-extrabold tracking-[-0.03em] text-ink sm:text-[32px]">My Study Plan</h1>
-          <p className="mt-0.5 text-sm text-navy/50">A focused week built from your latest SAT progress.</p>
         </div>
       </div>
 
@@ -153,16 +152,10 @@ function PlannerHeader({
 function ActivePlan({
   plan,
   profile,
-  retuning,
-  onRetune,
 }: {
   plan: StudyPlan;
   profile: StudyPlannerProfile;
-  retuning: boolean;
-  onRetune: () => void;
 }) {
-  const phase = phaseCopy(plan.phase);
-
   return (
     <div className="space-y-7">
       <PlanSummary plan={plan} profile={profile} />
@@ -178,26 +171,22 @@ function ActivePlan({
         <PlanSchedule plan={plan} />
       </section>
 
-      <section className="grid gap-4 rounded-2xl border border-navy/10 bg-white p-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-6">
-        <div>
-          <h2 className="font-display text-lg font-extrabold text-ink">{phase.title}</h2>
-          <p className="mt-1 max-w-2xl text-sm leading-6 text-navy/50">{phase.description}</p>
-          {plan.focusAreas.length > 0 ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {plan.focusAreas.slice(0, 3).map((focus) => (
-                <span key={`${focus.section}-${focus.skill}`} className="rounded-full bg-ice px-3 py-1.5 text-xs font-bold text-brand-600">{focus.skill}</span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-        <button type="button" disabled={retuning} onClick={onRetune} className="min-h-11 cursor-pointer rounded-xl border border-navy/15 px-4 text-sm font-bold text-navy transition-colors hover:border-brand/40 hover:text-brand-600 disabled:cursor-wait disabled:opacity-55">
-          {retuning ? "Refreshing…" : "Refresh this week"}
-        </button>
-      </section>
+      {plan.focusAreas.length > 0 ? (
+        <section className="rounded-2xl border border-navy/10 bg-white p-5 sm:p-6">
+          <h2 className="font-display text-lg font-extrabold text-ink">Focus this week</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {plan.focusAreas.slice(0, 3).map((focus) => (
+              <div key={`${focus.section}-${focus.skill}`} className="rounded-xl border border-navy/10 px-4 py-3.5">
+                <span className={`inline-flex rounded-lg px-2 py-1 text-[10px] font-bold ${subjectTone(focus.section)}`}>
+                  {focus.section === "math" ? "Math" : "R&W"}
+                </span>
+                <p className="mt-1 text-sm font-bold leading-5 text-ink">{focus.skill}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
-      <p className="text-center text-xs leading-5 text-navy/35">
-        Progress updates when you finish assigned lessons, question sets, and practice tests. Last built {formatTimestamp(plan.generatedAt)}.
-      </p>
     </div>
   );
 }
@@ -231,6 +220,7 @@ function PlanSchedule({ plan }: { plan: StudyPlan }) {
     date,
     tasks: plan.tasks.filter((task) => task.date === date).sort((a, b) => a.position - b.position),
   })).filter(({ date, tasks }) => tasks.length > 0 || date === plan.testDate), [plan]);
+  const primaryTaskId = days.flatMap(({ tasks }) => tasks).find((task) => !task.completed)?.id ?? null;
 
   if (days.length === 0) {
     return <div className="rounded-2xl border-2 border-navy/10 bg-white px-6 py-12 text-center"><p className="text-sm font-semibold text-navy/50">No tasks are scheduled for this week.</p></div>;
@@ -238,12 +228,14 @@ function PlanSchedule({ plan }: { plan: StudyPlan }) {
 
   return (
     <ol className="divide-y-2 divide-haze overflow-hidden rounded-2xl border-2 border-navy/10 bg-white">
-      {days.map(({ date, tasks }) => <WeekDayRow key={date} date={date} tasks={tasks} isExamDate={date === plan.testDate} />)}
+      {days.map(({ date, tasks }) => <WeekDayRow key={date} date={date} tasks={tasks} isExamDate={date === plan.testDate} primaryTaskId={primaryTaskId} />)}
     </ol>
   );
 }
 
-function WeekDayRow({ date, tasks, isExamDate }: { date: string; tasks: StudyPlanTask[]; isExamDate: boolean }) {
+function WeekDayRow({ date, tasks, isExamDate, primaryTaskId }: { date: string; tasks: StudyPlanTask[]; isExamDate: boolean; primaryTaskId: string | null }) {
+  const daySection = tasks.find((task) => task.section)?.section ?? null;
+
   return (
     <li className="flex gap-5 px-5 py-4 sm:gap-8 sm:px-6">
       <div className="w-14 flex-none pt-1 text-navy/45 sm:w-16">
@@ -252,14 +244,14 @@ function WeekDayRow({ date, tasks, isExamDate }: { date: string; tasks: StudyPla
         <p className="mt-1 text-sm font-semibold">{formatMonth(date)}</p>
       </div>
       <div className="min-w-0 flex-1 divide-y-2 divide-haze">
-        {tasks.map((task) => <PlanTaskRow key={task.id} task={task} />)}
+        {tasks.map((task) => <PlanTaskRow key={task.id} task={task} section={task.section ?? daySection} primary={task.id === primaryTaskId} />)}
         {isExamDate ? <ExamDateRow /> : null}
       </div>
     </li>
   );
 }
 
-function PlanTaskRow({ task }: { task: StudyPlanTask }) {
+function PlanTaskRow({ task, section, primary }: { task: StudyPlanTask; section: StudyPlanTask["section"]; primary: boolean }) {
   const progressText = task.kind === "course_lesson"
     ? task.completed ? "Lesson completed" : "Assigned lesson"
     : task.kind === "full_test"
@@ -274,7 +266,7 @@ function PlanTaskRow({ task }: { task: StudyPlanTask }) {
       <div className="min-w-0 flex-1">
         <h3 className={`text-sm font-bold leading-5 text-ink sm:text-base ${task.completed ? "line-through opacity-55" : ""}`}>{task.title}</h3>
         <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-navy/45">
-          {task.section ? <><strong className="font-semibold">{task.section === "math" ? "Math" : "Reading & Writing"}</strong><span aria-hidden="true">/</span></> : null}
+          {section ? <span className={`inline-flex rounded-md px-1.5 py-1 text-[10px] font-bold leading-none ${subjectTone(section)}`}>{section === "math" ? "Math" : "R&W"}</span> : null}
           <strong className="font-semibold">{taskLabel(task.kind)}</strong>
           <span aria-hidden="true">/</span>
           <span className="inline-flex items-center gap-1"><ClockIcon className="h-3.5 w-3.5" />{task.estimatedMinutes} min</span>
@@ -283,7 +275,7 @@ function PlanTaskRow({ task }: { task: StudyPlanTask }) {
         </p>
       </div>
       {!task.completed ? (
-        <Link href={task.href} className="inline-flex min-h-10 flex-none items-center gap-1 rounded-xl bg-navy px-3.5 text-xs font-bold text-white transition-colors hover:bg-brand-600 sm:px-4 sm:text-sm">
+        <Link href={task.href} className={`inline-flex min-h-10 flex-none items-center gap-1 rounded-xl border px-3.5 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${primary ? "border-navy bg-navy text-white hover:border-brand-600 hover:bg-brand-600" : "border-navy/15 bg-white text-navy hover:border-brand/40 hover:text-brand-600"}`}>
           {task.progress.completed > 0 ? "Continue" : "Start"}<ChevronRightIcon className="h-3.5 w-3.5" />
         </Link>
       ) : null}
@@ -503,13 +495,15 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
                 onToggleDay={toggleDay}
               /> : null}
               {step === 2 ? (
-                <div className="space-y-3">
-                  <ReviewRow label="SAT date" value={formatLongDate(testDate)} />
-                  <ReviewRow label="Score goal" value={noScoreYet ? `${Number(goalScore).toLocaleString()} · baseline needed` : `${Number(currentScore).toLocaleString()} → ${Number(goalScore).toLocaleString()}`} />
-                  <ReviewRow label="Study pace" value={`${dailyMinutes} minutes · ${studyDays.length} ${studyDays.length === 1 ? "day" : "days"} per week`} />
-                  <ReviewRow label="Study days" value={studyDays.map((day) => dayLabels[day]).join(", ")} />
-                  <ReviewRow label="Full-test day" value={dayLabels[practiceTestDay]} />
-                </div>
+                <PlanReview
+                  currentScore={currentScore}
+                  dailyMinutes={dailyMinutes}
+                  goalScore={goalScore}
+                  noScoreYet={noScoreYet}
+                  practiceTestDay={practiceTestDay}
+                  studyDays={studyDays}
+                  testDate={testDate}
+                />
               ) : null}
               {error ? <p role="alert" className="mt-5 rounded-xl bg-danger-bg px-4 py-3 text-sm font-medium text-danger-600">{error}</p> : null}
             </div>
@@ -603,8 +597,72 @@ function ScheduleStep({ dailyMinutes, practiceTestDay, studyDays, onDailyMinutes
   );
 }
 
-function ReviewRow({ label, value }: { label: string; value: string }) {
-  return <div className="flex items-center justify-between gap-4 rounded-xl border border-navy/10 px-4 py-3"><span className="text-sm font-medium text-navy/45">{label}</span><strong className="text-right text-sm text-ink">{value}</strong></div>;
+function PlanReview({ currentScore, dailyMinutes, goalScore, noScoreYet, practiceTestDay, studyDays, testDate }: { currentScore: string; dailyMinutes: number; goalScore: string; noScoreYet: boolean; practiceTestDay: number; studyDays: number[]; testDate: string }) {
+  return (
+    <section aria-label="Plan summary" className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <ReviewMetric label="SAT date" value={formatReviewDate(testDate)} />
+        <ReviewMetric
+          label="Score goal"
+          value={noScoreYet
+            ? Number(goalScore).toLocaleString()
+            : `${Number(currentScore).toLocaleString()} → ${Number(goalScore).toLocaleString()}`}
+          detail={noScoreYet ? "Baseline test needed" : undefined}
+        />
+      </div>
+
+      <div className="rounded-2xl border border-navy/10 p-4 sm:p-5">
+        <h3 className="text-sm font-bold text-ink">Weekly schedule</h3>
+
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <div className="rounded-xl bg-haze px-4 py-3">
+            <span className="block text-[11px] font-semibold text-navy/40">Time per study day</span>
+            <strong className="mt-0.5 block text-base text-ink">{dailyMinutes} minutes</strong>
+          </div>
+          <div className="rounded-xl bg-haze px-4 py-3">
+            <span className="block text-[11px] font-semibold text-navy/40">Study frequency</span>
+            <strong className="mt-0.5 block text-base text-ink">{studyDays.length} {studyDays.length === 1 ? "day" : "days"} per week</strong>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <span className="block text-[11px] font-semibold text-navy/40">Study days</span>
+          <div className="mt-2 grid grid-cols-7 gap-1.5" aria-label={`Study on ${studyDays.map((day) => dayLabels[day]).join(", ")}`}>
+            {dayLabels.map((label, day) => (
+              <span
+                key={label}
+                className={`grid min-h-10 place-items-center rounded-xl border text-xs font-bold ${
+                  studyDays.includes(day)
+                    ? "border-brand bg-brand text-white"
+                    : "border-navy/10 bg-fill text-navy/30"
+                }`}
+              >
+                {label.slice(0, 1)}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-haze px-4 py-3">
+          <span className="inline-flex items-center gap-2 text-xs font-semibold text-navy/50">
+            <CalendarIcon className="h-4 w-4" />
+            Full practice test
+          </span>
+          <strong className="text-sm text-ink">{fullDayName(practiceTestDay)}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ReviewMetric({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div className="rounded-2xl border border-navy/10 p-4">
+      <span className="text-xs font-semibold text-navy/45">{label}</span>
+      <strong className="mt-1 block font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">{value}</strong>
+      {detail ? <span className="mt-1 block text-xs font-medium text-navy/40">{detail}</span> : null}
+    </div>
+  );
 }
 
 function taskLabel(kind: StudyPlanTask["kind"]): string {
@@ -614,12 +672,10 @@ function taskLabel(kind: StudyPlanTask["kind"]): string {
   return "Practice";
 }
 
-function phaseCopy(phase: StudyPlan["phase"]): { title: string; description: string } {
-  if (phase === "baseline") return { title: "First, build a reliable baseline", description: "This week collects enough score and skill evidence to make each future plan more precise." };
-  if (phase === "foundation") return { title: "Build the method before adding pressure", description: "Lessons and focused practice work together so the ideas behind missed questions become repeatable habits." };
-  if (phase === "build") return { title: "Turn weak skills into reliable points", description: "Most of this week goes to the clearest accuracy gaps, with instruction added only where it will help." };
-  if (phase === "test_ready") return { title: "Make your gains hold under test conditions", description: "The plan now emphasizes timed work, full-test performance, and tight review of the misses that matter." };
-  return { title: "Keep the final week light and precise", description: "Short targeted sets protect confidence and sharpen recall without adding an exhausting last-minute workload." };
+function subjectTone(section: NonNullable<StudyPlanTask["section"]>): string {
+  return section === "math"
+    ? "bg-[#cefbff] text-[#168fca]"
+    : "bg-[#f9e6ff] text-[#aa2abd]";
 }
 
 function isValidSatScore(value: string): boolean {
@@ -662,16 +718,20 @@ function formatMonthDay(value: string): string {
   return parseDate(value).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
+function formatReviewDate(value: string): string {
+  return parseDate(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+}
+
+function fullDayName(day: number): string {
+  return ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day] ?? "";
+}
+
 function formatMonth(value: string): string {
   return parseDate(value).toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
 }
 
 function formatDay(value: string): string {
   return parseDate(value).toLocaleDateString("en-US", { day: "numeric", timeZone: "UTC" });
-}
-
-function formatTimestamp(value: string): string {
-  return new Date(value).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
 function formatMinutes(value: number): string {
