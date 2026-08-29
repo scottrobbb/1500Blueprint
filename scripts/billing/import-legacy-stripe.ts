@@ -43,6 +43,7 @@ type AccountMatch = { email: string; account: Account | null; customers: Custome
 const args = process.argv.slice(2);
 const mode = importMode(option("mode"));
 const apply = args.includes("--apply");
+const includeEmails = args.includes("--include-emails");
 const requestedEmail = option("email");
 const targetEmail = requestedEmail ? normalizeEmail(requestedEmail) : null;
 const stripeKey = mode === "test"
@@ -173,6 +174,22 @@ async function main() {
   console.log(`Subscriptions mapped to Core/Max: ${subscriptionsMapped}`);
   console.log(`Active legacy-account subscriptions requiring a price mapping: ${subscriptionsUnknown}`);
   if (unknownPrices.size) console.log(`Unknown price IDs: ${[...unknownPrices].sort().join(", ")}`);
+  if (includeEmails) {
+    for (const { match, selection } of selections) {
+      if (selection.activeSubscriptionCount <= 1 && !selection.linkedCustomerMismatch) continue;
+      const active = match.customers.flatMap(({ customer, subscriptions }) => subscriptions
+        .filter(({ subscription }) => paidStatuses.has(subscription.status))
+        .map(({ subscription, plan }) => ({
+          customer: customer.id,
+          subscription: subscription.id,
+          plan,
+          status: subscription.status,
+          price: subscription.items.data[0]?.price.id ?? "unknown",
+          created: new Date(subscription.created * 1000).toISOString(),
+        })));
+      console.log(`Blocked account: ${match.email} ${JSON.stringify(active)}`);
+    }
+  }
   if (!apply) {
     console.log(blockers.length
       ? `Dry-run blocked: ${blockers.join("; ")}. No database or Stripe objects were changed.`
