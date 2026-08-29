@@ -9,6 +9,8 @@ export type StudentAccount = {
   plan: string | null;
   authUserId: string;
   status: "active" | "suspended" | "archived";
+  name: string | null;
+  created: boolean;
 };
 
 type AccountRow = {
@@ -17,6 +19,7 @@ type AccountRow = {
   plan: string | null;
   auth_user_id: string;
   account_status: StudentAccount["status"];
+  is_new?: boolean;
 };
 
 export async function recordPasswordLogin(
@@ -52,6 +55,8 @@ export async function recordPasswordLogin(
     plan: data.plan,
     authUserId: data.auth_user_id,
     status: data.account_status,
+    name: displayName,
+    created: Boolean(data.is_new),
   };
 }
 
@@ -71,6 +76,8 @@ export async function findStudentAccount(email: string): Promise<StudentAccount 
     plan: data.plan,
     authUserId: data.auth_user_id,
     status: data.account_status,
+    name: null,
+    created: false,
   };
 }
 

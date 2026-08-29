@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { cookies, headers } from "next/headers";
 import { appBaseUrl } from "@/lib/auth/config";
 import { findAuthUserByEmail, recordPasswordLogin } from "@/lib/auth/accounts";
@@ -28,6 +29,8 @@ import { clientAddressFromHeaders } from "@/lib/security/request";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
+import { onboardStudentEmail } from "@/lib/email/onboarding";
+import { createHash } from "node:crypto";
 
 export type AuthActionState = AuthWorkflowState;
 
@@ -57,7 +60,11 @@ export async function loginWithPassword(
         const { data, error } = await supabase.auth.signInWithPassword(credentials);
         return { user: error ? null : data.user };
       },
-      recordPasswordLogin,
+      recordPasswordLogin: async (user) => {
+        const account = await recordPasswordLogin(user);
+        after(() => onboardStudentEmail(account));
+        return account;
+      },
       signOutLocal: async () => {
         await supabase.auth.signOut({ scope: "local" });
       },
@@ -135,6 +142,7 @@ export async function requestPasswordReset(
       await sendPasswordReset(
         email,
         accountConfirmationUrl(data.properties.hashed_token, "recovery", "/account/reset-password"),
+        createHash("sha256").update(data.properties.hashed_token).digest("hex").slice(0, 32),
       );
     } catch (sendError) {
       reportServerError("auth.password_reset.email_failed", sendError, {
@@ -247,7 +255,11 @@ async function createPasswordAccount(
         const { data, error } = await claimClient.auth.signInWithPassword(credentials);
         return { user: error ? null : data.user, error };
       },
-      recordPasswordLogin,
+      recordPasswordLogin: async (user) => {
+        const account = await recordPasswordLogin(user);
+        after(() => onboardStudentEmail(account));
+        return account;
+      },
       generateSignupLink: async (input) => {
         const { data, error } = await admin.auth.admin.generateLink({
           type: "signup",

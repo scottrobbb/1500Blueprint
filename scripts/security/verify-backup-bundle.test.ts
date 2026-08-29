@@ -10,9 +10,11 @@ const SCHEMA_RELATIONS = [
   "users", "student_subscriptions", "billing_webhook_events", "billing_checkout_intents",
   "tests", "modules", "questions", "choices", "drills", "drill_questions", "courses",
   "course_lessons",
+  "email_contacts", "email_contact_imports", "email_campaigns", "email_messages", "email_webhook_events",
 ];
 const DATA_RELATIONS = [
   "users", "student_subscriptions", "tests", "questions", "drills", "drill_questions", "courses",
+  "email_contacts", "email_campaigns", "email_messages", "email_webhook_events",
 ];
 
 function fixture(): string {

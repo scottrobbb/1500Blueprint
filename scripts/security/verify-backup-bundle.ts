@@ -31,6 +31,11 @@ const CRITICAL_SCHEMA_RELATIONS = [
   "drill_questions",
   "courses",
   "course_lessons",
+  "email_contacts",
+  "email_contact_imports",
+  "email_campaigns",
+  "email_messages",
+  "email_webhook_events",
 ] as const;
 const CRITICAL_DATA_RELATIONS = [
   "users",
@@ -40,6 +45,10 @@ const CRITICAL_DATA_RELATIONS = [
   "drills",
   "drill_questions",
   "courses",
+  "email_contacts",
+  "email_campaigns",
+  "email_messages",
+  "email_webhook_events",
 ] as const;
 const CHECKSUM_FILE = "SHA256SUMS";
 

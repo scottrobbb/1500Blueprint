@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { NextResponse, type NextRequest } from "next/server";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { isAdminEmail } from "@/lib/auth/admin";
@@ -8,6 +9,7 @@ import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { reportServerError } from "@/lib/observability/server";
 import { readJsonBody } from "@/lib/security/request";
+import { onboardStudentEmailByEmail } from "@/lib/email/onboarding";
 
 type AccountRow = {
   id: string;
@@ -136,5 +138,6 @@ export async function PATCH(request: NextRequest, context: Context) {
 
   revalidatePath("/admin/students");
   revalidatePath("/ultimate/admin/students");
+  after(() => onboardStudentEmailByEmail(account.email));
   return NextResponse.json({ ok: true, accountStatus: status });
 }

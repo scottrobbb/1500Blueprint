@@ -1,9 +1,11 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { parseWeeklyCallInput } from "@/lib/calls/input";
 import { createWeeklyCall } from "@/lib/calls/queries";
 import { reportServerError } from "@/lib/observability/server";
 import { readJsonBody } from "@/lib/security/request";
+import { queueLiveCallEmail } from "@/lib/email/campaigns";
+import { processEmailWork } from "@/lib/email/processor";
 
 export async function POST(request: Request) {
   const session = await getAdminSession();
@@ -12,7 +14,20 @@ export async function POST(request: Request) {
   if (!input) return NextResponse.json({ error: "Check the call title, dates, status, and links." }, { status: 400 });
   try {
     const result = await createWeeklyCall(input, session.email);
-    return NextResponse.json(result);
+    let emailWarning: string | undefined;
+    let email = null;
+    try {
+      email = await queueLiveCallEmail(result.call, session.email);
+      after(() => processEmailWork());
+    } catch (error) {
+      emailWarning = "The call was saved, but its email reminder could not be queued.";
+      reportServerError("admin.weekly_call.email_queue_failed", error, {
+        provider: "supabase",
+        route: "/api/admin/weekly-calls",
+        method: "POST",
+      });
+    }
+    return NextResponse.json({ ...result, email, emailWarning });
   } catch (error) {
     reportServerError("admin.weekly_call.create_failed", error, {
       provider: "supabase",

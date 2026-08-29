@@ -96,10 +96,10 @@ export async function POST(request: Request) {
       ? { active: true, plan: COMPLIMENTARY_ACCESS_PLAN }
       : await getMembership(email);
     if (membership.active) {
-      const raw = await createLoginToken(email, membership.plan);
+      const token = await createLoginToken(email, membership.plan);
       const base = appBaseUrl(new URL(request.url).origin);
-      const url = `${base}/api/auth/callback?token=${encodeURIComponent(raw)}`;
-      await sendMagicLink(email, url);
+      const url = `${base}/api/auth/callback?token=${encodeURIComponent(token.raw)}`;
+      await sendMagicLink(email, url, token.id);
     }
   } catch (error) {
     // Don't leak which step failed; the student still sees the generic message.

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { recordPasswordLogin } from "@/lib/auth/accounts";
 import { appBaseUrl } from "@/lib/auth/config";
@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth/password";
 import { createClient } from "@/utils/supabase/server";
 import { reportServerError } from "@/lib/observability/server";
+import { onboardStudentEmail } from "@/lib/email/onboarding";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -47,6 +48,7 @@ export async function GET(request: Request) {
       await supabase.auth.signOut({ scope: "local" });
       return NextResponse.redirect(new URL("/account/login?error=account", base));
     }
+    after(() => onboardStudentEmail(account));
   } catch (accountError) {
     reportServerError("auth.confirmation.account_link_failed", accountError, {
       provider: "supabase",

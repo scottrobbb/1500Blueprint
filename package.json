@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "NODE_OPTIONS=--conditions=react-server tsx --test $(find lib scripts -type f -name '*.test.ts' -print | sort)",
     "security:verify:remote": "tsx scripts/security/verify-remote-security.ts",
-    "security:verify:backup": "tsx scripts/security/verify-backup-bundle.ts"
+    "security:verify:backup": "tsx scripts/security/verify-backup-bundle.ts",
+    "email:setup": "NODE_OPTIONS=--conditions=react-server tsx scripts/email/setup-resend.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

@@ -6,6 +6,7 @@ import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { listAllWeeklyCalls } from "@/lib/calls/queries";
 import { isGoogleCalendarConfigured } from "@/lib/calls/google";
 import { listRecordingLibraryForAdmin } from "@/lib/calls/recordings";
+import { isEmailBroadcastConfigured } from "@/lib/email/config";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Weekly Calls Admin" };
@@ -16,7 +17,11 @@ export default async function UltimateAdminCallsPage() {
   const [calls, recordingMonths] = await Promise.all([listAllWeeklyCalls(), listRecordingLibraryForAdmin()]);
   return (
     <UltimateAdminFrame active="calls" email={session.email}>
-      <WeeklyCallsManager initialCalls={calls} calendarConfigured={isGoogleCalendarConfigured()} />
+      <WeeklyCallsManager
+        initialCalls={calls}
+        calendarConfigured={isGoogleCalendarConfigured()}
+        emailConfigured={isEmailBroadcastConfigured()}
+      />
       <CallRecordingsManager initialMonths={recordingMonths} />
     </UltimateAdminFrame>
   );

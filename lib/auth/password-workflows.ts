@@ -60,7 +60,7 @@ export type PasswordAccountDependencies<User, ExistingUser extends { id: string 
     | { ok: true; userId: string; hashedToken: string }
     | { ok: false; error: unknown }
   >;
-  sendVerification(email: string, url: string): Promise<void>;
+  sendVerification(email: string, url: string, userId: string): Promise<void>;
   deleteAuthUser(userId: string): Promise<void>;
   confirmationUrl(tokenHash: string): string;
   reportExistingClaimFailure(error: unknown): void;
@@ -116,6 +116,7 @@ export async function runPasswordAccountCreation<User, ExistingUser extends { id
     await dependencies.sendVerification(
       input.email,
       dependencies.confirmationUrl(generated.hashedToken),
+      generated.userId,
     );
   } catch (error) {
     dependencies.reportVerificationEmailFailure(error);

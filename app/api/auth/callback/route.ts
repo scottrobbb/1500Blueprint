@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { SESSION_COOKIE, appBaseUrl } from "@/lib/auth/config";
 import { consumeLoginToken } from "@/lib/auth/tokens";
 import { signSession, sessionCookieOptions } from "@/lib/auth/session";
@@ -7,6 +7,7 @@ import {
   hasComplimentaryAccess,
   recordLogin,
 } from "@/lib/auth/users";
+import { onboardStudentEmailByEmail } from "@/lib/email/onboarding";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
   }
 
   await recordLogin(result.email, result.plan);
+  after(() => onboardStudentEmailByEmail(result.email));
   const token = await signSession({ email: result.email, plan: result.plan });
   const response = NextResponse.redirect(new URL("/drills", base));
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());

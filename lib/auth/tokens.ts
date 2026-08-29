@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { TOKEN_TTL_SECONDS } from "./config";
 
@@ -11,17 +11,19 @@ function hashToken(raw: string): string {
 export async function createLoginToken(
   email: string,
   plan: string | null,
-): Promise<string> {
+): Promise<{ id: string; raw: string }> {
+  const id = randomUUID();
   const raw = randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + TOKEN_TTL_SECONDS * 1000).toISOString();
   const { error } = await supabaseAdmin().from("login_tokens").insert({
+    id,
     email,
     token_hash: hashToken(raw),
     plan,
     expires_at: expiresAt,
   });
   if (error) throw new Error(`failed to store login token: ${error.message}`);
-  return raw;
+  return { id, raw };
 }
 
 // Consume a raw token if it's valid (exists, unexpired, unused). Atomically

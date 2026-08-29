@@ -63,6 +63,16 @@ export async function listAllWeeklyCalls(): Promise<WeeklyCall[]> {
   return (data ?? []).map(fromRow);
 }
 
+export async function getWeeklyCallById(id: string): Promise<WeeklyCall | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("weekly_calls")
+    .select(COLUMNS)
+    .eq("id", id)
+    .maybeSingle<WeeklyCallRow>();
+  if (error) throw new Error(`failed to load weekly call: ${error.message}`);
+  return data ? fromRow(data) : null;
+}
+
 export async function createWeeklyCall(input: WeeklyCallInput, createdBy: string): Promise<{ call: WeeklyCall; sync: GoogleCalendarSync; warning?: string }> {
   const id = crypto.randomUUID();
   const { data, error } = await supabaseAdmin().from("weekly_calls").insert(toRow(id, input, createdBy)).select(COLUMNS).single<WeeklyCallRow>();

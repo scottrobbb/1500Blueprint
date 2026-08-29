@@ -5,7 +5,15 @@ import type { WeeklyCall, WeeklyCallInput, WeeklyCallStatus } from "@/lib/calls/
 
 type Draft = Omit<WeeklyCallInput, "startsAt" | "endsAt"> & { startsAt: string; endsAt: string };
 
-export function WeeklyCallsManager({ initialCalls, calendarConfigured }: { initialCalls: WeeklyCall[]; calendarConfigured: boolean }) {
+export function WeeklyCallsManager({
+  initialCalls,
+  calendarConfigured,
+  emailConfigured,
+}: {
+  initialCalls: WeeklyCall[];
+  calendarConfigured: boolean;
+  emailConfigured: boolean;
+}) {
   const [calls, setCalls] = useState(initialCalls);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft>(() => newDraft());
@@ -57,23 +65,37 @@ export function WeeklyCallsManager({ initialCalls, calendarConfigured }: { initi
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     });
-    const body = (await response.json().catch(() => null)) as { call?: WeeklyCall; warning?: string; error?: string; sync?: { configured: boolean } } | null;
+    const body = (await response.json().catch(() => null)) as {
+      call?: WeeklyCall;
+      warning?: string;
+      emailWarning?: string;
+      email?: { status: string; scheduledFor: string | null } | null;
+      error?: string;
+      sync?: { configured: boolean };
+    } | null;
     if (!response.ok || !body?.call) {
       setError(body?.error ?? "The weekly call could not be saved.");
     } else {
       setCalls((current) => editingId
         ? current.map((call) => call.id === editingId ? body.call as WeeklyCall : call)
         : [body.call as WeeklyCall, ...current]);
-      const successMessage = body.call.status !== "published"
+      const baseMessage = body.call.status !== "published"
         ? "Call saved. Publish it when it is ready to appear for students and synchronize with Google Calendar."
         : body.warning
           ? `Call saved. Calendar sync needs attention: ${body.warning}`
           : body.sync?.configured
             ? "Call saved and synchronized with Google Calendar."
             : "Call saved. Add Google credentials later for automatic Calendar and Meet sync.";
+      const emailMessage = body.emailWarning
+        ? ` ${body.emailWarning}`
+        : body.email?.status === "pending" || body.email?.status === "scheduled"
+          ? ` Student email reminder ${body.email.scheduledFor ? `is scheduled for ${formatEmailDate(body.email.scheduledFor)}.` : "is queued."}`
+          : body.email?.status === "cancelled"
+            ? " The student email reminder is cancelled."
+            : "";
       setEditingId(body.call.id);
       edit(body.call);
-      setMessage(successMessage);
+      setMessage(`${baseMessage}${emailMessage}`);
     }
     setSaving(false);
   }
@@ -92,7 +114,10 @@ export function WeeklyCallsManager({ initialCalls, calendarConfigured }: { initi
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl"><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Max programming</p><h2 className="mt-1 font-display text-2xl font-extrabold text-navy">Weekly calls</h2><p className="mt-2 text-sm leading-6 text-navy/55">Publish the student schedule, attach recordings, and keep Google Calendar and Meet aligned from one place.</p></div>
-        <span className={`rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wide ${calendarConfigured ? "bg-success-bg text-success-600" : "bg-gold/15 text-gold-600"}`}>{calendarConfigured ? "Google sync connected" : "Google sync not configured"}</span>
+        <div className="flex flex-wrap gap-2">
+          <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${calendarConfigured ? "bg-success-bg text-success-600" : "bg-gold/15 text-gold-600"}`}>{calendarConfigured ? "Google sync connected" : "Google sync not configured"}</span>
+          <span className={`rounded-full px-3 py-1.5 text-xs font-semibold ${emailConfigured ? "bg-success-bg text-success-600" : "bg-gold/15 text-gold-600"}`}>{emailConfigured ? "Email reminders connected" : "Email reminders not configured"}</span>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -150,3 +175,4 @@ function localDateTime(value: string): string {
 
 function formatCallDate(value: string, timeZone: string): string { return new Date(value).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone }); }
 function formatCallTime(value: string, timeZone: string): string { return new Date(value).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone }); }
+function formatEmailDate(value: string): string { return new Date(value).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); }

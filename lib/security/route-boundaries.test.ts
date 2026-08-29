@@ -10,6 +10,8 @@ const PUBLIC_ROUTES = new Set([
   "app/api/auth/callback/route.ts",
   "app/api/auth/request/route.ts",
   "app/api/billing/webhook/route.ts",
+  "app/api/cron/email/route.ts",
+  "app/api/email/webhook/route.ts",
 ]);
 
 function routeFiles(directory = join(ROOT, "app")): string[] {
@@ -65,6 +67,15 @@ test("public and payment-sensitive endpoints retain their abuse controls", () =>
   assert.match(webhook, /constructEvent/);
   assert.match(webhook, /readTextBody/);
   assert.match(webhook, /billingLivemode/);
+
+  const emailWebhook = source("app/api/email/webhook/route.ts");
+  assert.match(emailWebhook, /webhooks\.verify/);
+  assert.match(emailWebhook, /readTextBody/);
+  assert.match(emailWebhook, /RESEND_WEBHOOK_SECRET|resendWebhookSecret/);
+
+  const emailCron = source("app/api/cron/email/route.ts");
+  assert.match(emailCron, /CRON_SECRET/);
+  assert.match(emailCron, /authorization/);
 
   for (const path of ["app/api/billing/checkout/route.ts", "app/api/billing/portal/route.ts"]) {
     const contents = source(path) + source(path.replace("route.ts", "handler.ts"));
