@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { FlameIcon } from "@/components/shell/icons";
 import { PlanBadge } from "@/components/account/PlanBadge";
@@ -190,17 +191,15 @@ function SubjectCard({ subject, challengeLocked }: { subject: QuestionBankSubjec
   const isMath = subject.section === "math";
 
   return (
-    <article
-      className={`relative min-h-[230px] overflow-hidden rounded-[20px] p-5 text-white shadow-[0_20px_45px_-30px_rgba(11,42,91,0.8)] sm:p-6 ${
-        isMath
-          ? "bg-[linear-gradient(125deg,#176fc3_0%,#2b9ce6_48%,#2cc5d5_100%)]"
-          : "bg-[linear-gradient(125deg,#8145c8_0%,#cf56c8_46%,#ef79b2_100%)]"
-      }`}
-    >
-      <div aria-hidden="true" className="absolute inset-0 opacity-50">
-        <div className="absolute -right-8 -top-16 h-56 w-56 rounded-full border-[32px] border-white/10" />
-        <div className="absolute -bottom-28 left-[45%] h-52 w-52 rounded-full border-[26px] border-white/10" />
-      </div>
+    <article className="relative min-h-[230px] overflow-hidden rounded-[20px] p-5 text-white shadow-[0_20px_45px_-30px_rgba(11,42,91,0.8)] sm:p-6">
+      <Image
+        src={isMath ? "/images/math-qb-panel.png" : "/images/rw-qb-panel.png"}
+        alt=""
+        fill
+        sizes="(min-width: 768px) 50vw, 100vw"
+        className="object-cover object-right"
+        priority
+      />
       <div className="relative z-10 max-w-[68%] sm:max-w-[62%]">
         <span className="inline-flex rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.13em] text-white/85">
           {challengeLocked ? "Free bank ready" : "Ready to practice"}
@@ -215,9 +214,6 @@ function SubjectCard({ subject, challengeLocked }: { subject: QuestionBankSubjec
         <Link href={isMath ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing"} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-navy shadow-sm transition-transform hover:-translate-y-0.5">
           Open {copy.shortTitle} <ArrowRightIcon className="h-4 w-4" />
         </Link>
-      </div>
-      <div aria-hidden="true" className="absolute bottom-0 right-0 w-[44%] max-w-[220px]">
-        {isMath ? <MathToolsArt /> : <ReadingArt />}
       </div>
     </article>
   );
@@ -520,27 +516,3 @@ function ArrowRightIcon({ className }: IconProps) {
   );
 }
 
-function ReadingArt() {
-  return (
-    <svg viewBox="0 0 230 190" className="h-auto w-full" aria-hidden="true">
-      <path d="M36 121c43-15 75-9 97 22 21-31 50-36 87-22v67H36v-67Z" fill="#fff" fillOpacity=".22" />
-      <path d="M45 111c37-13 66-7 88 20v57c-22-27-51-34-88-21v-56Z" fill="#fff" fillOpacity=".9" />
-      <path d="M218 111c-36-13-64-7-85 20v57c21-27 49-34 85-21v-56Z" fill="#fff" fillOpacity=".72" />
-      <path d="M58 130c23-5 42-1 58 11M58 143c22-4 41 0 57 11M205 130c-22-5-40-1-56 11M205 143c-21-4-39 0-55 11" fill="none" stroke="#b65dc0" strokeLinecap="round" strokeWidth="3" strokeOpacity=".45" />
-      <path d="m156 27 22 12-47 84-13 9 1-16 37-89Z" fill="#ffdc62" />
-      <path d="m156 27 8-14 22 12-8 14-22-12Z" fill="#fff1ae" />
-      <path d="m119 116 12 7-13 9 1-16Z" fill="#243b68" />
-    </svg>
-  );
-}
-
-function MathToolsArt() {
-  return (
-    <svg viewBox="0 0 230 190" className="h-auto w-full" aria-hidden="true">
-      <path d="m62 43 128 84-24 36L38 79l24-36Z" fill="#fff" fillOpacity=".25" stroke="#fff" strokeOpacity=".45" strokeWidth="4" />
-      <path d="M76 75 150 124l-16 24-74-49 16-24Z" fill="none" stroke="#fff" strokeOpacity=".62" strokeWidth="8" />
-      <path d="m151 26 40 7-25 143-40-7 25-143Z" fill="#8ff1d1" fillOpacity=".78" stroke="#fff" strokeOpacity=".4" strokeWidth="4" />
-      <path d="m151 48 14 2M147 67l9 1M144 86l14 2M141 105l9 1M137 124l14 2M134 143l9 1" stroke="#197ab2" strokeLinecap="round" strokeWidth="3" strokeOpacity=".7" />
-    </svg>
-  );
-}
