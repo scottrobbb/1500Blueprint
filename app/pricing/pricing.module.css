@@ -590,6 +590,7 @@
    and pulled up further (bigger negative margin) so the extra height
    from scaling up doesn't push "Practice & Improve" / "Test & Track"
    below "Learn & Master" -- all three titles land at the same row. */
+.insideCard:nth-child(1) .insideCardArt { margin-top: -90px; }
 .insideCard:nth-child(2) .insideCardArt { margin-top: -114px; }
 .insideCard:nth-child(2) .insideCardArt img { width: 190px; }
 .insideCard:nth-child(3) .insideCardArt { margin-top: -129px; }
@@ -1084,6 +1085,7 @@
      column), and would otherwise overlap the stacked card above it.
      Matching clearance above the grid shrinks back down too. */
   .insideGrid { padding-top: 64px; }
+  .insideCard:nth-child(1) .insideCardArt,
   .insideCard:nth-child(2) .insideCardArt,
   .insideCard:nth-child(3) .insideCardArt { margin-top: -64px; }
   .testimonialWall { column-count: 2; }
