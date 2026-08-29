@@ -776,6 +776,17 @@
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 16px;
   padding: 27px;
+  position: relative;
+}
+.costCardPeek {
+  height: auto;
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: -120px;
+  transform: translateX(-50%);
+  width: 160px;
+  z-index: 2;
 }
 .costHeader {
   color: rgba(255,255,255,.5);

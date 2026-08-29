@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import Image from "next/image";
 import { EnrollButton } from "./EnrollButton";
 import styles from "./pricing.module.css";
 
@@ -86,6 +87,7 @@ export function SavingsCalculator() {
         </EnrollButton>
       </div>
       <div className={styles.costCard}>
+        <Image src="/images/blu-normal-peek.png" alt="" width={160} height={160} className={styles.costCardPeek} />
         <div className={styles.costHeader}>
           <span>Monthly comparison</span>
         </div>
