@@ -3,6 +3,7 @@ import { billingLivemode } from "@/lib/billing/config";
 import { syncStripeRefund } from "@/lib/billing/refunds";
 import { billingStripe } from "@/lib/billing/stripe";
 import { markCheckoutSession } from "@/lib/billing/checkout-intents";
+import { hasPaidAccessStatus } from "@/lib/billing/policy";
 import {
   stripeSubscriptionPlan,
   syncStripeSubscription,
@@ -120,7 +121,9 @@ async function reconcileSubscription(
     if (!stripeSubscriptionPlan(subscription) && subscription.metadata.platform !== "1500_blueprint") {
       return;
     }
-    await syncStripeSubscription(subscription, fallbackUserId, { id: event.id, created: event.created });
+    const ownerId = await resolveSubscriptionOwner(subscription, fallbackUserId);
+    if (!ownerId) return;
+    await syncStripeSubscription(subscription, ownerId, { id: event.id, created: event.created });
   } catch (error) {
     if (stripeErrorCode(error) !== "resource_missing") throw error;
     if (!event.type.startsWith("customer.subscription.")) throw error;
@@ -128,11 +131,51 @@ async function reconcileSubscription(
     if (!stripeSubscriptionPlan(subscription) && subscription.metadata.platform !== "1500_blueprint") {
       return;
     }
-    await syncStripeSubscription(subscription, fallbackUserId, {
+    const ownerId = await resolveSubscriptionOwner(subscription, fallbackUserId);
+    if (!ownerId) return;
+    await syncStripeSubscription(subscription, ownerId, {
       id: event.id,
       created: event.created,
     });
   }
+}
+
+async function resolveSubscriptionOwner(
+  subscription: Stripe.Subscription,
+  fallbackUserId: string | null,
+): Promise<string | null> {
+  const customerId = stripeId(subscription.customer);
+  if (!customerId) return null;
+  const customerColumn = subscription.livemode
+    ? "stripe_live_customer_id"
+    : "stripe_test_customer_id";
+  const explicitUserId = subscription.metadata.user_id || fallbackUserId || null;
+
+  if (explicitUserId) {
+    const { data, error } = await supabaseAdmin()
+      .from("users")
+      .select(`id,${customerColumn}`)
+      .eq("id", explicitUserId)
+      .maybeSingle<{ id: string; stripe_live_customer_id?: string | null; stripe_test_customer_id?: string | null }>();
+    if (error) throw new Error(`failed to resolve subscription owner: ${error.message}`);
+    if (!data) throw new Error(`subscription ${subscription.id} references a missing Blueprint owner`);
+    const linkedCustomer = subscription.livemode
+      ? data.stripe_live_customer_id
+      : data.stripe_test_customer_id;
+    if (linkedCustomer && linkedCustomer !== customerId) {
+      if (!hasPaidAccessStatus(subscription.status)) return null;
+      throw new Error(`subscription ${subscription.id} customer does not match its Blueprint owner`);
+    }
+    return data.id;
+  }
+
+  const { data, error } = await supabaseAdmin()
+    .from("users")
+    .select("id")
+    .eq(customerColumn, customerId)
+    .maybeSingle<{ id: string }>();
+  if (error) throw new Error(`failed to resolve subscription owner: ${error.message}`);
+  return data?.id ?? null;
 }
 
 async function syncPaymentState(
