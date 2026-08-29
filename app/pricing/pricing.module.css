@@ -922,6 +922,11 @@
   grid-template-columns: minmax(0,.75fr) minmax(0,1.25fr);
 }
 .faqIntro { max-width: 470px; }
+.faqArt {
+  height: auto;
+  margin-top: 32px;
+  width: 190px;
+}
 .faqList { border-top: 1px solid rgba(255,255,255,.12); }
 .faqList details { border-bottom: 1px solid rgba(255,255,255,.12); }
 .faqList summary {

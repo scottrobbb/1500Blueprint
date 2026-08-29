@@ -296,6 +296,7 @@ export default async function PricingPage({
         <div className={styles.faqLayout}>
           <div className={styles.faqIntro}>
             <h2>Frequently Asked Questions</h2>
+            <Image src="/images/blu-questioning.png" alt="" width={220} height={198} className={styles.faqArt} />
           </div>
           <div className={styles.faqList}>
             {faqItems.map((item, index) => (
