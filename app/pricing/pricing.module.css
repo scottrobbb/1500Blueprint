@@ -272,7 +272,7 @@
 .savingsCopy h2,
 .writtenStoriesIntro h2,
 .faqIntro h2 {
-  color: var(--ink);
+  color: #fff;
   font-family: var(--font-gabarito), sans-serif;
   font-size: clamp(40px,4.5vw,56px);
   font-weight: 560;
@@ -283,7 +283,7 @@
 .sectionHeading > p:last-child,
 .writtenStoriesIntro > p:last-child,
 .faqIntro > p {
-  color: var(--muted);
+  color: rgba(255,255,255,.68);
   font-size: 17px;
   line-height: 1.65;
   margin: 18px 0 0;
@@ -650,14 +650,14 @@
 }
 
 .savingsSection {
-  background: #fff;
-  color: var(--ink);
+  background: #131417;
+  color: #fff;
   padding: 92px max(28px, calc((100vw - 1180px) / 2));
 }
 .savingsPanel {
   align-items: start;
-  background: #eaf6fd;
-  border: 1px solid #d0e8f7;
+  background: #000;
+  border: 1px solid rgba(255,255,255,.1);
   border-radius: 22px;
   display: grid;
   gap: 60px;
@@ -666,7 +666,7 @@
 }
 .savingsCopy h2 { font-size: clamp(42px,4.4vw,56px); }
 .savingsCopy h2 em {
-  color: #137fca;
+  color: var(--blue);
   display: inline-block;
   font-style: normal;
   position: relative;
@@ -684,15 +684,15 @@
   width: 98%;
 }
 .savingsCopy > p {
-  color: #5a697d;
+  color: rgba(255,255,255,.6);
   font-size: 15px;
   line-height: 1.65;
   margin: 24px 0 0;
   max-width: 610px;
 }
 .savingsAction {
-  background: var(--navy);
-  color: #fff;
+  background: var(--blue);
+  color: #06162d;
   margin-top: 27px;
 }
 .savingsSlider {
@@ -705,13 +705,13 @@
   align-items: baseline;
   font-size: 13px;
   font-weight: 650;
-  color: var(--ink);
+  color: #fff;
   margin-bottom: 10px;
 }
 .savingsSliderLabel span {
-  background: #eaf6fd;
+  background: rgba(47,159,233,.15);
   border-radius: 8px;
-  color: #147fc5;
+  color: var(--blue);
   font-family: var(--font-gabarito), sans-serif;
   font-size: 13px;
   font-weight: 700;
@@ -720,7 +720,7 @@
 .savingsSlider input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
-  background: linear-gradient(to right, var(--blue) var(--fill), #dde5ec var(--fill));
+  background: linear-gradient(to right, var(--blue) var(--fill), rgba(255,255,255,.15) var(--fill));
   border-radius: 999px;
   cursor: pointer;
   height: 6px;
@@ -751,15 +751,15 @@
   margin-top: 12px;
 }
 .savingsQuickPicks span {
-  color: #8494a8;
+  color: rgba(255,255,255,.5);
   font-size: 12px;
   margin-right: 2px;
 }
 .savingsQuickPicks button {
-  background: #eef3f7;
-  border: 1px solid #dde5ec;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.15);
   border-radius: 999px;
-  color: var(--ink);
+  color: #fff;
   cursor: pointer;
   font-size: 12px;
   font-weight: 650;
@@ -772,13 +772,13 @@
   color: #fff !important;
 }
 .costCard {
-  background: #fff;
-  border: 1px solid #d5e3eb;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.1);
   border-radius: 16px;
   padding: 27px;
 }
 .costHeader {
-  color: #6d7a8a;
+  color: rgba(255,255,255,.5);
   display: flex;
   font-size: 12px;
   font-weight: 650;
@@ -791,31 +791,31 @@
 }
 .costRow > div { display: grid; gap: 4px; }
 .costRow strong { font-size: 15px; }
-.costRow span { color: #718096; font-size: 12px; }
+.costRow span { color: rgba(255,255,255,.5); font-size: 12px; }
 .costRow b {
   font-family: var(--font-gabarito), sans-serif;
   font-size: 25px;
   letter-spacing: -.03em;
 }
 .costBar {
-  background: #edf1f4;
+  background: rgba(255,255,255,.1);
   border-radius: 999px;
   height: 7px;
   margin: 12px 0 23px;
   overflow: hidden;
 }
 .costBar span {
-  background: #91a1af;
+  background: rgba(255,255,255,.35);
   display: block;
   height: 100%;
   width: 100%;
 }
-.maxCostRow b { color: #147fc5; }
+.maxCostRow b { color: var(--blue); }
 .maxCostBar span { background: var(--blue); }
 .savingsTotal {
   align-items: center;
-  background: #edf8fe;
-  border: 1px solid #d4ebf8;
+  background: rgba(47,159,233,.12);
+  border: 1px solid rgba(47,159,233,.3);
   border-radius: 12px;
   display: flex;
   justify-content: space-between;
@@ -823,20 +823,20 @@
   padding: 17px;
 }
 .savingsTotal > div { display: grid; gap: 3px; }
-.savingsTotal span { color: #718096; font-size: 12px; }
+.savingsTotal span { color: rgba(255,255,255,.5); font-size: 12px; }
 .savingsTotal strong {
-  color: #0b2a5b;
+  color: #fff;
   font-size: 22px;
 }
 .savingsTotal > b {
-  background: #def4e7;
+  background: rgba(74,222,128,.15);
   border-radius: 999px;
-  color: #176b3c;
+  color: #4ade80;
   font-size: 12px;
   padding: 7px 9px;
 }
 .costCard > p {
-  color: #84909d;
+  color: rgba(255,255,255,.4);
   font-size: 10px;
   line-height: 1.4;
   margin: 18px 0 0;
@@ -870,8 +870,8 @@
 }
 
 .writtenStoriesSection {
-  background: #e8f2fb;
-  color: var(--ink);
+  background: #131417;
+  color: #fff;
   padding: 100px max(28px, calc((100vw - 1180px) / 2));
 }
 .writtenStoriesIntro {
@@ -912,8 +912,8 @@
 .testimonialPhoto:nth-child(6n) { transform: rotate(1.3deg); }
 
 .faqSection {
-  background: #fff;
-  color: var(--ink);
+  background: #131417;
+  color: #fff;
   padding: 104px max(28px, calc((100vw - 1180px) / 2));
 }
 .faqLayout {
@@ -922,8 +922,8 @@
   grid-template-columns: minmax(0,.75fr) minmax(0,1.25fr);
 }
 .faqIntro { max-width: 470px; }
-.faqList { border-top: 1px solid var(--line); }
-.faqList details { border-bottom: 1px solid var(--line); }
+.faqList { border-top: 1px solid rgba(255,255,255,.12); }
+.faqList details { border-bottom: 1px solid rgba(255,255,255,.12); }
 .faqList summary {
   align-items: center;
   cursor: pointer;
@@ -943,7 +943,7 @@
 }
 .faqList summary i::before,
 .faqList summary i::after {
-  background: #6f7e8f;
+  background: rgba(255,255,255,.6);
   content: "";
   height: 2px;
   left: 1px;
@@ -954,7 +954,7 @@
 .faqList summary i::after { transform: rotate(90deg); }
 .faqList details[open] summary i::after { display: none; }
 .faqList details > p {
-  color: #5e6d80;
+  color: rgba(255,255,255,.6);
   font-size: 14px;
   line-height: 1.7;
   margin: -4px 0 22px;
