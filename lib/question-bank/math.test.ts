@@ -14,6 +14,7 @@ import {
   prioritizeUnattemptedQuestions,
   questionBankLevel,
   selectQuestionBankSession,
+  sortByOriginalOrder,
 } from "./math";
 
 test("math bank filters reject unsupported query values", () => {
@@ -44,6 +45,19 @@ test("bounded sessions advance unseen questions before recycling attempted ones"
   assert.deepEqual(
     prioritizeUnattemptedQuestions(questions, new Set(["seen-1", "seen-2"])).map(({ id }) => id),
     ["new-1", "new-2", "seen-1", "seen-2"],
+  );
+});
+
+test("sortByOriginalOrder restores creation order after attempt-based prioritization", () => {
+  const order = new Map([["a", 0], ["b", 1], ["c", 2], ["d", 3]]);
+  const prioritized = prioritizeUnattemptedQuestions(
+    [{ id: "a" }, { id: "b" }, { id: "c" }, { id: "d" }],
+    new Set(["a", "c"]),
+  );
+  assert.deepEqual(prioritized.map(({ id }) => id), ["b", "d", "a", "c"]);
+  assert.deepEqual(
+    sortByOriginalOrder(prioritized, order).map(({ id }) => id),
+    ["a", "b", "c", "d"],
   );
 });
 

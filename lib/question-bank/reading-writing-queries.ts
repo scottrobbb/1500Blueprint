@@ -20,6 +20,7 @@ import {
   prioritizeUnattemptedQuestions,
   questionBankLevel,
   selectQuestionBankSession,
+  sortByOriginalOrder,
   type QuestionBankLevel,
 } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
@@ -94,6 +95,7 @@ export async function getReadingWritingRunnerQuestions(
   options: { includeChallenge?: boolean } = {},
 ): Promise<ReadingWritingRunnerQuestion[]> {
   const rows = filterChallengeRows(await loadEligibleReadingRows(), options.includeChallenge ?? true);
+  const orderIndex = new Map(rows.map((row, index) => [row.id, index]));
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
   const skillRows = rows.filter((row) => (
@@ -104,7 +106,7 @@ export async function getReadingWritingRunnerQuestions(
   const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
   const preferred = toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
   if (preferred.length >= sessionLimit) {
-    return selectQuestionBankSession(preferred, sessionLimit, activity.attemptedIds);
+    return sortByOriginalOrder(selectQuestionBankSession(preferred, sessionLimit, activity.attemptedIds), orderIndex);
   }
 
   // Fills out the session by relaxing the completion filter only -- the
@@ -117,7 +119,11 @@ export async function getReadingWritingRunnerQuestions(
     ],
     rows.length,
   );
-  return selectQuestionBankSession(candidates, sessionLimit, activity.attemptedIds);
+  // prioritizeUnattemptedQuestions only influences which questions make the
+  // cut when the session has to be truncated -- the questions shown are
+  // always restored to their stable, original order (see sortByOriginalOrder)
+  // so a question's number in the panel never shifts based on completion.
+  return sortByOriginalOrder(selectQuestionBankSession(candidates, sessionLimit, activity.attemptedIds), orderIndex);
 }
 
 function matchesCompletion(

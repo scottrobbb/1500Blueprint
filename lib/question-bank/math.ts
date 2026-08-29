@@ -183,6 +183,19 @@ export function selectQuestionBankSession<T extends { id: string; figureUrl: str
   return selected;
 }
 
+// prioritizeUnattemptedQuestions/selectQuestionBankSession bias which
+// questions make it into a size-capped session toward unattempted ones --
+// but once the set is chosen, the student sees stable, numbered slots in
+// the Question Bank panel (colored by completion, not by position), so the
+// displayed order should never depend on attempt status. Restore the
+// original (creation-order) sequence right before returning.
+export function sortByOriginalOrder<T extends { id: string }>(
+  questions: T[],
+  order: ReadonlyMap<string, number>,
+): T[] {
+  return [...questions].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+}
+
 export function normalizeMathResponse(value: string): string {
   return value.trim().replace(/\s+/g, "").replace(/^\+/, "");
 }

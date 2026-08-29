@@ -13,6 +13,7 @@ import {
   prioritizeUnattemptedQuestions,
   questionBankLevel,
   selectQuestionBankSession,
+  sortByOriginalOrder,
   type MathAnswerType,
   type MathBankCatalog,
   type MathChoice,
@@ -105,6 +106,7 @@ export async function getMathRunnerQuestions(
   options: { includeChallenge?: boolean } = {},
 ): Promise<MathRunnerQuestion[]> {
   const rows = filterChallengeRows(await loadEligibleMathRows(), options.includeChallenge ?? true);
+  const orderIndex = new Map(rows.map((row, index) => [row.id, index]));
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
   const skillRows = rows.filter((row) => (
@@ -115,7 +117,7 @@ export async function getMathRunnerQuestions(
   const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
   const preferred = toMathRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
   if (preferred.length >= sessionLimit) {
-    return selectQuestionBankSession(preferred, sessionLimit, activity.attemptedIds);
+    return sortByOriginalOrder(selectQuestionBankSession(preferred, sessionLimit, activity.attemptedIds), orderIndex);
   }
 
   // Fills out the session by relaxing the completion filter only -- the
@@ -128,7 +130,11 @@ export async function getMathRunnerQuestions(
     ],
     rows.length,
   );
-  return selectQuestionBankSession(candidates, sessionLimit, activity.attemptedIds);
+  // prioritizeUnattemptedQuestions only influences which questions make the
+  // cut when the session has to be truncated -- the questions shown are
+  // always restored to their stable, original order (see sortByOriginalOrder)
+  // so a question's number in the panel never shifts based on completion.
+  return sortByOriginalOrder(selectQuestionBankSession(candidates, sessionLimit, activity.attemptedIds), orderIndex);
 }
 
 function matchesCompletion(
