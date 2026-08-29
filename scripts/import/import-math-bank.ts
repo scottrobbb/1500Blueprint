@@ -14,6 +14,7 @@ import * as path from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import JSZip from "jszip";
 import {
+  normalizeMissingFigureReference,
   parseMathBankDocx,
   type ParsedMathBankDocument,
   type ParsedMathBankQuestion,
@@ -59,6 +60,7 @@ type ExistingQuestionRow = {
   id: string;
   answer_type: string;
   status: string;
+  figure_url: string | null;
 };
 
 const args = process.argv.slice(2);
@@ -251,7 +253,14 @@ async function uploadFigures(
       { contentType: question.figureData.contentType, upsert: true },
     );
     if (uploaded.error) throw uploaded.error;
-    urls.set(hash, supabase.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl);
+    const url = supabase.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Uploaded figure is not publicly readable: ${objectPath}`);
+    const downloadedHash = crypto.createHash("sha256")
+      .update(Buffer.from(await response.arrayBuffer()))
+      .digest("hex");
+    if (downloadedHash !== hash) throw new Error(`Uploaded figure bytes do not match: ${objectPath}`);
+    urls.set(hash, url);
   }
 
   return urls;
@@ -269,19 +278,20 @@ function toRow(
     ordinal: question.sourceOrdinal,
     sourceQuestionNumber: question.rawNumber,
   };
+  const id = questionId(question);
   const figureUrl = figureHash(question);
 
   if (question.type === "mc") {
     if (!isChoiceId(question.correct)) throw new Error(`Invalid choice key for ${question.sourceFile}`);
     return {
-      id: questionId(question),
+      id,
       drill_slug: DRILL_SLUG,
       section: "math",
       domain: question.domain,
       skill: question.skill,
       difficulty: question.difficulty,
       answer_type: "mc_single",
-      stem: question.prompt,
+      stem: normalizeMissingFigureReference(id, question.prompt, Boolean(question.figureData)),
       passage: question.passage,
       figure_url: figureUrl ? figureUrls.get(figureUrl) ?? null : null,
       content: {
@@ -299,14 +309,14 @@ function toRow(
   }
 
   return {
-    id: questionId(question),
+    id,
     drill_slug: DRILL_SLUG,
     section: "math",
     domain: question.domain,
     skill: question.skill,
     difficulty: question.difficulty,
     answer_type: "grid_in",
-    stem: question.prompt,
+    stem: normalizeMissingFigureReference(id, question.prompt, Boolean(question.figureData)),
     passage: question.passage,
     figure_url: figureUrl ? figureUrls.get(figureUrl) ?? null : null,
     content: {
@@ -361,22 +371,26 @@ async function allowlistQuestions(
 
 async function verifyLiveRows(
   supabase: SupabaseClient,
-  expectedStatuses: Map<string, "published" | "draft">,
+  expectedRows: DrillQuestionRow[],
 ): Promise<void> {
+  const expectedById = new Map(expectedRows.map((row) => [row.id, row]));
   const result = await supabase
     .from("drill_questions")
-    .select("id,answer_type,status")
+    .select("id,answer_type,status,figure_url")
     .eq("drill_slug", DRILL_SLUG)
     .returns<ExistingQuestionRow[]>();
   if (result.error) throw result.error;
 
   const rows = result.data ?? [];
-  const imported = rows.filter((row) => expectedStatuses.has(row.id));
-  if (imported.length !== expectedStatuses.size) {
-    throw new Error(`Live verification found ${imported.length}/${expectedStatuses.size} imported questions.`);
+  const imported = rows.filter((row) => expectedById.has(row.id));
+  if (imported.length !== expectedById.size) {
+    throw new Error(`Live verification found ${imported.length}/${expectedById.size} imported questions.`);
   }
-  if (imported.some((row) => row.status !== expectedStatuses.get(row.id))) {
+  if (imported.some((row) => row.status !== expectedById.get(row.id)?.status)) {
     throw new Error("Live verification found an unexpected publication status.");
+  }
+  if (imported.some((row) => row.figure_url !== expectedById.get(row.id)?.figure_url)) {
+    throw new Error("Live verification found a missing or unexpected figure URL.");
   }
   const activeRows = rows.filter((row) => row.status === "published");
   const activeImported = imported.filter((row) => row.status === "published");
@@ -387,6 +401,7 @@ async function verifyLiveRows(
   console.log(`  Total active Math:       ${activeRows.length}`);
   console.log(`  Multiple choice:         ${activeRows.filter((row) => row.answer_type === "mc_single").length}`);
   console.log(`  Student-produced:        ${activeRows.filter((row) => row.answer_type === "grid_in").length}`);
+  console.log(`  Figures linked:          ${imported.filter((row) => row.figure_url).length}`);
 }
 
 async function main(): Promise<void> {
@@ -423,7 +438,7 @@ async function main(): Promise<void> {
     ? "  Question Bank catalog allowlist updated"
     : "  Catalog migration is not deployed; targeted-math fallback remains active");
 
-  await verifyLiveRows(supabase, new Map(rows.map((row) => [row.id, row.status])));
+  await verifyLiveRows(supabase, rows);
 }
 
 main().catch((error: unknown) => {

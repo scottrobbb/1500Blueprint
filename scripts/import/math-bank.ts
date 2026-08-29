@@ -149,6 +149,18 @@ export function parseMathBankLines(
   };
 }
 
+const SOURCE_QUESTION_WITHOUT_FIGURE = "scott-math-1b04944c3ba0ee35d616a606808ccb5d";
+
+export function normalizeMissingFigureReference(
+  questionId: string,
+  prompt: string,
+  hasFigure: boolean,
+): string {
+  if (hasFigure || questionId !== SOURCE_QUESTION_WITHOUT_FIGURE) return prompt;
+  const normalized = prompt.replace(/^In the figure shown,\s*/i, "");
+  return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : prompt;
+}
+
 function splitQuestionBlocks(lines: string[]): {
   blocks: string[][];
   inferredAnswerBlocks: Set<number>;

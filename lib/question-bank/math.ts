@@ -133,6 +133,27 @@ export function prioritizeBoundedQuestions<T extends { id: string }>(
   return questions;
 }
 
+export function selectQuestionBankSession<T extends { id: string; figureUrl: string | null }>(
+  questions: T[],
+  limit: number,
+  attemptedIds: ReadonlySet<string> = new Set(),
+): T[] {
+  const selected = questions.slice(0, limit);
+  if (selected.length === 0 || selected.some((question) => question.figureUrl)) {
+    return selected;
+  }
+
+  const visualSlot = Math.min(9, selected.length - 1);
+  const replacementAttempted = attemptedIds.has(selected[visualSlot].id);
+  const visualQuestion = questions.slice(limit).find((question) => (
+    question.figureUrl && attemptedIds.has(question.id) === replacementAttempted
+  ));
+  if (!visualQuestion) return selected;
+
+  selected[visualSlot] = visualQuestion;
+  return selected;
+}
+
 export function normalizeMathResponse(value: string): string {
   return value.trim().replace(/\s+/g, "").replace(/^\+/, "");
 }

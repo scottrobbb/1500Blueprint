@@ -11,7 +11,15 @@ import {
   type ReadingWritingRunnerQuestion,
   type ReadingWritingSkillMetric,
 } from "@/lib/question-bank/reading-writing";
-import { boundedQuestionBankSessionLimit, calculateAccuracy, canAccessQuestionBankLevel, prioritizeBoundedQuestions, prioritizeUnattemptedQuestions, questionBankLevel } from "@/lib/question-bank/math";
+import {
+  boundedQuestionBankSessionLimit,
+  calculateAccuracy,
+  canAccessQuestionBankLevel,
+  prioritizeBoundedQuestions,
+  prioritizeUnattemptedQuestions,
+  questionBankLevel,
+  selectQuestionBankSession,
+} from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
@@ -95,16 +103,19 @@ export async function getReadingWritingRunnerQuestions(
   ));
   const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
   const preferred = toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
-  if (preferred.length >= sessionLimit) return preferred.slice(0, sessionLimit);
+  if (preferred.length >= sessionLimit) {
+    return selectQuestionBankSession(preferred, sessionLimit, activity.attemptedIds);
+  }
 
-  return prioritizeBoundedQuestions(
+  const candidates = prioritizeBoundedQuestions(
     [
       preferred,
       toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(completionRows, activity.attemptedIds)),
       toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(skillRows, activity.attemptedIds)),
     ],
-    sessionLimit,
+    rows.length,
   );
+  return selectQuestionBankSession(candidates, sessionLimit, activity.attemptedIds);
 }
 
 function matchesCompletion(
