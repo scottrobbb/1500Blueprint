@@ -10,7 +10,6 @@ const PUBLIC_ROUTES = new Set([
   "app/api/auth/callback/route.ts",
   "app/api/auth/request/route.ts",
   "app/api/billing/webhook/route.ts",
-  "app/api/internal/legacy-finalize/route.ts",
 ]);
 
 function routeFiles(directory = join(ROOT, "app")): string[] {
@@ -115,10 +114,6 @@ test("high-frequency student database mutations retain distributed rate limits",
     assert.match(source(path), /checkRateLimit|consumeRateLimit/, `${path} must be rate limited`);
   }
 
-  const legacyFinalize = source("app/api/internal/legacy-finalize/route.ts");
-  assert.match(legacyFinalize, /timingSafeEqual/);
-  assert.match(legacyFinalize, /readJsonBody/);
-  assert.match(legacyFinalize, /billingCheckoutEnabled/);
 });
 
 test("high-value content reads retain account anomaly controls and bounded delivery", () => {
