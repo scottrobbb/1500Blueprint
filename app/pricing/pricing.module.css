@@ -531,8 +531,6 @@
 .insideHeading {
   margin: 0 auto 64px;
   max-width: 680px;
-  padding-inline: 40px;
-  position: relative;
   text-align: center;
 }
 .insideHeading h2 {
@@ -544,15 +542,6 @@
   line-height: 1.3;
   margin: 0;
 }
-.insideSparkle {
-  color: rgba(255,255,255,.5);
-  height: 20px;
-  position: absolute;
-  top: 10px;
-  width: 20px;
-}
-.insideSparkleLeft { left: 0; }
-.insideSparkleRight { right: 0; }
 .insideHeadingHighlight {
   color: var(--blue);
   display: inline-block;
@@ -1134,7 +1123,6 @@
   }
   .testimonialWall { column-count: 1; }
   .insideCard { border-radius: 16px; padding: 22px; }
-  .insideSparkle { display: none; }
   .insideCardArt { margin-top: -48px; }
   .insideCardArt img { width: 104px; }
   .savingsPanel { border-radius: 16px; padding: 24px; }

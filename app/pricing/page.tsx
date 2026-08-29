@@ -248,12 +248,10 @@ export default async function PricingPage({
 
       <section className={styles.includedSection} id="inside">
         <div className={styles.insideHeading}>
-          <SparkleIcon className={`${styles.insideSparkle} ${styles.insideSparkleLeft}`} />
           <h2>
             Max Includes Everything You Need to Reach{" "}
             <span className={styles.insideHeadingHighlight}>1500+</span>
           </h2>
-          <SparkleIcon className={`${styles.insideSparkle} ${styles.insideSparkleRight}`} />
         </div>
         <div className={styles.insideGrid}>
           {insideColumns.map((column) => (
@@ -469,14 +467,6 @@ function ArrowIcon() {
 
 function PlanCheckIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>;
-}
-
-function SparkleIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
-      <path d="M12 2c.6 3.6 2.4 5.4 6 6-3.6.6-5.4 2.4-6 6-.6-3.6-2.4-5.4-6-6 3.6-.6 5.4-2.4 6-6Z" />
-    </svg>
-  );
 }
 
 function renderWithBold(text: string) {
