@@ -13,6 +13,7 @@ import {
   prioritizeBoundedQuestions,
   prioritizeUnattemptedQuestions,
   questionBankLevel,
+  selectQuestionBankSession,
 } from "./math";
 
 test("math bank filters reject unsupported query values", () => {
@@ -58,6 +59,28 @@ test("bounded planner sessions preserve preferred questions and backfill without
   assert.deepEqual(
     prioritizeBoundedQuestions([preferred, sameCompletion, wholeSkill], 5).map((question) => question.id),
     ["easy-1", "easy-2", "medium-1", "hard-1", "seen-1"],
+  );
+});
+
+test("bounded all-topic sessions include a visual question when one exists", () => {
+  const questions = [
+    { id: "one", figureUrl: null },
+    { id: "two", figureUrl: null },
+    { id: "three", figureUrl: null },
+    { id: "visual", figureUrl: "https://example.com/figure.png" },
+  ];
+
+  assert.deepEqual(
+    selectQuestionBankSession(questions, 3).map((question) => question.id),
+    ["one", "two", "visual"],
+  );
+  assert.deepEqual(
+    selectQuestionBankSession([questions[3], ...questions], 3).map((question) => question.id),
+    ["visual", "one", "two"],
+  );
+  assert.deepEqual(
+    selectQuestionBankSession(questions, 3, new Set(["visual"])).map((question) => question.id),
+    ["one", "two", "three"],
   );
 });
 

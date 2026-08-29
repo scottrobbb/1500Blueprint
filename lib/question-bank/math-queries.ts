@@ -11,6 +11,7 @@ import {
   prioritizeBoundedQuestions,
   prioritizeUnattemptedQuestions,
   questionBankLevel,
+  selectQuestionBankSession,
   type MathAnswerType,
   type MathBankCatalog,
   type MathChoice,
@@ -113,16 +114,19 @@ export async function getMathRunnerQuestions(
   ));
   const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
   const preferred = toMathRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
-  if (preferred.length >= sessionLimit) return preferred.slice(0, sessionLimit);
+  if (preferred.length >= sessionLimit) {
+    return selectQuestionBankSession(preferred, sessionLimit, activity.attemptedIds);
+  }
 
-  return prioritizeBoundedQuestions(
+  const candidates = prioritizeBoundedQuestions(
     [
       preferred,
       toMathRunnerQuestions(prioritizeUnattemptedQuestions(completionRows, activity.attemptedIds)),
       toMathRunnerQuestions(prioritizeUnattemptedQuestions(skillRows, activity.attemptedIds)),
     ],
-    sessionLimit,
+    rows.length,
   );
+  return selectQuestionBankSession(candidates, sessionLimit, activity.attemptedIds);
 }
 
 function matchesCompletion(

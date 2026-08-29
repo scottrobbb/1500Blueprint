@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseMathBankLines } from "./math-bank";
+import { normalizeMissingFigureReference, parseMathBankLines } from "./math-bank";
 
 const SOURCE = [
   "Math Questions (775 Qs)",
@@ -110,4 +110,31 @@ test("flags ambiguous multiple-choice items with duplicate answer text", () => {
   assert.deepEqual(result.questions[0].notes, [
     "multiple-choice item has duplicate choice text",
   ]);
+});
+
+test("removes a false figure reference when the source document has no image", () => {
+  assert.equal(
+    normalizeMissingFigureReference(
+      "scott-math-1b04944c3ba0ee35d616a606808ccb5d",
+      "In the figure shown, triangle ABC is similar to triangle DEF.",
+      false,
+    ),
+    "Triangle ABC is similar to triangle DEF.",
+  );
+  assert.equal(
+    normalizeMissingFigureReference(
+      "scott-math-1b04944c3ba0ee35d616a606808ccb5d",
+      "In the figure shown, what is x?",
+      true,
+    ),
+    "In the figure shown, what is x?",
+  );
+  assert.equal(
+    normalizeMissingFigureReference(
+      "future-question-with-missing-figure",
+      "In the figure shown, what is x?",
+      false,
+    ),
+    "In the figure shown, what is x?",
+  );
 });

@@ -56,6 +56,7 @@ type DrillQuestionRow = {
 type ExistingQuestionRow = {
   id: string;
   status: string;
+  figure_url: string | null;
 };
 
 const args = process.argv.slice(2);
@@ -234,7 +235,14 @@ async function uploadFigures(
       { contentType: question.figureData.contentType, upsert: true },
     );
     if (uploaded.error) throw uploaded.error;
-    urls.set(hash, supabase.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl);
+    const url = supabase.storage.from(BUCKET).getPublicUrl(objectPath).data.publicUrl;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Uploaded figure is not publicly readable: ${objectPath}`);
+    const downloadedHash = crypto.createHash("sha256")
+      .update(Buffer.from(await response.arrayBuffer()))
+      .digest("hex");
+    if (downloadedHash !== hash) throw new Error(`Uploaded figure bytes do not match: ${objectPath}`);
+    urls.set(hash, url);
   }
 
   return urls;
@@ -315,28 +323,33 @@ async function allowlistQuestions(
 
 async function verifyLiveRows(
   supabase: SupabaseClient,
-  expectedStatuses: Map<string, "published" | "draft">,
+  expectedRows: DrillQuestionRow[],
 ): Promise<void> {
+  const expectedById = new Map(expectedRows.map((row) => [row.id, row]));
   const result = await supabase
     .from("drill_questions")
-    .select("id,status")
+    .select("id,status,figure_url")
     .eq("created_by", CREATED_BY)
     .range(0, 999);
   if (result.error) throw result.error;
 
   const rows = (result.data ?? []) as ExistingQuestionRow[];
-  const imported = rows.filter((row) => expectedStatuses.has(row.id));
-  if (imported.length !== expectedStatuses.size) {
-    throw new Error(`Live verification found ${imported.length}/${expectedStatuses.size} imported questions.`);
+  const imported = rows.filter((row) => expectedById.has(row.id));
+  if (imported.length !== expectedById.size) {
+    throw new Error(`Live verification found ${imported.length}/${expectedById.size} imported questions.`);
   }
-  if (imported.some((row) => row.status !== expectedStatuses.get(row.id))) {
+  if (imported.some((row) => row.status !== expectedById.get(row.id)?.status)) {
     throw new Error("Live verification found an unexpected publication status.");
+  }
+  if (imported.some((row) => row.figure_url !== expectedById.get(row.id)?.figure_url)) {
+    throw new Error("Live verification found a missing or unexpected figure URL.");
   }
 
   console.log("\nLive verification");
   console.log(`  Scott archive questions: ${imported.length}`);
   console.log(`  Active Scott questions:  ${imported.filter((row) => row.status === "published").length}`);
   console.log(`  Draft Scott questions:   ${imported.filter((row) => row.status !== "published").length}`);
+  console.log(`  Figures linked:          ${imported.filter((row) => row.figure_url).length}`);
 }
 
 async function main(): Promise<void> {
@@ -373,7 +386,7 @@ async function main(): Promise<void> {
     ? "  Question Bank catalog allowlist updated"
     : "  Catalog migration is not deployed; source-filtered fallback remains active");
 
-  await verifyLiveRows(supabase, new Map(rows.map((row) => [row.id, row.status])));
+  await verifyLiveRows(supabase, rows);
 }
 
 main().catch((error: unknown) => {
