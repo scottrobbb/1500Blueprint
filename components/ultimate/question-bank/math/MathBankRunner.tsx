@@ -53,7 +53,22 @@ function ObjectiveBankRunner({
   isAdmin,
   subject,
 }: BankRunnerProps & { subject: BankSubject }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  // Resume on the same question after a refresh. Keyed by subject + filters
+  // (not a raw index -- answering a question can reshuffle "unattempted
+  // first" ordering on the next load, so the saved question id is
+  // re-located in the freshly-fetched list rather than trusted as a slot).
+  const positionKey = `qb-position:${subject}:${filters.difficulty}:${filters.completion}:${[...filters.skills].sort().join(",")}`;
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    try {
+      const savedId = window.sessionStorage.getItem(positionKey);
+      if (!savedId) return 0;
+      const index = questions.findIndex((item) => item.id === savedId);
+      return index > 0 ? index : 0;
+    } catch {
+      return 0;
+    }
+  });
   const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers(initialState.attempts));
   const [attempts, setAttempts] = useState<Record<string, QuestionBankAttemptState>>(initialState.attempts);
   const [results, setResults] = useState<Record<string, RunnerResult>>({});
@@ -88,6 +103,26 @@ function ObjectiveBankRunner({
   useEffect(() => {
     enteredQuestionAt.current = Date.now();
   }, [currentIndex]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || finished) return;
+    const current = questions[currentIndex];
+    if (!current) return;
+    try {
+      window.sessionStorage.setItem(positionKey, current.id);
+    } catch {
+      // Storage unavailable -- position just won't survive a refresh.
+    }
+  }, [currentIndex, questions, finished, positionKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !finished) return;
+    try {
+      window.sessionStorage.removeItem(positionKey);
+    } catch {
+      // No-op.
+    }
+  }, [finished, positionKey]);
 
   function setAnswer(value: string) {
     if (!question || result?.correct) return;
