@@ -529,27 +529,49 @@
   padding: 92px max(28px, calc((100vw - 1180px) / 2));
 }
 .insideHeading {
-  margin: 0 auto 48px;
-  max-width: 640px;
+  margin: 0 auto 64px;
+  max-width: 760px;
   text-align: center;
 }
 .insideHeading h2 {
+  align-items: center;
   color: #fff;
+  display: inline-flex;
   font-family: var(--font-gabarito), sans-serif;
-  font-size: clamp(28px,3vw,34px);
-  font-weight: 500;
+  font-size: clamp(28px,3.4vw,38px);
+  font-weight: 650;
+  gap: 16px;
+  justify-content: center;
   letter-spacing: -.02em;
   line-height: 1.25;
   margin: 0;
 }
-.insideHeading h2 strong {
-  color: #fff;
-  font-weight: 650;
+.insideSparkle {
+  color: rgba(255,255,255,.5);
+  flex: 0 0 auto;
+  height: 20px;
+  width: 20px;
+}
+.insideHeadingHighlight {
+  color: var(--blue);
+  display: inline-block;
+  position: relative;
+}
+.insideHeadingHighlight::after {
+  background: var(--blue);
+  border-radius: 2px;
+  bottom: -8px;
+  content: "";
+  height: 3px;
+  left: 0;
+  position: absolute;
+  right: 0;
 }
 .insideGrid {
   display: grid;
   gap: 20px;
   grid-template-columns: repeat(3,minmax(0,1fr));
+  padding-top: 32px;
 }
 .insideCard {
   background: #000;
@@ -560,26 +582,16 @@
   transform: translateZ(0);
   will-change: transform;
 }
-.insideCardIcon {
+.insideCardArt {
   align-items: center;
-  background: linear-gradient(135deg, rgba(47,159,233,.24), rgba(255,200,61,.24));
-  border-radius: 12px;
-  color: var(--blue);
   display: flex;
-  height: 44px;
   justify-content: center;
-  margin-bottom: 18px;
-  width: 44px;
+  margin: -64px 0 8px;
 }
-.insideCard:nth-child(2) .insideCardIcon { color: var(--gold); }
-.insideCardIcon svg {
-  fill: none;
-  height: 21px;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-  width: 21px;
+.insideCardArt img {
+  filter: drop-shadow(0 14px 20px rgba(0,0,0,.45));
+  height: auto;
+  width: 140px;
 }
 .insideCard h3 {
   color: #fff;
@@ -1121,6 +1133,9 @@
   }
   .testimonialWall { column-count: 1; }
   .insideCard { border-radius: 16px; padding: 22px; }
+  .insideSparkle { display: none; }
+  .insideCardArt { margin-top: -48px; }
+  .insideCardArt img { width: 104px; }
   .savingsPanel { border-radius: 16px; padding: 24px; }
   .costCard { padding: 20px; }
   .costRow b { font-size: 21px; }

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { getStudentAccess } from "@/lib/auth/entitlements";
@@ -8,7 +9,7 @@ import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
 import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { EnrollButton } from "./EnrollButton";
 import { ExamCountdown } from "./ExamCountdown";
-import { FeatureGlyph, type FeatureIcon } from "./FeatureGlyph";
+import type { FeatureIcon } from "./FeatureGlyph";
 import { PlansPanel } from "./PlansPanel";
 import { SavingsCalculator } from "./SavingsCalculator";
 import { SmoothScrollLink } from "./SmoothScrollLink";
@@ -64,12 +65,10 @@ const maxFeatures: PlanFeature[] = [
 ];
 
 const insideColumns: Array<{
-  icon: FeatureIcon;
   title: string;
   items: string[];
 }> = [
   {
-    icon: "book",
     title: "Learn & Master",
     items: [
       "Learn every tested concept with step-by-step courses",
@@ -81,7 +80,6 @@ const insideColumns: Array<{
     ],
   },
   {
-    icon: "target",
     title: "Practice & Improve",
     items: [
       "Practice with a realistic SAT Question Bank (Zero AI Questions)",
@@ -93,7 +91,6 @@ const insideColumns: Array<{
     ],
   },
   {
-    icon: "chart",
     title: "Test & Track",
     items: [
       "Take realistic, full-length digital SAT practice tests",
@@ -248,14 +245,17 @@ export default async function PricingPage({
       <section className={styles.includedSection} id="inside">
         <div className={styles.insideHeading}>
           <h2>
-            Max Includes <strong>Everything You Need to Reach 1500+</strong>
+            <SparkleIcon className={styles.insideSparkle} />
+            Max Includes Everything You Need to Reach{" "}
+            <span className={styles.insideHeadingHighlight}>1500+</span>
+            <SparkleIcon className={styles.insideSparkle} />
           </h2>
         </div>
         <div className={styles.insideGrid}>
           {insideColumns.map((column) => (
             <article className={styles.insideCard} key={column.title}>
-              <div className={styles.insideCardIcon}>
-                <FeatureGlyph name={column.icon} />
+              <div className={styles.insideCardArt}>
+                <Image src="/images/blu.png" alt="" width={200} height={200} />
               </div>
               <h3>{column.title}</h3>
               <ul>
@@ -465,6 +465,14 @@ function ArrowIcon() {
 
 function PlanCheckIcon() {
   return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6" /></svg>;
+}
+
+function SparkleIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className={className} fill="currentColor">
+      <path d="M12 2c.6 3.6 2.4 5.4 6 6-3.6.6-5.4 2.4-6 6-.6-3.6-2.4-5.4-6-6 3.6-.6 5.4-2.4 6-6Z" />
+    </svg>
+  );
 }
 
 function renderWithBold(text: string) {
