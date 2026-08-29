@@ -6,7 +6,7 @@ import { setupStripeBilling } from "./setup";
 test("Stripe setup creates Core but reuses the existing Blueprint product for Max", async () => {
   const createdProducts: string[] = [];
   const createdPrices: Array<{ product: string; amount: number; intervalCount: number }> = [];
-  const coreProduct = stripeProduct("prod_core", "1500 SAT Blueprint Core", {
+  const coreProduct = stripeProduct("prod_core", "1500 Blueprint Core", {
     platform: "1500_blueprint",
     plan_code: "core",
   });
@@ -54,7 +54,7 @@ test("Stripe setup creates Core but reuses the existing Blueprint product for Ma
     maxAnchorPriceId: maxMonthly.id,
   });
 
-  assert.deepEqual(createdProducts, ["1500 SAT Blueprint Core"]);
+  assert.deepEqual(createdProducts, ["1500 Blueprint Core"]);
   assert.equal(configured.max.productId, maxProduct.id);
   assert.equal(configured.max.prices.monthly, maxMonthly.id);
   assert.deepEqual(createdPrices, [
