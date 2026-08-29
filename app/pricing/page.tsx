@@ -66,10 +66,12 @@ const maxFeatures: PlanFeature[] = [
 
 const insideColumns: Array<{
   title: string;
+  art: string;
   items: string[];
 }> = [
   {
     title: "Learn & Master",
+    art: "/images/blu-learn.png",
     items: [
       "Learn every tested concept with step-by-step courses",
       "Master Math, Reading, Writing, Grammar, and Desmos",
@@ -81,6 +83,7 @@ const insideColumns: Array<{
   },
   {
     title: "Practice & Improve",
+    art: "/images/blu-practice.png",
     items: [
       "Practice with a realistic SAT Question Bank (Zero AI Questions)",
       "Drill questions by topic, difficulty, and skill",
@@ -92,6 +95,7 @@ const insideColumns: Array<{
   },
   {
     title: "Test & Track",
+    art: "/images/blu-track.png",
     items: [
       "Take realistic, full-length digital SAT practice tests",
       "Practice under real SAT timing and conditions",
@@ -244,18 +248,18 @@ export default async function PricingPage({
 
       <section className={styles.includedSection} id="inside">
         <div className={styles.insideHeading}>
+          <SparkleIcon className={`${styles.insideSparkle} ${styles.insideSparkleLeft}`} />
           <h2>
-            <SparkleIcon className={styles.insideSparkle} />
             Max Includes Everything You Need to Reach{" "}
             <span className={styles.insideHeadingHighlight}>1500+</span>
-            <SparkleIcon className={styles.insideSparkle} />
           </h2>
+          <SparkleIcon className={`${styles.insideSparkle} ${styles.insideSparkleRight}`} />
         </div>
         <div className={styles.insideGrid}>
           {insideColumns.map((column) => (
             <article className={styles.insideCard} key={column.title}>
               <div className={styles.insideCardArt}>
-                <Image src="/images/blu.png" alt="" width={200} height={200} />
+                <Image src={column.art} alt="" width={200} height={200} />
               </div>
               <h3>{column.title}</h3>
               <ul>
