@@ -353,9 +353,9 @@
   height: auto;
   pointer-events: none;
   position: absolute;
-  right: -28px;
-  top: -50px;
-  width: 110px;
+  right: -35px;
+  top: -64px;
+  width: 140px;
   z-index: 2;
 }
 .planName {
