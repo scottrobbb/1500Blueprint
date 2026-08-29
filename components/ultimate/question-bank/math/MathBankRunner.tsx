@@ -277,7 +277,12 @@ function ObjectiveBankRunner({
     return <EmptySession filters={filters} subject={subject} />;
   }
 
-  const correctCount = Object.values(results).filter((item) => item.correct).length;
+  // Sourced from `attempts` (seeded from the database and scoped to this
+  // filter set), not the in-memory `results` map -- results only holds
+  // answers checked since the last full page load, so a mid-session refresh
+  // would otherwise make the recap undercount everything checked before it.
+  const checkedCount = Object.keys(attempts).length;
+  const correctCount = Object.values(attempts).filter((item) => item.correct).length;
   const questionStrip = (
     <QuestionStrip
       questionId={question.id}
@@ -336,7 +341,7 @@ function ObjectiveBankRunner({
         <SessionSummary
           subject={subject}
           total={orderedQuestions.length}
-          answered={Object.keys(results).length}
+          answered={checkedCount}
           correct={correctCount}
           marked={marked.size}
           returnHref={returnHref}
