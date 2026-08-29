@@ -4,6 +4,7 @@
  *
  * npx tsx scripts/billing/import-legacy-stripe.ts --mode=live
  * npx tsx scripts/billing/import-legacy-stripe.ts --mode=live --email=student@example.com
+ * npx tsx scripts/billing/import-legacy-stripe.ts --mode=live --skip-emails=review@example.com
  * STRIPE_LEGACY_MAX_PRODUCT_IDS=products_variant_... npx tsx scripts/billing/import-legacy-stripe.ts --mode=live
  * ALLOW_STRIPE_IMPORT_WRITE=true npx tsx scripts/billing/import-legacy-stripe.ts --mode=live --apply
  */
@@ -46,6 +47,11 @@ const apply = args.includes("--apply");
 const includeEmails = args.includes("--include-emails");
 const requestedEmail = option("email");
 const targetEmail = requestedEmail ? normalizeEmail(requestedEmail) : null;
+const skippedEmails = new Set(configuredIds(option("skip-emails")).map((email) => {
+  const normalized = normalizeEmail(email);
+  if (!normalized) throw new Error("--skip-emails contains an invalid email address");
+  return normalized;
+}));
 const stripeKey = mode === "test"
   ? process.env.STRIPE_BILLING_KEY
   : process.env.STRIPE_RESTRICTED_KEY ?? process.env.STRIPE_LEGACY_KEY;
@@ -107,6 +113,7 @@ async function main() {
     customersScanned += 1;
     if (customer.deleted || !customer.email) continue;
     const email = customer.email.trim().toLowerCase();
+    if (skippedEmails.has(email)) continue;
     const account = accountByEmail.get(email) ?? null;
 
     const mappedForCustomer: MappedSubscription[] = [];
@@ -164,6 +171,7 @@ async function main() {
 
   console.log(`Mode: ${mode}; write mode: ${apply ? "APPLY" : "DRY RUN"}`);
   if (targetEmail) console.log(`Target: ${targetEmail}`);
+  if (skippedEmails.size) console.log(`Subscriber emails held for manual review: ${skippedEmails.size}`);
   console.log(`Stripe customers scanned: ${customersScanned}`);
   console.log(`Relevant Stripe customers matched to Blueprint accounts: ${customersMatched}`);
   console.log(`Blueprint subscriber emails found: ${matchesByEmail.size}`);
