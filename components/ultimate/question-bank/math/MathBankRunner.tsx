@@ -124,6 +124,19 @@ function ObjectiveBankRunner({
     }
   }, [finished, positionKey]);
 
+  // Enter checks the current answer, from anywhere on the page (typing a
+  // grid-in response, or after clicking a multiple-choice option). checkAnswer
+  // already no-ops when there's nothing to submit, so this is safe to fire
+  // unconditionally while a question is active.
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Enter" || finished || paused || navigatorOpen || toolPanel) return;
+      void checkAnswer();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  });
+
   function setAnswer(value: string) {
     if (!question || result?.correct) return;
     setAnswers((current) => ({ ...current, [question.id]: value }));
@@ -519,9 +532,6 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
               value={answer}
               disabled={result?.correct}
               onChange={(event) => onAnswer(normalizeGridInInput(event.target.value))}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") void onCheck();
-              }}
               placeholder="Answer"
               className="min-w-0 flex-1 bg-transparent px-3 font-serif text-lg text-[#111] outline-none placeholder:text-[#aaa] focus-visible:outline-none"
             />
