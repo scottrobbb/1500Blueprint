@@ -166,6 +166,7 @@ async function resolveSubscriptionOwner(
       if (!hasPaidAccessStatus(subscription.status)) return null;
       throw new Error(`subscription ${subscription.id} customer does not match its Blueprint owner`);
     }
+    if (await hasOtherTrackedPaidSubscription(data.id, subscription)) return null;
     return data.id;
   }
 
@@ -175,7 +176,26 @@ async function resolveSubscriptionOwner(
     .eq(customerColumn, customerId)
     .maybeSingle<{ id: string }>();
   if (error) throw new Error(`failed to resolve subscription owner: ${error.message}`);
-  return data?.id ?? null;
+  if (!data || await hasOtherTrackedPaidSubscription(data.id, subscription)) return null;
+  return data.id;
+}
+
+async function hasOtherTrackedPaidSubscription(
+  userId: string,
+  subscription: Stripe.Subscription,
+): Promise<boolean> {
+  if (!hasPaidAccessStatus(subscription.status)) return false;
+  const { data, error } = await supabaseAdmin()
+    .from("student_subscriptions")
+    .select("stripe_subscription_id")
+    .eq("user_id", userId)
+    .eq("livemode", subscription.livemode)
+    .in("status", ["active", "trialing", "past_due"])
+    .neq("stripe_subscription_id", subscription.id)
+    .limit(1)
+    .maybeSingle<{ stripe_subscription_id: string }>();
+  if (error) throw new Error(`failed to inspect duplicate Stripe billing: ${error.message}`);
+  return Boolean(data);
 }
 
 async function syncPaymentState(

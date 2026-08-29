@@ -15,6 +15,7 @@ const ADMIN_PREFIX = "/admin";
 function isPublic(pathname: string): boolean {
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname === "/api/billing/checkout" || pathname === "/api/billing/webhook") return true;
+  if (pathname === "/api/internal/legacy-finalize") return true;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
