@@ -43,7 +43,7 @@ type PlanFeature = {
 };
 
 const freeFeatures: PlanFeature[] = [
-  { label: "300 questions", icon: "grid" },
+  { label: "200 questions (20 Challenge Questions)", icon: "grid" },
   { label: "Desmos 101 course", icon: "book" },
   { label: "Reading & Writing 101 course", icon: "book" },
 ];
