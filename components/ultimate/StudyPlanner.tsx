@@ -192,25 +192,37 @@ function ActivePlan({
 }
 
 function PlanSummary({ plan, profile }: { plan: StudyPlan; profile: StudyPlannerProfile }) {
-  const summary = [
-    { label: "Current score", value: plan.currentScore?.toLocaleString() ?? "Baseline needed", detail: plan.currentScore === null ? "Take a full practice test" : "Latest score signal" },
-    { label: "Goal score", value: plan.goalScore.toLocaleString(), detail: plan.scoreGap === null ? "Your target" : `${plan.scoreGap.toLocaleString()} points to close` },
-    { label: "Test date", value: formatMonthDay(profile.testDate), detail: `${plan.daysToTest} ${plan.daysToTest === 1 ? "day" : "days"} away` },
-    { label: "Week progress", value: `${plan.progress.percent}%`, detail: formatMinutes(plan.totalMinutes) },
-  ];
-
   return (
-    <section className="grid grid-cols-2 overflow-hidden rounded-2xl border border-navy/10 bg-white sm:grid-cols-4">
-      {summary.map((item, index) => (
-        <div key={item.label} className={`p-4 sm:p-5 ${index % 2 ? "border-l border-navy/10" : ""} ${index >= 2 ? "border-t border-navy/10 sm:border-t-0 sm:border-l" : ""}`}>
-          <p className="text-xs font-semibold text-navy/45">{item.label}</p>
-          <strong className="mt-1 block font-display text-xl font-extrabold text-ink sm:text-2xl">{item.value}</strong>
-          <p className="mt-1 text-[11px] font-medium text-navy/35">{item.detail}</p>
-          {item.label === "Week progress" ? (
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-haze"><div className="h-full rounded-full bg-brand" style={{ width: `${plan.progress.percent}%` }} /></div>
-          ) : null}
+    <section className="grid gap-3 md:grid-cols-[minmax(0,1.35fr)_minmax(280px,0.65fr)]" aria-label="Plan overview">
+      <div className="flex flex-col rounded-2xl border border-navy/10 bg-white p-5 sm:p-6">
+        <h2 className="font-display text-lg font-extrabold text-ink">Weekly progress</h2>
+        <p className="mt-4 font-display text-3xl font-extrabold tracking-[-0.035em] text-ink">{plan.progress.percent}% complete</p>
+        <p className="mt-1 text-sm font-semibold text-navy/45">{plan.progress.completed} of {plan.progress.target} tasks</p>
+        <div className="mt-4 h-3 overflow-hidden rounded-full bg-[#dfeef9]" role="progressbar" aria-label="Weekly plan progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={plan.progress.percent}>
+          <div className="h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${plan.progress.percent}%` }} />
         </div>
-      ))}
+        <div className="mt-4 flex items-center justify-between gap-3 border-t border-navy/10 pt-3 text-xs">
+          <span className="font-semibold text-navy/40">Planned study time</span>
+          <span className="font-bold text-navy/55">{formatMinutes(plan.totalMinutes)}</span>
+        </div>
+      </div>
+
+      <div className="flex flex-col rounded-2xl border border-navy/10 bg-white p-5 sm:p-6">
+        <h2 className="font-display text-lg font-extrabold text-ink">SAT test date</h2>
+        <p className="mt-4 font-display text-3xl font-extrabold tracking-[-0.035em] text-ink">
+          {plan.daysToTest === 0 ? "Test day is today" : `${plan.daysToTest} ${plan.daysToTest === 1 ? "day" : "days"} left`}
+        </p>
+        <p className="mt-1 text-sm font-semibold text-navy/45">{formatReviewDate(profile.testDate)}</p>
+
+        <div className="mt-auto flex items-center justify-between gap-3 border-t border-navy/10 pt-3 text-xs">
+          <span className="font-semibold text-navy/40">Score target</span>
+          <span className="inline-flex items-center gap-1.5 font-bold">
+            <span className="text-navy/50">{plan.currentScore?.toLocaleString() ?? "Baseline"}</span>
+            <ChevronRightIcon className="h-3.5 w-3.5 text-navy/20" />
+            <span className="text-brand-600">{plan.goalScore.toLocaleString()}</span>
+          </span>
+        </div>
+      </div>
     </section>
   );
 }
@@ -714,10 +726,6 @@ function formatWeekday(value: string): string {
   return parseDate(value).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
 }
 
-function formatMonthDay(value: string): string {
-  return parseDate(value).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-}
-
 function formatReviewDate(value: string): string {
   return parseDate(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
@@ -735,10 +743,10 @@ function formatDay(value: string): string {
 }
 
 function formatMinutes(value: number): string {
-  if (value < 60) return `${value} planned minutes`;
+  if (value < 60) return `${value} min`;
   const hours = Math.floor(value / 60);
   const minutes = value % 60;
-  return `${hours}h${minutes ? ` ${minutes}m` : ""} planned`;
+  return `${hours}h${minutes ? ` ${minutes}m` : ""}`;
 }
 
 function todayInNewYork(): string {
