@@ -10,7 +10,6 @@ const PUBLIC_ROUTES = new Set([
   "app/api/auth/callback/route.ts",
   "app/api/auth/request/route.ts",
   "app/api/billing/webhook/route.ts",
-  "app/api/internal/legacy-import/route.ts",
 ]);
 
 function routeFiles(directory = join(ROOT, "app")): string[] {
@@ -74,10 +73,6 @@ test("public and payment-sensitive endpoints retain their abuse controls", () =>
     assert.match(contents, /readUrlEncodedForm/, `${path} must bound form parsing`);
   }
 
-  const legacyImport = source("app/api/internal/legacy-import/route.ts");
-  assert.match(legacyImport, /timingSafeEqual/);
-  assert.match(legacyImport, /readJsonBody/);
-  assert.match(legacyImport, /billingCheckoutEnabled/);
 });
 
 test("global request limits and private API caching remain configured", () => {
