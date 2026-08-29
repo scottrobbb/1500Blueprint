@@ -8,7 +8,7 @@ import { label } from "@/components/drills/shared/ui";
 // Drill settings index: a list of every drill linking to its settings editor.
 export default async function DrillSettingsIndexPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const drills = await listDrills();
 

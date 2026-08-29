@@ -6,7 +6,7 @@ import { AdminSetsList } from "@/components/admin/AdminSetsList";
 
 export default async function AdminSetsPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const sets = await listAllSets();
   return (

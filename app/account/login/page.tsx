@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { PasswordAuthForm } from "@/components/auth/PasswordAuthForm";
-import { isPasswordAuthEnabled, safeNextPath } from "@/lib/auth/password";
+import { DEFAULT_AUTH_DESTINATION, isPasswordAuthEnabled } from "@/lib/auth/password";
 import { getSession } from "@/lib/auth/session";
 
 export const metadata = { title: "Student sign in" };
@@ -12,7 +12,7 @@ export default async function AccountLoginPage({
 }) {
   if (!isPasswordAuthEnabled()) notFound();
   const params = await searchParams;
-  const next = safeNextPath(params.next ?? null);
+  const next = DEFAULT_AUTH_DESTINATION;
   if (await getSession()) redirect(next);
   const message = params.error === "confirmation"
     ? "That confirmation link is invalid or expired."

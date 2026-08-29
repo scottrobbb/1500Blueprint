@@ -12,7 +12,7 @@ export default async function QuestionEditorPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const { id } = await params;
   const question = await getQuestion(id);

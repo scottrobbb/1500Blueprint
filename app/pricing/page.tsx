@@ -341,7 +341,7 @@ export default async function PricingPage({
             <div className={styles.footerColumn}>
               <h3>Study tools</h3>
               <Link href="/ultimate/bank">Question Bank</Link>
-              <Link href="/drills">Practice drills</Link>
+              <Link href="/ultimate/drills">Practice drills</Link>
               <Link href="/ultimate/courses">Courses</Link>
               <Link href="/flashcards">Flashcards</Link>
             </div>

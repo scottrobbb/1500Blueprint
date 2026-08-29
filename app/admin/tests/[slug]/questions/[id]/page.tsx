@@ -14,7 +14,7 @@ export default async function AdminTestQuestionPage({
   params: Promise<{ slug: string; id: string }>;
 }) {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const { slug, id } = await params;
   const [question, nextQuestionId] = await Promise.all([

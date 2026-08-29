@@ -8,7 +8,7 @@ import { sessionSecret } from "@/lib/auth/session-secret";
 import { enforceProtectedContentRead } from "@/lib/security/protected-content";
 
 // Paths reachable without a session.
-const PUBLIC_PATHS = ["/login", "/pricing", "/account"];
+const PUBLIC_PATHS = ["/", "/login", "/pricing", "/account"];
 // The admin CMS is gated to allowlisted admin emails (ADMIN_EMAILS).
 const ADMIN_PREFIX = "/admin";
 
@@ -102,9 +102,9 @@ export async function proxy(request: NextRequest) {
 
   if (isAdminPath(pathname)) {
     if (!isAdmin) {
-      // Signed-in non-admin (a student): bounce to the drills hub.
+      // Signed-in non-admins return to the student workspace.
       const url = request.nextUrl.clone();
-      url.pathname = "/drills";
+      url.pathname = "/ultimate";
       url.search = "";
       return redirectWithCookies(url, passwordResponse);
     }

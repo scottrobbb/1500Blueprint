@@ -4,7 +4,7 @@ import { SetEditor } from "@/components/flashcards/SetEditor";
 
 export default async function AdminNewSetPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   return (
     <SetEditor

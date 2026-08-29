@@ -189,7 +189,7 @@ export async function updatePassword(
     };
   }
 
-  redirect("/drills");
+  redirect("/ultimate");
 }
 
 async function createPasswordAccount(

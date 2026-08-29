@@ -69,7 +69,7 @@ export function AdminShell({ active, email, children }: AdminShellProps) {
               {email}
             </span>
             <Link
-              href="/drills"
+              href="/ultimate"
               className="rounded-card border border-navy/20 bg-white px-4 py-2 text-sm font-semibold text-navy transition-colors hover:bg-navy/5"
             >
               Back to drills

@@ -1,5 +1,6 @@
 export const PASSWORD_MIN_LENGTH = 10;
 export const PASSWORD_MAX_LENGTH = 128;
+export const DEFAULT_AUTH_DESTINATION = "/ultimate";
 const PASSWORD_SIGNUP_ATTEMPT_LIMIT = 3;
 const PREVIEW_PASSWORD_SIGNUP_ATTEMPT_LIMIT = 50;
 
@@ -58,10 +59,10 @@ export function validatePassword(password: string): PasswordValidation {
 }
 
 export function safeNextPath(value: FormDataEntryValue | string | null): string {
-  if (typeof value !== "string") return "/drills";
+  if (typeof value !== "string") return DEFAULT_AUTH_DESTINATION;
   const path = value.trim();
   if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) {
-    return "/drills";
+    return DEFAULT_AUTH_DESTINATION;
   }
   return path;
 }

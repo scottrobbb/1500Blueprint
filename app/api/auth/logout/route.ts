@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   const base = appBaseUrl(new URL(request.url).origin);
-  const response = NextResponse.redirect(new URL("/login", base), { status: 303 });
+  const response = NextResponse.redirect(new URL("/pricing", base), { status: 303 });
   response.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
   return response;
 }

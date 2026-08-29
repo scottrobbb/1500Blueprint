@@ -32,7 +32,7 @@ export function AppNav({
   return (
     <header className="sticky top-0 z-40 border-b border-navy/12 bg-white/[0.88] backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-[1120px] items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-6">
-        <Link href="/drills" aria-label="1500 Blueprint home" className="inline-flex flex-none items-center">
+        <Link href="/ultimate" aria-label="1500 Blueprint home" className="inline-flex flex-none items-center">
           <span className="sm:hidden">
             <Logo withWordmark={false} />
           </span>

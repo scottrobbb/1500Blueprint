@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminComplimentaryAccessPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const users = await listComplimentaryAccessUsers();
 

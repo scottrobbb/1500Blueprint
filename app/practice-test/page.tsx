@@ -211,7 +211,7 @@ export default async function PracticeTestsPage() {
 
         {/* drills cross-link */}
         <Link
-          href="/drills"
+          href="/ultimate/drills"
           className="mt-4 flex items-center gap-3.5 rounded-xl border-[1.5px] border-dashed border-gold/50 bg-gold/[0.06] p-[18px] transition-colors hover:bg-gold/10"
         >
           <span className="flex h-[46px] w-[46px] flex-none items-center justify-center rounded-[10px] bg-gold/15 text-gold-600">

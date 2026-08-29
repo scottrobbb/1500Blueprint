@@ -10,7 +10,7 @@ import {
   updatePassword,
   type AuthActionState,
 } from "@/app/account/actions";
-import { PASSWORD_MIN_LENGTH } from "@/lib/auth/password";
+import { DEFAULT_AUTH_DESTINATION, PASSWORD_MIN_LENGTH } from "@/lib/auth/password";
 
 type Mode = "login" | "signup" | "forgot" | "reset" | "claim";
 
@@ -64,15 +64,15 @@ const content: Record<Mode, { eyebrow: string; title: string; description: strin
     pending: "Updating password…",
   },
   claim: {
-    eyebrow: "Keep your progress",
+    eyebrow: "Secure your Blueprint account",
     title: "Create your password",
-    description: "Add password sign-in to your existing Blueprint account.",
+    description: "Keep your current plan, scores, and study progress while adding password sign-in.",
     submit: "Create password login",
     pending: "Creating login…",
   },
 };
 
-export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage = "" }: Props) {
+export function PasswordAuthForm({ mode, email, next = DEFAULT_AUTH_DESTINATION, initialMessage = "" }: Props) {
   const initialState: AuthActionState = initialMessage
     ? { status: "error", message: initialMessage }
     : INITIAL_AUTH_STATE;
@@ -91,10 +91,10 @@ export function PasswordAuthForm({ mode, email, next = "/drills", initialMessage
         </h1>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-navy/60">{state.message}</p>
         <Link
-          href={`/account/login?next=${encodeURIComponent(next)}`}
+          href={mode === "claim" ? DEFAULT_AUTH_DESTINATION : `/account/login?next=${encodeURIComponent(next)}`}
           className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl border border-navy/15 px-5 text-sm font-bold text-navy transition-colors hover:border-brand/40 hover:text-brand-600"
         >
-          Back to sign in
+          {mode === "claim" ? "Continue to Ultimate" : "Back to sign in"}
         </Link>
       </div>
     );
@@ -263,6 +263,9 @@ function Footer({ mode, next }: { mode: Mode; next: string }) {
   }
   if (mode === "forgot") {
     return <p className="mt-5 text-center text-sm"><Link href="/account/login" className="font-bold text-brand-600 hover:text-navy">Back to sign in</Link></p>;
+  }
+  if (mode === "claim") {
+    return <p className="mt-5 text-center text-sm"><Link href={DEFAULT_AUTH_DESTINATION} className="font-bold text-navy/55 hover:text-navy">Continue to Ultimate for now</Link></p>;
   }
   return null;
 }

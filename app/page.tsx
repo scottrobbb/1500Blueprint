@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-// The drills hub is the student home; every signed-in entry point lands here.
+// Pricing is the public entry point. Authenticated students continue into Ultimate.
 export default function Home() {
-  redirect("/drills");
+  redirect("/pricing");
 }

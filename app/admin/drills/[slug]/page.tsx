@@ -13,7 +13,7 @@ export default async function DrillSettingsPage({
   params: Promise<{ slug: string }>;
 }) {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const { slug } = await params;
   const drill = await getDrill(slug);

@@ -13,7 +13,7 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const [session, { error }] = await Promise.all([getSession(), searchParams]);
-  if (session) redirect("/drills");
+  if (session) redirect("/ultimate");
 
   return (
     <div

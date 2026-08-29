@@ -8,7 +8,7 @@ import { label } from "@/components/drills/shared/ui";
 // Practice-test index: every test in the DB, linking to its content editor.
 export default async function AdminTestsPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const tests = await listAdminTests();
 

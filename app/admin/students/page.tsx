@@ -9,7 +9,7 @@ import { StudentsTable } from "@/components/admin/StudentsTable";
 // server (sorted by XP) so the first paint is data-complete.
 export default async function AdminStudentsPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const students = await listStudents();
 

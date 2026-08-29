@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { SESSION_COOKIE, appBaseUrl } from "@/lib/auth/config";
 import { consumeLoginToken } from "@/lib/auth/tokens";
 import { signSession, sessionCookieOptions } from "@/lib/auth/session";
+import { findStudentAccount } from "@/lib/auth/accounts";
+import { isPasswordAuthEnabled } from "@/lib/auth/password";
+import { destinationAfterMagicLink } from "@/lib/auth/rollover";
+import { reportServerError } from "@/lib/observability/server";
 import {
   COMPLIMENTARY_ACCESS_PLAN,
   hasComplimentaryAccess,
@@ -28,7 +32,25 @@ export async function GET(request: Request) {
 
   await recordLogin(result.email, result.plan);
   const token = await signSession({ email: result.email, plan: result.plan });
-  const response = NextResponse.redirect(new URL("/drills", base));
+  const passwordAuthEnabled = isPasswordAuthEnabled();
+  let hasPasswordIdentity = false;
+  if (passwordAuthEnabled) {
+    try {
+      hasPasswordIdentity = Boolean(await findStudentAccount(result.email));
+    } catch (error) {
+      reportServerError("auth.magic_link.rollover_lookup_failed", error, {
+        provider: "supabase",
+        route: "/api/auth/callback",
+        method: "GET",
+      });
+      hasPasswordIdentity = true;
+    }
+  }
+  const destination = destinationAfterMagicLink({
+    passwordAuthEnabled,
+    hasPasswordIdentity,
+  });
+  const response = NextResponse.redirect(new URL(destination, base));
   response.cookies.set(SESSION_COOKIE, token, sessionCookieOptions());
   return response;
 }

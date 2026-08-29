@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // newest posts for the table.
 export default async function AdminCommunityPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const posts = await listPosts(session.email);
 

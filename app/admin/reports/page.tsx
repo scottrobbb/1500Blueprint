@@ -8,7 +8,7 @@ export const metadata = { title: "Question Reports" };
 
 export default async function AdminQuestionReportsPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
   const reports = await listQuestionReports();
 
   return (

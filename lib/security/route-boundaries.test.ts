@@ -81,6 +81,14 @@ test("global request limits and private API caching remain configured", () => {
   assert.match(config, /source:\s*["']\/api\/:path\*["'][\s\S]*Cache-Control[\s\S]*no-store/);
 });
 
+test("public and authenticated entry points converge on pricing and Ultimate", () => {
+  assert.match(source("app/page.tsx"), /redirect\(["']\/pricing["']\)/);
+  assert.match(source("app/drills/page.tsx"), /redirect\(["']\/ultimate["']\)/);
+  assert.match(source("app/api/auth/callback/route.ts"), /destinationAfterMagicLink/);
+  assert.match(source("lib/auth/password.ts"), /DEFAULT_AUTH_DESTINATION\s*=\s*["']\/ultimate["']/);
+  assert.match(source("proxy.ts"), /const PUBLIC_PATHS\s*=\s*\[[^\]]*["']\/["']/);
+});
+
 test("high-frequency student database mutations retain distributed rate limits", () => {
   const mutationRoutes = [
     "app/api/courses/lessons/[id]/completion/route.ts",

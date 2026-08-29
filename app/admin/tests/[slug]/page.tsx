@@ -10,7 +10,7 @@ import { TestOutline } from "@/components/admin/TestOutline";
 // is a Promise.
 export default async function AdminTestPage({ params }: { params: Promise<{ slug: string }> }) {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const { slug } = await params;
   const test = await getAdminTest(slug);

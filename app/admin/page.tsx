@@ -8,7 +8,7 @@ import { QuestionBank } from "@/components/admin/QuestionBank";
 // data + page 1 of questions on the server so the first paint is data-complete.
 export default async function AdminPage() {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const [drills, skills, { questions, total }] = await Promise.all([
     listDrills(),

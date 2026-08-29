@@ -28,8 +28,9 @@ test("preview QA has a larger signup budget without weakening production", () =>
 });
 
 test("next paths cannot leave the application", () => {
+  assert.equal(safeNextPath(null), "/ultimate");
   assert.equal(safeNextPath("/ultimate/planner"), "/ultimate/planner");
-  assert.equal(safeNextPath("https://attacker.example"), "/drills");
-  assert.equal(safeNextPath("//attacker.example"), "/drills");
-  assert.equal(safeNextPath("/\\attacker.example"), "/drills");
+  assert.equal(safeNextPath("https://attacker.example"), "/ultimate");
+  assert.equal(safeNextPath("//attacker.example"), "/ultimate");
+  assert.equal(safeNextPath("/\\attacker.example"), "/ultimate");
 });

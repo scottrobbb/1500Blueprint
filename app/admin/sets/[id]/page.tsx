@@ -9,7 +9,7 @@ export default async function AdminEditSetPage({
   params: Promise<{ id: string }>;
 }) {
   const session = await getAdminSession();
-  if (!session) redirect("/drills");
+  if (!session) redirect("/ultimate");
 
   const { id } = await params;
   const set = await getSetForViewer(id, session.email); // admins may view any set
