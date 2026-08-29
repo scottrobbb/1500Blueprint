@@ -99,19 +99,21 @@ export async function getReadingWritingRunnerQuestions(
   const skillRows = rows.filter((row) => (
     selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill))
   ));
-  const completionRows = skillRows.filter((row) => matchesCompletion(row.id, filters.completion, activity));
-  const preferredRows = completionRows.filter((row) => matchesDifficultyFilter(row, filters.difficulty));
+  const difficultyRows = skillRows.filter((row) => matchesDifficultyFilter(row, filters.difficulty));
+  const preferredRows = difficultyRows.filter((row) => matchesCompletion(row.id, filters.completion, activity));
   const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
   const preferred = toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
   if (preferred.length >= sessionLimit) {
     return selectQuestionBankSession(preferred, sessionLimit, activity.attemptedIds);
   }
 
+  // Fills out the session by relaxing the completion filter only -- the
+  // selected difficulty/level is never relaxed, so filtering to "Challenge"
+  // never pads the session with non-challenge questions to hit the size.
   const candidates = prioritizeBoundedQuestions(
     [
       preferred,
-      toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(completionRows, activity.attemptedIds)),
-      toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(skillRows, activity.attemptedIds)),
+      toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(difficultyRows, activity.attemptedIds)),
     ],
     rows.length,
   );
