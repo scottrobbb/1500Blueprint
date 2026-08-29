@@ -4,6 +4,7 @@ import {
   checkoutRequestToken,
   legacyImportBlockingReasons,
   parseCheckoutIntentClaim,
+  selectLegacyImportCustomer,
   stripeCheckoutIdempotencyKey,
   subscriptionIdentityConflict,
   webhookAuditPayload,
@@ -65,19 +66,59 @@ test("subscription synchronization refuses identity reassignment", () => {
 
 test("legacy import applies only after every customer and subscription is unambiguous", () => {
   assert.deepEqual(legacyImportBlockingReasons({
-    duplicateCustomerAccounts: 0,
     duplicateActiveSubscriptionAccounts: 0,
+    linkedCustomerMismatches: 0,
     unknownSubscriptions: 0,
   }), []);
   assert.deepEqual(legacyImportBlockingReasons({
-    duplicateCustomerAccounts: 2,
     duplicateActiveSubscriptionAccounts: 1,
+    linkedCustomerMismatches: 2,
     unknownSubscriptions: 3,
   }), [
-    "2 account(s) match multiple Stripe customers",
     "1 account(s) have multiple active subscriptions",
+    "2 account(s) are linked to a different Stripe customer",
     "3 subscription(s) have no Core/Max mapping",
   ]);
+});
+
+test("legacy import selects the only active subscription across duplicate customers", () => {
+  assert.deepEqual(selectLegacyImportCustomer([
+    { customerId: "cus_refunded", subscriptionId: "sub_refunded", status: "canceled", created: 20 },
+    { customerId: "cus_starter", subscriptionId: "sub_starter", status: "active", created: 10 },
+  ], null), {
+    customerId: "cus_starter",
+    activeSubscriptionCount: 1,
+    linkedCustomerMismatch: false,
+  });
+});
+
+test("legacy import blocks multiple active subscriptions and customer-link reassignment", () => {
+  assert.deepEqual(selectLegacyImportCustomer([
+    { customerId: "cus_one", subscriptionId: "sub_one", status: "active", created: 10 },
+    { customerId: "cus_two", subscriptionId: "sub_two", status: "past_due", created: 20 },
+  ], null), {
+    customerId: null,
+    activeSubscriptionCount: 2,
+    linkedCustomerMismatch: false,
+  });
+
+  assert.deepEqual(selectLegacyImportCustomer([
+    { customerId: "cus_current", subscriptionId: "sub_current", status: "canceled", created: 10 },
+    { customerId: "cus_active", subscriptionId: "sub_active", status: "active", created: 20 },
+  ], "cus_current"), {
+    customerId: "cus_active",
+    activeSubscriptionCount: 1,
+    linkedCustomerMismatch: true,
+  });
+});
+
+test("legacy import keeps the linked historical customer or otherwise chooses the newest", () => {
+  const candidates = [
+    { customerId: "cus_old", subscriptionId: "sub_old", status: "canceled", created: 10 },
+    { customerId: "cus_new", subscriptionId: "sub_new", status: "canceled", created: 20 },
+  ];
+  assert.equal(selectLegacyImportCustomer(candidates, "cus_old").customerId, "cus_old");
+  assert.equal(selectLegacyImportCustomer(candidates, null).customerId, "cus_new");
 });
 
 test("webhook claims retry failures and expired leases but not active workers", () => {

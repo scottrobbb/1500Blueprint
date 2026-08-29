@@ -22,10 +22,25 @@ export type CheckoutIntentClaim = {
 };
 
 export type LegacyImportAudit = {
-  duplicateCustomerAccounts: number;
   duplicateActiveSubscriptionAccounts: number;
+  linkedCustomerMismatches: number;
   unknownSubscriptions: number;
 };
+
+export type LegacySubscriptionCandidate = {
+  customerId: string;
+  subscriptionId: string;
+  status: string;
+  created: number;
+};
+
+export type LegacyCustomerSelection = {
+  customerId: string | null;
+  activeSubscriptionCount: number;
+  linkedCustomerMismatch: boolean;
+};
+
+const LEGACY_PAID_STATUSES = new Set(["active", "trialing", "past_due"]);
 
 export function checkoutRequestToken(token: unknown): string | null {
   return readIdempotencyToken(token, { minLength: 16, maxLength: 100 });
@@ -112,13 +127,46 @@ export function subscriptionIdentityConflict(
   return null;
 }
 
+export function selectLegacyImportCustomer(
+  candidates: LegacySubscriptionCandidate[],
+  linkedCustomerId: string | null,
+): LegacyCustomerSelection {
+  const active = candidates.filter((candidate) => LEGACY_PAID_STATUSES.has(candidate.status));
+  if (active.length > 1) {
+    return {
+      customerId: null,
+      activeSubscriptionCount: active.length,
+      linkedCustomerMismatch: false,
+    };
+  }
+
+  const linkedCandidate = linkedCustomerId
+    ? candidates.find((candidate) => candidate.customerId === linkedCustomerId)
+    : null;
+  const selected = active[0]
+    ?? linkedCandidate
+    ?? [...candidates].sort((a, b) => b.created - a.created)[0]
+    ?? null;
+  const customerId = selected?.customerId ?? null;
+
+  return {
+    customerId,
+    activeSubscriptionCount: active.length,
+    linkedCustomerMismatch: Boolean(
+      linkedCustomerId
+      && customerId
+      && linkedCustomerId !== customerId,
+    ),
+  };
+}
+
 export function legacyImportBlockingReasons(audit: LegacyImportAudit): string[] {
   return [
-    ...(audit.duplicateCustomerAccounts > 0
-      ? [`${audit.duplicateCustomerAccounts} account(s) match multiple Stripe customers`]
-      : []),
     ...(audit.duplicateActiveSubscriptionAccounts > 0
       ? [`${audit.duplicateActiveSubscriptionAccounts} account(s) have multiple active subscriptions`]
+      : []),
+    ...(audit.linkedCustomerMismatches > 0
+      ? [`${audit.linkedCustomerMismatches} account(s) are linked to a different Stripe customer`]
       : []),
     ...(audit.unknownSubscriptions > 0
       ? [`${audit.unknownSubscriptions} subscription(s) have no Core/Max mapping`]
