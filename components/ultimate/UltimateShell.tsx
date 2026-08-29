@@ -26,7 +26,6 @@ type NavItem = {
   Icon: (props: IconProps) => ReactElement;
   chip?: string;
   requires?: "drills" | "planner" | "live";
-  comingSoon?: boolean;
 };
 
 const navigation: { title?: string; items: NavItem[] }[] = [
@@ -38,7 +37,7 @@ const navigation: { title?: string; items: NavItem[] }[] = [
   {
     title: "Learning",
     items: [
-      { href: "/ultimate/planner", label: "Study Planner", Icon: CalendarIcon, requires: "planner", comingSoon: true },
+      { href: "/ultimate/planner", label: "Study Planner", Icon: CalendarIcon, chip: "New", requires: "planner" },
       { href: "/ultimate/live-calls", label: "Weekly Calls", Icon: VideoIcon, requires: "live" },
       { href: "/ultimate/courses", label: "Courses", Icon: CoursesIcon },
     ],
@@ -115,7 +114,7 @@ export function UltimateShell({
                   key={item.href}
                   item={item}
                   active={isActivePath(pathname, item.href)}
-                  locked={!item.comingSoon && !canUse(item, access)}
+                  locked={!canUse(item, access)}
                   onNavigate={() => setMenuOpen(false)}
                 />
               ))}
@@ -262,9 +261,7 @@ function RailLink({ item, active, locked = false, onNavigate }: { item: NavItem;
     >
       <Icon className={`h-[18px] w-[18px] flex-none ${active ? "text-sky" : "text-white/55"}`} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
-      {item.comingSoon ? (
-        <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white/50">Coming soon</span>
-      ) : locked ? (
+      {locked ? (
         <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white/65"><LockIcon className="h-2.5 w-2.5" />{item.requires === "drills" ? "Core" : "Max"}</span>
       ) : null}
       {item.chip && (

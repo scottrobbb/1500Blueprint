@@ -69,7 +69,7 @@ export default async function DrillsPage() {
             <HomeProgress profile={plannerProfile} testProgress={testProgress} />
           </div>
         </section>
-        <StudyPathways />
+        <StudyPathways profile={plannerProfile} plan={home.player.plan} />
         <HomePracticeList
           isAdmin={nav.isAdmin}
           publication={publication}
