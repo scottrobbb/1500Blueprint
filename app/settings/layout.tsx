@@ -8,8 +8,8 @@ import { getSession } from "@/lib/auth/session";
 import { getNavStats } from "@/lib/gamification/state";
 
 export const metadata: Metadata = {
-  title: "Settings — 1500 SAT Blueprint",
-  description: "Manage your 1500 SAT Blueprint account, plan, and billing.",
+  title: "Settings — 1500 Blueprint",
+  description: "Manage your 1500 Blueprint account, plan, and billing.",
   robots: { index: false, follow: false },
 };
 

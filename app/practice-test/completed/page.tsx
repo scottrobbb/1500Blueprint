@@ -6,7 +6,7 @@ import { getNavStats, listAllTestAttempts } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
 
 export const metadata = {
-  title: "Completed Tests · 1500 SAT Blueprint",
+  title: "Completed Tests · 1500 Blueprint",
   description: "Review your complete SAT practice test history, score trends, and detailed reports.",
 };
 
@@ -26,7 +26,7 @@ export default async function CompletedTestsPage() {
       <AppNav activePage="tests" stats={nav} />
       <CompletedTestsDashboard attempts={attempts} testTitles={testTitles} />
       <footer className="mx-auto w-full max-w-[1100px] px-6 pb-10 text-center text-xs text-navy/40">
-        1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
+        1500 Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
         Board.
       </footer>
     </div>

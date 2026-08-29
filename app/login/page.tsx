@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth/session";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata = {
-  title: "Sign in | 1500 SAT Blueprint",
+  title: "Sign in | 1500 Blueprint",
 };
 
 export default async function LoginPage({
@@ -43,7 +43,7 @@ export default async function LoginPage({
         </div>
 
         <p className="mt-5 text-center text-xs text-white/55">
-          Access is for active 1500 SAT Blueprint members.
+          Access is for active 1500 Blueprint members.
         </p>
       </div>
     </div>

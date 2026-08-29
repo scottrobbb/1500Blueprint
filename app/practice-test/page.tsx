@@ -9,9 +9,9 @@ import { getNavStats, getTestProgress } from "@/lib/gamification/state";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 
 export const metadata = {
-  title: "Practice Tests · 1500 SAT Blueprint",
+  title: "Practice Tests · 1500 Blueprint",
   description:
-    "Choose a full-length, Bluebook-style digital SAT practice test from the 1500 SAT Blueprint.",
+    "Choose a full-length, Bluebook-style digital SAT practice test from the 1500 Blueprint.",
 };
 
 function parseTest(slug: string, title: string) {
@@ -230,7 +230,7 @@ export default async function PracticeTestsPage() {
       </main>
 
       <footer className="mx-auto w-full max-w-[980px] px-6 pb-10 text-center text-xs text-navy/40">
-        1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
+        1500 Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
         Board.
       </footer>
     </div>

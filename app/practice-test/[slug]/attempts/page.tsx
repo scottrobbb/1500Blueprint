@@ -11,7 +11,7 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { UltimateShell } from "@/components/ultimate/UltimateShell";
 
 export const metadata = {
-  title: "Your attempts · 1500 SAT Blueprint",
+  title: "Your attempts · 1500 Blueprint",
 };
 
 function formatTaken(iso: string): string {
@@ -141,7 +141,7 @@ export default async function AttemptsPage({
         )}
       </div>
       <footer className="mx-auto w-full max-w-[860px] px-6 pb-10 text-center text-xs text-navy/40">
-        1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
+        1500 Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
         Board.
       </footer>
     </>

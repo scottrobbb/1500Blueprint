@@ -148,7 +148,7 @@ export function ScoreShareModal({
                 <p className="mt-1 font-display text-2xl font-extrabold text-slate-950">{mathScore}</p>
               </div>
             </div>
-            <p className="mt-5 text-xs font-medium text-slate-400">1500 SAT Blueprint · Practice with a plan</p>
+            <p className="mt-5 text-xs font-medium text-slate-400">1500 Blueprint · Practice with a plan</p>
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import { getExplanationEditorSession } from "@/lib/auth/staff";
 import { countExplanationQueueRemaining, listExplanationEditorStats, listExplanationQueue } from "@/lib/explanations/queries";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Explanation Manager · 1500 SAT Blueprint" };
+export const metadata = { title: "Explanation Manager · 1500 Blueprint" };
 
 export default async function ManagerPage() {
   const session = await getExplanationEditorSession();
@@ -23,7 +23,7 @@ export default async function ManagerPage() {
     <main className="min-h-dvh bg-[#f3f6fa] text-ink">
       <header className="border-b border-white/10 bg-[#0c2348] px-4 py-4 text-white sm:px-7">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-4">
-          <Logo className="[&>svg]:h-8 [&>svg]:w-8 [&_span]:text-white" />
+          <Logo className="[&>img]:h-8 [&>img]:w-8 [&_span]:text-white" />
           <div className="h-8 w-px bg-white/15" />
           <div>
             <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-sky">Content operations</p>

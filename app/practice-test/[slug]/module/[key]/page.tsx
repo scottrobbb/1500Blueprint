@@ -9,7 +9,7 @@ import { getNavStats } from "@/lib/gamification/state";
 import { isAdminEmail } from "@/lib/auth/admin";
 
 export const metadata = {
-  title: "Practice module · 1500 SAT Blueprint",
+  title: "Practice module · 1500 Blueprint",
 };
 
 // Next 16: route params are async. Site auth is enforced by proxy.ts.

@@ -117,7 +117,7 @@ async function accessToken(): Promise<string> {
 }
 
 function calendarDescription(call: WeeklyCallInput): string {
-  return [call.description, call.focusTopic ? `Focus: ${call.focusTopic}` : null, "Scheduled through 1500 SAT Blueprint."].filter(Boolean).join("\n\n");
+  return [call.description, call.focusTopic ? `Focus: ${call.focusTopic}` : null, "Scheduled through 1500 Blueprint."].filter(Boolean).join("\n\n");
 }
 
 function calendarStamp(value: string): string {

@@ -8,7 +8,7 @@ import { listStudentLibrary } from "@/lib/flashcards/queries";
 import { SetLibrary } from "@/components/flashcards/SetLibrary";
 
 export const metadata = {
-  title: "Flashcards | 1500 SAT Blueprint",
+  title: "Flashcards | 1500 Blueprint",
   description:
     "Create your own flashcard sets and study the ones your tutor shares. Learn each term and definition your way.",
 };

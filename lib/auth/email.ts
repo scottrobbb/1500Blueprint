@@ -28,10 +28,10 @@ function fromHeader(): string {
       `Ignoring EMAIL_FROM with domain "${domain ?? "missing"}"; ` +
         `magic links must use ${VERIFIED_FROM_DOMAIN}.`,
     );
-    return `1500 SAT Blueprint <${DEFAULT_FROM_ADDRESS}>`;
+    return `1500 Blueprint <${DEFAULT_FROM_ADDRESS}>`;
   }
 
-  const name = bracketed?.[1]?.trim() || "1500 SAT Blueprint";
+  const name = bracketed?.[1]?.trim() || "1500 Blueprint";
   return `${name} <${address}>`;
 }
 
@@ -39,12 +39,12 @@ export async function sendMagicLink(email: string, url: string): Promise<void> {
   await sendLinkEmail({
     email,
     url,
-    subject: "Your 1500 SAT Blueprint login link",
+    subject: "Your 1500 Blueprint login link",
     heading: "Sign in to your account",
     introduction: "Tap the button below to log in. This link works once and expires in 15 minutes.",
-    buttonLabel: "Log in to 1500 SAT Blueprint",
+    buttonLabel: "Log in to 1500 Blueprint",
     text:
-      `Sign in to 1500 SAT Blueprint:\n\n${url}\n\n` +
+      `Sign in to 1500 Blueprint:\n\n${url}\n\n` +
       `This link works once and expires in 15 minutes. If you didn't request it, you can ignore this email.`,
   });
 }
@@ -53,12 +53,12 @@ export async function sendAccountVerification(email: string, url: string): Promi
   await sendLinkEmail({
     email,
     url,
-    subject: "Verify your 1500 SAT Blueprint account",
+    subject: "Verify your 1500 Blueprint account",
     heading: "Verify your email",
     introduction: "Confirm your email address to finish setting up your password login.",
     buttonLabel: "Verify email",
     text:
-      `Verify your 1500 SAT Blueprint account:\n\n${url}\n\n` +
+      `Verify your 1500 Blueprint account:\n\n${url}\n\n` +
       `If you didn't create this login, you can ignore this email.`,
   });
 }
@@ -67,12 +67,12 @@ export async function sendPasswordReset(email: string, url: string): Promise<voi
   await sendLinkEmail({
     email,
     url,
-    subject: "Reset your 1500 SAT Blueprint password",
+    subject: "Reset your 1500 Blueprint password",
     heading: "Reset your password",
     introduction: "Use the secure link below to choose a new password.",
     buttonLabel: "Reset password",
     text:
-      `Reset your 1500 SAT Blueprint password:\n\n${url}\n\n` +
+      `Reset your 1500 Blueprint password:\n\n${url}\n\n` +
       `If you didn't request a password reset, you can ignore this email.`,
   });
 }
@@ -149,7 +149,7 @@ function render(message: LinkEmail): string {
       </div>
 
       <div style="padding:16px 32px;border-top:1px solid rgba(11,42,91,0.08);background:#f8fafc;">
-        <p style="margin:0;font-size:12px;color:#8a93a6;">1500 SAT Blueprint · Not affiliated with the College Board.</p>
+        <p style="margin:0;font-size:12px;color:#8a93a6;">1500 Blueprint · Not affiliated with the College Board.</p>
       </div>
     </div>
   </div>`;

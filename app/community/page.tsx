@@ -9,9 +9,9 @@ import { getHubState } from "@/lib/gamification/state";
 import { listPosts, listTopMembers } from "@/lib/community/queries";
 
 export const metadata = {
-  title: "Community | 1500 SAT Blueprint",
+  title: "Community | 1500 Blueprint",
   description:
-    "Share score drops, wins, and questions with other 1500 SAT Blueprint students.",
+    "Share score drops, wins, and questions with other 1500 Blueprint students.",
 };
 
 // Always render fresh so a new post shows on navigation back to the feed.
@@ -61,7 +61,7 @@ export default async function CommunityPage() {
       </div>
 
       <footer className="mx-auto w-full max-w-[1120px] px-6 pb-10 text-center text-xs text-navy/40">
-        1500 SAT Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
+        1500 Blueprint practice platform. Not affiliated with the College Board. SAT is a trademark of the College
         Board.
       </footer>
     </div>

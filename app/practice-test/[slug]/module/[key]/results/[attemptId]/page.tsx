@@ -7,7 +7,7 @@ import { ModuleResults } from "@/components/test/ModuleResults";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 
 export const metadata = {
-  title: "Module result · 1500 SAT Blueprint",
+  title: "Module result · 1500 Blueprint",
 };
 
 function formatTaken(iso: string): string {

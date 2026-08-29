@@ -14,7 +14,7 @@ import { getHomeContinuation } from "@/lib/home/continuation";
 import { getStudyPlannerProfile } from "@/lib/study-planner/profile";
 
 export const metadata = {
-  title: "Home | 1500 SAT Blueprint",
+  title: "Home | 1500 Blueprint",
   description:
     "Continue studying, practice an SAT skill, take a full test, or review your work.",
 };

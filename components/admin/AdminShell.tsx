@@ -30,13 +30,13 @@ export function AdminShell({ active, email, children }: AdminShellProps) {
       <header className="sticky top-0 z-40 border-b border-navy/12 bg-white/[0.92] backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-[1200px] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:gap-6 sm:px-6">
           <div className="flex items-center gap-3">
-            <Logo withWordmark={false} className="[&>svg]:h-7 [&>svg]:w-7" />
+            <Logo withWordmark={false} className="[&>img]:h-7 [&>img]:w-7" />
             <div className="leading-tight">
               <div className="font-display text-base font-extrabold tracking-tight text-navy">
                 Drill Admin
               </div>
               <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-navy/40">
-                1500 SAT Blueprint
+                1500 Blueprint
               </div>
             </div>
           </div>

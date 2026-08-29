@@ -14,7 +14,7 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { UltimateShell } from "@/components/ultimate/UltimateShell";
 
 export const metadata = {
-  title: "Practice a module · 1500 SAT Blueprint",
+  title: "Practice a module · 1500 Blueprint",
   description: "Drill a single SAT module on its own, timed and with full review.",
 };
 

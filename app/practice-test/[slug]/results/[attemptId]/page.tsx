@@ -10,7 +10,7 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { isAdminEmail } from "@/lib/auth/admin";
 
 export const metadata = {
-  title: "Your results · 1500 SAT Blueprint",
+  title: "Your results · 1500 Blueprint",
 };
 
 function formatTaken(iso: string): string {

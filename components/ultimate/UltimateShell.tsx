@@ -92,10 +92,10 @@ export function UltimateShell({
   const rail = (
     <div className="flex h-full flex-col">
       <Link href="/ultimate" className="mx-2 mb-7 flex items-center gap-2.5" onClick={() => setMenuOpen(false)}>
-        <Logo withWordmark={false} className="[&>svg]:h-7 [&>svg]:w-7" />
+        <Logo withWordmark={false} className="[&>img]:h-7 [&>img]:w-7" />
         <span className="leading-none">
           <strong className="block font-display text-[15px] font-extrabold tracking-tight text-white">
-            1500 SAT Blueprint
+            1500 Blueprint
           </strong>
           <span className="mt-1 block text-[11px] font-medium text-sky">by Scott Robinson</span>
         </span>
@@ -205,7 +205,7 @@ export function UltimateShell({
             <MenuIcon className="h-5 w-5" />
           </button>
           <Link href="/ultimate" className="min-w-0 flex-1">
-            <Logo className="[&>svg]:h-7 [&>svg]:w-7 [&_span]:text-sm" />
+            <Logo className="[&>img]:h-7 [&>img]:w-7 [&_span]:text-sm" />
           </Link>
           <span className="inline-flex items-center gap-1 text-xs font-bold text-flag">
             <FlameIcon className="h-4 w-4" /> {stats.streak}

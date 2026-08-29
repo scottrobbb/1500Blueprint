@@ -9,10 +9,10 @@ import { getNavStats } from "@/lib/gamification/state";
 
 export const metadata: Metadata = {
   title: {
-    default: "Ultimate | 1500 SAT Blueprint",
+    default: "Ultimate | 1500 Blueprint",
     template: "%s | 1500 Ultimate",
   },
-  description: "The private 1500 SAT Blueprint Ultimate workspace.",
+  description: "The private 1500 Blueprint Ultimate workspace.",
   robots: { index: false, follow: false },
 };
 

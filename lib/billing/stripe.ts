@@ -9,7 +9,7 @@ export function billingStripe(): Stripe {
     const key = process.env.STRIPE_BILLING_KEY?.trim();
     if (!key) throw new Error("STRIPE_BILLING_KEY is not configured");
     stripeClient = new Stripe(key, {
-      appInfo: { name: "1500 SAT Blueprint", version: "1.0.0" },
+      appInfo: { name: "1500 Blueprint", version: "1.0.0" },
       maxNetworkRetries: 2,
     });
   }

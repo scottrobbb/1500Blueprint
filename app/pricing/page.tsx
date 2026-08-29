@@ -31,7 +31,7 @@ const heroChecklist = [
 ];
 
 export const metadata: Metadata = {
-  title: "Pricing | 1500 SAT Blueprint",
+  title: "Pricing | 1500 Blueprint",
   description:
     "Compare Free, Core, and Max SAT prep plans, including practice tests, targeted drills, courses, weekly calls, and study planning.",
 };
@@ -188,9 +188,9 @@ export default async function PricingPage({
       <a href="#pricing-content" className={styles.skipLink}>Skip to pricing content</a>
 
       <header className={styles.header}>
-        <Link href="/" className={styles.brand} aria-label="1500 SAT Blueprint home">
+        <Link href="/" className={styles.brand} aria-label="1500 Blueprint home">
           <Logo withWordmark={false} className={styles.logoMark} />
-          <span>1500 SAT Blueprint</span>
+          <span>1500 Blueprint</span>
         </Link>
         <nav aria-label="Pricing navigation">
           <SmoothScrollLink href="#inside">What you get</SmoothScrollLink>
@@ -327,7 +327,7 @@ export default async function PricingPage({
           <div className={styles.footerIdentity}>
             <Link href="/" className={styles.footerBrand}>
               <Logo withWordmark={false} className={styles.logoMark} />
-              <span>1500 SAT Blueprint</span>
+              <span>1500 Blueprint</span>
             </Link>
             <p>Focused prep for the digital SAT.</p>
           </div>
@@ -366,7 +366,7 @@ export default async function PricingPage({
 
         <div className={styles.footerBottom}>
           <div className={styles.footerLegal}>
-            <p>© 2026 1500 SAT Blueprint. All rights reserved.</p>
+            <p>© 2026 1500 Blueprint. All rights reserved.</p>
             <a
               href="https://docs.google.com/document/d/e/2PACX-1vTDMGNb4tNBjeakIccr0ArqPDmo9Mbgy82VeDpyhCuE9ck3I1sYvxBvOHDNZq2qeCJ3n9w4Ci6qgUGe/pub"
               target="_blank"
@@ -397,7 +397,7 @@ export default async function PricingPage({
             </a>
           </div>
           <p>
-            SAT is a registered trademark of College Board. 1500 SAT Blueprint
+            SAT is a registered trademark of College Board. 1500 Blueprint
             is not affiliated with or endorsed by College Board.
           </p>
         </div>

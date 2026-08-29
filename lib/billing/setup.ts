@@ -3,7 +3,7 @@ import type Stripe from "stripe";
 const plans = [
   {
     code: "core",
-    name: "1500 SAT Blueprint Core",
+    name: "1500 Blueprint Core",
     description: "Structured SAT practice with the complete Core question library.",
     prices: [
       {
@@ -22,7 +22,7 @@ const plans = [
   },
   {
     code: "max",
-    name: "1500 SAT Blueprint Max",
+    name: "1500 Blueprint Max",
     description: "Scott's complete SAT system with every test, course, and live support.",
     prices: [
       {

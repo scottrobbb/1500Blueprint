@@ -4,8 +4,8 @@ import { Logo } from "@/components/Logo";
 
 export const metadata: Metadata = {
   title: {
-    default: "Student account | 1500 SAT Blueprint",
-    template: "%s | 1500 SAT Blueprint",
+    default: "Student account | 1500 Blueprint",
+    template: "%s | 1500 Blueprint",
   },
   robots: { index: false, follow: false },
 };
@@ -33,7 +33,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
             <Benefit>Manage your plan from one account</Benefit>
           </div>
         </div>
-        <p className="relative text-xs text-white/35">1500 SAT Blueprint by Scott Robinson</p>
+        <p className="relative text-xs text-white/35">1500 Blueprint by Scott Robinson</p>
       </section>
 
       <section className="flex min-h-[calc(100dvh-3rem)] items-center justify-center lg:min-h-dvh">
