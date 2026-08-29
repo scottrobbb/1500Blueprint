@@ -603,6 +603,9 @@
   letter-spacing: -.02em;
   margin: 0 0 16px;
 }
+/* Text-only nudge to line up with the other two cards' titles -- the
+   image above it (nth-child(1) .insideCardArt) is untouched. */
+.insideCard:nth-child(1) h3 { margin-top: 26px; }
 .insideCard ul {
   display: grid;
   gap: 12px;
