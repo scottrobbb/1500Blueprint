@@ -583,6 +583,12 @@
   height: auto;
   width: 140px;
 }
+/* The three mascot illustrations are the same 1254x1254 canvas, but the
+   character itself sits smaller within the practice/track compositions
+   (props on either side), so equal box widths render visibly smaller
+   characters. Scaled per-card so the character reads as the same size. */
+.insideCard:nth-child(2) .insideCardArt img { width: 190px; }
+.insideCard:nth-child(3) .insideCardArt img { width: 205px; }
 .insideCard h3 {
   color: #fff;
   font-family: var(--font-gabarito), sans-serif;
@@ -1125,6 +1131,8 @@
   .insideCard { border-radius: 16px; padding: 22px; }
   .insideCardArt { margin-top: -48px; }
   .insideCardArt img { width: 104px; }
+  .insideCard:nth-child(2) .insideCardArt img { width: 141px; }
+  .insideCard:nth-child(3) .insideCardArt img { width: 153px; }
   .savingsPanel { border-radius: 16px; padding: 24px; }
   .costCard { padding: 20px; }
   .costRow b { font-size: 21px; }
