@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { DrillQuestion } from "@/lib/drills/types";
 import { label } from "@/components/drills/shared/ui";
 import { FigureUploadField } from "@/components/admin/editor/FigureUploadField";
@@ -38,7 +39,37 @@ function Field({
   );
 }
 
+async function uploadPastedImage(file: File): Promise<string | null> {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch("/admin/api/figures/upload", { method: "POST", body });
+  const data = (await response.json().catch(() => null)) as { url?: unknown } | null;
+  return response.ok && typeof data?.url === "string" ? data.url : null;
+}
+
 export function SharedFields({ question, onChange }: Props) {
+  const [pastingImage, setPastingImage] = useState(false);
+  const [pasteError, setPasteError] = useState(false);
+
+  async function handleExplanationPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
+    if (!imageItem) return;
+    event.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    const cursor = event.currentTarget.selectionStart;
+    const current = question.explanation ?? "";
+    setPastingImage(true);
+    setPasteError(false);
+    const url = await uploadPastedImage(file);
+    setPastingImage(false);
+    if (!url) {
+      setPasteError(true);
+      return;
+    }
+    onChange({ explanation: `${current.slice(0, cursor)}\n![](${url})\n${current.slice(cursor)}` });
+  }
+
   return (
     <div className="space-y-5">
       <Field title="Stem" helper="The question prompt students read. Inline math goes in $...$.">
@@ -71,15 +102,18 @@ export function SharedFields({ question, onChange }: Props) {
 
       <Field
         title="Explanation"
-        helper="Shown after the student answers. Explain the correct choice and why the others are wrong."
+        helper="Shown after the student answers. Explain the correct choice and why the others are wrong. Paste a screenshot to drop it in."
       >
         <textarea
           value={question.explanation ?? ""}
           onChange={(e) => onChange({ explanation: e.target.value || null })}
+          onPaste={(e) => void handleExplanationPaste(e)}
           rows={4}
           placeholder="The correct answer is ... because ..."
           className={`mt-1.5 min-h-[110px] resize-y ${fieldClass}`}
         />
+        {pastingImage ? <p className="mt-1.5 text-[12px] font-semibold text-brand-700">Uploading pasted screenshot…</p> : null}
+        {pasteError ? <p role="alert" className="mt-1.5 text-[12px] font-semibold text-danger-600">That screenshot could not be uploaded.</p> : null}
       </Field>
     </div>
   );
