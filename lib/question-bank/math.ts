@@ -8,10 +8,10 @@ export const MATH_DOMAINS = [
 ] as const;
 
 export type MathDomain = (typeof MATH_DOMAINS)[number];
-export type MathDifficultyFilter = Difficulty | "all";
+export type QuestionBankLevel = Difficulty | "challenge";
+export type MathDifficultyFilter = QuestionBankLevel | "all";
 export type MathCompletionFilter = "all" | "unanswered" | "attempted";
 export type MathAnswerType = "mc_single" | "grid_in";
-export type QuestionBankLevel = Difficulty | "challenge";
 
 // Applies only when no skill is selected ("Start all topics") — an unfocused
 // session across the whole bank still needs a sane size. A skill-filtered
@@ -25,7 +25,7 @@ export type MathChoice = {
   text: string;
 };
 
-export type QuestionBankDifficultyBreakdown = Record<Difficulty, {
+export type QuestionBankLevelBreakdown = Record<QuestionBankLevel, {
   available: number;
   attempted: number;
   accuracy: number | null;
@@ -40,26 +40,29 @@ export type MathSkillMetric = {
   attempts: number;
   correct: number;
   accuracy: number | null;
-  byDifficulty: QuestionBankDifficultyBreakdown;
+  byLevel: QuestionBankLevelBreakdown;
 };
 
-export function emptyDifficultyBreakdown(): QuestionBankDifficultyBreakdown {
+export function emptyLevelBreakdown(): QuestionBankLevelBreakdown {
   return {
     easy: { available: 0, attempted: 0, accuracy: null },
     medium: { available: 0, attempted: 0, accuracy: null },
     hard: { available: 0, attempted: 0, accuracy: null },
+    challenge: { available: 0, attempted: 0, accuracy: null },
   };
 }
 
 // A skill row's overview numbers (progress bar, accuracy dot) should reflect
-// whichever difficulty the catalog page's filter is set to, not always the
-// skill's all-difficulty total.
+// whichever difficulty/level the catalog page's filter is set to, not always
+// the skill's all-difficulty total. Challenge questions are carved out of
+// their nominal difficulty bucket into their own "challenge" level, so
+// selecting "Hard" never double-counts them alongside selecting "Challenge".
 export function skillMetricForDifficulty(
-  metric: { available: number; attempted: number; accuracy: number | null; byDifficulty: QuestionBankDifficultyBreakdown },
+  metric: { available: number; attempted: number; accuracy: number | null; byLevel: QuestionBankLevelBreakdown },
   difficulty: MathDifficultyFilter,
 ): { available: number; attempted: number; accuracy: number | null } {
   if (difficulty === "all") return { available: metric.available, attempted: metric.attempted, accuracy: metric.accuracy };
-  return metric.byDifficulty[difficulty];
+  return metric.byLevel[difficulty];
 }
 
 export type MathBankCatalog = {
@@ -104,7 +107,7 @@ export function isMathDomain(value: string | null): value is MathDomain {
 }
 
 export function parseDifficultyFilter(value: string | undefined): MathDifficultyFilter {
-  return value === "easy" || value === "medium" || value === "hard" ? value : "all";
+  return value === "easy" || value === "medium" || value === "hard" || value === "challenge" ? value : "all";
 }
 
 export function parseCompletionFilter(value: string | undefined): MathCompletionFilter {

@@ -6,7 +6,7 @@ import {
   boundedQuestionBankSessionLimit,
   calculateAccuracy,
   canAccessQuestionBankLevel,
-  emptyDifficultyBreakdown,
+  emptyLevelBreakdown,
   isMathDomain,
   normalizeMathResponse,
   prioritizeBoundedQuestions,
@@ -21,6 +21,7 @@ import {
   type MathDomain,
   type MathRunnerQuestion,
   type MathSkillMetric,
+  type QuestionBankLevel,
 } from "@/lib/question-bank/math";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
@@ -110,9 +111,7 @@ export async function getMathRunnerQuestions(
     selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill))
   ));
   const completionRows = skillRows.filter((row) => matchesCompletion(row.id, filters.completion, activity));
-  const preferredRows = completionRows.filter((row) => (
-    filters.difficulty === "all" || row.difficulty === filters.difficulty
-  ));
+  const preferredRows = completionRows.filter((row) => matchesDifficultyFilter(row, filters.difficulty));
   const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
   const preferred = toMathRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
   if (preferred.length >= sessionLimit) {
@@ -138,6 +137,15 @@ function matchesCompletion(
   if (completion === "all") return true;
   const attempted = activity.attemptedIds.has(questionId);
   return completion === "attempted" ? attempted : !attempted;
+}
+
+// Challenge questions carry a raw difficulty (usually "hard") but are
+// carved into their own "challenge" level -- comparing by level instead of
+// raw difficulty keeps "Hard" and "Challenge" mutually exclusive.
+function matchesDifficultyFilter(row: MathQuestionRow, difficulty: MathDifficultyFilter): boolean {
+  if (difficulty === "all") return true;
+  const rowDifficulty = isDifficulty(row.difficulty) ? row.difficulty : "medium";
+  return questionBankLevel(rowDifficulty, row.content) === difficulty;
 }
 
 function filterChallengeRows(rows: MathQuestionRow[], includeChallenge: boolean): MathQuestionRow[] {
@@ -360,10 +368,10 @@ function buildSkillMetrics(
       attempts: 0,
       correct: 0,
       accuracy: null,
-      byDifficulty: emptyDifficultyBreakdown(),
+      byLevel: emptyLevelBreakdown(),
     }));
   const byName = new Map(metrics.map((metric) => [metric.name, metric]));
-  const byDifficultyAttempts = new Map<string, Record<Difficulty, { attempts: number; correct: number }>>();
+  const byLevelAttempts = new Map<string, Record<QuestionBankLevel, { attempts: number; correct: number }>>();
 
   for (const question of questions) {
     const taxonomy = resolveTaxonomy(question);
@@ -379,24 +387,25 @@ function buildSkillMetrics(
     }
 
     if (isDifficulty(question.difficulty)) {
-      const bucket = metric.byDifficulty[question.difficulty];
+      const level = questionBankLevel(question.difficulty, question.content);
+      const bucket = metric.byLevel[level];
       bucket.available += 1;
       if (attempted) bucket.attempted += 1;
       if (questionActivity) {
-        const attemptTotals = byDifficultyAttempts.get(metric.name) ?? { easy: { attempts: 0, correct: 0 }, medium: { attempts: 0, correct: 0 }, hard: { attempts: 0, correct: 0 } };
-        attemptTotals[question.difficulty].attempts += questionActivity.attempts;
-        attemptTotals[question.difficulty].correct += questionActivity.correct;
-        byDifficultyAttempts.set(metric.name, attemptTotals);
+        const attemptTotals = byLevelAttempts.get(metric.name) ?? { easy: { attempts: 0, correct: 0 }, medium: { attempts: 0, correct: 0 }, hard: { attempts: 0, correct: 0 }, challenge: { attempts: 0, correct: 0 } };
+        attemptTotals[level].attempts += questionActivity.attempts;
+        attemptTotals[level].correct += questionActivity.correct;
+        byLevelAttempts.set(metric.name, attemptTotals);
       }
     }
   }
 
   for (const metric of metrics) {
     metric.accuracy = activity.hasAccuracy ? calculateAccuracy(metric.correct, metric.attempts) : null;
-    const attemptTotals = byDifficultyAttempts.get(metric.name);
-    for (const difficulty of ["easy", "medium", "hard"] as const) {
-      const totals = attemptTotals?.[difficulty];
-      metric.byDifficulty[difficulty].accuracy = activity.hasAccuracy && totals
+    const attemptTotals = byLevelAttempts.get(metric.name);
+    for (const level of ["easy", "medium", "hard", "challenge"] as const) {
+      const totals = attemptTotals?.[level];
+      metric.byLevel[level].accuracy = activity.hasAccuracy && totals
         ? calculateAccuracy(totals.correct, totals.attempts)
         : null;
     }

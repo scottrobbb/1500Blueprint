@@ -113,6 +113,7 @@ export function SubjectBankCatalogView({
               ["easy", "Easy"],
               ["medium", "Medium"],
               ["hard", "Hard"],
+              ["challenge", "Challenge"],
             ]}
           />
           <FilterSelect
