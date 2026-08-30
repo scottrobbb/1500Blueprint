@@ -35,11 +35,21 @@ function fmtNum(n: number): string {
 
 type SortKey = "name" | "xp" | "streak" | "mastered" | "bestTest" | "lastActive";
 type StudentView = "all" | "complimentary" | "suspended";
+type PlanFilter = "all" | "free" | "core" | "max";
+
+function emptyStateMessage(view: StudentView, planFilter: PlanFilter): string {
+  const parts = [
+    view === "complimentary" ? "complimentary" : view === "suspended" ? "suspended complimentary" : null,
+    planFilter !== "all" ? planFilter : null,
+  ].filter((part): part is string => part !== null);
+  return `No ${parts.length ? `${parts.join(" ")} ` : ""}students match this search.`;
+}
 
 export function StudentsTable({ students }: { students: StudentRow[] }) {
   const [studentRows, setStudentRows] = useState(students);
   const [query, setQuery] = useState("");
   const [view, setView] = useState<StudentView>("all");
+  const [planFilter, setPlanFilter] = useState<PlanFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("xp");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -56,14 +66,18 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
     const suspended = studentRows.filter(
       (student) => student.isComplimentary && student.accountStatus === "suspended",
     ).length;
-    return { count: studentRows.length, totalXp, totalMastered, avgLevel, complimentary, suspended };
+    const free = studentRows.filter((student) => student.plan === "free").length;
+    const core = studentRows.filter((student) => student.plan === "core").length;
+    const max = studentRows.filter((student) => student.plan === "max").length;
+    return { count: studentRows.length, totalXp, totalMastered, avgLevel, complimentary, suspended, free, core, max };
   }, [studentRows]);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     const inView = studentRows.filter((student) => {
-      if (view === "complimentary") return student.isComplimentary;
-      if (view === "suspended") return student.isComplimentary && student.accountStatus === "suspended";
+      if (view === "complimentary" && !student.isComplimentary) return false;
+      if (view === "suspended" && !(student.isComplimentary && student.accountStatus === "suspended")) return false;
+      if (planFilter !== "all" && student.plan !== planFilter) return false;
       return true;
     });
     const filtered = q
@@ -94,7 +108,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
       if (av > bv) return 1 * dir;
       return 0;
     });
-  }, [studentRows, query, view, sortKey, sortDir]);
+  }, [studentRows, query, view, planFilter, sortKey, sortDir]);
 
   function toggleSort(key: SortKey) {
     if (key === sortKey) {
@@ -176,6 +190,20 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
             Suspended <CountBadge>{summary.suspended}</CountBadge>
           </ViewButton>
         </div>
+        <div className="flex w-full flex-wrap gap-2" role="group" aria-label="Plan filters">
+          <ViewButton active={planFilter === "all"} onClick={() => setPlanFilter("all")}>
+            All plans
+          </ViewButton>
+          <ViewButton active={planFilter === "free"} onClick={() => setPlanFilter("free")}>
+            Free <CountBadge>{summary.free}</CountBadge>
+          </ViewButton>
+          <ViewButton active={planFilter === "core"} onClick={() => setPlanFilter("core")}>
+            Core <CountBadge>{summary.core}</CountBadge>
+          </ViewButton>
+          <ViewButton active={planFilter === "max"} onClick={() => setPlanFilter("max")}>
+            Max <CountBadge>{summary.max}</CountBadge>
+          </ViewButton>
+        </div>
         <input
           type="search"
           aria-label="Search students by name or email"
@@ -186,7 +214,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
         />
         <span className="text-sm text-navy/50">
           {rows.length} {rows.length === 1 ? "student" : "students"}
-          {query || view !== "all" ? ` of ${studentRows.length}` : ""}
+          {query || view !== "all" || planFilter !== "all" ? ` of ${studentRows.length}` : ""}
         </span>
       </div>
 
@@ -305,11 +333,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
               {rows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-12 text-center text-sm text-navy/50">
-                    {view === "complimentary"
-                      ? "No complimentary students match this search."
-                      : view === "suspended"
-                        ? "No suspended complimentary students match this search."
-                        : "No students match this search."}
+                    {emptyStateMessage(view, planFilter)}
                   </td>
                 </tr>
               ) : null}
