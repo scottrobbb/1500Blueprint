@@ -47,7 +47,7 @@ export default async function UltimateCoursesPage() {
               currentPlan={access.plan}
               requiredPlan="max"
               title="The advanced curriculum is ready when you are"
-              description="Your included Desmos 101 and Foundations courses stay open. Max adds every Math and Reading & Writing subtopic course without resetting progress."
+              description="Your included Desmos 101 and Reading & Writing 101 courses stay open. Max adds Blueprint Foundations and every Math and Reading & Writing subtopic course without resetting progress."
               features={["All advanced courses", "Embedded lesson practice", "Planner-linked assignments"]}
               className="mb-6"
             />
