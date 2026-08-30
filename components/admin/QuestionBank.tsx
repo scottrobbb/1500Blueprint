@@ -13,6 +13,7 @@ import type {
   SatSkill,
 } from "@/lib/drills/types";
 import type { Difficulty } from "@/lib/sat/types";
+import { questionBankLevel } from "@/lib/question-bank/math";
 import { MathText } from "@/components/test/MathText";
 import { label, primaryBtn, secondaryBtn } from "@/components/drills/shared/ui";
 
@@ -422,7 +423,7 @@ function ResultsTable({
                 {drillTitleBySlug.get(q.drillSlug) ?? q.drillSlug}
               </Td>
               <Td className="text-navy/60">{q.skill ?? "-"}</Td>
-              <Td className="whitespace-nowrap text-navy/60">{capitalize(q.difficulty)}</Td>
+              <Td className="whitespace-nowrap text-navy/60">{difficultyLabel(q)}</Td>
               <Td className="whitespace-nowrap text-navy/60">
                 {ANSWER_TYPE_LABELS[q.answerType]}
               </Td>
@@ -552,4 +553,13 @@ function formatDate(iso: string): string {
 
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+// The stored difficulty is always easy/medium/hard -- Challenge is a "hard"
+// question whose content.source names a Challenge archive (see
+// questionBankLevel). Show that distinction in the table instead of just
+// "Hard" so Challenge rows read the same way they do everywhere else.
+function difficultyLabel(question: DrillQuestion): string {
+  const level = questionBankLevel(question.difficulty, question.content as Record<string, unknown> | null);
+  return level === "challenge" ? "Challenge" : capitalize(question.difficulty);
 }
