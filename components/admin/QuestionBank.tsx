@@ -86,6 +86,16 @@ export function QuestionBank({
     [drills],
   );
 
+  // "+ New question" only ever makes sense for the two drills that can
+  // actually become Question Bank content (see isQuestionBankEligibleShape)
+  // -- the other drill types (vocab, word scan, AI math, etc.) are managed
+  // from this same screen but aren't bank-eligible, so offering them here
+  // just to immediately hit "Not eligible" would be confusing.
+  const bankEligibleDrills = useMemo(
+    () => drills.filter((d) => d.slug === "grammar" || d.slug === "targeted-math"),
+    [drills],
+  );
+
   // Skills constrained to the chosen section (the bank filters by skill name).
   const sectionSkills = useMemo(() => {
     const list = filters.section
@@ -186,7 +196,7 @@ export function QuestionBank({
             aria-label="New question drill"
           >
             <option value="">Choose a drill…</option>
-            {drills.map((d) => (
+            {bankEligibleDrills.map((d) => (
               <option key={d.slug} value={d.slug}>
                 {d.title}
               </option>
