@@ -64,7 +64,7 @@ export function TestLibraryCard({
             )
           ) : (
             <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-              <Link href={`/practice-test/${slug}?workspace=ultimate`} className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy px-5 text-sm font-bold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+              <Link href={`/practice-test/${slug}?workspace=ultimate`} prefetch={false} className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy px-5 text-sm font-bold text-white transition-colors hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
                 {actionLabel} <ChevronRightIcon className="h-4 w-4" />
               </Link>
               <Link href={`/practice-test/${slug}/modules?workspace=ultimate`} className="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl border border-navy/15 bg-white px-4 text-sm font-bold text-navy transition-colors hover:bg-haze focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">

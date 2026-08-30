@@ -90,6 +90,7 @@ export default async function ModulesPage({
                   <li key={m.key}>
                     <Link
                       href={`/practice-test/${slug}/module/${m.key}${workspaceQuery}`}
+                      prefetch={false}
                       className="group flex h-full flex-col rounded-xl border border-navy/15 bg-white p-4 transition-colors hover:border-navy/30"
                     >
                       <span
@@ -120,6 +121,7 @@ export default async function ModulesPage({
 
         <Link
           href={`/practice-test/${slug}${workspaceQuery}`}
+          prefetch={false}
           className="mt-8 flex items-center gap-3 rounded-xl border border-navy/15 bg-white p-4 transition-colors hover:border-navy/30"
         >
           <span className="min-w-0 flex-1">

@@ -8,13 +8,34 @@ import {
 test("only high-value content delivery pages receive account read limits", () => {
   assert.equal(protectedContentPolicy("/ultimate/bank/math/practice")?.surface, "question-bank-session");
   assert.equal(protectedContentPolicy("/ultimate/bank/reading-writing/practice")?.surface, "question-bank-session");
+  assert.equal(protectedContentPolicy("/practice-test/test-1")?.surface, "practice-test");
   assert.equal(protectedContentPolicy("/practice-test/test-1/module/rw-1")?.surface, "practice-test");
   assert.equal(protectedContentPolicy("/drills/grammar")?.surface, "drill-session");
   assert.equal(protectedContentPolicy("/ultimate/courses/foundations/day-1")?.surface, "course-lesson");
   assert.equal(protectedContentPolicy("/ultimate/bank/math"), null);
   assert.equal(protectedContentPolicy("/ultimate/courses/foundations"), null);
   assert.equal(protectedContentPolicy("/practice-test/completed"), null);
+  assert.equal(protectedContentPolicy("/practice-test/test-1/modules"), null);
+  assert.equal(protectedContentPolicy("/practice-test/test-1/attempts"), null);
+  assert.equal(protectedContentPolicy("/practice-test/test-1/results/attempt-1"), null);
+  assert.equal(protectedContentPolicy("/practice-test/test-1/module/rw-1/results/attempt-1"), null);
   assert.equal(protectedContentPolicy("/api/tests/session"), null);
+});
+
+test("practice test runners use a fresh quota scope", async () => {
+  const scopes: string[] = [];
+  await enforceProtectedContentRead("student@example.com", "/practice-test/test-1", {
+    check: async (scope, _discriminator, options) => {
+      scopes.push(scope);
+      return { allowed: true, used: 1, limit: options.limit, resetsAt: "2026-08-30T12:00:00.000Z" };
+    },
+    report: () => undefined,
+  });
+
+  assert.deepEqual(scopes, [
+    "protected-content:practice-test-runner-v2:burst",
+    "protected-content:practice-test-runner-v2:daily",
+  ]);
 });
 
 test("content limits are account-scoped, fail open on outages, and report only anonymous surfaces", async () => {

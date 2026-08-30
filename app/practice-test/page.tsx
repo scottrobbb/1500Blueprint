@@ -177,6 +177,7 @@ export default async function PracticeTestsPage() {
                   ) : (
                     <Link
                       href={`/practice-test/${t.slug}`}
+                      prefetch={false}
                       className="group flex items-center gap-[15px] rounded-xl border border-navy/15 border-t-2 border-t-brand bg-white p-[18px] transition-colors hover:border-navy/30"
                     >
                       {cardContent}

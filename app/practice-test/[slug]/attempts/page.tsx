@@ -70,7 +70,7 @@ export default async function AttemptsPage({
         {attempts.length === 0 ? (
           <div className="mt-6 rounded-xl border border-navy/15 bg-white p-8 text-center text-navy/60">
             You have not finished this test yet.{" "}
-            <Link href={`/practice-test/${slug}${workspaceQuery}`} className="font-semibold text-brand-600">
+            <Link href={`/practice-test/${slug}${workspaceQuery}`} prefetch={false} className="font-semibold text-brand-600">
               Start it now
             </Link>
             .

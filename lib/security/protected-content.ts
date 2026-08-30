@@ -12,6 +12,7 @@ type WindowPolicy = {
 
 type ProtectedContentPolicy = {
   surface: "course-lesson" | "drill-session" | "practice-test" | "question-bank-session";
+  scope?: string;
   windows: readonly WindowPolicy[];
 };
 
@@ -50,9 +51,13 @@ const POLICIES: readonly { matches: (pathname: string) => boolean; policy: Prote
   },
   {
     matches: (pathname) => pathname !== "/practice-test/completed"
-      && /^\/practice-test\/[^/]+(?:\/|$)/.test(pathname),
+      && (
+        /^\/practice-test\/[^/]+\/?$/.test(pathname)
+        || /^\/practice-test\/[^/]+\/module\/[^/]+\/?$/.test(pathname)
+      ),
     policy: {
       surface: "practice-test",
+      scope: "practice-test-runner-v2",
       windows: [
         { name: "burst", limit: 30, windowSeconds: 60 },
         { name: "daily", limit: 120, windowSeconds: 24 * 60 * 60 },
@@ -102,7 +107,7 @@ export async function enforceProtectedContentRead(
   const results = await Promise.all(policy.windows.map(async (window) => ({
     window,
     result: await dependencies.check(
-      `protected-content:${policy.surface}:${window.name}`,
+      `protected-content:${policy.scope ?? policy.surface}:${window.name}`,
       email,
       { limit: window.limit, windowSeconds: window.windowSeconds },
     ),
