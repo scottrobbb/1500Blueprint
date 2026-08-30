@@ -44,6 +44,7 @@ type PlanFeature = {
 
 const freeFeatures: PlanFeature[] = [
   { label: "200 questions (20 Challenge Questions)", icon: "grid" },
+  { label: "1 full-length adaptive digital SAT", icon: "file" },
   { label: "Desmos 101 course", icon: "book" },
   { label: "Reading & Writing 101 course", icon: "book" },
 ];

@@ -9,12 +9,19 @@ import { listTests } from "@/lib/sat/loadTest";
 // backstop, not a product tier boundary, so it must never surface as a number.
 const MAX_HIDDEN_MONTHLY_DRILL_CAP = 500;
 
+// Practice Test 1 is a free sample for every signed-in student regardless of
+// plan -- keyed by slug (not list position) so it stays free even if tests are
+// reordered, renamed, or renumbered later.
+export const FREE_PRACTICE_TEST_SLUG = "practice-test-1";
+
 export async function canAccessPracticeTest(email: string, testSlug: string): Promise<boolean> {
   if (isAdminEmail(email)) return true;
   const [access, tests] = await Promise.all([getStudentAccess(email), listTests()]);
   if (!access.active) return false;
   const testIndex = tests.findIndex((test) => test.slug === testSlug);
-  return testIndex >= 0 && testIndex < access.entitlements.fullTestLimit;
+  if (testIndex < 0) return false;
+  if (testSlug === FREE_PRACTICE_TEST_SLUG) return true;
+  return testIndex < access.entitlements.fullTestLimit;
 }
 
 export async function questionBankAllowance(email: string): Promise<{ allowed: boolean; used: number; limit: number | "unlimited" }> {

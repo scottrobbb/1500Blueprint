@@ -7,6 +7,7 @@ import { isAdminEmail } from "@/lib/auth/admin";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getStudentAccess } from "@/lib/auth/entitlements";
+import { FREE_PRACTICE_TEST_SLUG } from "@/lib/auth/access-control";
 import { getTestProgress } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
 import { listResumableTestSlugs } from "@/lib/sat/testSession";
@@ -110,7 +111,7 @@ export default async function UltimateTestsPage() {
             const bestScore = progress.bestBySlug[test.slug] ?? null;
             const attempts = progress.countBySlug[test.slug] ?? 0;
             const constructionLocked = test.status !== "published" && !isAdmin;
-            const planLocked = testIndex >= access.entitlements.fullTestLimit && !isAdmin;
+            const planLocked = test.slug !== FREE_PRACTICE_TEST_SLUG && testIndex >= access.entitlements.fullTestLimit && !isAdmin;
             // Every paywalled test now points Free users at Max -- Core is
             // never offered as a standalone upgrade target in the app.
             const requiredPlan = "max";
