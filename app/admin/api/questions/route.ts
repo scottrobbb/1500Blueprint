@@ -50,9 +50,11 @@ export async function POST(req: NextRequest) {
   if (!session) return FORBIDDEN;
 
   let drillSlug = "";
+  let visibleInDrill = true;
   try {
     const body = await readJsonBody(req, 16 * 1024) as Record<string, unknown>;
     drillSlug = String(body?.drillSlug ?? "").trim();
+    if (typeof body?.visibleInDrill === "boolean") visibleInDrill = body.visibleInDrill;
   } catch {
     return NextResponse.json({ error: "invalid body" }, { status: 400 });
   }
@@ -60,7 +62,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "drillSlug required" }, { status: 400 });
   }
 
-  const question = await createQuestion(drillSlug as DrillSlug, session.email);
+  const question = await createQuestion(drillSlug as DrillSlug, session.email, { visibleInDrill });
   if (!question) {
     return NextResponse.json({ error: "create failed" }, { status: 500 });
   }

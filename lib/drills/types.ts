@@ -143,6 +143,7 @@ export type DrillQuestion = {
   status: QuestionStatus;
   includeInQuestionBank: boolean;
   questionBankFreeTier: boolean;
+  visibleInDrill: boolean;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;

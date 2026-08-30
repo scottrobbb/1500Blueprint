@@ -159,7 +159,9 @@ export function QuestionBank({
       const res = await fetch("/admin/api/questions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ drillSlug: newDrill }),
+        // Created from the Question Bank's subject picker -- keep it out of
+        // the standalone Targeted Math / Grammar drill practice pools.
+        body: JSON.stringify({ drillSlug: newDrill, visibleInDrill: false }),
       });
       if (!res.ok) {
         setError("The question could not be created. Please try again.");

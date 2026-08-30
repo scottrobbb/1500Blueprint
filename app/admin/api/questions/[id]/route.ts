@@ -39,6 +39,7 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     || !Array.isArray(body.walkthrough)
     || typeof body.question.includeInQuestionBank !== "boolean"
     || typeof body.question.questionBankFreeTier !== "boolean"
+    || typeof body.question.visibleInDrill !== "boolean"
   ) {
     return NextResponse.json({ error: "invalid_body", detail: "Question metadata and walkthrough steps are required." }, { status: 400 });
   }

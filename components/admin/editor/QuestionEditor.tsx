@@ -49,6 +49,7 @@ function toQuestionInput(q: DrillQuestion): QuestionInput {
     status: q.status,
     includeInQuestionBank: q.includeInQuestionBank,
     questionBankFreeTier: q.questionBankFreeTier,
+    visibleInDrill: q.visibleInDrill,
   };
 }
 

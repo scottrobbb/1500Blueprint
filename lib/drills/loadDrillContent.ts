@@ -69,6 +69,7 @@ function toQuestion(r: QuestionRow): DrillQuestion {
     status: r.status as QuestionStatus,
     includeInQuestionBank: false,
     questionBankFreeTier: false,
+    visibleInDrill: true,
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -99,6 +100,7 @@ export async function loadDrillQuestions(
       )
       .eq("drill_slug", drillSlug)
       .eq("status", "published")
+      .eq("visible_in_drill", true)
       .order("created_at")
       .order("id")
       .range(from, from + pageSize - 1);
