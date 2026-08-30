@@ -116,6 +116,7 @@ export function TestRunner({
   const [showPlannerScorePrompt, setShowPlannerScorePrompt] = useState(false);
   const [attemptSaveStatus, setAttemptSaveStatus] = useState<AttemptSaveStatus>("idle");
   const [extendedTime, setExtendedTime] = useState<TimeMultiplier>(1);
+  const [exitStatus, setExitStatus] = useState<"idle" | "exiting" | "error">("idle");
 
   // Latest values for the unload/interval savers, which must not re-bind per change.
   const stateRef = useRef(state);
@@ -138,7 +139,13 @@ export function TestRunner({
   // screen, results (a finished test clears its session server-side instead), and
   // the final-module review (the screen right before results) so no save can be in
   // flight racing the completion clear. keepalive lets a save survive a navigation.
-  const persist = useCallback(() => {
+  // Returns whether the save actually succeeded, so an explicit "Save and
+  // Exit" click can tell the difference and warn the student instead of
+  // navigating away on a session/access/rate-limit/server error that a plain
+  // fetch().catch() can't see (fetch only rejects on a network-level failure,
+  // not on a non-2xx response). The background autosave callers below don't
+  // need this and just fire-and-forget as before.
+  const persist = useCallback((): Promise<boolean> => {
     const s = stateRef.current;
     const isFinalReview =
       s.phase === "review" &&
@@ -150,15 +157,27 @@ export function TestRunner({
       s.phase === "results" ||
       isFinalReview
     ) {
-      return;
+      return Promise.resolve(true);
     }
-    void fetch("/api/tests/session", {
+    return fetch("/api/tests/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ testSlug: slug, state: s, highlights: highlightsRef.current }),
       keepalive: true,
-    }).catch(() => {});
+    }).then((response) => response.ok).catch(() => false);
   }, [slug, test]);
+
+  async function handleSaveAndExit() {
+    if (exitStatus === "exiting") return;
+    setExitStatus("exiting");
+    const saved = await persist();
+    if (!saved) {
+      setExitStatus("error");
+      return;
+    }
+    setArmed(slug, false);
+    router.push(testsHref);
+  }
 
   useEffect(() => {
     if (state.phase !== "module" && state.phase !== "review" && state.phase !== "break") return;
@@ -449,11 +468,7 @@ export function TestRunner({
       onOpenReference={() => setOverlay("reference")}
       onOpenCalculator={() => setCalcOpen(true)}
       onOpenLineReader={() => setLineReaderOn(true)}
-      onExit={() => {
-        persist();
-        setArmed(slug, false);
-        router.push(testsHref);
-      }}
+      onExit={() => void handleSaveAndExit()}
     />
   );
 
@@ -465,6 +480,12 @@ export function TestRunner({
       {overlay === "reference" && <ReferenceModal onClose={() => setOverlay(null)} />}
       {calcOpen && <CalculatorPanel onClose={() => setCalcOpen(false)} />}
       {lineReaderOn && <LineReader onClose={() => setLineReaderOn(false)} />}
+      {exitStatus === "error" && (
+        <SaveExitErrorDialog
+          onRetry={() => void handleSaveAndExit()}
+          onDismiss={() => setExitStatus("idle")}
+        />
+      )}
     </>
   );
 
@@ -555,6 +576,49 @@ export function TestRunner({
       />
       {overlays}
       {devMenu}
+    </div>
+  );
+}
+
+function SaveExitErrorDialog({ onRetry, onDismiss }: { onRetry: () => void; onDismiss: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-exam-sans">
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={onDismiss}
+        className="absolute inset-0 cursor-default bg-black/30"
+      />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="save-exit-error-title"
+        className="relative w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl"
+      >
+        <h2 id="save-exit-error-title" className="text-[17px] font-semibold text-exam-ink">
+          Your progress was not saved
+        </h2>
+        <p className="mt-2 text-[14px] leading-6 text-exam-ink/70">
+          Something went wrong saving your test. Stay on this page and try again before leaving --
+          your answers are still here.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onDismiss}
+            className="min-h-11 cursor-pointer rounded-lg px-4 text-sm font-semibold text-exam-ink hover:bg-exam-tint"
+          >
+            Keep testing
+          </button>
+          <button
+            type="button"
+            onClick={onRetry}
+            className="min-h-11 cursor-pointer rounded-lg bg-exam-blue px-4 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Retry save
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
