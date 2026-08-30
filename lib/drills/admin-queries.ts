@@ -251,7 +251,7 @@ export async function updateDrill(slug: string, patch: DrillUpdate): Promise<voi
 
 export type QuestionFilters = {
   drillSlug?: DrillSlug;
-  difficulty?: Difficulty;
+  difficulty?: Difficulty | "challenge";
   answerType?: AnswerType;
   status?: QuestionStatus;
   section?: SatSection;
@@ -274,7 +274,17 @@ export async function listQuestions(
     );
 
   if (filters.drillSlug) query = query.eq("drill_slug", filters.drillSlug);
-  if (filters.difficulty) query = query.eq("difficulty", filters.difficulty);
+  if (filters.difficulty === "challenge") {
+    // Challenge isn't a stored difficulty -- it's a "hard" question whose
+    // content.source names a Challenge archive (see questionBankLevel in
+    // lib/question-bank/math.ts). Keep this ilike pattern in sync with that
+    // function's /challenge/i regex.
+    query = query
+      .eq("difficulty", "hard")
+      .or("content->source->>archivePath.ilike.%challenge%,content->source->>document.ilike.%challenge%");
+  } else if (filters.difficulty) {
+    query = query.eq("difficulty", filters.difficulty);
+  }
   if (filters.answerType) query = query.eq("answer_type", filters.answerType);
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.section) query = query.eq("section", filters.section);

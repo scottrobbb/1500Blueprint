@@ -306,6 +306,7 @@ function FilterBar({
                 {capitalize(d)}
               </option>
             ))}
+            <option value="challenge">Challenge</option>
           </select>
         </FilterField>
 

@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   // rows. Casting avoids `any` while keeping the narrow filter shape.
   const filters: QuestionFilters = {
     drillSlug: param(params, "drillSlug") as DrillSlug | undefined,
-    difficulty: param(params, "difficulty") as Difficulty | undefined,
+    difficulty: param(params, "difficulty") as Difficulty | "challenge" | undefined,
     answerType: param(params, "answerType") as AnswerType | undefined,
     status: param(params, "status") as QuestionStatus | undefined,
     section: param(params, "section") as SatSection | undefined,
