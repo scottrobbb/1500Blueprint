@@ -8,6 +8,7 @@ import type { PlanCode } from "@/lib/auth/plans";
 import type {
   QuestionBankActivity,
   QuestionBankDashboard,
+  QuestionBankDifficultyMetric,
   QuestionBankSection,
   QuestionBankSubject,
   QuestionBankTopic,
@@ -83,7 +84,9 @@ type QuestionBankAccess = { plan: PlanCode; test: boolean; used: number; limit: 
 
 export function QuestionBankDashboardView({ dashboard, access }: { dashboard: QuestionBankDashboard; access: QuestionBankAccess }) {
   const [showSampleData, setShowSampleData] = useState(false);
-  const visibleDashboard = showSampleData ? SAMPLE_DASHBOARD : dashboard;
+  const [focusView, setFocusView] = useState<"domains" | "difficulty">("domains");
+  const sampleDataEnabled = access.isAdmin && showSampleData;
+  const visibleDashboard = sampleDataEnabled ? SAMPLE_DASHBOARD : dashboard;
   const totalActivity = visibleDashboard.activity.reduce(
     (total, week) => ({ correct: total.correct + week.correct, wrong: total.wrong + week.wrong }),
     { correct: 0, wrong: 0 },
@@ -138,16 +141,16 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
                 <button
                   type="button"
                   onClick={() => setShowSampleData((current) => !current)}
-                  aria-pressed={showSampleData}
+                  aria-pressed={sampleDataEnabled}
                   className="inline-flex min-h-9 items-center rounded-xl border border-brand/25 bg-white px-3 text-xs font-bold text-brand-700 transition-colors hover:border-brand/45 hover:bg-haze"
                 >
-                  {showSampleData ? "Show my data" : "Show sample data"}
+                  {sampleDataEnabled ? "Show my data" : "Show sample data"}
                 </button>
               ) : null}
             </div>
           </div>
 
-          {showSampleData ? (
+          {sampleDataEnabled ? (
             <p className="mb-3 text-xs font-medium text-navy/45">Preview only—your real progress has not changed.</p>
           ) : null}
 
@@ -169,13 +172,25 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
         </section>
 
         <section aria-labelledby="detail-heading" className="mt-8">
-          <div className="mb-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 id="detail-heading" className="font-display text-[25px] font-extrabold tracking-[-0.025em] text-ink sm:text-[30px]">
               Focus areas
             </h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-navy/45">
-              See which SAT domains need another pass in each section.
-            </p>
+            <div className="inline-flex rounded-xl border border-navy/10 bg-white p-1" aria-label="Focus area view">
+              {(["domains", "difficulty"] as const).map((view) => (
+                <button
+                  key={view}
+                  type="button"
+                  onClick={() => setFocusView(view)}
+                  aria-pressed={focusView === view}
+                  className={`min-h-8 rounded-lg px-3 text-xs font-bold transition-colors ${
+                    focusView === view ? "bg-navy text-white" : "text-navy/50 hover:bg-navy/[0.05] hover:text-navy"
+                  }`}
+                >
+                  {view === "domains" ? "Domains" : "Difficulty"}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid gap-5 lg:grid-cols-2">
@@ -184,6 +199,8 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
                 key={subject.section}
                 subject={subject}
                 topics={visibleDashboard.topics.filter((topic) => topic.section === subject.section)}
+                difficulty={visibleDashboard.difficulty.filter((metric) => metric.section === subject.section)}
+                view={focusView}
               />
             ))}
           </div>
@@ -292,7 +309,17 @@ function ActivityChart({ activity }: { activity: QuestionBankActivity[] }) {
   );
 }
 
-function SubjectFocusCard({ subject, topics }: { subject: QuestionBankSubject; topics: QuestionBankTopic[] }) {
+function SubjectFocusCard({
+  subject,
+  topics,
+  difficulty,
+  view,
+}: {
+  subject: QuestionBankSubject;
+  topics: QuestionBankTopic[];
+  difficulty: QuestionBankDifficultyMetric[];
+  view: "domains" | "difficulty";
+}) {
   const copy = SECTION_COPY[subject.section];
   const rows = DOMAINS[subject.section].map((domain) =>
     topics.find((topic) => normalizeLabel(topic.domain) === normalizeLabel(domain)) ?? {
@@ -314,25 +341,54 @@ function SubjectFocusCard({ subject, topics }: { subject: QuestionBankSubject; t
         </strong>
       </header>
 
-      <div className="divide-y divide-navy/[0.07] px-5 sm:px-6">
-        {rows.map((topic) => (
-          <div key={topic.domain} className="grid grid-cols-[minmax(0,1fr)_112px] items-center gap-5 py-4">
-            <div className="min-w-0">
-              <h4 className="truncate text-sm font-semibold text-navy">{topic.domain}</h4>
-              <p className="mt-0.5 text-[10px] text-navy/35">{topic.attempts.toLocaleString()} attempts</p>
-            </div>
-            <div>
-              <div className="mb-1 flex items-center justify-between gap-2">
-                <span className="text-[9px] font-medium text-navy/30">Accuracy</span>
-                <strong className={`text-xs ${topic.attempts > 0 ? accuracyColor(topic.accuracy) : "text-navy/30"}`}>
-                  {topic.attempts > 0 ? `${topic.accuracy}%` : "-"}
-                </strong>
+      {view === "domains" ? (
+        <div className="divide-y divide-navy/[0.07] px-5 sm:px-6">
+          {rows.map((topic) => (
+            <div key={topic.domain} className="grid grid-cols-[minmax(0,1fr)_112px] items-center gap-5 py-4">
+              <div className="min-w-0">
+                <h4 className="truncate text-sm font-semibold text-navy">{topic.domain}</h4>
+                <p className="mt-0.5 text-[10px] text-navy/35">{topic.attempts.toLocaleString()} attempts</p>
               </div>
-              <Meter value={topic.attempts > 0 ? topic.accuracy : 0} />
+              <div>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="text-[9px] font-medium text-navy/30">Accuracy</span>
+                  <strong className={`text-xs ${topic.attempts > 0 ? accuracyColor(topic.accuracy) : "text-navy/30"}`}>
+                    {topic.attempts > 0 ? `${topic.accuracy}%` : "-"}
+                  </strong>
+                </div>
+                <Meter value={topic.attempts > 0 ? topic.accuracy : 0} />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-navy/[0.07] px-5 sm:px-6">
+          {(["easy", "medium", "hard"] as const).map((level) => {
+            const metric = difficulty.find((item) => item.difficulty === level);
+            const attempts = metric?.attempts ?? 0;
+            const accuracy = metric?.accuracy ?? 0;
+            return (
+              <div key={level} className="grid grid-cols-[minmax(0,1fr)_132px] items-center gap-5 py-5">
+                <div className="min-w-0">
+                  <h4 className="capitalize text-sm font-semibold text-navy">{level}</h4>
+                  <p className="mt-0.5 text-[10px] text-navy/35">{attempts.toLocaleString()} attempts</p>
+                </div>
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <strong className={`text-xs ${attempts > 0 ? accuracyColor(accuracy) : "text-navy/30"}`}>
+                      {attempts > 0 ? `${accuracy}%` : "-"}
+                    </strong>
+                    <span className="text-[10px] font-medium tabular-nums text-navy/40">
+                      {attempts > 0 ? formatAverageTime(metric?.averageDurationMs ?? 0) : "—"}
+                    </span>
+                  </div>
+                  <Meter value={attempts > 0 ? accuracy : 0} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <footer className="border-t border-navy/10 px-5 py-4 sm:px-6">
         <Link
@@ -367,6 +423,14 @@ function LegendMetric({ tone, value, label }: { tone: "success" | "danger"; valu
 function formatWeek(value: string): string {
   const date = new Date(`${value}T00:00:00Z`);
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(date);
+}
+
+function formatAverageTime(milliseconds: number): string {
+  if (milliseconds <= 0) return "—";
+  const seconds = Math.round(milliseconds / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const remainder = seconds % 60;
+  return minutes > 0 ? `${minutes}m ${remainder.toString().padStart(2, "0")}s avg` : `${seconds}s avg`;
 }
 
 function normalizeLabel(value: string): string {
