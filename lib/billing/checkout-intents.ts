@@ -32,6 +32,24 @@ export async function claimCheckoutIntent(input: {
   return claim;
 }
 
+// Releases a reservation this request just claimed but never turned into a real
+// Stripe Checkout session (ensureCustomer/resolvePrice/createCheckout threw). Only
+// touches rows still in 'creating' status, so it can never clobber a reservation
+// that already has a live Stripe session attached.
+export async function releaseCheckoutIntent(input: {
+  userId: string;
+  livemode: boolean;
+  reservationId: string;
+}): Promise<boolean> {
+  const { data, error } = await supabaseAdmin().rpc("release_billing_checkout_intent", {
+    p_user_id: input.userId,
+    p_livemode: input.livemode,
+    p_reservation_id: input.reservationId,
+  });
+  if (error) throw new Error(`failed to release Stripe Checkout reservation: ${error.message}`);
+  return data === true;
+}
+
 export async function storeCheckoutSession(input: {
   userId: string;
   livemode: boolean;

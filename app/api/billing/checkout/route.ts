@@ -4,7 +4,7 @@ import { changeBillingPlan } from "@/lib/billing/changes";
 import { billingBaseUrl, billingCheckoutEnabled, billingLivemode } from "@/lib/billing/config";
 import { resolveBillingPriceId } from "@/lib/billing/prices";
 import { billingStripe } from "@/lib/billing/stripe";
-import { claimCheckoutIntent, storeCheckoutSession } from "@/lib/billing/checkout-intents";
+import { claimCheckoutIntent, releaseCheckoutIntent, storeCheckoutSession } from "@/lib/billing/checkout-intents";
 import { getSession } from "@/lib/auth/session";
 import { reportServerError } from "@/lib/observability/server";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
@@ -28,6 +28,7 @@ export const POST = createCheckoutPostHandler({
     return_url: returnUrl,
   }),
   claimIntent: claimCheckoutIntent,
+  releaseIntent: releaseCheckoutIntent,
   ensureCustomer: ensureStripeCustomer,
   resolvePrice: resolveBillingPriceId,
   createCheckout: async (params, idempotencyKey) => billingStripe().checkout.sessions.create(

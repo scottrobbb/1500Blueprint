@@ -92,6 +92,7 @@ declare
     'record_question_bank_attempt',
     'record_test_award',
     'refund_ai_submission',
+    'release_billing_checkout_intent',
     'store_billing_checkout_session',
     'touch_updated_at',
     'update_staff_explanation',

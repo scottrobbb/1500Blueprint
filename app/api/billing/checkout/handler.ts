@@ -41,6 +41,7 @@ export type CheckoutHandlerDeps = {
   changePlan: (userId: string, plan: BillablePlan, cadence: BillingCadence) => Promise<{ kind: "unchanged" | "upgrade" | "downgrade" | "pending-change-canceled" }>;
   createPortal: (customerId: string, returnUrl: string) => Promise<{ url: string }>;
   claimIntent: (input: { userId: string; livemode: boolean; plan: BillablePlan; cadence: BillingCadence; requestToken: string }) => Promise<CheckoutIntentClaim>;
+  releaseIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<boolean>;
   ensureCustomer: (account: BillingAccount) => Promise<string>;
   resolvePrice: (plan: BillablePlan, cadence: BillingCadence) => Promise<string>;
   createCheckout: (params: CheckoutCreateParams, idempotencyKey: string) => Promise<{ id: string; url: string | null }>;
@@ -53,6 +54,11 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
     const baseUrl = deps.baseUrl(request.url);
     if (!isSameOriginRequest(request, baseUrl)) return new Response("Forbidden", { status: 403 });
     if (!deps.billingEnabled()) return redirect(baseUrl, "/pricing?billing=unavailable");
+
+    // Tracks a reservation this request has claimed but not yet turned into a
+    // real Stripe Checkout session, so the catch block below can release it on
+    // failure instead of leaving it "busy" for the rest of its lease.
+    let claimedReservation: { userId: string; livemode: boolean; reservationId: string } | null = null;
 
     let formData: URLSearchParams;
     try {
@@ -123,6 +129,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         return NextResponse.redirect(intent.checkoutUrl, 303);
       }
       if (intent.decision === "busy") return redirect(baseUrl, "/pricing?billing=checkout-active");
+      claimedReservation = { userId: account.id, livemode, reservationId: intent.reservationId };
 
       const idempotencyKey = stripeCheckoutIdempotencyKey(intent.reservationId);
       const expiresAt = Math.floor(Date.parse(intent.checkoutExpiresAt) / 1000);
@@ -175,6 +182,18 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         route: "/api/billing/checkout",
         method: "POST",
       });
+      if (claimedReservation) {
+        try {
+          await deps.releaseIntent(claimedReservation);
+        } catch (releaseError) {
+          deps.reportError("billing.checkout.reservation_release_failed", releaseError, {
+            provider: "supabase",
+            route: "/api/billing/checkout",
+            method: "POST",
+            correlationId: claimedReservation.reservationId,
+          });
+        }
+      }
       return redirect(baseUrl, isPaymentFailure(error) ? "/pricing?billing=payment" : "/pricing?billing=error");
     }
   };

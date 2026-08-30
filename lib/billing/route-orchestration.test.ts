@@ -76,6 +76,7 @@ function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHan
       url: "https://checkout.stripe.com/c/pay/cs_test_123456789",
     }),
     storeCheckout: async () => undefined,
+    releaseIntent: async () => true,
     reportError: () => undefined,
     ...overrides,
   };
@@ -385,6 +386,55 @@ test("checkout maps Stripe payment failures without storing an uncreated session
   assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=payment`);
   assert.equal(storeCalls, 0);
   assert.deepEqual(events, ["billing.checkout.failed"]);
+});
+
+test("a claimed reservation is released when Stripe work fails afterward, so the next attempt isn't blocked as busy", async () => {
+  let released: { userId: string; livemode: boolean; reservationId: string } | null = null;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    resolvePrice: async () => { throw new Error("The configured Stripe price does not match the offer"); },
+    releaseIntent: async (input) => {
+      released = input;
+      return true;
+    },
+  }));
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    checkoutToken: "11111111-1111-4111-8111-111111111111",
+  }));
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=error`);
+  assert.deepEqual(released, { userId: ACCOUNT.id, livemode: false, reservationId: RESERVATION_ID });
+});
+
+test("a failed reservation release does not mask the original checkout error", async () => {
+  const events: string[] = [];
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    createCheckout: async () => { throw new Error("Stripe is unreachable"); },
+    releaseIntent: async () => { throw new Error("release also failed"); },
+    reportError: (event) => { events.push(event); },
+  }));
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    checkoutToken: "22222222-2222-4222-8222-222222222222",
+  }));
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=error`);
+  assert.deepEqual(events, ["billing.checkout.failed", "billing.checkout.reservation_release_failed"]);
+});
+
+test("a reservation is not released when Checkout already returned a live session before storeCheckout fails", async () => {
+  let releaseCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    storeCheckout: async () => { throw new Error("supabase write failed"); },
+    releaseIntent: async () => {
+      releaseCalls += 1;
+      return true;
+    },
+  }));
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    checkoutToken: "33333333-3333-4333-8333-333333333333",
+  }));
+  assert.equal(response.headers.get("location"), "https://checkout.stripe.com/c/pay/cs_test_123456789");
+  assert.equal(releaseCalls, 0);
 });
 
 function validCheckout(overrides: Partial<ConfirmCheckout> = {}): ConfirmCheckout {
