@@ -50,6 +50,16 @@ const SECTIONS: { value: SatSection; label: string }[] = [
   { value: "rw", label: "Reading & Writing" },
   { value: "math", label: "Math" },
 ];
+
+// "+ New question" speaks in Question Bank subjects, not drills -- the
+// underlying row still needs a drill_slug (the only two that are ever
+// Question Bank-eligible; see isQuestionBankEligibleShape), but the person
+// creating a question here shouldn't have to know or care that it's called
+// a "drill" internally.
+const NEW_QUESTION_SUBJECTS: { slug: DrillSlug; label: string }[] = [
+  { slug: "targeted-math", label: "Math" },
+  { slug: "grammar", label: "Reading & Writing" },
+];
 const ANSWER_TYPE_LABELS: Record<AnswerType, string> = {
   mc_single: "Multiple choice",
   grid_in: "Grid-in",
@@ -83,16 +93,6 @@ export function QuestionBank({
 
   const drillTitleBySlug = useMemo(
     () => new Map(drills.map((d) => [d.slug, d.title])),
-    [drills],
-  );
-
-  // "+ New question" only ever makes sense for the two drills that can
-  // actually become Question Bank content (see isQuestionBankEligibleShape)
-  // -- the other drill types (vocab, word scan, AI math, etc.) are managed
-  // from this same screen but aren't bank-eligible, so offering them here
-  // just to immediately hit "Not eligible" would be confusing.
-  const bankEligibleDrills = useMemo(
-    () => drills.filter((d) => d.slug === "grammar" || d.slug === "targeted-math"),
     [drills],
   );
 
@@ -193,12 +193,12 @@ export function QuestionBank({
             value={newDrill}
             onChange={(e) => setNewDrill(e.target.value as DrillSlug | "")}
             className={selectClass}
-            aria-label="New question drill"
+            aria-label="New question subject"
           >
-            <option value="">Choose a drill…</option>
-            {bankEligibleDrills.map((d) => (
-              <option key={d.slug} value={d.slug}>
-                {d.title}
+            <option value="">Choose a subject…</option>
+            {NEW_QUESTION_SUBJECTS.map((s) => (
+              <option key={s.slug} value={s.slug}>
+                {s.label}
               </option>
             ))}
           </select>
