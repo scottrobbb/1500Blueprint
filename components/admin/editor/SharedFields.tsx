@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { DrillQuestion } from "@/lib/drills/types";
 import { label } from "@/components/drills/shared/ui";
 import { FigureUploadField } from "@/components/admin/editor/FigureUploadField";
+import { isBareVimeoUrl } from "@/lib/explanations/vimeo";
 
 // Editor fields owned by the shared shell (not the per-drill Fields editors):
 // the question's stem, passage/context, figure URL, and explanation. Every
@@ -53,12 +54,19 @@ export function SharedFields({ question, onChange }: Props) {
 
   async function handleExplanationPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
     const imageItem = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
-    if (!imageItem) return;
+    const pastedText = event.clipboardData.getData("text/plain");
+    if (!imageItem && !isBareVimeoUrl(pastedText)) return;
     event.preventDefault();
-    const file = imageItem.getAsFile();
-    if (!file) return;
     const cursor = event.currentTarget.selectionStart;
     const current = question.explanation ?? "";
+
+    if (!imageItem) {
+      onChange({ explanation: `${current.slice(0, cursor)}\n![](${pastedText.trim()})\n${current.slice(cursor)}` });
+      return;
+    }
+
+    const file = imageItem.getAsFile();
+    if (!file) return;
     setPastingImage(true);
     setPasteError(false);
     const url = await uploadPastedImage(file);
@@ -102,7 +110,7 @@ export function SharedFields({ question, onChange }: Props) {
 
       <Field
         title="Explanation"
-        helper="Shown after the student answers. Explain the correct choice and why the others are wrong. Paste a screenshot to drop it in."
+        helper="Shown after the student answers. Explain the correct choice and why the others are wrong. Paste a screenshot, or a Vimeo link, to drop it in."
       >
         <textarea
           value={question.explanation ?? ""}

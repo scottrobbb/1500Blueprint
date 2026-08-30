@@ -10,6 +10,7 @@ import {
   countExplanationWords,
 } from "@/lib/explanations/policy";
 import type { ExplanationQueueItem } from "@/lib/explanations/queries";
+import { isBareVimeoUrl } from "@/lib/explanations/vimeo";
 import { createClient } from "@/utils/supabase/client";
 
 async function uploadPastedImage(file: File): Promise<string | null> {
@@ -228,11 +229,19 @@ function ExplanationWorkspace({
 
   async function handlePaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
     const imageItem = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
-    if (!imageItem) return;
+    const pastedText = event.clipboardData.getData("text/plain");
+    if (!imageItem && !isBareVimeoUrl(pastedText)) return;
     event.preventDefault();
+    const cursor = event.currentTarget.selectionStart;
+
+    if (!imageItem) {
+      const vimeoUrl = pastedText.trim();
+      setExplanation((current) => `${current.slice(0, cursor)}\n![](${vimeoUrl})\n${current.slice(cursor)}`);
+      return;
+    }
+
     const file = imageItem.getAsFile();
     if (!file) return;
-    const cursor = event.currentTarget.selectionStart;
     setPastingImage(true);
     setPasteError(false);
     const url = await uploadPastedImage(file);
@@ -333,7 +342,7 @@ function ExplanationWorkspace({
 
         <div className="min-w-0">
           <label htmlFor="explanation" className="text-sm font-extrabold text-navy">Explanation</label>
-          <p className="mt-1 text-xs leading-5 text-navy/45">Explain why the correct answer works and why the tempting wrong path fails. LaTeX delimiters render in the preview. Paste a screenshot to drop it in.</p>
+          <p className="mt-1 text-xs leading-5 text-navy/45">Explain why the correct answer works and why the tempting wrong path fails. LaTeX delimiters render in the preview. Paste a screenshot, or a Vimeo link, to drop it in.</p>
           <textarea id="explanation" value={explanation} maxLength={EXPLANATION_MAX_CHARACTERS} onChange={(event) => setExplanation(event.target.value)} onPaste={(event) => void handlePaste(event)} className="mt-3 min-h-[280px] w-full resize-y rounded-2xl border border-navy/15 bg-haze/35 p-4 font-mono text-sm leading-6 text-ink outline-none placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15" placeholder="Write a complete, student-facing explanation…" />
           {pastingImage ? <p className="mt-1.5 text-xs font-semibold text-brand-700">Uploading pasted screenshot…</p> : null}
           {pasteError ? <p role="alert" className="mt-1.5 text-xs font-semibold text-danger-600">That screenshot could not be uploaded.</p> : null}

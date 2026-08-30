@@ -11,6 +11,7 @@ import { UnderlineIcon } from "@/components/test/icons";
 import { label, primaryBtn, secondaryBtn } from "@/components/drills/shared/ui";
 import { ChevronRightIcon } from "@/components/shell/icons";
 import { FigureUploadField } from "@/components/admin/editor/FigureUploadField";
+import { isBareVimeoUrl } from "@/lib/explanations/vimeo";
 
 // Dedicated editor for ONE practice-test question (tests/questions/choices).
 // Separate from the drill CMS's QuestionEditor because the shape differs: fixed
@@ -111,12 +112,19 @@ export function TestQuestionEditor({
 
   async function handleExplanationPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
     const imageItem = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
-    if (!imageItem) return;
+    const pastedText = event.clipboardData.getData("text/plain");
+    if (!imageItem && !isBareVimeoUrl(pastedText)) return;
     event.preventDefault();
-    const file = imageItem.getAsFile();
-    if (!file) return;
     const cursor = event.currentTarget.selectionStart;
     const current = draft.explanation;
+
+    if (!imageItem) {
+      patch({ explanation: `${current.slice(0, cursor)}\n![](${pastedText.trim()})\n${current.slice(cursor)}` });
+      return;
+    }
+
+    const file = imageItem.getAsFile();
+    if (!file) return;
     setPastingImage(true);
     setPasteError(false);
     const url = await uploadPastedImage(file);
@@ -415,7 +423,7 @@ export function TestQuestionEditor({
               onPaste={(e) => void handleExplanationPaste(e)}
               rows={4}
               className={`${inputClass} resize-y`}
-              placeholder="Why the correct answer is correct (shown on the results review). Paste a screenshot to drop it in."
+              placeholder="Why the correct answer is correct (shown on the results review). Paste a screenshot, or a Vimeo link, to drop it in."
             />
             {pastingImage ? <p className="mt-1.5 text-[12px] font-semibold text-brand-700">Uploading pasted screenshot…</p> : null}
             {pasteError ? <p role="alert" className="mt-1.5 text-[12px] font-semibold text-danger-600">That screenshot could not be uploaded.</p> : null}
