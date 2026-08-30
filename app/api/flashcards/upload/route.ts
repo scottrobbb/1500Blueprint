@@ -1,4 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isAdminEmail } from "@/lib/auth/admin";
+import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { contentLengthExceeds, hasImageSignature } from "@/lib/security/request";
@@ -7,7 +9,7 @@ import { reportServerError } from "@/lib/observability/server";
 
 // Image upload for flashcard cards. Stores into the public "figures" bucket
 // (same one the test importer uses) under a flashcards/ prefix and returns the
-// public URL. Any signed-in member may upload (the editor is shared).
+// public URL. Any signed-in Max member (or admin) may upload.
 const BUCKET = "figures";
 const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
 const ALLOWED: Record<string, string> = {
@@ -29,6 +31,12 @@ async function ensureBucket() {
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!isAdminEmail(session.email)) {
+    const access = await getStudentAccess(session.email);
+    if (!access.entitlements.flashcards) {
+      return NextResponse.json({ error: "Flashcards are included with Max.", code: "plan_limit" }, { status: 402 });
+    }
+  }
   if (contentLengthExceeds(req, MAX_BYTES + 256 * 1024)) {
     return NextResponse.json({ error: "too_large" }, { status: 413 });
   }

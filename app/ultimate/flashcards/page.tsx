@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { SetLibrary } from "@/components/flashcards/SetLibrary";
+import { AccessGate } from "@/components/account/AccessGate";
+import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { listStudentLibrary } from "@/lib/flashcards/queries";
@@ -9,6 +11,10 @@ export const metadata = { title: "Flashcards" };
 export default async function UltimateFlashcardsPage() {
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
+  const access = await getStudentAccess(session.email);
+  if (!access.entitlements.flashcards) {
+    return <AccessGate title="Build your own flashcard decks" description="Custom flashcard sets, sharing, and study tracking are included with Max." currentPlan={access.plan} />;
+  }
 
   const library = await listStudentLibrary(session.email);
   return (

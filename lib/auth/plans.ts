@@ -11,6 +11,7 @@ export type PlanEntitlements = {
   allCourses: boolean;
   liveGroupClasses: boolean;
   studyPlanner: boolean;
+  flashcards: boolean;
   discordRole: "core" | "max" | null;
 };
 
@@ -35,6 +36,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
     allCourses: false,
     liveGroupClasses: false,
     studyPlanner: false,
+    flashcards: false,
     discordRole: null,
   },
   core: {
@@ -47,6 +49,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
     allCourses: false,
     liveGroupClasses: false,
     studyPlanner: false,
+    flashcards: false,
     discordRole: "core",
   },
   max: {
@@ -59,6 +62,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
     allCourses: true,
     liveGroupClasses: true,
     studyPlanner: true,
+    flashcards: true,
     discordRole: "max",
   },
 };

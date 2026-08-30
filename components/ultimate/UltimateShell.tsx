@@ -25,7 +25,7 @@ type NavItem = {
   label: string;
   Icon: (props: IconProps) => ReactElement;
   chip?: string;
-  requires?: "drills" | "planner" | "live";
+  requires?: "drills" | "planner" | "live" | "flashcards";
 };
 
 const navigation: { title?: string; items: NavItem[] }[] = [
@@ -48,7 +48,7 @@ const navigation: { title?: string; items: NavItem[] }[] = [
       { href: "/ultimate/bank", label: "Question Bank", Icon: QuestionBankIcon, chip: "New" },
       { href: "/ultimate/drills", label: "Drills", Icon: DrillsIcon, requires: "drills" },
       { href: "/ultimate/tests", label: "Full-Length Tests", Icon: TestsIcon },
-      { href: "/ultimate/flashcards", label: "Flashcards", Icon: LayersIcon },
+      { href: "/ultimate/flashcards", label: "Flashcards", Icon: LayersIcon, requires: "flashcards" },
       { href: "/ultimate/history", label: "History", Icon: HistoryIcon },
     ],
   },
@@ -275,6 +275,7 @@ function canUse(item: NavItem, access: StudentAccess): boolean {
   if (item.requires === "drills") return access.entitlements.dailyDrillLimit !== null;
   if (item.requires === "planner") return access.entitlements.studyPlanner;
   if (item.requires === "live") return access.entitlements.liveGroupClasses;
+  if (item.requires === "flashcards") return access.entitlements.flashcards;
   return true;
 }
 
