@@ -125,7 +125,7 @@ function PriceCard({
   const priceInfo = tier === "core" || tier === "max" ? CADENCE_PRICE[tier][cadence ?? "monthly"] : { perMonth: "0", billed: null };
 
   return (
-    <article id={tier === "max" ? "max-plan" : undefined} className={`${styles.priceCard} ${styles[tier]}`}>
+    <article className={`${styles.priceCard} ${styles[tier]}`}>
       {tier === "max" ? (
         <Image src="/images/blu-peek-pricing.png" alt="" width={220} height={220} className={styles.maxPeek} />
       ) : null}

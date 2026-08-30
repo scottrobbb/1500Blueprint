@@ -151,7 +151,7 @@ export function UltimateShell({
 
       <div className="mt-3 border-t border-white/10 pt-3">
         {access.plan !== "max" ? (
-          <Link href="/pricing?plan=max#max-plan" onClick={() => setMenuOpen(false)} className="mb-2.5 flex min-h-11 items-center gap-2 rounded-xl px-3 text-gold transition-colors hover:bg-gold/[0.1]">
+          <Link href="/pricing" onClick={() => setMenuOpen(false)} className="mb-2.5 flex min-h-11 items-center gap-2 rounded-xl px-3 text-gold transition-colors hover:bg-gold/[0.1]">
             <UpgradeIcon className="h-4 w-4" />
             <strong className="text-xs font-extrabold uppercase tracking-[0.08em]">Upgrade</strong>
           </Link>

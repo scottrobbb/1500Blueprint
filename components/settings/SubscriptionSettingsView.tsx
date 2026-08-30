@@ -86,7 +86,7 @@ export function SubscriptionSettingsView({
               ) : null}
               {access.plan !== "max" ? (
                 <Link
-                  href="/pricing#plans"
+                  href="/pricing"
                   className="inline-flex h-10 items-center justify-center rounded-lg border-2 border-navy/10 bg-white px-4 text-sm font-bold text-navy transition-colors hover:border-brand/30 hover:text-brand-600"
                 >
                   {subscription ? "Change plan" : "Upgrade plan"}
