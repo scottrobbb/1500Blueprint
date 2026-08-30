@@ -460,7 +460,16 @@ function BillingNotice({ state }: { state: string }) {
     legacy: "We found existing Blueprint billing history that must be linked before changing plans. Nothing was charged.",
   };
   const message = messages[state] ?? "Billing could not be opened. Please try again.";
-  return <div className={styles.billingNotice} role="status">{message}</div>;
+  return (
+    <div className={styles.billingNotice} role="status">
+      {message}
+      {state === "checkout-active" ? (
+        <form action="/api/billing/checkout/cancel-current" method="post" className={styles.billingNoticeAction}>
+          <button type="submit" className={styles.billingNoticeButton}>Cancel it</button>
+        </form>
+      ) : null}
+    </div>
+  );
 }
 
 function ArrowIcon() {

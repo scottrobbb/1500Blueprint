@@ -10,6 +10,10 @@ import {
   type CheckoutCancelHandlerDeps,
 } from "../../app/api/billing/checkout/cancel/handler";
 import {
+  createCheckoutCancelCurrentPostHandler,
+  type CheckoutCancelCurrentHandlerDeps,
+} from "../../app/api/billing/checkout/cancel-current/handler";
+import {
   createConfirmGetHandler,
   type ConfirmCheckout,
   type ConfirmHandlerDeps,
@@ -90,6 +94,22 @@ function checkoutCancelDeps(
     getSession: async () => ({ email: ACCOUNT.email }),
     findAccount: async () => ACCOUNT,
     livemode: () => true,
+    cancelIntent: async () => "cancelled",
+    reportError: () => undefined,
+    ...overrides,
+  };
+}
+
+function checkoutCancelCurrentDeps(
+  overrides: Partial<CheckoutCancelCurrentHandlerDeps> = {},
+): CheckoutCancelCurrentHandlerDeps {
+  return {
+    baseUrl: () => APP_URL,
+    getSession: async () => ({ email: ACCOUNT.email }),
+    findAccount: async () => ACCOUNT,
+    livemode: () => true,
+    consumeRateLimit: async () => ({ allowed: true }),
+    findCurrentReservation: async () => ({ reservationId: RESERVATION_ID }),
     cancelIntent: async () => "cancelled",
     reportError: () => undefined,
     ...overrides,
@@ -309,6 +329,81 @@ test("the Checkout cancel return releases only the authenticated account reserva
     livemode: true,
     reservationId: RESERVATION_ID,
   });
+});
+
+test("cancel-current resolves and releases the account's own reservation without a reservation_id from the client", async () => {
+  let looked: [string, boolean] | null = null;
+  let cancelled: Parameters<CheckoutCancelCurrentHandlerDeps["cancelIntent"]>[0] | null = null;
+  const handler = createCheckoutCancelCurrentPostHandler(checkoutCancelCurrentDeps({
+    findCurrentReservation: async (userId, livemode) => {
+      looked = [userId, livemode];
+      return { reservationId: RESERVATION_ID };
+    },
+    cancelIntent: async (input) => {
+      cancelled = input;
+      return "cancelled";
+    },
+  }));
+
+  const response = await handler(new Request(`${APP_URL}/api/billing/checkout/cancel-current`, {
+    method: "POST",
+    headers: { origin: APP_URL },
+  }));
+
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=cancelled`);
+  assert.deepEqual(looked, [ACCOUNT.id, true]);
+  assert.deepEqual(cancelled, { userId: ACCOUNT.id, livemode: true, reservationId: RESERVATION_ID });
+});
+
+test("cancel-current is a no-op when there is nothing reserved for this account", async () => {
+  let cancelCalls = 0;
+  const handler = createCheckoutCancelCurrentPostHandler(checkoutCancelCurrentDeps({
+    findCurrentReservation: async () => null,
+    cancelIntent: async () => {
+      cancelCalls += 1;
+      return "cancelled";
+    },
+  }));
+
+  const response = await handler(new Request(`${APP_URL}/api/billing/checkout/cancel-current`, {
+    method: "POST",
+    headers: { origin: APP_URL },
+  }));
+
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=cancelled`);
+  assert.equal(cancelCalls, 0);
+});
+
+test("cancel-current reports an already-completed reservation as managed rather than cancelled", async () => {
+  const handler = createCheckoutCancelCurrentPostHandler(checkoutCancelCurrentDeps({
+    cancelIntent: async () => "completed",
+  }));
+
+  const response = await handler(new Request(`${APP_URL}/api/billing/checkout/cancel-current`, {
+    method: "POST",
+    headers: { origin: APP_URL },
+  }));
+
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=managed`);
+});
+
+test("cancel-current rejects a cross-origin request before touching the account", async () => {
+  let findCalls = 0;
+  const handler = createCheckoutCancelCurrentPostHandler(checkoutCancelCurrentDeps({
+    findAccount: async () => {
+      findCalls += 1;
+      return ACCOUNT;
+    },
+  }));
+
+  const response = await handler(new Request(`${APP_URL}/api/billing/checkout/cancel-current`, {
+    method: "POST",
+    headers: { origin: "https://attacker.example" },
+  }));
+
+  assert.equal(response.status, 403);
+  assert.equal(findCalls, 0);
 });
 
 test("checkout accepts the current Max three-month offer", async () => {

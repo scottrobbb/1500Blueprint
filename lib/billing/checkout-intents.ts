@@ -50,6 +50,24 @@ export async function releaseCheckoutIntent(input: {
   return data === true;
 }
 
+// Resolves the account's current (singleton, per user+livemode) reservation so a
+// student can cancel "whatever checkout is blocking me" from the pricing page
+// without needing the reservation_id Stripe's own cancel_url carries -- covers the
+// case where they never reached Stripe's hosted page's own cancel link at all.
+export async function findCurrentCheckoutReservation(
+  userId: string,
+  livemode: boolean,
+): Promise<{ reservationId: string } | null> {
+  const { data, error } = await supabaseAdmin()
+    .from("billing_checkout_intents")
+    .select("reservation_id")
+    .eq("user_id", userId)
+    .eq("livemode", livemode)
+    .maybeSingle<{ reservation_id: string }>();
+  if (error) throw new Error(`failed to look up the current Stripe Checkout reservation: ${error.message}`);
+  return data ? { reservationId: data.reservation_id } : null;
+}
+
 export async function storeCheckoutSession(input: {
   userId: string;
   livemode: boolean;
