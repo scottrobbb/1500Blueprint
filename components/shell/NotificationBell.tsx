@@ -12,9 +12,13 @@ import { BellIcon } from "./icons";
 export function NotificationBell({
   tone = "light",
   communityHrefBase = "/community",
+  placement = "bottom",
+  align = "right",
 }: {
   tone?: "light" | "dark";
   communityHrefBase?: string;
+  placement?: "top" | "bottom";
+  align?: "left" | "right";
 } = {}) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<CommunityNotification[]>([]);
@@ -95,7 +99,9 @@ export function NotificationBell({
           />
           <div
             role="menu"
-            className="absolute right-0 top-full z-50 mt-2 w-[320px] overflow-hidden rounded-xl border border-navy/12 bg-white shadow-xl"
+            className={`absolute z-50 w-[320px] overflow-hidden rounded-xl border border-navy/12 bg-white shadow-xl ${
+              placement === "top" ? "bottom-full mb-2" : "top-full mt-2"
+            } ${align === "left" ? "left-0" : "right-0"}`}
           >
             <div className="border-b border-navy/10 px-4 py-2.5">
               <div className="text-sm font-bold text-navy">Notifications</div>
