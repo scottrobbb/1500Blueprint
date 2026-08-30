@@ -33,12 +33,16 @@ test("checkout reservation results only permit Stripe-hosted ready redirects", (
     reservation_id: "1cddf8d9-38ff-4d90-8b57-030b91082e18",
     checkout_expires_at: "2026-08-27T22:00:00.000Z",
     stripe_checkout_session_url: "https://checkout.stripe.com/c/pay/cs_test_123",
+    plan_code: "core",
+    billing_cadence: "monthly",
   };
   assert.deepEqual(parseCheckoutIntentClaim(row), {
     decision: "ready",
     reservationId: row.reservation_id,
     checkoutExpiresAt: row.checkout_expires_at,
     checkoutUrl: row.stripe_checkout_session_url,
+    planCode: "core",
+    billingCadence: "monthly",
   });
   assert.equal(parseCheckoutIntentClaim({
     ...row,
@@ -53,7 +57,11 @@ test("checkout reservation results only permit Stripe-hosted ready redirects", (
     reservationId: row.reservation_id,
     checkoutExpiresAt: row.checkout_expires_at,
     checkoutUrl: null,
+    planCode: "core",
+    billingCadence: "monthly",
   });
+  assert.equal(parseCheckoutIntentClaim({ ...row, plan_code: "not-a-plan" }), null);
+  assert.equal(parseCheckoutIntentClaim({ ...row, billing_cadence: "yearly" }), null);
 });
 
 test("subscription synchronization refuses identity reassignment", () => {

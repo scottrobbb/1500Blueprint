@@ -5,6 +5,7 @@ import { isBillablePlan } from "@/lib/billing/config";
 import type { BillingCadence } from "@/lib/billing/offers";
 import { isBillingCadence } from "@/lib/billing/offers";
 import type { CheckoutIntentClaim } from "@/lib/billing/workflow";
+import type { CheckoutCancelResult } from "@/lib/billing/checkout-intents";
 import { checkoutRequestToken, stripeCheckoutIdempotencyKey } from "@/lib/billing/workflow";
 import { isSameOriginRequest, readUrlEncodedForm, RequestBodyTooLargeError } from "@/lib/security/request";
 
@@ -42,6 +43,7 @@ export type CheckoutHandlerDeps = {
   createPortal: (customerId: string, returnUrl: string) => Promise<{ url: string }>;
   claimIntent: (input: { userId: string; livemode: boolean; plan: BillablePlan; cadence: BillingCadence; requestToken: string }) => Promise<CheckoutIntentClaim>;
   releaseIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<boolean>;
+  cancelIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<CheckoutCancelResult>;
   ensureCustomer: (account: BillingAccount) => Promise<string>;
   resolvePrice: (plan: BillablePlan, cadence: BillingCadence) => Promise<string>;
   createCheckout: (params: CheckoutCreateParams, idempotencyKey: string) => Promise<{ id: string; url: string | null }>;
@@ -118,13 +120,41 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         return redirect(baseUrl, "/pricing?billing=legacy");
       }
 
-      const intent = await deps.claimIntent({
+      let intent = await deps.claimIntent({
         userId: account.id,
         livemode,
         plan,
         cadence,
         requestToken,
       });
+      // Browser back/forward never tells us a Checkout attempt was abandoned --
+      // only Stripe's own hosted "Back" link does, via cancel_url. So a reservation
+      // for a *different* plan/cadence than what's being requested now almost
+      // always means the student changed their mind, not that a duplicate submit
+      // is racing. Supersede it once and retry; a genuine same-plan double-submit
+      // (the only remaining "busy" case once plan/cadence match) is left alone.
+      if (
+        intent.decision === "busy"
+        && (intent.planCode !== plan || intent.billingCadence !== cadence)
+      ) {
+        const cancelResult = await deps.cancelIntent({
+          userId: account.id,
+          livemode,
+          reservationId: intent.reservationId,
+        });
+        if (cancelResult === "completed") {
+          // The reservation's own plan actually finished checkout already (a
+          // narrow race with the webhook); don't paper over an existing paid
+          // subscription by silently starting a different one.
+          return redirect(baseUrl, "/pricing?billing=managed");
+        }
+        if (cancelResult === "missing") {
+          // No Stripe session was ever created for it (setup failed before
+          // reaching Stripe) -- release the bare reservation row instead.
+          await deps.releaseIntent({ userId: account.id, livemode, reservationId: intent.reservationId });
+        }
+        intent = await deps.claimIntent({ userId: account.id, livemode, plan, cadence, requestToken });
+      }
       if (intent.decision === "ready" && intent.checkoutUrl) {
         return NextResponse.redirect(intent.checkoutUrl, 303);
       }

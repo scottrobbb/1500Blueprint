@@ -72,6 +72,8 @@ function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHan
       reservationId: RESERVATION_ID,
       checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
       checkoutUrl: null,
+      planCode: "core",
+      billingCadence: "monthly",
     }),
     ensureCustomer: async () => "cus_123",
     resolvePrice: async () => "price_core_monthly",
@@ -81,6 +83,7 @@ function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHan
     }),
     storeCheckout: async () => undefined,
     releaseIntent: async () => true,
+    cancelIntent: async () => "cancelled",
     reportError: () => undefined,
     ...overrides,
   };
@@ -265,6 +268,8 @@ test("checkout claims before Stripe and uses the durable reservation for metadat
         reservationId: RESERVATION_ID,
         checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
         checkoutUrl: null,
+        planCode: "core",
+        billingCadence: "monthly",
       };
     },
     createCheckout: async (...args) => {
@@ -307,6 +312,142 @@ test("checkout claims before Stripe and uses the durable reservation for metadat
     sessionId: "cs_test_123456789",
     sessionUrl: "https://checkout.stripe.com/c/pay/cs_test_123456789",
   });
+});
+
+test("choosing a different plan supersedes an abandoned reservation for the old one instead of erroring", async () => {
+  const claimPlans: string[] = [];
+  let cancelled: Parameters<CheckoutHandlerDeps["cancelIntent"]>[0] | null = null;
+  let releaseCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async (input) => {
+      claimPlans.push(input.plan);
+      if (claimPlans.length === 1) {
+        return {
+          decision: "busy",
+          reservationId: RESERVATION_ID,
+          checkoutExpiresAt: new Date(NOW + 30 * 60 * 1000).toISOString(),
+          checkoutUrl: null,
+          planCode: "max",
+          billingCadence: "monthly",
+        };
+      }
+      return {
+        decision: "claimed",
+        reservationId: "22222222-2222-4222-8222-222222222222",
+        checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
+        checkoutUrl: null,
+        planCode: "core",
+        billingCadence: "monthly",
+      };
+    },
+    cancelIntent: async (input) => {
+      cancelled = input;
+      return "cancelled";
+    },
+    releaseIntent: async () => {
+      releaseCalls += 1;
+      return true;
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    checkoutToken: "44444444-4444-4444-8444-444444444444",
+  }));
+
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), "https://checkout.stripe.com/c/pay/cs_test_123456789");
+  assert.deepEqual(claimPlans, ["core", "core"]);
+  assert.deepEqual(cancelled, { userId: ACCOUNT.id, livemode: false, reservationId: RESERVATION_ID });
+  assert.equal(releaseCalls, 0);
+});
+
+test("a same-plan busy claim is left alone -- only a different plan/cadence gets superseded", async () => {
+  let cancelCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async () => ({
+      decision: "busy",
+      reservationId: RESERVATION_ID,
+      checkoutExpiresAt: new Date(NOW + 30 * 60 * 1000).toISOString(),
+      checkoutUrl: null,
+      planCode: "core",
+      billingCadence: "monthly",
+    }),
+    cancelIntent: async () => {
+      cancelCalls += 1;
+      return "cancelled";
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    checkoutToken: "55555555-5555-4555-8555-555555555555",
+  }));
+
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=checkout-active`);
+  assert.equal(cancelCalls, 0);
+});
+
+test("a phantom reservation with no Stripe session is released, not cancelled through Stripe", async () => {
+  let released: Parameters<CheckoutHandlerDeps["releaseIntent"]>[0] | null = null;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async (input) => input.plan === "max"
+      ? {
+        decision: "busy",
+        reservationId: RESERVATION_ID,
+        checkoutExpiresAt: new Date(NOW + 30 * 60 * 1000).toISOString(),
+        checkoutUrl: null,
+        planCode: "core",
+        billingCadence: "monthly",
+      }
+      : {
+        decision: "claimed",
+        reservationId: "33333333-3333-4333-8333-333333333333",
+        checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
+        checkoutUrl: null,
+        planCode: "max",
+        billingCadence: "monthly",
+      },
+    cancelIntent: async () => "missing",
+    releaseIntent: async (input) => {
+      released = input;
+      return true;
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max",
+    checkoutToken: "66666666-6666-4666-8666-666666666666",
+  }));
+
+  assert.equal(response.status, 303);
+  assert.deepEqual(released, { userId: ACCOUNT.id, livemode: false, reservationId: RESERVATION_ID });
+});
+
+test("superseding never proceeds if the old reservation's plan actually finished checkout", async () => {
+  let secondClaimCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async () => {
+      secondClaimCalls += 1;
+      return {
+        decision: "busy",
+        reservationId: RESERVATION_ID,
+        checkoutExpiresAt: new Date(NOW + 30 * 60 * 1000).toISOString(),
+        checkoutUrl: null,
+        planCode: "max",
+        billingCadence: "monthly",
+      };
+    },
+    cancelIntent: async () => "completed",
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    checkoutToken: "77777777-7777-4777-8777-777777777777",
+  }));
+
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=managed`);
+  assert.equal(secondClaimCalls, 1);
 });
 
 test("the Checkout cancel return releases only the authenticated account reservation", async () => {
@@ -417,6 +558,8 @@ test("checkout accepts the current Max three-month offer", async () => {
         reservationId: RESERVATION_ID,
         checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
         checkoutUrl: null,
+        planCode: "max",
+        billingCadence: "three_month",
       };
     },
     resolvePrice: async (plan, cadence) => {
@@ -450,6 +593,8 @@ test("checkout reuses a ready reservation and never creates a second Stripe sess
       reservationId: RESERVATION_ID,
       checkoutExpiresAt: new Date(NOW + 30 * 60 * 1000).toISOString(),
       checkoutUrl: "https://checkout.stripe.com/c/pay/cs_test_existing",
+      planCode: "core",
+      billingCadence: "monthly",
     }),
     createCheckout: async () => {
       stripeCalls += 1;
