@@ -157,15 +157,15 @@ export function UltimateShell({
           </Link>
         ) : null}
         <div className="mb-2 grid grid-cols-2 divide-x divide-white/10 rounded-xl bg-white/[0.06] py-2.5">
-          <div className="px-3">
-            <span className="flex items-center gap-1 text-xs font-bold text-gold">
+          <div className="grid grid-rows-[1rem_1rem] gap-0.5 px-3">
+            <span className="flex h-4 items-center gap-1 text-xs font-bold leading-4 text-gold">
               <FlameIcon className="h-4 w-4" /> {stats.streak}
             </span>
-            <span className="mt-0.5 block text-[10px] text-white/55">day streak</span>
+            <span className="block h-4 text-[10px] leading-4 text-white/55">day streak</span>
           </div>
-          <div className="px-3">
-            <span className="text-xs font-bold text-white">{stats.xp.toLocaleString()} XP</span>
-            <span className="mt-0.5 block text-[10px] text-white/55">level {stats.level}</span>
+          <div className="grid grid-rows-[1rem_1rem] gap-0.5 px-3">
+            <span className="flex h-4 items-center text-xs font-bold leading-4 text-white">{stats.xp.toLocaleString()} XP</span>
+            <span className="block h-4 text-[10px] leading-4 text-white/55">level {stats.level}</span>
           </div>
         </div>
         <div className="flex items-center gap-1">
@@ -180,7 +180,7 @@ export function UltimateShell({
             test={access.isTestAccount}
             billing={access.source === "subscription"}
           />
-          <NotificationBell tone="dark" communityHrefBase="/ultimate/community" />
+          <NotificationBell tone="dark" communityHrefBase="/ultimate/community" placement="top" align="left" />
         </div>
       </div>
     </div>
