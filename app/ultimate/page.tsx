@@ -216,7 +216,7 @@ function PathCard({ step, href, title, detail, Icon, locked = false, requiredPla
 
 function CourseCard({ course, locked }: { course: Course; locked: boolean }) {
   const nextLesson = course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed);
-  const href = locked ? "/pricing" : nextLesson ? `/ultimate/courses/${course.slug}/${nextLesson.slug}` : `/ultimate/courses/${course.slug}`;
+  const href = locked ? `/ultimate/courses/${course.slug}` : nextLesson ? `/ultimate/courses/${course.slug}/${nextLesson.slug}` : `/ultimate/courses/${course.slug}`;
   return (
     <Link href={href} className="group rounded-[18px] border border-navy/10 bg-white p-5 transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_12px_30px_-24px_rgba(11,42,91,0.5)] motion-reduce:transform-none motion-reduce:transition-none">
       <div className="flex items-start justify-between gap-4"><span className="grid h-10 w-10 place-items-center rounded-xl bg-navy text-white"><BookIcon className="h-5 w-5" /></span>{locked ? <LockedBadge plan="max" /> : <span className="text-xs font-extrabold tabular-nums text-navy/40">{course.progress}%</span>}</div>
