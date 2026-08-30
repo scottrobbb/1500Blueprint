@@ -27,6 +27,7 @@ const PAGE_SIZE = 25;
 type Filters = {
   drillSlug: string;
   section: string;
+  domain: string;
   skill: string;
   difficulty: string;
   answerType: string;
@@ -37,6 +38,7 @@ type Filters = {
 const EMPTY_FILTERS: Filters = {
   drillSlug: "",
   section: "",
+  domain: "",
   skill: "",
   difficulty: "",
   answerType: "",
@@ -74,16 +76,20 @@ export function QuestionBank({
   drills,
   skills,
   basePath = "/admin",
+  initialFilters,
+  initialPage = 1,
 }: {
   initialQuestions: DrillQuestion[];
   total: number;
   drills: DrillConfig[];
   skills: SatSkill[];
   basePath?: string;
+  initialFilters?: Partial<Filters>;
+  initialPage?: number;
 }) {
   const router = useRouter();
-  const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
-  const [page, setPage] = useState(1);
+  const [filters, setFilters] = useState<Filters>({ ...EMPTY_FILTERS, ...initialFilters });
+  const [page, setPage] = useState(initialPage);
   const [questions, setQuestions] = useState<DrillQuestion[]>(initialQuestions);
   const [total, setTotal] = useState(initialTotal);
   const [loading, setLoading] = useState(false);
@@ -104,19 +110,51 @@ export function QuestionBank({
     return list.slice().sort((a, b) => a.sort - b.sort);
   }, [skills, filters.section]);
 
-  // Refetch whenever filters or page change. Skip the very first render so we
-  // keep the server-provided initial data (and don't double-fetch on mount).
+  // Topics (domains) available for the chosen section, in taxonomy order --
+  // unaffected by the domain filter itself so switching topics stays visible.
+  const domains = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const s of sectionSkills) {
+      if (seen.has(s.domain)) continue;
+      seen.add(s.domain);
+      out.push(s.domain);
+    }
+    return out;
+  }, [sectionSkills]);
+
+  // Skills further constrained to the chosen topic, still taxonomy-sorted --
+  // grouped by topic below via <optgroup> when no topic filter narrows it down.
+  const domainSkills = useMemo(
+    () => (filters.domain ? sectionSkills.filter((s) => s.domain === filters.domain) : sectionSkills),
+    [sectionSkills, filters.domain],
+  );
+
+  // Refetch whenever filters or page change, and keep the URL in sync so
+  // navigating to a question and back (or a plain page reload) restores the
+  // exact same filtered view instead of resetting to an empty filter bar.
+  // Skip the very first render so we keep the server-provided initial data
+  // (and don't double-fetch on mount).
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
       return;
     }
-    const controller = new AbortController();
-    const params = new URLSearchParams();
+    const filterParams = new URLSearchParams();
     for (const [key, value] of Object.entries(filters)) {
-      if (value) params.set(key, value);
+      if (value) filterParams.set(key, value);
     }
+    if (page > 1) filterParams.set("page", String(page));
+    // Reflects the current filter/page in the address bar via the History API
+    // directly (not router.replace, which would trigger a redundant server
+    // re-render for data this client fetch already covers) -- this is what
+    // makes navigating to a question and back restore the same filtered view.
+    const url = filterParams.size > 0 ? `${basePath}?${filterParams.toString()}` : basePath;
+    window.history.replaceState(window.history.state, "", url);
+
+    const controller = new AbortController();
+    const params = new URLSearchParams(filterParams);
     params.set("page", String(page));
     params.set("pageSize", String(PAGE_SIZE));
 
@@ -139,14 +177,20 @@ export function QuestionBank({
       .finally(() => setLoading(false));
 
     return () => controller.abort();
-  }, [filters, page]);
+  }, [filters, page, basePath]);
 
   function setFilter(patch: Partial<Filters>) {
     setPage(1);
     setFilters((prev) => {
       const next = { ...prev, ...patch };
-      // Changing section invalidates a skill that no longer belongs to it.
-      if (patch.section !== undefined) next.skill = "";
+      // Changing section invalidates a domain/skill that no longer belongs to
+      // it; changing domain invalidates a skill that no longer belongs to it.
+      if (patch.section !== undefined) {
+        next.domain = "";
+        next.skill = "";
+      } else if (patch.domain !== undefined) {
+        next.skill = "";
+      }
       return next;
     });
   }
@@ -224,7 +268,8 @@ export function QuestionBank({
       <FilterBar
         filters={filters}
         drills={drills}
-        sectionSkills={sectionSkills}
+        domains={domains}
+        domainSkills={domainSkills}
         setFilter={setFilter}
       />
 
@@ -251,12 +296,14 @@ export function QuestionBank({
 function FilterBar({
   filters,
   drills,
-  sectionSkills,
+  domains,
+  domainSkills,
   setFilter,
 }: {
   filters: Filters;
   drills: DrillConfig[];
-  sectionSkills: SatSkill[];
+  domains: string[];
+  domainSkills: SatSkill[];
   setFilter: (patch: Partial<Filters>) => void;
 }) {
   return (
@@ -292,6 +339,21 @@ function FilterBar({
           </select>
         </FilterField>
 
+        <FilterField labelText="Topic">
+          <select
+            value={filters.domain}
+            onChange={(e) => setFilter({ domain: e.target.value })}
+            className={selectClass}
+          >
+            <option value="">All topics</option>
+            {domains.map((domain) => (
+              <option key={domain} value={domain}>
+                {domain}
+              </option>
+            ))}
+          </select>
+        </FilterField>
+
         <FilterField labelText="Skill">
           <select
             value={filters.skill}
@@ -299,11 +361,19 @@ function FilterBar({
             className={selectClass}
           >
             <option value="">All skills</option>
-            {sectionSkills.map((s) => (
-              <option key={s.id} value={s.name}>
-                {s.name}
-              </option>
-            ))}
+            {domains
+              .filter((domain) => !filters.domain || domain === filters.domain)
+              .map((domain) => (
+                <optgroup key={domain} label={domain}>
+                  {domainSkills
+                    .filter((s) => s.domain === domain)
+                    .map((s) => (
+                      <option key={s.id} value={s.name}>
+                        {s.name}
+                      </option>
+                    ))}
+                </optgroup>
+              ))}
           </select>
         </FilterField>
 

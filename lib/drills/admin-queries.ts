@@ -257,9 +257,53 @@ export type QuestionFilters = {
   answerType?: AnswerType;
   status?: QuestionStatus;
   section?: SatSection;
+  domain?: string;
   skill?: string;
   search?: string;
 };
+
+// Next's Server Component searchParams prop is a plain record (values can be
+// string | string[] | undefined), not a URLSearchParams -- this adapts it so
+// the two admin pages can reuse the same parseQuestionFilters as the API route.
+export function questionFiltersSearchParams(
+  record: Record<string, string | string[] | undefined>,
+): URLSearchParams {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === "string") params.set(key, value);
+  }
+  return params;
+}
+
+// Shared by the admin question-list API route and the two admin page Server
+// Components (so the very first server-rendered paint already matches the
+// URL's filters/page instead of always starting from an empty filter bar).
+export function parseQuestionFilters(
+  params: URLSearchParams,
+): { filters: QuestionFilters; page: number; pageSize: number } {
+  const str = (key: string): string | undefined => {
+    const raw = params.get(key)?.trim();
+    return raw ? raw : undefined;
+  };
+  const int = (key: string, fallback: number, max = Number.MAX_SAFE_INTEGER): number => {
+    const n = Number(params.get(key));
+    return Number.isFinite(n) && n > 0 ? Math.min(Math.floor(n), max) : fallback;
+  };
+  return {
+    filters: {
+      drillSlug: str("drillSlug") as DrillSlug | undefined,
+      difficulty: str("difficulty") as Difficulty | "challenge" | undefined,
+      answerType: str("answerType") as AnswerType | undefined,
+      status: str("status") as QuestionStatus | undefined,
+      section: str("section") as SatSection | undefined,
+      domain: str("domain"),
+      skill: str("skill"),
+      search: str("search"),
+    },
+    page: int("page", 1, 100_000),
+    pageSize: int("pageSize", 25, 100),
+  };
+}
 
 export type QuestionListResult = { questions: DrillQuestion[]; total: number };
 
@@ -290,6 +334,7 @@ export async function listQuestions(
   if (filters.answerType) query = query.eq("answer_type", filters.answerType);
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.section) query = query.eq("section", filters.section);
+  if (filters.domain) query = query.eq("domain", filters.domain);
   if (filters.skill) query = query.eq("skill", filters.skill);
   if (filters.search) {
     // Strip PostgREST logic-tree metacharacters so a search term can't break out
