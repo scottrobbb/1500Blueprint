@@ -153,7 +153,7 @@ export function UltimateShell({
         {access.plan !== "max" ? (
           <Link href="/pricing" onClick={() => setMenuOpen(false)} className="mb-2.5 flex min-h-14 items-center gap-3 rounded-xl border border-sky/15 bg-sky/[0.08] px-3 py-2.5 text-white transition-colors hover:border-sky/30 hover:bg-sky/[0.13]">
             <span className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-gold/15 text-gold"><LockIcon className="h-4 w-4" /></span>
-            <span className="min-w-0 flex-1"><strong className="block text-xs font-extrabold">{access.plan === "free" ? "Unlock Core" : "Go Max"}</strong><span className="mt-0.5 block truncate text-[10px] text-white/50">{access.plan === "free" ? "Drills, Challenge sets, more tests" : "Planner, courses, weekly calls"}</span></span>
+            <span className="min-w-0 flex-1"><strong className="block text-xs font-extrabold">{access.plan === "free" ? "Unlock Max" : "Go Max"}</strong><span className="mt-0.5 block truncate text-[10px] text-white/50">{access.plan === "free" ? "Drills, Challenge sets, more tests" : "Planner, courses, weekly calls"}</span></span>
             <span className="text-sm text-sky">→</span>
           </Link>
         ) : null}

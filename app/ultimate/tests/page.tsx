@@ -145,7 +145,7 @@ export default async function UltimateTestsPage() {
       <Link href={access.entitlements.dailyDrillLimit === null ? "/pricing" : "/ultimate/drills"} className="group mt-6 flex cursor-pointer items-center gap-4 rounded-[18px] border border-brand/20 bg-ice/50 p-4 text-navy shadow-pop transition-colors hover:border-brand/40 hover:bg-ice sm:p-5">
         <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-white text-brand-600 shadow-sm"><TestsIcon className="h-5 w-5" /></span>
         <span className="min-w-0 flex-1">
-          <strong className="block font-display text-sm font-semibold">{access.entitlements.dailyDrillLimit === null ? "Unlock daily drills with Core" : "Not ready for a full test?"}</strong>
+          <strong className="block font-display text-sm font-semibold">{access.entitlements.dailyDrillLimit === null ? "Unlock daily drills with Max" : "Not ready for a full test?"}</strong>
           <span className="mt-0.5 block text-xs leading-5 text-navy/50">{access.entitlements.dailyDrillLimit === null ? "Build one SAT pattern at a time between full-test checkpoints." : "Practice one skill at a time and return when you have a full testing window."}</span>
         </span>
         <ChevronRightIcon className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
