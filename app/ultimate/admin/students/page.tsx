@@ -7,7 +7,7 @@ import { listStudents } from "@/lib/gamification/state";
 export default async function UltimateAdminStudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing_refund?: string }>;
+  searchParams: Promise<{ billing_refund?: string; rate_limit_reset?: string }>;
 }) {
   const session = await getAdminSession();
   if (!session) notFound();
@@ -15,6 +15,7 @@ export default async function UltimateAdminStudentsPage({
   return (
     <UltimateAdminFrame active="students" email={session.email}>
       <RefundPanel state={params.billing_refund} />
+      <RateLimitResetPanel state={params.rate_limit_reset} />
       <StudentsTable students={students} />
     </UltimateAdminFrame>
   );
@@ -65,6 +66,55 @@ function RefundPanel({ state }: { state?: string }) {
         <p
           role="status"
           className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${state === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-white text-red-800"}`}
+        >
+          {messages[state] ?? messages.error}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function RateLimitResetPanel({ state }: { state?: string }) {
+  const messages: Record<string, string> = {
+    success: "That student's content-read limits were cleared. They can browse normally right away.",
+    none: "No active limits were found for that email -- they weren't actually blocked.",
+    invalid: "Enter the student's email first.",
+    error: "The reset could not be completed. Check the error log before retrying.",
+  };
+
+  return (
+    <section className="mb-6 rounded-card border border-navy/15 bg-white p-4 sm:p-5" aria-labelledby="rate-limit-heading">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl">
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-navy/45">Access control</p>
+          <h2 id="rate-limit-heading" className="mt-1 font-display text-lg font-extrabold text-navy">Reset content read limits</h2>
+          <p className="mt-1 text-sm leading-6 text-navy/65">
+            Clears every burst and daily anti-abuse limit (courses, drills, practice tests, question bank) for one student, so a stuck daily window doesn&apos;t block them for the rest of the day.
+          </p>
+        </div>
+        <form action="/api/admin/rate-limits/reset" method="post" className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl">
+          <label htmlFor="rate-limit-email" className="sr-only">Student email</label>
+          <input
+            id="rate-limit-email"
+            name="email"
+            type="email"
+            required
+            autoComplete="off"
+            placeholder="student@example.com"
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-navy/15 bg-white px-3.5 text-base text-navy outline-none transition-colors duration-200 placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15 sm:text-sm"
+          />
+          <button
+            type="submit"
+            className="min-h-11 cursor-pointer rounded-xl bg-navy px-4 text-sm font-extrabold text-white transition-colors duration-200 hover:bg-navy-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy"
+          >
+            Reset limits
+          </button>
+        </form>
+      </div>
+      {state ? (
+        <p
+          role="status"
+          className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${state === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-navy/15 bg-mist text-navy/70"}`}
         >
           {messages[state] ?? messages.error}
         </p>
