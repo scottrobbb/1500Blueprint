@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { appBaseUrl } from "@/lib/auth/config";
+import { accountConfirmationUrl, appBaseUrl } from "@/lib/auth/config";
 import { findAuthUserByEmail, recordPasswordLogin } from "@/lib/auth/accounts";
 import { sendAccountVerification, sendPasswordReset } from "@/lib/auth/email";
 import {
@@ -134,7 +134,12 @@ export async function requestPasswordReset(
     try {
       await sendPasswordReset(
         email,
-        accountConfirmationUrl(data.properties.hashed_token, "recovery", "/account/reset-password"),
+        accountConfirmationUrl(
+          data.properties.hashed_token,
+          "recovery",
+          "/account/reset-password",
+          process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+        ),
       );
     } catch (sendError) {
       reportServerError("auth.password_reset.email_failed", sendError, {
@@ -272,7 +277,12 @@ async function createPasswordAccount(
         const { error } = await admin.auth.admin.deleteUser(userId);
         if (error) throw error;
       },
-      confirmationUrl: (tokenHash) => accountConfirmationUrl(tokenHash, "signup", next),
+      confirmationUrl: (tokenHash) => accountConfirmationUrl(
+        tokenHash,
+        "signup",
+        next,
+        process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+      ),
       reportExistingClaimFailure: (error) => {
         reportServerError("auth.password_claim.existing_user_failed", error, {
           provider: "supabase",
@@ -305,18 +315,6 @@ async function createPasswordAccount(
 
 function accountBaseUrl(): string {
   return appBaseUrl(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000");
-}
-
-function accountConfirmationUrl(
-  tokenHash: string,
-  type: "signup" | "recovery",
-  next: string,
-): string {
-  const url = new URL("/account/confirm", accountBaseUrl());
-  url.searchParams.set("token_hash", tokenHash);
-  url.searchParams.set("type", type);
-  url.searchParams.set("next", next);
-  return url.toString();
 }
 
 function stringValue(value: FormDataEntryValue | null): string {

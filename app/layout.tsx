@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Gabarito, DM_Sans, Noto_Serif } from "next/font/google";
+import { canonicalAppUrl } from "@/lib/auth/config";
 import "./globals.css";
 import "katex/dist/katex.min.css";
 
@@ -23,6 +24,7 @@ const notoSerif = Noto_Serif({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(canonicalAppUrl()),
   title: "1500 Blueprint | Practice",
   description:
     "Full-length, Bluebook-style digital SAT practice tests from the 1500 Blueprint.",

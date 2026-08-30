@@ -35,6 +35,7 @@ export const metadata: Metadata = {
   title: "Pricing | 1500 Blueprint",
   description:
     "Compare Free, Core, and Max SAT prep plans, including practice tests, targeted drills, courses, weekly calls, and study planning.",
+  alternates: { canonical: "/pricing" },
 };
 
 type PlanFeature = {

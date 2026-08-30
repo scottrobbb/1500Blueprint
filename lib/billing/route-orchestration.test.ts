@@ -302,6 +302,10 @@ test("checkout claims before Stripe and uses the durable reservation for metadat
   assert.equal(params.metadata.checkout_reservation_id, RESERVATION_ID);
   assert.equal(params.metadata.user_id, ACCOUNT.id);
   assert.equal(
+    params.success_url,
+    `${APP_URL}/api/billing/confirm?session_id={CHECKOUT_SESSION_ID}`,
+  );
+  assert.equal(
     params.cancel_url,
     `${APP_URL}/api/billing/checkout/cancel?reservation_id=${RESERVATION_ID}`,
   );

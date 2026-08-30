@@ -7,7 +7,13 @@ export const TOKEN_TTL_SECONDS = 60 * 15; // magic link is valid for 15 minutes
 // Stripe subscription statuses that count as an active membership.
 export const ACTIVE_STATUSES = ["active", "trialing"] as const;
 
-export const CANONICAL_APP_URL = "https://www.1500satblueprint.com";
+const FALLBACK_CANONICAL_APP_URL = "https://www.1500satblueprint.com";
+
+export function canonicalAppUrl(): string {
+  return validateCanonicalAppUrl(
+    process.env.NEXT_PUBLIC_APP_URL?.trim() || FALLBACK_CANONICAL_APP_URL,
+  );
+}
 
 // Production auth links always use the public domain. Preview deployments keep
 // their own origin so signup, recovery, and magic-link QA cannot jump into prod.
@@ -18,10 +24,55 @@ export function appBaseUrl(fallbackOrigin: string): string {
       || fallbackOrigin;
     return normalizeBaseUrl(previewUrl);
   }
-  if (process.env.NODE_ENV === "production") return CANONICAL_APP_URL;
+  if (process.env.NODE_ENV === "production") return canonicalAppUrl();
 
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
   return normalizeBaseUrl(configured || fallbackOrigin);
+}
+
+export function magicLinkCallbackUrl(token: string, fallbackOrigin: string): string {
+  const url = new URL("/api/auth/callback", appBaseUrl(fallbackOrigin));
+  url.searchParams.set("token", token);
+  return url.toString();
+}
+
+export function accountConfirmationUrl(
+  tokenHash: string,
+  type: "signup" | "recovery",
+  next: string,
+  fallbackOrigin: string,
+): string {
+  const url = new URL("/account/confirm", appBaseUrl(fallbackOrigin));
+  url.searchParams.set("token_hash", tokenHash);
+  url.searchParams.set("type", type);
+  url.searchParams.set("next", next);
+  return url.toString();
+}
+
+function validateCanonicalAppUrl(raw: string): string {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("NEXT_PUBLIC_APP_URL must be a valid absolute URL");
+  }
+
+  const validHostname = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+  if (
+    url.protocol !== "https:"
+    || !validHostname.test(url.hostname)
+    || url.username
+    || url.password
+    || url.port
+    || url.pathname !== "/"
+    || url.search
+    || url.hash
+  ) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL must be an HTTPS origin with a valid DNS hostname",
+    );
+  }
+  return url.origin;
 }
 
 function normalizeBaseUrl(raw: string): string {
