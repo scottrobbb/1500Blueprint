@@ -454,6 +454,7 @@ function BillingNotice({ state }: { state: string }) {
     managed: "Your subscription is already on that plan.",
     ready: "You’re signed in. Your selected paid plan is ready below.",
     unavailable: "Billing is not open yet. Nothing was charged.",
+    "checkout-active": "A different Checkout session is still open. Return to it or cancel it before choosing another plan.",
     legacy: "We found existing Blueprint billing history that must be linked before changing plans. Nothing was charged.",
   };
   const message = messages[state] ?? "Billing could not be opened. Please try again.";

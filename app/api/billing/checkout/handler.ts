@@ -147,7 +147,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         metadata,
         subscription_data: { metadata },
         success_url: `${baseUrl}/api/billing/confirm?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/pricing?billing=cancelled`,
+        cancel_url: `${baseUrl}/api/billing/checkout/cancel?reservation_id=${encodeURIComponent(intent.reservationId)}`,
         expires_at: expiresAt,
       }, idempotencyKey);
 

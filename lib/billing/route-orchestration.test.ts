@@ -6,6 +6,10 @@ import {
   type CheckoutHandlerDeps,
 } from "../../app/api/billing/checkout/handler";
 import {
+  createCheckoutCancelGetHandler,
+  type CheckoutCancelHandlerDeps,
+} from "../../app/api/billing/checkout/cancel/handler";
+import {
   createConfirmGetHandler,
   type ConfirmCheckout,
   type ConfirmHandlerDeps,
@@ -72,6 +76,20 @@ function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHan
       url: "https://checkout.stripe.com/c/pay/cs_test_123456789",
     }),
     storeCheckout: async () => undefined,
+    reportError: () => undefined,
+    ...overrides,
+  };
+}
+
+function checkoutCancelDeps(
+  overrides: Partial<CheckoutCancelHandlerDeps> = {},
+): CheckoutCancelHandlerDeps {
+  return {
+    baseUrl: () => APP_URL,
+    getSession: async () => ({ email: ACCOUNT.email }),
+    findAccount: async () => ACCOUNT,
+    livemode: () => true,
+    cancelIntent: async () => "cancelled",
     reportError: () => undefined,
     ...overrides,
   };
@@ -257,12 +275,38 @@ test("checkout claims before Stripe and uses the durable reservation for metadat
   assert.equal(params.expires_at, Math.floor((NOW + 60 * 60 * 1000) / 1000));
   assert.equal(params.metadata.checkout_reservation_id, RESERVATION_ID);
   assert.equal(params.metadata.user_id, ACCOUNT.id);
+  assert.equal(
+    params.cancel_url,
+    `${APP_URL}/api/billing/checkout/cancel?reservation_id=${RESERVATION_ID}`,
+  );
   assert.deepEqual(stored, {
     userId: ACCOUNT.id,
     livemode: false,
     reservationId: RESERVATION_ID,
     sessionId: "cs_test_123456789",
     sessionUrl: "https://checkout.stripe.com/c/pay/cs_test_123456789",
+  });
+});
+
+test("the Checkout cancel return releases only the authenticated account reservation", async () => {
+  let cancelled: Parameters<CheckoutCancelHandlerDeps["cancelIntent"]>[0] | null = null;
+  const handler = createCheckoutCancelGetHandler(checkoutCancelDeps({
+    cancelIntent: async (input) => {
+      cancelled = input;
+      return "cancelled";
+    },
+  }));
+
+  const response = await handler(new Request(
+    `${APP_URL}/api/billing/checkout/cancel?reservation_id=${RESERVATION_ID}`,
+  ));
+
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=cancelled`);
+  assert.deepEqual(cancelled, {
+    userId: ACCOUNT.id,
+    livemode: true,
+    reservationId: RESERVATION_ID,
   });
 });
 
