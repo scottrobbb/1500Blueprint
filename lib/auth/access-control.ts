@@ -14,14 +14,20 @@ const MAX_HIDDEN_MONTHLY_DRILL_CAP = 500;
 // reordered, renamed, or renumbered later.
 export const FREE_PRACTICE_TEST_SLUG = "practice-test-1";
 
+// Pure boundary decision, isolated from the Supabase-backed lookups above so
+// the free/core/max cutoffs can be unit tested without a DB.
+export function testIndexIsAccessible(testSlug: string, testIndex: number, fullTestLimit: number): boolean {
+  if (testIndex < 0) return false;
+  if (testSlug === FREE_PRACTICE_TEST_SLUG) return true;
+  return testIndex < fullTestLimit;
+}
+
 export async function canAccessPracticeTest(email: string, testSlug: string): Promise<boolean> {
   if (isAdminEmail(email)) return true;
   const [access, tests] = await Promise.all([getStudentAccess(email), listTests()]);
   if (!access.active) return false;
   const testIndex = tests.findIndex((test) => test.slug === testSlug);
-  if (testIndex < 0) return false;
-  if (testSlug === FREE_PRACTICE_TEST_SLUG) return true;
-  return testIndex < access.entitlements.fullTestLimit;
+  return testIndexIsAccessible(testSlug, testIndex, access.entitlements.fullTestLimit);
 }
 
 export async function questionBankAllowance(email: string): Promise<{ allowed: boolean; used: number; limit: number | "unlimited" }> {

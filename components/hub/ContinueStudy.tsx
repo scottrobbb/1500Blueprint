@@ -57,6 +57,7 @@ export function ContinueStudy({
           {saved ? <p className="mt-1 text-sm text-navy/45">Saved {saved.toLowerCase()}</p> : null}
           <Link
             href={continuation.href}
+            prefetch={false}
             className="mt-4 inline-flex min-h-11 items-center gap-1 rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-navy-700"
           >
             {actionLabel(continuation)}
