@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { appBaseUrl, CANONICAL_APP_URL } from "./config";
+import { appBaseUrl, CANONICAL_APP_URL, resolveProductionOrigin } from "./config";
 
 test("preview auth links stay on the Vercel preview instead of production", () => {
   withEnvironment({
@@ -33,6 +33,25 @@ test("production auth links remain pinned to the canonical public domain", () =>
   }, () => {
     assert.equal(appBaseUrl("https://fallback.example"), CANONICAL_APP_URL);
   });
+});
+
+test("a second known app domain stays on itself instead of bouncing to canonical", () => {
+  withEnvironment({
+    NODE_ENV: "production",
+    VERCEL_ENV: "production",
+    VERCEL_URL: "deployment.vercel.app",
+    AUTH_PREVIEW_URL: undefined,
+  }, () => {
+    assert.equal(appBaseUrl("https://1500blueprint.com"), "https://1500blueprint.com");
+    assert.equal(appBaseUrl("https://www.1500blueprint.com"), "https://www.1500blueprint.com");
+  });
+});
+
+test("resolveProductionOrigin only trusts the app's own known domains", () => {
+  assert.equal(resolveProductionOrigin(CANONICAL_APP_URL), CANONICAL_APP_URL);
+  assert.equal(resolveProductionOrigin("https://1500blueprint.com"), "https://1500blueprint.com");
+  assert.equal(resolveProductionOrigin("https://www.1500blueprint.com"), "https://www.1500blueprint.com");
+  assert.equal(resolveProductionOrigin("https://attacker.example"), CANONICAL_APP_URL);
 });
 
 function withEnvironment(

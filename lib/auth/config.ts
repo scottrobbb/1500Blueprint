@@ -9,8 +9,21 @@ export const ACTIVE_STATUSES = ["active", "trialing"] as const;
 
 export const CANONICAL_APP_URL = "https://www.1500satblueprint.com";
 
-// Production auth links always use the public domain. Preview deployments keep
-// their own origin so signup, recovery, and magic-link QA cannot jump into prod.
+// Every production domain the app is intentionally reachable on. A request
+// arriving on any of these is treated as first-party (same-origin checks,
+// auth links, Stripe redirects all stay on the domain the visitor is
+// actually using); anything else falls back to the canonical domain instead
+// of trusting an arbitrary Host header.
+const ADDITIONAL_APP_ORIGINS = ["https://1500blueprint.com", "https://www.1500blueprint.com"];
+const ALLOWED_APP_ORIGINS = new Set<string>([CANONICAL_APP_URL, ...ADDITIONAL_APP_ORIGINS]);
+
+export function resolveProductionOrigin(origin: string): string {
+  return ALLOWED_APP_ORIGINS.has(origin) ? origin : CANONICAL_APP_URL;
+}
+
+// Production auth links use whichever known app domain the request actually
+// came in on (see resolveProductionOrigin). Preview deployments keep their
+// own origin so signup, recovery, and magic-link QA cannot jump into prod.
 export function appBaseUrl(fallbackOrigin: string): string {
   if (process.env.VERCEL_ENV === "preview") {
     const previewUrl = process.env.AUTH_PREVIEW_URL?.trim()
@@ -18,7 +31,7 @@ export function appBaseUrl(fallbackOrigin: string): string {
       || fallbackOrigin;
     return normalizeBaseUrl(previewUrl);
   }
-  if (process.env.NODE_ENV === "production") return CANONICAL_APP_URL;
+  if (process.env.NODE_ENV === "production") return resolveProductionOrigin(fallbackOrigin);
 
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
   return normalizeBaseUrl(configured || fallbackOrigin);
