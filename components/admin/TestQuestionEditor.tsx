@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ChoiceId, Difficulty } from "@/lib/sat/types";
 import type { AdminChoice, AdminQuestion, QuestionType } from "@/lib/sat/admin-queries";
+import { ExplanationText } from "@/components/test/ExplanationText";
 import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import { UnderlineIcon } from "@/components/test/icons";
@@ -30,6 +31,14 @@ const DOMAINS = [
 ];
 
 type Saving = "idle" | "saving" | "deleting";
+
+async function uploadPastedImage(file: File): Promise<string | null> {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch("/admin/api/figures/upload", { method: "POST", body });
+  const data = (await response.json().catch(() => null)) as { url?: unknown } | null;
+  return response.ok && typeof data?.url === "string" ? data.url : null;
+}
 
 // Local, fully-editable copy of the question. acceptedAnswers is edited as one
 // answer per line and split on save.
@@ -90,12 +99,33 @@ export function TestQuestionEditor({
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState<Saving>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [pastingImage, setPastingImage] = useState(false);
+  const [pasteError, setPasteError] = useState(false);
   const busy = saving !== "idle";
 
   function patch(next: Partial<Draft>) {
     setDraft((prev) => ({ ...prev, ...next }));
     setDirty(true);
     setError(null);
+  }
+
+  async function handleExplanationPaste(event: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const imageItem = Array.from(event.clipboardData.items).find((entry) => entry.type.startsWith("image/"));
+    if (!imageItem) return;
+    event.preventDefault();
+    const file = imageItem.getAsFile();
+    if (!file) return;
+    const cursor = event.currentTarget.selectionStart;
+    const current = draft.explanation;
+    setPastingImage(true);
+    setPasteError(false);
+    const url = await uploadPastedImage(file);
+    setPastingImage(false);
+    if (!url) {
+      setPasteError(true);
+      return;
+    }
+    patch({ explanation: `${current.slice(0, cursor)}\n![](${url})\n${current.slice(cursor)}` });
   }
 
   function patchChoice(letter: ChoiceId, next: Partial<AdminChoice>) {
@@ -382,10 +412,13 @@ export function TestQuestionEditor({
             <textarea
               value={draft.explanation}
               onChange={(e) => patch({ explanation: e.target.value })}
+              onPaste={(e) => void handleExplanationPaste(e)}
               rows={4}
               className={`${inputClass} resize-y`}
-              placeholder="Why the correct answer is correct (shown on the results review)."
+              placeholder="Why the correct answer is correct (shown on the results review). Paste a screenshot to drop it in."
             />
+            {pastingImage ? <p className="mt-1.5 text-[12px] font-semibold text-brand-700">Uploading pasted screenshot…</p> : null}
+            {pasteError ? <p role="alert" className="mt-1.5 text-[12px] font-semibold text-danger-600">That screenshot could not be uploaded.</p> : null}
           </section>
         </div>
 
@@ -496,10 +529,10 @@ function Preview({ draft }: { draft: Draft }) {
       )}
 
       {draft.explanation.trim() ? (
-        <p className="mt-4 border-t border-navy/10 pt-3 text-sm leading-6 text-ink">
+        <div className="mt-4 border-t border-navy/10 pt-3 text-sm leading-6 text-ink">
           <span className="font-semibold">Why: </span>
-          <MathText>{draft.explanation}</MathText>
-        </p>
+          <ExplanationText text={draft.explanation} />
+        </div>
       ) : null}
     </div>
   );
