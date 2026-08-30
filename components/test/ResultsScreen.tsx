@@ -35,6 +35,7 @@ type Props = {
   testsHref?: string;
   backLabel?: string;
   saveStatus?: AttemptSaveStatus;
+  saveErrorReference?: string;
   onRetrySave?: () => void;
   scorePromptAttemptId?: string;
   shouldPromptForScore?: boolean;
@@ -57,6 +58,7 @@ export function ResultsScreen({
   testsHref = "/practice-test",
   backLabel = "Back to your attempts",
   saveStatus,
+  saveErrorReference,
   onRetrySave,
   scorePromptAttemptId,
   shouldPromptForScore = false,
@@ -143,7 +145,12 @@ export function ResultsScreen({
 
       <div className="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-10">
         {saveStatus && saveStatus !== "idle" ? (
-          <AttemptSaveNotice status={saveStatus} attemptsHref={attemptsHref} onRetry={onRetrySave} />
+          <AttemptSaveNotice
+            status={saveStatus}
+            attemptsHref={attemptsHref}
+            errorReference={saveErrorReference}
+            onRetry={onRetrySave}
+          />
         ) : null}
         {scorePromptAttemptId && shouldPromptForScore ? <PlannerScorePrompt attemptId={scorePromptAttemptId} score={result.total} /> : null}
 
@@ -406,16 +413,21 @@ function ActionLink({ href, children }: { href: string; children: React.ReactNod
 function AttemptSaveNotice({
   status,
   attemptsHref,
+  errorReference,
   onRetry,
 }: {
   status: AttemptSaveStatus;
   attemptsHref?: string;
+  errorReference?: string;
   onRetry?: () => void;
 }) {
   if (status === "error") {
     return (
       <div role="alert" className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-        <span>This attempt was not saved. Keep this page open and try again.</span>
+        <span>
+          This attempt was not saved. Keep this page open and try again.
+          {errorReference ? ` Reference: ${errorReference}.` : ""}
+        </span>
         <button type="button" onClick={onRetry} className="min-h-11 cursor-pointer rounded-lg bg-red-700 px-4 font-semibold text-white transition-colors hover:bg-red-800">
           Retry save
         </button>

@@ -14,6 +14,12 @@ import {
   type TimeMultiplier,
 } from "@/lib/sat/testState";
 import { scoreTest } from "@/lib/sat/scoring";
+import { createAsyncQueue } from "@/lib/sat/asyncQueue";
+import {
+  completionFailureReference,
+  parseCompletionFailureDiagnostic,
+  type CompletionFailureDiagnostic,
+} from "@/lib/sat/completionDiagnostics";
 import type { SavedSession } from "@/lib/sat/testSession";
 import type { Highlight } from "./HighlightablePassage";
 import { IntroScreen, type ResumeInfo } from "./IntroScreen";
@@ -31,6 +37,66 @@ import { LineReader } from "./LineReader";
 import { BreakScreen } from "./BreakScreen";
 import { ResultsScreen, type AttemptSaveStatus } from "./ResultsScreen";
 import { DevJumpMenu } from "./DevJumpMenu";
+
+type SessionSaveReason = "autosave" | "interval" | "exit" | "visibility";
+type SessionSaveOptions = {
+  state?: TestState;
+  highlights?: Record<string, Highlight[]>;
+  reason?: SessionSaveReason;
+  keepalive?: boolean;
+  immediate?: boolean;
+};
+type SessionSaveResult = { ok: boolean; requestId: string; code?: string };
+
+const PENDING_COMPLETION_DIAGNOSTIC = "practice-test:pending-completion-diagnostic";
+
+function rememberCompletionDiagnostic(diagnostic: CompletionFailureDiagnostic): void {
+  try {
+    window.localStorage.setItem(PENDING_COMPLETION_DIAGNOSTIC, JSON.stringify(diagnostic));
+  } catch {
+    // The reference remains visible even when browser storage is unavailable.
+  }
+}
+
+function readCompletionDiagnostic(): CompletionFailureDiagnostic | null {
+  try {
+    const raw = window.localStorage.getItem(PENDING_COMPLETION_DIAGNOSTIC);
+    return raw ? parseCompletionFailureDiagnostic(JSON.parse(raw)) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clearCompletionDiagnostic(requestId: string): void {
+  try {
+    const pending = readCompletionDiagnostic();
+    if (pending?.requestId === requestId) {
+      window.localStorage.removeItem(PENDING_COMPLETION_DIAGNOSTIC);
+    }
+  } catch {
+    // A failed cleanup can only cause one duplicate diagnostic on the next load.
+  }
+}
+
+async function deliverCompletionDiagnostic(diagnostic: CompletionFailureDiagnostic): Promise<void> {
+  rememberCompletionDiagnostic(diagnostic);
+  try {
+    const response = await fetch("/api/telemetry/test-completion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(diagnostic),
+    });
+    if (response.ok) clearCompletionDiagnostic(diagnostic.requestId);
+  } catch {
+    // Keep the diagnostic locally and retry the next time the runner mounts.
+  }
+}
+
+function safeResponseCode(value: unknown, status: number): string {
+  return typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(value)
+    ? value
+    : `http_${status}`;
+}
 
 // sessionStorage key marking "this tab was actively mid-module/review/break on
 // this test slug, and hasn't explicitly exited since." Deliberately NOT based
@@ -115,8 +181,11 @@ export function TestRunner({
   const [savedAttemptId, setSavedAttemptId] = useState<string | null>(null);
   const [showPlannerScorePrompt, setShowPlannerScorePrompt] = useState(false);
   const [attemptSaveStatus, setAttemptSaveStatus] = useState<AttemptSaveStatus>("idle");
+  const [attemptSaveFailure, setAttemptSaveFailure] = useState<CompletionFailureDiagnostic | null>(null);
   const [extendedTime, setExtendedTime] = useState<TimeMultiplier>(1);
   const [exitStatus, setExitStatus] = useState<"idle" | "exiting" | "error">("idle");
+  const [exitFailure, setExitFailure] = useState<SessionSaveResult | null>(null);
+  const [saveQueue] = useState(createAsyncQueue);
 
   // Latest values for the unload/interval savers, which must not re-bind per change.
   const stateRef = useRef(state);
@@ -138,15 +207,18 @@ export function TestRunner({
   // Persist the in-progress session. Skipped at intro, the transient module-over
   // screen, results (a finished test clears its session server-side instead), and
   // the final-module review (the screen right before results) so no save can be in
-  // flight racing the completion clear. keepalive lets a save survive a navigation.
+  // flight racing the completion clear. Ordinary saves are serialized; only the
+  // visibility/unload path opts into keepalive.
   // Returns whether the save actually succeeded, so an explicit "Save and
   // Exit" click can tell the difference and warn the student instead of
   // navigating away on a session/access/rate-limit/server error that a plain
   // fetch().catch() can't see (fetch only rejects on a network-level failure,
   // not on a non-2xx response). The background autosave callers below don't
   // need this and just fire-and-forget as before.
-  const persist = useCallback((): Promise<boolean> => {
-    const s = stateRef.current;
+  const persist = useCallback((options: SessionSaveOptions = {}): Promise<SessionSaveResult> => {
+    const s = options.state ?? stateRef.current;
+    const highlightSnapshot = options.highlights ?? highlightsRef.current;
+    const reason = options.reason ?? "autosave";
     const isFinalReview =
       s.phase === "review" &&
       s.sectionIndex === test.sections.length - 1 &&
@@ -157,21 +229,61 @@ export function TestRunner({
       s.phase === "results" ||
       isFinalReview
     ) {
-      return Promise.resolve(true);
+      return Promise.resolve({ ok: true, requestId: "save-skipped" });
     }
-    return fetch("/api/tests/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ testSlug: slug, state: s, highlights: highlightsRef.current }),
-      keepalive: true,
-    }).then((response) => response.ok).catch(() => false);
-  }, [slug, test]);
+
+    const requestId = crypto.randomUUID();
+    const save = async (): Promise<SessionSaveResult> => {
+      try {
+        const response = await fetch("/api/tests/session", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-client-request-id": requestId,
+            "x-test-save-reason": reason,
+          },
+          body: JSON.stringify({ testSlug: slug, state: s, highlights: highlightSnapshot }),
+          keepalive: options.keepalive ?? false,
+        });
+        if (response.ok) return { ok: true, requestId };
+        const body = (await response.json().catch(() => null)) as { code?: unknown } | null;
+        const code = safeResponseCode(body?.code, response.status);
+        console.error(JSON.stringify({
+          event: "practice_test.session_client.failed",
+          requestId,
+          testSlug: slug,
+          reason,
+          code,
+          status: response.status,
+        }));
+        return { ok: false, requestId, code };
+      } catch (error) {
+        const code = error instanceof Error ? error.name : "UnknownError";
+        console.error(JSON.stringify({
+          event: "practice_test.session_client.failed",
+          requestId,
+          testSlug: slug,
+          reason,
+          code,
+        }));
+        return { ok: false, requestId, code };
+      }
+    };
+
+    return options.immediate ? save() : saveQueue.run(save);
+  }, [saveQueue, slug, test]);
 
   async function handleSaveAndExit() {
     if (exitStatus === "exiting") return;
     setExitStatus("exiting");
-    const saved = await persist();
-    if (!saved) {
+    setExitFailure(null);
+    const saved = await persist({
+      state,
+      highlights,
+      reason: "exit",
+    });
+    if (!saved.ok) {
+      setExitFailure(saved);
       setExitStatus("error");
       return;
     }
@@ -196,7 +308,9 @@ export function TestRunner({
   // survive a resume.
   useEffect(() => {
     if (state.phase === "intro" || state.phase === "moduleOver" || state.phase === "results") return;
-    const id = setTimeout(persist, 1200);
+    const id = setTimeout(() => {
+      void persist({ reason: "autosave" });
+    }, 1200);
     return () => clearTimeout(id);
   }, [
     persist,
@@ -217,20 +331,24 @@ export function TestRunner({
   // captured even if the student leaves without interacting.
   useEffect(() => {
     if (state.phase !== "module" && state.phase !== "review" && state.phase !== "break") return;
-    const id = setInterval(persist, 15000);
+    const id = setInterval(() => {
+      void persist({ reason: "interval" });
+    }, 15000);
     return () => clearInterval(id);
   }, [persist, state.phase]);
 
   // Save on tab hide / unload (covers refresh and closing the tab).
   useEffect(() => {
-    const onHide = () => persist();
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") persist();
+    const saveOnHide = () => {
+      void persist({ reason: "visibility", keepalive: true, immediate: true });
     };
-    window.addEventListener("pagehide", onHide);
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") saveOnHide();
+    };
+    window.addEventListener("pagehide", saveOnHide);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pagehide", saveOnHide);
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [persist]);
@@ -248,20 +366,30 @@ export function TestRunner({
 
   // On a genuine finish (not the dev jump), save the completed attempt and award
   // XP exactly once, then surface a link to its permanent report. The token makes
-  // a retried keepalive POST idempotent server-side.
+  // a retried POST idempotent server-side.
   const completedRef = useRef(false);
   const completionTokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const pending = readCompletionDiagnostic();
+    if (pending) void deliverCompletionDiagnostic(pending);
+  }, []);
 
   const saveCompletedAttempt = useCallback(async () => {
     const s = stateRef.current;
     const clientToken = completionTokenRef.current ?? crypto.randomUUID();
+    const requestId = crypto.randomUUID();
     completionTokenRef.current = clientToken;
     setAttemptSaveStatus("saving");
+    setAttemptSaveFailure(null);
 
     try {
       const response = await fetch("/api/tests/complete", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-client-request-id": requestId,
+        },
         body: JSON.stringify({
           testSlug: slug,
           answers: s.answers,
@@ -269,17 +397,58 @@ export function TestRunner({
           perQuestionTime: s.perQuestionTime,
           clientToken,
         }),
-        keepalive: true,
       });
-      if (!response.ok) throw new Error("Attempt save failed");
+      const data = (await response.json().catch(() => null)) as {
+        attemptId?: unknown;
+        hasStudyPlanner?: unknown;
+        code?: unknown;
+      } | null;
+      if (!response.ok) {
+        const diagnostic: CompletionFailureDiagnostic = {
+          requestId,
+          testSlug: slug,
+          kind: "http",
+          code: safeResponseCode(data?.code, response.status),
+          errorName: "CompletionResponseError",
+          status: response.status,
+        };
+        console.error(JSON.stringify({ event: "practice_test.completion_client.failed", ...diagnostic }));
+        setAttemptSaveFailure(diagnostic);
+        setAttemptSaveStatus("error");
+        void deliverCompletionDiagnostic(diagnostic);
+        return;
+      }
 
-      const data = (await response.json()) as { attemptId?: string; hasStudyPlanner?: boolean };
-      if (!data.attemptId) throw new Error("Attempt id missing");
+      if (typeof data?.attemptId !== "string") {
+        const diagnostic: CompletionFailureDiagnostic = {
+          requestId,
+          testSlug: slug,
+          kind: "invalid_response",
+          code: "attempt_id_missing",
+          errorName: "CompletionResponseError",
+        };
+        console.error(JSON.stringify({ event: "practice_test.completion_client.failed", ...diagnostic }));
+        setAttemptSaveFailure(diagnostic);
+        setAttemptSaveStatus("error");
+        void deliverCompletionDiagnostic(diagnostic);
+        return;
+      }
       setSavedAttemptId(data.attemptId);
       setShowPlannerScorePrompt(Boolean(data.hasStudyPlanner));
+      setAttemptSaveFailure(null);
       setAttemptSaveStatus("saved");
-    } catch {
+    } catch (error) {
+      const diagnostic: CompletionFailureDiagnostic = {
+        requestId,
+        testSlug: slug,
+        kind: "network",
+        code: "fetch_failed",
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      };
+      console.error(JSON.stringify({ event: "practice_test.completion_client.failed", ...diagnostic }));
+      setAttemptSaveFailure(diagnostic);
       setAttemptSaveStatus("error");
+      void deliverCompletionDiagnostic(diagnostic);
     }
   }, [slug]);
 
@@ -431,10 +600,12 @@ export function TestRunner({
             setSavedAttemptId(null);
             setShowPlannerScorePrompt(false);
             setAttemptSaveStatus("idle");
+            setAttemptSaveFailure(null);
             completionTokenRef.current = null;
             dispatch({ type: "RESTART" });
           }}
           saveStatus={state.completedViaFlow ? attemptSaveStatus : undefined}
+          saveErrorReference={attemptSaveFailure ? completionFailureReference(attemptSaveFailure) : undefined}
           onRetrySave={saveCompletedAttempt}
           savedHref={savedAttemptId ? `/practice-test/${slug}/results/${savedAttemptId}${workspaceQuery}` : undefined}
           attemptsHref={`/practice-test/${slug}/attempts${workspaceQuery}`}
@@ -482,8 +653,12 @@ export function TestRunner({
       {lineReaderOn && <LineReader onClose={() => setLineReaderOn(false)} />}
       {exitStatus === "error" && (
         <SaveExitErrorDialog
+          reference={exitFailure?.requestId.slice(0, 8)}
           onRetry={() => void handleSaveAndExit()}
-          onDismiss={() => setExitStatus("idle")}
+          onDismiss={() => {
+            setExitFailure(null);
+            setExitStatus("idle");
+          }}
         />
       )}
     </>
@@ -580,7 +755,15 @@ export function TestRunner({
   );
 }
 
-function SaveExitErrorDialog({ onRetry, onDismiss }: { onRetry: () => void; onDismiss: () => void }) {
+function SaveExitErrorDialog({
+  reference,
+  onRetry,
+  onDismiss,
+}: {
+  reference?: string;
+  onRetry: () => void;
+  onDismiss: () => void;
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 font-exam-sans">
       <button
@@ -600,7 +783,7 @@ function SaveExitErrorDialog({ onRetry, onDismiss }: { onRetry: () => void; onDi
         </h2>
         <p className="mt-2 text-[14px] leading-6 text-exam-ink/70">
           Something went wrong saving your test. Stay on this page and try again before leaving --
-          your answers are still here.
+          your answers are still here.{reference ? ` Reference: ${reference}.` : ""}
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button

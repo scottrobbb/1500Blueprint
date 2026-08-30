@@ -16,7 +16,7 @@ import { isAdminEmail } from "@/lib/auth/admin";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { readIdempotencyToken } from "@/lib/idempotency";
-import { reportServerError } from "@/lib/observability/server";
+import { reportServerError, reportServerEvent } from "@/lib/observability/server";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { sanitizeAnswerMap, sanitizePerQuestionTime, sanitizeRouted } from "@/lib/sat/submission";
@@ -32,8 +32,9 @@ type CompleteBody = {
 };
 
 export async function POST(req: NextRequest) {
+  const requestId = readIdempotencyToken(req.headers.get("x-client-request-id")) ?? crypto.randomUUID();
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return completionError(requestId, 401, "unauthorized", "Unauthorized");
 
   let body: CompleteBody;
   try {
@@ -41,26 +42,28 @@ export async function POST(req: NextRequest) {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("Invalid body");
     body = value as CompleteBody;
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof RequestBodyTooLargeError ? "Request body is too large" : "Invalid JSON body" },
-      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
+    return completionError(
+      requestId,
+      error instanceof RequestBodyTooLargeError ? 413 : 400,
+      error instanceof RequestBodyTooLargeError ? "body_too_large" : "invalid_json",
+      error instanceof RequestBodyTooLargeError ? "Request body is too large" : "Invalid JSON body",
     );
   }
 
   const { testSlug } = body;
   if (typeof testSlug !== "string" || testSlug.length === 0 || testSlug.length > 160) {
-    return NextResponse.json({ error: "testSlug is required" }, { status: 400 });
+    return completionError(requestId, 400, "invalid_test_slug", "testSlug is required");
   }
   const clientToken = readIdempotencyToken(body.clientToken);
   if (!clientToken) {
-    return NextResponse.json({ error: "A valid completion token is required" }, { status: 400 });
+    return completionError(requestId, 400, "invalid_completion_token", "A valid completion token is required", testSlug);
   }
   const isAdmin = isAdminEmail(session.email);
   if (!isAdmin && !(await canAccessPracticeTest(session.email, testSlug))) {
-    return NextResponse.json({ error: "This practice test is not included with your plan.", code: "plan_limit" }, { status: 402 });
+    return completionError(requestId, 402, "plan_limit", "This practice test is not included with your plan.", testSlug);
   }
   const test = await loadTest(testSlug, { includeDraft: isAdmin });
-  if (!test) return NextResponse.json({ error: "Test not found" }, { status: 404 });
+  if (!test) return completionError(requestId, 404, "test_not_found", "Test not found", testSlug);
 
   const questionIds = new Set(test.sections.flatMap((section) => [
     ...section.module1.questions,
@@ -71,13 +74,15 @@ export async function POST(req: NextRequest) {
   const routed = sanitizeRouted(body.routed);
   const perQuestionTime = sanitizePerQuestionTime(body.perQuestionTime, questionIds);
   if (!answers || !routed || !perQuestionTime) {
-    return NextResponse.json({ error: "Invalid test completion data" }, { status: 400 });
+    return completionError(requestId, 400, "invalid_completion_data", "Invalid test completion data", testSlug);
   }
   try {
     const rate = await consumeRateLimit("practice-test-completion", session.email, { limit: 30, windowSeconds: 60 * 60 });
-    if (!rate.allowed) return NextResponse.json({ error: "Too many completion requests", resetsAt: rate.resetsAt }, { status: 429 });
+    if (!rate.allowed) {
+      return completionError(requestId, 429, "rate_limited", "Too many completion requests", testSlug, { resetsAt: rate.resetsAt });
+    }
   } catch {
-    return NextResponse.json({ error: "Test saving is temporarily unavailable" }, { status: 503 });
+    return completionError(requestId, 503, "rate_limit_unavailable", "Test saving is temporarily unavailable", testSlug);
   }
 
   const result = scoreTest(test, routed, answers);
@@ -105,8 +110,13 @@ export async function POST(req: NextRequest) {
       provider: "supabase",
       route: "/api/tests/complete",
       method: "POST",
+      source: testSlug,
+      correlationId: requestId,
     });
-    return NextResponse.json({ error: "Could not save your attempt" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Could not save your attempt", code: "persistence_failed", requestId },
+      { status: 500 },
+    );
   }
 
   // Best-effort: a finished test should not offer resume.
@@ -117,6 +127,8 @@ export async function POST(req: NextRequest) {
       provider: "supabase",
       route: "/api/tests/complete",
       method: "POST",
+      source: testSlug,
+      correlationId: requestId,
     });
   }
 
@@ -130,13 +142,44 @@ export async function POST(req: NextRequest) {
 
   // The planner migration may be deployed separately from this route, so a
   // missing profile/table must never block a completed test from being saved.
+  reportServerEvent("practice_test.completion.saved", {
+    provider: "next",
+    route: "/api/tests/complete",
+    method: "POST",
+    source: testSlug,
+    correlationId: requestId,
+  });
   return NextResponse.json({
     attemptId,
     xpAwarded,
     total: result.total,
+    requestId,
     hasStudyPlanner: await hasStudyPlanner(session.email),
     ...(nav ?? {}),
   });
+}
+
+function completionError(
+  requestId: string,
+  status: number,
+  code: string,
+  message: string,
+  source?: string,
+  extra: Record<string, unknown> = {},
+) {
+  reportServerError("practice_test.completion.rejected", {
+    name: "PracticeTestCompletionRejected",
+    code,
+    status,
+    requestId,
+  }, {
+    provider: "next",
+    route: "/api/tests/complete",
+    method: "POST",
+    source,
+    correlationId: requestId,
+  });
+  return NextResponse.json({ error: message, code, requestId, ...extra }, { status });
 }
 
 async function hasStudyPlanner(email: string): Promise<boolean> {

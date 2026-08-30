@@ -11,8 +11,10 @@ import { isAdminEmail } from "@/lib/auth/admin";
 import { canAccessPracticeTestPublication } from "@/lib/sat/loadTest";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
 import { reportServerError } from "@/lib/observability/server";
+import { reportServerEvent } from "@/lib/observability/server";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { readIdempotencyToken } from "@/lib/idempotency";
 
 const MAX_SESSION_BYTES = 512 * 1024;
 
@@ -23,11 +25,15 @@ type SaveBody = {
 };
 
 export async function POST(req: NextRequest) {
+  const requestId = readIdempotencyToken(req.headers.get("x-client-request-id")) ?? crypto.randomUUID();
+  const saveReason = readSaveReason(req.headers.get("x-test-save-reason"));
   const session = await getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session) return sessionError(requestId, 401, "unauthorized", "Unauthorized");
   const rate = await checkRateLimit("practice-test-session-write", session.email, { limit: 1_200, windowSeconds: 60 * 60 });
-  if (!rate) return NextResponse.json({ error: "Saving is temporarily unavailable" }, { status: 503 });
-  if (!rate.allowed) return NextResponse.json({ error: "Too many save requests", resetsAt: rate.resetsAt }, { status: 429 });
+  if (!rate) return sessionError(requestId, 503, "rate_limit_unavailable", "Saving is temporarily unavailable");
+  if (!rate.allowed) {
+    return sessionError(requestId, 429, "rate_limited", "Too many save requests", { resetsAt: rate.resetsAt });
+  }
 
   let body: SaveBody;
   try {
@@ -35,9 +41,11 @@ export async function POST(req: NextRequest) {
     if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError("Invalid body");
     body = value as SaveBody;
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof RequestBodyTooLargeError ? "Request body is too large" : "Invalid JSON body" },
-      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 },
+    return sessionError(
+      requestId,
+      error instanceof RequestBodyTooLargeError ? 413 : 400,
+      error instanceof RequestBodyTooLargeError ? "body_too_large" : "invalid_json",
+      error instanceof RequestBodyTooLargeError ? "Request body is too large" : "Invalid JSON body",
     );
   }
   if (
@@ -48,14 +56,14 @@ export async function POST(req: NextRequest) {
     || typeof body.state !== "object"
     || Array.isArray(body.state)
   ) {
-    return NextResponse.json({ error: "testSlug and state are required" }, { status: 400 });
+    return sessionError(requestId, 400, "invalid_session", "testSlug and state are required");
   }
   const isAdmin = isAdminEmail(session.email);
   if (!isAdmin && !(await canAccessPracticeTest(session.email, body.testSlug))) {
-    return NextResponse.json({ error: "This practice test is not included with your plan." }, { status: 402 });
+    return sessionError(requestId, 402, "plan_limit", "This practice test is not included with your plan.");
   }
   if (!(await canAccessPracticeTestPublication(body.testSlug, isAdmin))) {
-    return NextResponse.json({ error: "Practice test is not published" }, { status: 404 });
+    return sessionError(requestId, 404, "test_not_published", "Practice test is not published");
   }
 
   try {
@@ -68,10 +76,55 @@ export async function POST(req: NextRequest) {
       provider: "supabase",
       route: "/api/tests/session",
       method: "POST",
+      correlationId: requestId,
+      source: body.testSlug,
     });
-    return NextResponse.json({ error: "Save failed" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Save failed", code: "persistence_failed", requestId },
+      { status: 500 },
+    );
   }
-  return NextResponse.json({ ok: true });
+  if (saveReason === "exit") {
+    reportServerEvent("practice_test.session_exit.saved", {
+      provider: "next",
+      route: "/api/tests/session",
+      method: "POST",
+      source: body.testSlug,
+      correlationId: requestId,
+      reason: saveReason,
+      phase: body.state.phase,
+      sectionIndex: body.state.sectionIndex,
+      moduleOrder: body.state.moduleOrder,
+      questionIndex: body.state.qIndex,
+    });
+  }
+  return NextResponse.json({ ok: true, requestId });
+}
+
+function readSaveReason(value: string | null): "autosave" | "interval" | "exit" | "visibility" {
+  if (value === "interval" || value === "exit" || value === "visibility") return value;
+  return "autosave";
+}
+
+function sessionError(
+  requestId: string,
+  status: number,
+  code: string,
+  message: string,
+  extra: Record<string, unknown> = {},
+) {
+  reportServerError("practice_test.session_save.rejected", {
+    name: "PracticeTestSessionSaveRejected",
+    code,
+    status,
+    requestId,
+  }, {
+    provider: "next",
+    route: "/api/tests/session",
+    method: "POST",
+    correlationId: requestId,
+  });
+  return NextResponse.json({ error: message, code, requestId, ...extra }, { status });
 }
 
 export async function DELETE(req: NextRequest) {

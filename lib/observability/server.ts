@@ -10,6 +10,11 @@ type ErrorContext = {
   source?: string;
   expectedLivemode?: boolean;
   receivedLivemode?: boolean;
+  reason?: string;
+  phase?: string;
+  sectionIndex?: number;
+  moduleOrder?: number;
+  questionIndex?: number;
 };
 
 export function reportServerError(
@@ -22,5 +27,16 @@ export function reportServerError(
     event,
     ...context,
     error: safeErrorMetadata(error),
+  }));
+}
+
+export function reportServerEvent(
+  event: string,
+  context: ErrorContext = {},
+): void {
+  console.info(JSON.stringify({
+    severity: "info",
+    event,
+    ...context,
   }));
 }
