@@ -5,8 +5,6 @@ export type PlanEntitlements = {
   questionBankLimit: number | "unlimited";
   fullTestLimit: number;
   dailyDrillLimit: number | "unlimited" | null;
-  desmos101: boolean;
-  readingWriting101: boolean;
   challengeQuestions: boolean;
   allCourses: boolean;
   liveGroupClasses: boolean;
@@ -30,8 +28,6 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
     questionBankLimit: 200,
     fullTestLimit: 1,
     dailyDrillLimit: null,
-    desmos101: true,
-    readingWriting101: true,
     challengeQuestions: false,
     allCourses: false,
     liveGroupClasses: false,
@@ -43,8 +39,6 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
     questionBankLimit: 3000,
     fullTestLimit: 2,
     dailyDrillLimit: 20,
-    desmos101: true,
-    readingWriting101: true,
     challengeQuestions: true,
     allCourses: false,
     liveGroupClasses: false,
@@ -56,8 +50,6 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
     questionBankLimit: "unlimited",
     fullTestLimit: 4,
     dailyDrillLimit: "unlimited",
-    desmos101: true,
-    readingWriting101: true,
     challengeQuestions: true,
     allCourses: true,
     liveGroupClasses: true,
@@ -130,16 +122,9 @@ export function accessForTestPersona(
   return null;
 }
 
-// Free courses (available on every plan) are keyed by the entitlement flag
-// that gates them. Everything else (Blueprint Foundations, subtopic courses)
-// requires allCourses (Max).
-const FREE_COURSE_ENTITLEMENTS: Record<string, keyof PlanEntitlements> = {
-  "desmos-101": "desmos101",
-  "reading-101": "readingWriting101",
-};
-
+// Every course requires Max; courseSlug is unused but kept so callers don't
+// need to special-case course-level access checks elsewhere.
 export function hasCourseAccess(entitlements: PlanEntitlements, courseSlug: string): boolean {
-  if (entitlements.allCourses) return true;
-  const flag = FREE_COURSE_ENTITLEMENTS[courseSlug];
-  return flag ? Boolean(entitlements[flag]) : false;
+  void courseSlug;
+  return entitlements.allCourses;
 }

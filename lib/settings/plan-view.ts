@@ -1,8 +1,6 @@
 import type { PlanCode, PlanEntitlements } from "@/lib/auth/plans";
 
 export type SettingsFeatureKey =
-  | "desmos101"
-  | "readingWriting101"
   | "challengeQuestions"
   | "allCourses"
   | "studyPlanner"
@@ -119,18 +117,6 @@ export function buildSettingsPlanView(
       },
     ],
     features: [
-      {
-        key: "desmos101",
-        title: "Desmos 101",
-        description: "Learn the calculator workflows that save time on SAT Math.",
-        included: entitlements.desmos101,
-      },
-      {
-        key: "readingWriting101",
-        title: "Reading & Writing 101",
-        description: "Build a repeatable system for every Reading & Writing question type.",
-        included: entitlements.readingWriting101,
-      },
       {
         key: "challengeQuestions",
         title: "Challenge questions",

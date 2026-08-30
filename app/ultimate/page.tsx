@@ -92,8 +92,8 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
           currentPlan={access.plan}
           requiredPlan="max"
           title="Unlock the full practice loop"
-          description="Keep your free course and diagnostic, then add the daily repetition that turns weak skills into reliable points."
-          features={["Unlimited daily drills", "Challenge Question sets", "4 full-length tests"]}
+          description="Keep your diagnostic, then add every course, daily repetition, and the practice that turns weak skills into reliable points."
+          features={["Every course", "Unlimited daily drills", "Challenge Question sets"]}
           className="mb-7"
         />
       ) : access.plan === "core" ? (

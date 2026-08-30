@@ -35,8 +35,9 @@ test("access records retain their resolution source", () => {
 });
 
 test("course access requires an active account as well as the right plan", () => {
-  assert.equal(canAccessCourse(accessForPlan("free", "free", "free-user"), "desmos-101"), true);
+  assert.equal(canAccessCourse(accessForPlan("free", "free", "free-user"), "desmos-101"), false);
   assert.equal(canAccessCourse(accessForPlan("free", "free", "free-user"), "blueprint-foundations"), false);
+  assert.equal(canAccessCourse(accessForPlan("core", "subscription", "core-user"), "reading-101"), false);
   assert.equal(canAccessCourse(accessForPlan("core", "subscription", "core-user"), "advanced-math"), false);
   assert.equal(canAccessCourse(accessForPlan("max", "subscription", "max-user"), "advanced-math"), true);
   assert.equal(
@@ -78,11 +79,15 @@ test("every authenticated student can enter the entitlement-gated Ultimate works
   assert.equal(isUltimatePreviewEmail(null), false);
 });
 
-test("Desmos 101 and Reading 101 remain available on every plan; Foundations and subtopic courses require Max", () => {
-  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "desmos-101"), true);
-  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "reading-101"), true);
+test("every course requires Max; Free and Core are locked out of all of them", () => {
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "desmos-101"), false);
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "reading-101"), false);
   assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "blueprint-foundations"), false);
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.core, "desmos-101"), false);
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.core, "reading-101"), false);
   assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.free, "math-subtopic-course"), false);
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.max, "desmos-101"), true);
+  assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.max, "reading-101"), true);
   assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.max, "blueprint-foundations"), true);
   assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.max, "math-subtopic-course"), true);
 });

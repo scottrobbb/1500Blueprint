@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const COURSE_SECTIONS = [
   { title: "Blueprint courses", slugs: ["blueprint-foundations"] },
   { title: "Subtopic courses", slugs: ["math-subtopic-course", "reading-writing-subtopic-course"] },
-  { title: "Free courses", slugs: ["desmos-101", "reading-101"] },
+  { title: "Foundational courses", slugs: ["desmos-101", "reading-101"] },
 ] as const;
 
 export default async function UltimateCoursesPage() {
@@ -46,9 +46,9 @@ export default async function UltimateCoursesPage() {
             <UpgradePrompt
               currentPlan={access.plan}
               requiredPlan="max"
-              title="The advanced curriculum is ready when you are"
-              description="Your included Desmos 101 and Reading & Writing 101 courses stay open. Max adds Blueprint Foundations and every Math and Reading & Writing subtopic course without resetting progress."
-              features={["All advanced courses", "Embedded lesson practice", "Planner-linked assignments"]}
+              title="The full course library is ready when you are"
+              description="Max unlocks every course — Desmos 101, Reading & Writing 101, Blueprint Foundations, and every Math and Reading & Writing subtopic course."
+              features={["Every course", "Embedded lesson practice", "Planner-linked assignments"]}
               className="mb-6"
             />
           ) : null}

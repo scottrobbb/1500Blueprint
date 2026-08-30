@@ -16,8 +16,6 @@ test("the settings view represents every plan entitlement", () => {
   assert.deepEqual(
     view.features.map((item) => item.key),
     [
-      "desmos101",
-      "readingWriting101",
       "challengeQuestions",
       "allCourses",
       "studyPlanner",
@@ -36,13 +34,14 @@ test("free access marks paid capabilities as locked", () => {
   const challenge = view.features.find(
     (item) => item.key === "challengeQuestions",
   );
-  const desmos = view.features.find((item) => item.key === "desmos101");
+  const allCourses = view.features.find((item) => item.key === "allCourses");
 
   assert.equal(drills?.included, false);
   assert.equal(drills?.unlockPlan, "core");
   assert.equal(challenge?.included, false);
   assert.equal(challenge?.unlockPlan, "core");
-  assert.equal(desmos?.included, true);
+  assert.equal(allCourses?.included, false);
+  assert.equal(allCourses?.unlockPlan, "max");
 });
 
 test("core usage shows live finite allowances", () => {
