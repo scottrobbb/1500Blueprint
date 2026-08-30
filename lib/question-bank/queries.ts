@@ -11,9 +11,13 @@ import {
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 
-export async function getQuestionBankDashboard(email: string): Promise<QuestionBankDashboard> {
+export async function getQuestionBankDashboard(
+  email: string,
+  options: { freeTierOnly?: boolean } = {},
+): Promise<QuestionBankDashboard> {
   const { data, error } = await supabaseAdmin().rpc("get_question_bank_dashboard", {
     p_email: email,
+    p_free_tier_only: options.freeTierOnly ?? false,
   });
 
   if (error) {

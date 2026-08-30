@@ -27,7 +27,7 @@ export type StudentAccess = {
 
 export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
   free: {
-    questionBankLimit: 300,
+    questionBankLimit: 200,
     fullTestLimit: 1,
     dailyDrillLimit: null,
     desmos101: true,

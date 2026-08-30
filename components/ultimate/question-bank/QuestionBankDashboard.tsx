@@ -94,9 +94,9 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
           <UpgradePrompt
             currentPlan={access.plan}
             requiredPlan="max"
-            title="Challenge sets unlock with Max"
-            description="Keep practicing the full Free bank, then add Scott's hardest transfer questions when you are ready to push beyond routine patterns."
-            features={["Challenge Question access", "Unlimited questions", "Unlimited daily drills"]}
+            title="The full Challenge library unlocks with Max"
+            description="Your Free bank already includes a sample of Challenge questions. Max adds Scott's complete set of hardest transfer questions."
+            features={["Full Challenge-level access", "Unlimited questions", "Unlimited daily drills"]}
             className="mb-6"
           />
         ) : null}
@@ -147,7 +147,7 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
               Where to focus next
             </h2>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-navy/45">
-              Every SAT domain and difficulty is covered, including accuracy, volume, and average time per answer.{!access.challengeQuestions ? " Inventory totals include Challenge sets that unlock with Max." : ""}
+              Every SAT domain and difficulty is covered, including accuracy, volume, and average time per answer.
             </p>
           </div>
 
@@ -208,7 +208,7 @@ function SubjectCard({ subject, challengeLocked }: { subject: QuestionBankSubjec
         <p className="mt-1 text-xs leading-5 text-white/70">{copy.description}</p>
         <div className="mt-5 flex items-center justify-between gap-3 text-xs font-semibold text-white/80">
           <span>{challengeLocked ? `${subject.solved.toLocaleString()} questions solved` : `${subject.solved.toLocaleString()} of ${subject.available.toLocaleString()} solved`}</span>
-          <span>{challengeLocked ? "Max adds Challenge" : `${progress}%`}</span>
+          <span>{challengeLocked ? "Full Challenge: Max" : `${progress}%`}</span>
         </div>
         {!challengeLocked ? <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20" aria-label={`${progress}% solved`}><div className="h-full rounded-full bg-white transition-[width] duration-300" style={{ width: `${progress}%` }} /></div> : null}
         <Link href={isMath ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing"} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-navy shadow-sm transition-transform hover:-translate-y-0.5">

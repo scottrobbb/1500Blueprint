@@ -186,6 +186,25 @@ export function MetadataPanel({ question, skills, answerTypes, onChange }: Metad
             </span>
           </label>
         </div>
+
+        <div className="sm:col-span-2">
+          <label htmlFor="meta-free-tier" className={`flex min-h-11 items-start gap-3 rounded-xl border border-navy/15 bg-mist/35 px-3.5 py-3 focus-within:ring-2 focus-within:ring-brand/20 ${bankEligible && question.includeInQuestionBank ? "cursor-pointer" : "cursor-not-allowed opacity-65"}`}>
+            <input
+              id="meta-free-tier"
+              type="checkbox"
+              checked={bankEligible && question.includeInQuestionBank && question.questionBankFreeTier}
+              disabled={!bankEligible || !question.includeInQuestionBank}
+              onChange={(event) => onChange({ questionBankFreeTier: event.target.checked })}
+              className="mt-0.5 h-4 w-4 flex-none accent-brand"
+            />
+            <span>
+              <span className={`${label} block text-navy/70`}>Free tier</span>
+              <span className="mt-1 block text-[12px] leading-5 text-navy/45">
+                Included in the Free plan's 200-question pool. Leave off to keep this Core/Max only.
+              </span>
+            </span>
+          </label>
+        </div>
       </div>
     </section>
   );

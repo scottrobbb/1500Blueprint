@@ -68,6 +68,7 @@ function toQuestion(r: QuestionRow): DrillQuestion {
     explanation: r.explanation,
     status: r.status as QuestionStatus,
     includeInQuestionBank: false,
+    questionBankFreeTier: false,
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,

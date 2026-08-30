@@ -61,7 +61,7 @@ type QuestionRow = {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  question_bank_catalog?: { enabled: boolean }[] | { enabled: boolean } | null;
+  question_bank_catalog?: { enabled: boolean; access_tier: string }[] | { enabled: boolean; access_tier: string } | null;
 };
 
 type StepRow = {
@@ -124,6 +124,9 @@ function toQuestion(r: QuestionRow, steps: StepRow[] = []): DrillQuestion {
     includeInQuestionBank: Array.isArray(catalog)
       ? catalog.some((entry) => entry.enabled)
       : Boolean(catalog?.enabled),
+    questionBankFreeTier: Array.isArray(catalog)
+      ? catalog.some((entry) => entry.access_tier === "free")
+      : catalog?.access_tier === "free",
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
@@ -266,7 +269,7 @@ export async function listQuestions(
   let query = supabaseAdmin()
     .from("drill_questions")
     .select(
-      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled)",
+      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled,access_tier)",
       { count: "exact" },
     );
 
@@ -301,7 +304,7 @@ export async function getQuestion(id: string): Promise<DrillQuestion | null> {
   const { data, error } = await admin
     .from("drill_questions")
     .select(
-      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled)",
+      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled,access_tier)",
     )
     .eq("id", id)
     .maybeSingle<QuestionRow>();
@@ -330,7 +333,7 @@ export async function createQuestion(
     .from("drill_questions")
     .insert({ drill_slug: drillSlug, answer_type: answerType, status: "draft", created_by: createdBy })
     .select(
-      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled)",
+      "id,drill_slug,section,domain,skill,difficulty,answer_type,stem,passage,figure_url,content,explanation,status,created_by,created_at,updated_at,question_bank_catalog(enabled,access_tier)",
     )
     .single<QuestionRow>();
   if (error || !data) return null;
@@ -351,6 +354,7 @@ export type QuestionInput = {
   explanation: string | null;
   status: QuestionStatus;
   includeInQuestionBank: boolean;
+  questionBankFreeTier: boolean;
 };
 
 export async function updateQuestion(input: QuestionInput): Promise<void> {
@@ -414,7 +418,7 @@ export async function updateQuestion(input: QuestionInput): Promise<void> {
 
   const catalogResult = input.includeInQuestionBank
     ? await db.from("question_bank_catalog").upsert(
-        { question_id: input.id, access_tier: "ultimate", enabled: true },
+        { question_id: input.id, access_tier: input.questionBankFreeTier ? "free" : "ultimate", enabled: true },
         { onConflict: "question_id" },
       )
     : await db.from("question_bank_catalog").delete().eq("question_id", input.id);

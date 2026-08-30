@@ -35,7 +35,10 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
     questionBankAllowance(session.email),
   ]);
   if (!allowance.allowed) redirect("/ultimate/bank?upgrade=1");
-  const questions = await getMathRunnerQuestions(session.email, filters, limit, { includeChallenge: access.entitlements.challengeQuestions });
+  const questions = await getMathRunnerQuestions(session.email, filters, limit, {
+    includeChallenge: access.entitlements.challengeQuestions,
+    freeTierOnly: access.plan === "free",
+  });
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
   return (

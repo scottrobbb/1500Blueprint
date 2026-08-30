@@ -12,6 +12,9 @@ export default async function UltimateMathBankPage() {
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
   const access = await getStudentAccess(session.email);
-  const catalog = await getMathBankCatalog(session.email, { includeChallenge: access.entitlements.challengeQuestions });
+  const catalog = await getMathBankCatalog(session.email, {
+    includeChallenge: access.entitlements.challengeQuestions,
+    freeTierOnly: access.plan === "free",
+  });
   return <MathBankCatalogView catalog={catalog} challengeLocked={!access.entitlements.challengeQuestions} currentPlan={access.plan} />;
 }

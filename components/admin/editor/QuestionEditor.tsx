@@ -48,6 +48,7 @@ function toQuestionInput(q: DrillQuestion): QuestionInput {
     explanation: q.explanation,
     status: q.status,
     includeInQuestionBank: q.includeInQuestionBank,
+    questionBankFreeTier: q.questionBankFreeTier,
   };
 }
 

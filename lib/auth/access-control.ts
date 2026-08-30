@@ -28,7 +28,12 @@ export async function questionBankAllowance(email: string): Promise<{ allowed: b
   if (isAdminEmail(email)) return { allowed: true, used: 0, limit: "unlimited" };
   const access = await getStudentAccess(email);
   const limit = access.entitlements.questionBankLimit;
-  if (limit === "unlimited") return { allowed: access.active, used: 0, limit };
+  // Free's content exposure is bounded by the curated free-tier pool (see
+  // freeTierOnly filtering in lib/question-bank/*-queries.ts), not by a
+  // submission counter -- so unlike Core's numeric cap, Free is never
+  // locked out of the bank once a raw attempt count crosses the pool size
+  // (which would otherwise happen quickly from ordinary retries).
+  if (limit === "unlimited" || access.plan === "free") return { allowed: access.active, used: 0, limit };
   const used = await getQuestionBankUsage(email);
   return { allowed: access.active && used < limit, used, limit };
 }

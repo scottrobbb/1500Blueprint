@@ -35,7 +35,10 @@ export default async function UltimateReadingWritingPracticePage({ searchParams 
     questionBankAllowance(session.email),
   ]);
   if (!allowance.allowed) redirect("/ultimate/bank?upgrade=1");
-  const questions = await getReadingWritingRunnerQuestions(session.email, filters, limit, { includeChallenge: access.entitlements.challengeQuestions });
+  const questions = await getReadingWritingRunnerQuestions(session.email, filters, limit, {
+    includeChallenge: access.entitlements.challengeQuestions,
+    freeTierOnly: access.plan === "free",
+  });
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
   return (

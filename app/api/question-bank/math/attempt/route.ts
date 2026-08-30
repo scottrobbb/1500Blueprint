@@ -43,6 +43,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Question Bank access is not active.", code: "plan_limit" }, { status: 402 });
   }
   const bankLimit = access?.entitlements.questionBankLimit ?? "unlimited";
+  // Free's content is already bounded by the curated free-tier pool
+  // (freeTierOnly filtering), so the RPC's raw attempt-row counter must not
+  // also cap it -- that would lock a student out after 200 total
+  // submissions even if they've only ever seen a handful of distinct
+  // questions (e.g. retried some more than once).
+  const rpcLimit = bankLimit === "unlimited" || access?.plan === "free" ? null : bankLimit;
 
   const existing = await loadAttemptByToken(session.email, input.clientToken);
   if (existing.error) {
@@ -58,7 +64,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "That answer token was already used." }, { status: 409 });
     }
     const question = await getMathQuestionForGrading(input.questionId);
-    if (question && access && !canAccessQuestionBankLevel(question.question.level, access.entitlements.challengeQuestions)) {
+    if (
+      question
+      && access
+      && question.accessTier !== "free"
+      && !canAccessQuestionBankLevel(question.question.level, access.entitlements.challengeQuestions)
+    ) {
       return challengeUpgrade();
     }
     return NextResponse.json({
@@ -72,7 +83,11 @@ export async function POST(request: Request) {
   if (!gradingQuestion) {
     return NextResponse.json({ error: "Question is not available" }, { status: 404 });
   }
-  if (access && !canAccessQuestionBankLevel(gradingQuestion.question.level, access.entitlements.challengeQuestions)) {
+  if (
+    access
+    && gradingQuestion.accessTier !== "free"
+    && !canAccessQuestionBankLevel(gradingQuestion.question.level, access.entitlements.challengeQuestions)
+  ) {
     return challengeUpgrade();
   }
 
@@ -91,7 +106,7 @@ export async function POST(request: Request) {
       domain: gradingQuestion.question.domain,
       skill: gradingQuestion.question.skill ?? null,
       difficulty: gradingQuestion.question.difficulty,
-      limit: bankLimit === "unlimited" ? null : bankLimit,
+      limit: rpcLimit,
     });
   } catch (error) {
     reportServerError("question_bank.math.attempt_write_failed", error, {

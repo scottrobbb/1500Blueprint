@@ -40,6 +40,7 @@ type MathQuestionRow = {
   content: Record<string, unknown> | null;
   explanation: string | null;
   created_at: string;
+  accessTier: "free" | "ultimate";
 };
 
 type MathSkillRow = {
@@ -77,14 +78,18 @@ export type MathQuestionForGrading = {
   acceptedAnswers: string[];
   correctChoice: ChoiceId | null;
   explanation: string;
+  accessTier: "free" | "ultimate";
 };
 
 export async function getMathBankCatalog(
   email: string,
-  options: { strictActivity?: boolean; includeChallenge?: boolean } = {},
+  options: { strictActivity?: boolean; includeChallenge?: boolean; freeTierOnly?: boolean } = {},
 ): Promise<MathBankCatalog> {
   const [loadedQuestions, skills] = await Promise.all([loadEligibleMathRows(), loadMathSkills()]);
-  const questions = filterChallengeRows(loadedQuestions, options.includeChallenge ?? true);
+  const questions = filterForPlan(loadedQuestions, {
+    includeChallenge: options.includeChallenge ?? true,
+    freeTierOnly: options.freeTierOnly ?? false,
+  });
   const activity = await loadQuestionActivity(
     email,
     questions.map((question) => question.id),
@@ -103,9 +108,12 @@ export async function getMathRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
   limit: number | null = null,
-  options: { includeChallenge?: boolean } = {},
+  options: { includeChallenge?: boolean; freeTierOnly?: boolean } = {},
 ): Promise<MathRunnerQuestion[]> {
-  const rows = filterChallengeRows(await loadEligibleMathRows(), options.includeChallenge ?? true);
+  const rows = filterForPlan(await loadEligibleMathRows(), {
+    includeChallenge: options.includeChallenge ?? true,
+    freeTierOnly: options.freeTierOnly ?? false,
+  });
   const orderIndex = new Map(rows.map((row, index) => [row.id, index]));
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
@@ -156,8 +164,18 @@ function matchesDifficultyFilter(row: MathQuestionRow, difficulty: MathDifficult
   return questionBankLevel(rowDifficulty, row.content) === difficulty;
 }
 
-function filterChallengeRows(rows: MathQuestionRow[], includeChallenge: boolean): MathQuestionRow[] {
-  if (includeChallenge) return rows;
+// Free-plan sessions are restricted to the curated free-tier pool (a fixed
+// set of ~200 questions Scott has flagged in question_bank_catalog), which
+// deliberately includes a handful of challenge-level questions -- so
+// freeTierOnly takes priority over includeChallenge rather than composing
+// with it (a free-tier challenge question must never be stripped just
+// because the account otherwise lacks the challengeQuestions entitlement).
+function filterForPlan(
+  rows: MathQuestionRow[],
+  options: { includeChallenge: boolean; freeTierOnly: boolean },
+): MathQuestionRow[] {
+  if (options.freeTierOnly) return rows.filter((row) => row.accessTier === "free");
+  if (options.includeChallenge) return rows;
   return rows.filter((row) => {
     const difficulty = isDifficulty(row.difficulty) ? row.difficulty : "medium";
     return canAccessQuestionBankLevel(questionBankLevel(difficulty, row.content), false);
@@ -187,6 +205,7 @@ export async function getMathQuestionForGrading(
     acceptedAnswers,
     correctChoice,
     explanation: row.explanation?.trim() || "A full solution is not available yet.",
+    accessTier: row.accessTier,
   };
 }
 
@@ -206,11 +225,11 @@ export function getCorrectAnswerLabel(question: MathQuestionForGrading): string 
 
 async function loadEligibleMathRows(questionId?: string): Promise<MathQuestionRow[]> {
   const db = supabaseAdmin();
-  const catalogIds = await loadEnabledCatalogIds(questionId);
-  if (catalogIds.length === 0) return [];
+  const catalogEntries = await loadEnabledCatalogEntries(questionId);
+  if (catalogEntries.size === 0) return [];
 
   const rows: MathQuestionRow[] = [];
-  for (const idBatch of chunks(catalogIds, 100)) {
+  for (const idBatch of chunks([...catalogEntries.keys()], 100)) {
     const questions = await db
       .from("drill_questions")
       .select(QUESTION_SELECT)
@@ -219,9 +238,12 @@ async function loadEligibleMathRows(questionId?: string): Promise<MathQuestionRo
       .eq("drill_slug", "targeted-math")
       .eq("section", "math")
       .in("answer_type", ["mc_single", "grid_in"])
-      .returns<MathQuestionRow[]>();
+      .returns<Omit<MathQuestionRow, "accessTier">[]>();
     if (questions.error) throw databaseError("Could not load Math bank questions", questions.error);
-    rows.push(...(questions.data ?? []));
+    rows.push(...(questions.data ?? []).map((row) => ({
+      ...row,
+      accessTier: catalogEntries.get(row.id) ?? "ultimate",
+    })));
   }
   return signCourseAssetReferences(rows
     .filter((row) => isQuestionBankRuntimeReady({
@@ -251,23 +273,23 @@ async function loadMathSkills(): Promise<MathSkillRow[]> {
   return data ?? [];
 }
 
-async function loadEnabledCatalogIds(questionId?: string): Promise<string[]> {
-  const ids: string[] = [];
+async function loadEnabledCatalogEntries(questionId?: string): Promise<Map<string, "free" | "ultimate">> {
+  const entries = new Map<string, "free" | "ultimate">();
   for (let offset = 0; ; offset += 1000) {
     let query = supabaseAdmin()
       .from("question_bank_catalog")
-      .select("question_id")
+      .select("question_id,access_tier")
       .eq("enabled", true)
       .order("question_id")
       .range(offset, offset + 999);
     if (questionId) query = query.eq("question_id", questionId);
-    const result = await query.returns<{ question_id: string }[]>();
+    const result = await query.returns<{ question_id: string; access_tier: string }[]>();
     if (result.error) throw databaseError("Could not load Math Question Bank catalog", result.error);
     const page = result.data ?? [];
-    ids.push(...page.map((item) => item.question_id));
+    for (const item of page) entries.set(item.question_id, item.access_tier === "free" ? "free" : "ultimate");
     if (page.length < 1000 || questionId) break;
   }
-  return ids;
+  return entries;
 }
 
 async function loadQuestionActivity(

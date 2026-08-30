@@ -368,6 +368,7 @@ function toQuestion(r: DbQuestionRow): DrillQuestion {
     explanation: r.explanation,
     status: r.status as QuestionStatus,
     includeInQuestionBank: false,
+    questionBankFreeTier: false,
     createdBy: null,
     createdAt: r.created_at,
     updatedAt: r.updated_at,

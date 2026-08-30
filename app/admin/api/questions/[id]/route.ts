@@ -34,7 +34,12 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
     question: QuestionInput;
     walkthrough: WalkthroughStepInput[];
   } | null;
-  if (!body?.question || !Array.isArray(body.walkthrough) || typeof body.question.includeInQuestionBank !== "boolean") {
+  if (
+    !body?.question
+    || !Array.isArray(body.walkthrough)
+    || typeof body.question.includeInQuestionBank !== "boolean"
+    || typeof body.question.questionBankFreeTier !== "boolean"
+  ) {
     return NextResponse.json({ error: "invalid_body", detail: "Question metadata and walkthrough steps are required." }, { status: 400 });
   }
   // Trust the route id over the body so the two writes always target one row.

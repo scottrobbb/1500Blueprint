@@ -40,6 +40,7 @@ type ReadingQuestionRow = {
   content: Record<string, unknown> | null;
   explanation: string | null;
   created_at: string;
+  accessTier: "free" | "ultimate";
 };
 
 type ReadingSkillRow = {
@@ -64,17 +65,21 @@ export type ReadingWritingQuestionForGrading = {
   question: ReadingWritingRunnerQuestion;
   correctChoice: ChoiceId;
   explanation: string;
+  accessTier: "free" | "ultimate";
 };
 
 export async function getReadingWritingBankCatalog(
   email: string,
-  options: { strictActivity?: boolean; includeChallenge?: boolean } = {},
+  options: { strictActivity?: boolean; includeChallenge?: boolean; freeTierOnly?: boolean } = {},
 ): Promise<ReadingWritingBankCatalog> {
   const [loadedQuestions, skills] = await Promise.all([
     loadEligibleReadingRows(),
     loadReadingSkills(),
   ]);
-  const questions = filterChallengeRows(loadedQuestions, options.includeChallenge ?? true);
+  const questions = filterForPlan(loadedQuestions, {
+    includeChallenge: options.includeChallenge ?? true,
+    freeTierOnly: options.freeTierOnly ?? false,
+  });
   const activity = await loadQuestionActivity(
     email,
     questions.map((question) => question.id),
@@ -92,9 +97,12 @@ export async function getReadingWritingRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
   limit: number | null = null,
-  options: { includeChallenge?: boolean } = {},
+  options: { includeChallenge?: boolean; freeTierOnly?: boolean } = {},
 ): Promise<ReadingWritingRunnerQuestion[]> {
-  const rows = filterChallengeRows(await loadEligibleReadingRows(), options.includeChallenge ?? true);
+  const rows = filterForPlan(await loadEligibleReadingRows(), {
+    includeChallenge: options.includeChallenge ?? true,
+    freeTierOnly: options.freeTierOnly ?? false,
+  });
   const orderIndex = new Map(rows.map((row, index) => [row.id, index]));
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
@@ -145,8 +153,18 @@ function matchesDifficultyFilter(row: ReadingQuestionRow, difficulty: MathSessio
   return questionBankLevel(rowDifficulty, row.content) === difficulty;
 }
 
-function filterChallengeRows(rows: ReadingQuestionRow[], includeChallenge: boolean): ReadingQuestionRow[] {
-  if (includeChallenge) return rows;
+// Free-plan sessions are restricted to the curated free-tier pool (a fixed
+// set of ~200 questions Scott has flagged in question_bank_catalog), which
+// deliberately includes a handful of challenge-level questions -- so
+// freeTierOnly takes priority over includeChallenge rather than composing
+// with it (a free-tier challenge question must never be stripped just
+// because the account otherwise lacks the challengeQuestions entitlement).
+function filterForPlan(
+  rows: ReadingQuestionRow[],
+  options: { includeChallenge: boolean; freeTierOnly: boolean },
+): ReadingQuestionRow[] {
+  if (options.freeTierOnly) return rows.filter((row) => row.accessTier === "free");
+  if (options.includeChallenge) return rows;
   return rows.filter((row) => {
     const difficulty = isDifficulty(row.difficulty) ? row.difficulty : "medium";
     return canAccessQuestionBankLevel(questionBankLevel(difficulty, row.content), false);
@@ -170,6 +188,7 @@ export async function getReadingWritingQuestionForGrading(
     question,
     correctChoice,
     explanation: row.explanation?.trim() || "A full explanation is not available yet.",
+    accessTier: row.accessTier,
   };
 }
 
@@ -182,11 +201,11 @@ export function getReadingWritingCorrectAnswerLabel(
 
 async function loadEligibleReadingRows(questionId?: string): Promise<ReadingQuestionRow[]> {
   const db = supabaseAdmin();
-  const catalogIds = await loadEnabledCatalogIds(questionId);
-  if (catalogIds.length === 0) return [];
+  const catalogEntries = await loadEnabledCatalogEntries(questionId);
+  if (catalogEntries.size === 0) return [];
 
   const rows: ReadingQuestionRow[] = [];
-  for (const idBatch of chunks(catalogIds, 100)) {
+  for (const idBatch of chunks([...catalogEntries.keys()], 100)) {
     const questions = await db
       .from("drill_questions")
       .select(QUESTION_SELECT)
@@ -195,9 +214,12 @@ async function loadEligibleReadingRows(questionId?: string): Promise<ReadingQues
       .eq("drill_slug", "grammar")
       .eq("section", "rw")
       .eq("answer_type", "mc_single")
-      .returns<ReadingQuestionRow[]>();
+      .returns<Omit<ReadingQuestionRow, "accessTier">[]>();
     if (questions.error) throw databaseError("Could not load Reading & Writing bank", questions.error);
-    rows.push(...(questions.data ?? []));
+    rows.push(...(questions.data ?? []).map((row) => ({
+      ...row,
+      accessTier: catalogEntries.get(row.id) ?? "ultimate",
+    })));
   }
   return signCourseAssetReferences(rows
     .filter((row) => isQuestionBankRuntimeReady({
@@ -227,23 +249,23 @@ async function loadReadingSkills(): Promise<ReadingSkillRow[]> {
   return data ?? [];
 }
 
-async function loadEnabledCatalogIds(questionId?: string): Promise<string[]> {
-  const ids: string[] = [];
+async function loadEnabledCatalogEntries(questionId?: string): Promise<Map<string, "free" | "ultimate">> {
+  const entries = new Map<string, "free" | "ultimate">();
   for (let offset = 0; ; offset += 1000) {
     let query = supabaseAdmin()
       .from("question_bank_catalog")
-      .select("question_id")
+      .select("question_id,access_tier")
       .eq("enabled", true)
       .order("question_id")
       .range(offset, offset + 999);
     if (questionId) query = query.eq("question_id", questionId);
-    const result = await query.returns<{ question_id: string }[]>();
+    const result = await query.returns<{ question_id: string; access_tier: string }[]>();
     if (result.error) throw databaseError("Could not load Reading & Writing catalog", result.error);
     const page = result.data ?? [];
-    ids.push(...page.map((item) => item.question_id));
+    for (const item of page) entries.set(item.question_id, item.access_tier === "free" ? "free" : "ultimate");
     if (page.length < 1000 || questionId) break;
   }
-  return ids;
+  return entries;
 }
 
 async function loadQuestionActivity(

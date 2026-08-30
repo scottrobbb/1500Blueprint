@@ -100,7 +100,7 @@ export function SubjectBankCatalogView({
         </header>
 
         {challengeLocked ? (
-          <UpgradePrompt currentPlan={currentPlan} requiredPlan="max" title="Challenge questions are locked" description={`Your Free ${subjectTitle} bank stays available. Max adds Scott's hardest transfer sets when you are ready for less predictable questions.`} features={["Challenge-level questions", "Unlimited questions", "Unlimited daily drills"]} className="mt-6" />
+          <UpgradePrompt currentPlan={currentPlan} requiredPlan="max" title="The full Challenge library unlocks with Max" description={`Your Free ${subjectTitle} bank already includes a sample of Challenge questions. Max adds Scott's complete set of hardest transfer questions.`} features={["Full Challenge-level access", "Unlimited questions", "Unlimited daily drills"]} className="mt-6" />
         ) : null}
 
         <section aria-label="Practice filters" className="mt-7 flex flex-wrap gap-3">
