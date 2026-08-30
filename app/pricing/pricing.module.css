@@ -498,6 +498,13 @@
   padding-top: 20px;
 }
 .actions form { margin: 0; }
+.accountRequired {
+  color: rgba(255,255,255,.62);
+  font-size: 12px;
+  line-height: 1.45;
+  margin: 9px 3px 0;
+  text-align: center;
+}
 .primaryAction,
 .disabledAction {
   border-radius: 9px;

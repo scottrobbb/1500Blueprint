@@ -121,6 +121,7 @@ function PriceCard({
   const paid = tier !== "free";
   const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
   const current = currentPlan === plan;
+  const requiresAccount = paid && currentPlan === null;
   const priceInfo = tier === "core" || tier === "max" ? CADENCE_PRICE[tier][cadence ?? "monthly"] : { perMonth: "0", billed: null };
 
   return (
@@ -152,14 +153,21 @@ function PriceCard({
       <div className={styles.actions}>
         {paid ? (
           billingEnabled ? (
-            <form action="/api/billing/checkout" method="post">
-              <input type="hidden" name="plan" value={plan} />
-              <input type="hidden" name="cadence" value={cadence ?? "monthly"} />
-              <input type="hidden" name="checkoutToken" value={checkoutToken} />
-              <button type="submit" className={styles.primaryAction}>
-                {current ? "Manage plan" : cta} <ArrowIcon />
-              </button>
-            </form>
+            <>
+              <form action="/api/billing/checkout" method="post">
+                <input type="hidden" name="plan" value={plan} />
+                <input type="hidden" name="cadence" value={cadence ?? "monthly"} />
+                <input type="hidden" name="checkoutToken" value={checkoutToken} />
+                <button type="submit" className={styles.primaryAction}>
+                  {current ? "Manage plan" : cta} <ArrowIcon />
+                </button>
+              </form>
+              {requiresAccount ? (
+                <p className={styles.accountRequired}>
+                  Account required before checkout. You’ll return here after signing in or creating one.
+                </p>
+              ) : null}
+            </>
           ) : (
             <button type="button" className={styles.disabledAction} disabled>
               Billing opens soon

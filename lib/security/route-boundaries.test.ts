@@ -90,6 +90,16 @@ test("public and authenticated entry points converge on pricing and Ultimate", (
   assert.match(source("proxy.ts"), /const PUBLIC_PATHS\s*=\s*\[[^\]]*["']\/["']/);
 });
 
+test("checkout authentication preserves a safe local return path", () => {
+  for (const path of ["app/account/login/page.tsx", "app/account/sign-up/page.tsx"]) {
+    const contents = source(path);
+    assert.match(contents, /safeNextPath/);
+    assert.match(contents, /searchParams/);
+    assert.match(contents, /redirect\(next\)/);
+    assert.match(contents, /<PasswordAuthForm[^>]*next=\{next\}/);
+  }
+});
+
 test("high-frequency student database mutations retain distributed rate limits", () => {
   const mutationRoutes = [
     "app/api/courses/lessons/[id]/completion/route.ts",
