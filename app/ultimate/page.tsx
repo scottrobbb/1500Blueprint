@@ -90,10 +90,10 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
       {access.plan === "free" ? (
         <UpgradePrompt
           currentPlan={access.plan}
-          requiredPlan="core"
+          requiredPlan="max"
           title="Unlock the full practice loop"
           description="Keep your free course and diagnostic, then add the daily repetition that turns weak skills into reliable points."
-          features={["20 daily drills", "Challenge Question sets", "2 full-length tests"]}
+          features={["Unlimited daily drills", "Challenge Question sets", "4 full-length tests"]}
           className="mb-7"
         />
       ) : access.plan === "core" ? (
@@ -140,7 +140,7 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
             <div><p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Today&apos;s practice</p><h2 className="mt-1 font-display text-xl font-extrabold text-ink">{drillsLocked ? "Daily drills locked" : `${hub.dailyGoal.done} of ${hub.dailyGoal.total} drills`}</h2></div>
             {drillsLocked ? <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#fff4cc] text-[#7a5900]"><LockIcon className="h-5 w-5" /></span> : <span className="font-display text-2xl font-extrabold text-navy">{dailyProgress}%</span>}
           </div>
-          {drillsLocked ? <><p className="mt-3 text-xs leading-5 text-navy/45">Core adds focused daily drills and tracks which SAT patterns are becoming automatic.</p><div className="mt-5"><LockedAction plan="core" label="Unlock daily drills" /></div></> : <><div className="mt-5 h-2 overflow-hidden rounded-full bg-navy/[0.07]"><div className="h-full rounded-full bg-brand" style={{ width: `${dailyProgress}%` }} /></div><p className="mt-3 text-xs leading-5 text-navy/45">A short focused session keeps your skill history and recommendations current.</p><Link href="/ultimate/drills" className="mt-5 flex min-h-11 items-center justify-between rounded-xl bg-[#eaf6ff] px-4 text-sm font-extrabold text-navy transition-colors hover:bg-[#dcefff]">Start a drill <span className="flex items-center gap-2 text-xs text-brand-600">Practice <ChevronRightIcon className="h-4 w-4" /></span></Link></>}
+          {drillsLocked ? <><p className="mt-3 text-xs leading-5 text-navy/45">Max adds focused daily drills and tracks which SAT patterns are becoming automatic.</p><div className="mt-5"><LockedAction plan="max" label="Unlock daily drills" /></div></> : <><div className="mt-5 h-2 overflow-hidden rounded-full bg-navy/[0.07]"><div className="h-full rounded-full bg-brand" style={{ width: `${dailyProgress}%` }} /></div><p className="mt-3 text-xs leading-5 text-navy/45">A short focused session keeps your skill history and recommendations current.</p><Link href="/ultimate/drills" className="mt-5 flex min-h-11 items-center justify-between rounded-xl bg-[#eaf6ff] px-4 text-sm font-extrabold text-navy transition-colors hover:bg-[#dcefff]">Start a drill <span className="flex items-center gap-2 text-xs text-brand-600">Practice <ChevronRightIcon className="h-4 w-4" /></span></Link></>}
         </aside>
       </section>
 
@@ -153,7 +153,7 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
         </div>
         <div className="grid overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-[0_1px_3px_rgba(11,42,91,0.04)] md:grid-cols-3 md:divide-x md:divide-navy/10">
           <PathCard step="1" href="/ultimate/courses" title="Learn the method" detail={`${availableCourses.length} ${availableCourses.length === 1 ? "course" : "courses"} available · ${completedLessons}/${totalLessons} lessons complete`} Icon={BookIcon} />
-          <PathCard step="2" href={drillsLocked ? "/pricing" : "/ultimate/drills"} title="Practice the skill" detail={drillsLocked ? "Daily drills unlock with Core" : `${history.length} unique drill questions · ${masteryRate}% mastered`} Icon={DrillsIcon} locked={drillsLocked} requiredPlan="core" />
+          <PathCard step="2" href={drillsLocked ? "/pricing" : "/ultimate/drills"} title="Practice the skill" detail={drillsLocked ? "Daily drills unlock with Max" : `${history.length} unique drill questions · ${masteryRate}% mastered`} Icon={DrillsIcon} locked={drillsLocked} requiredPlan="max" />
           <PathCard step="3" href="/ultimate/tests" title="Measure your score" detail={progress.tests.bestScore ? `Best score ${progress.tests.bestScore} · ${progress.tests.count} tests complete` : "Take your first full-length practice test"} Icon={TestsIcon} />
         </div>
       </section>
@@ -203,7 +203,7 @@ function LiveCallBanner({ call }: { call: WeeklyCall }) {
     : <Link href="/ultimate/live-calls" className={className}>{content}</Link>;
 }
 
-function PathCard({ step, href, title, detail, Icon, locked = false, requiredPlan = "core" }: { step: string; href: string; title: string; detail: string; Icon: (props: { className?: string }) => React.ReactElement; locked?: boolean; requiredPlan?: "core" | "max" }) {
+function PathCard({ step, href, title, detail, Icon, locked = false, requiredPlan = "max" }: { step: string; href: string; title: string; detail: string; Icon: (props: { className?: string }) => React.ReactElement; locked?: boolean; requiredPlan?: "core" | "max" }) {
   return (
     <Link href={href} className="group relative flex min-h-[150px] flex-col p-5 transition-colors hover:bg-[#f8fbfe] sm:p-6">
       <div className="flex items-center justify-between"><span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-navy/30">Step {step}</span>{locked ? <LockedBadge plan={requiredPlan} /> : <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#eaf6ff] text-brand-600"><Icon className="h-5 w-5" /></span>}</div>

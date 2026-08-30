@@ -164,5 +164,5 @@ function matchesAttempt(stored: StoredAttempt, input: AttemptBody): boolean {
 }
 
 function challengeUpgrade() {
-  return NextResponse.json({ error: "Challenge questions are included with Core and Max.", code: "plan_limit" }, { status: 402 });
+  return NextResponse.json({ error: "Challenge questions are included with Max.", code: "plan_limit" }, { status: 402 });
 }

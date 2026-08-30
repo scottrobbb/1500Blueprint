@@ -7,7 +7,6 @@ import { isAdminEmail } from "@/lib/auth/admin";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getStudentAccess } from "@/lib/auth/entitlements";
-import { PLAN_ENTITLEMENTS } from "@/lib/auth/plans";
 import { getTestProgress } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
 import { listResumableTestSlugs } from "@/lib/sat/testSession";
@@ -112,7 +111,9 @@ export default async function UltimateTestsPage() {
             const attempts = progress.countBySlug[test.slug] ?? 0;
             const constructionLocked = test.status !== "published" && !isAdmin;
             const planLocked = testIndex >= access.entitlements.fullTestLimit && !isAdmin;
-            const requiredPlan = testIndex < PLAN_ENTITLEMENTS.core.fullTestLimit ? "core" : "max";
+            // Every paywalled test now points Free users at Max -- Core is
+            // never offered as a standalone upgrade target in the app.
+            const requiredPlan = "max";
 
             return (
               <li key={test.slug}>
@@ -135,7 +136,7 @@ export default async function UltimateTestsPage() {
       )}
 
       {access.plan === "free" ? (
-        <UpgradePrompt currentPlan="free" requiredPlan="core" title="Core adds a second full-length test" description="Use the free test as a baseline, then compare it with another adaptive score after daily practice." features={["2 full-length tests", "Daily skill drills", "Challenge questions"]} className="mt-8" />
+        <UpgradePrompt currentPlan="free" requiredPlan="max" title="Max unlocks the full test library" description="Use the free test as a baseline, then compare it against 3 more adaptive scores with unlimited daily practice." features={["4 full-length tests", "Unlimited daily drills", "Challenge questions"]} className="mt-8" />
       ) : access.plan === "core" ? (
         <UpgradePrompt currentPlan="core" requiredPlan="max" title="Max adds the full test library" description="Max includes all 4 tests, the complete course library, and a planner that uses your score reports." features={["4 full-length tests", "All advanced courses", "Personal study planner"]} className="mt-8" />
       ) : null}

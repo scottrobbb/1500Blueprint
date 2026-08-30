@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
     const allowance = await drillAllowance(session.email);
     if (!allowance.allowed) {
       const error = allowance.limit === null
-        ? "Daily drills are included with Core and Max."
+        ? "Daily drills are included with Max."
         : allowance.limit === "unlimited"
           ? "Drill access is temporarily limited. Please try again soon."
           : `You have completed all ${allowance.limit} drills included today.`;

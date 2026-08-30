@@ -23,7 +23,7 @@ export default async function UltimateDrillsPage() {
   const isAdmin = isAdminEmail(session.email);
   const access = await getStudentAccess(session.email);
   if (!isAdmin && access.entitlements.dailyDrillLimit === null) {
-    return <AccessGate title="Unlock daily skill drills" description="Core includes up to 20 completed drills per day. Max removes the daily limit." currentPlan={access.plan} requiredPlan="core" />;
+    return <AccessGate title="Unlock daily skill drills" description="Max includes unlimited daily drills, so you can practice as much as you want." currentPlan={access.plan} />;
   }
 
   const [hub, showOnboarding, grammarMastery, vocabState, drills] = await Promise.all([
