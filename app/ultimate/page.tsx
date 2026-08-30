@@ -129,7 +129,7 @@ export default async function UltimateHomePage({ searchParams }: { searchParams:
                 <div className="h-1.5 overflow-hidden rounded-full bg-white/12"><div className="h-full rounded-full bg-sky" style={{ width: `${activeCourse.progress}%` }} /></div>
               </div>
             ) : null}
-            <Link href={nextCourseHref} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-extrabold text-white shadow-[0_2px_0_#2b8fe0] transition-colors hover:bg-[#50b5fb]">
+            <Link href={nextCourseHref} prefetch={false} className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-extrabold text-white shadow-[0_2px_0_#2b8fe0] transition-colors hover:bg-[#50b5fb]">
               {nextLesson ? "Continue lesson" : activeCourse ? "Open course" : "Browse courses"} <ChevronRightIcon className="h-4 w-4" />
             </Link>
           </div>
@@ -218,7 +218,7 @@ function CourseCard({ course, locked }: { course: Course; locked: boolean }) {
   const nextLesson = course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed);
   const href = locked ? `/ultimate/courses/${course.slug}` : nextLesson ? `/ultimate/courses/${course.slug}/${nextLesson.slug}` : `/ultimate/courses/${course.slug}`;
   return (
-    <Link href={href} className="group rounded-[18px] border border-navy/10 bg-white p-5 transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_12px_30px_-24px_rgba(11,42,91,0.5)] motion-reduce:transform-none motion-reduce:transition-none">
+    <Link href={href} prefetch={false} className="group rounded-[18px] border border-navy/10 bg-white p-5 transition-[transform,border-color,box-shadow] hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_12px_30px_-24px_rgba(11,42,91,0.5)] motion-reduce:transform-none motion-reduce:transition-none">
       <div className="flex items-start justify-between gap-4"><span className="grid h-10 w-10 place-items-center rounded-xl bg-navy text-white"><BookIcon className="h-5 w-5" /></span>{locked ? <LockedBadge plan="max" /> : <span className="text-xs font-extrabold tabular-nums text-navy/40">{course.progress}%</span>}</div>
       <p className="mt-4 text-[9px] font-extrabold uppercase tracking-[0.15em] text-brand-600">{course.eyebrow ?? "1500 Blueprint course"}</p>
       <h3 className="mt-1 line-clamp-2 font-display text-lg font-extrabold leading-tight text-ink">{course.title}</h3>

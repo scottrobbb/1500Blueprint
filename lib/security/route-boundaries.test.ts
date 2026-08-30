@@ -135,3 +135,26 @@ test("high-value content reads retain account anomaly controls and bounded deliv
     /href=\{allPracticeHref\}[\s\S]*?prefetch=\{false\}/,
   );
 });
+
+// The course-lesson protected-content policy rate-limits every
+// /ultimate/courses/[slug]/[lesson] read. Next.js prefetches every visible
+// Link by default, so any lesson link left without prefetch={false} silently
+// burns that budget as soon as its page renders -- the course outline sidebar
+// (rendered on every lesson page) and the full module lesson list (rendered
+// on every course overview page) are the worst offenders since they list
+// every lesson in the course at once.
+test("every link into a rate-limited course lesson disables prefetch", () => {
+  const lessonPage = source("app/ultimate/courses/[courseSlug]/[lessonSlug]/page.tsx");
+  const lessonLinkPattern = /href=\{`\/ultimate\/courses\/\$\{course\.slug\}\/\$\{item\.slug\}`\} prefetch=\{false\}/g;
+  assert.equal((lessonPage.match(lessonLinkPattern) ?? []).length, 2, "both outline sidebars (mobile + desktop)");
+  assert.match(lessonPage, /href=\{`\/ultimate\/courses\/\$\{course\.slug\}\/\$\{previous\.slug\}`\} prefetch=\{false\}/);
+  assert.match(lessonPage, /href=\{`\/ultimate\/courses\/\$\{course\.slug\}\/\$\{next\.slug\}`\} prefetch=\{false\}/);
+
+  const coursePage = source("app/ultimate/courses/[courseSlug]/page.tsx");
+  assert.match(coursePage, /href=\{`\/ultimate\/courses\/\$\{course\.slug\}\/\$\{nextLesson\.slug\}`\} prefetch=\{false\}/);
+  assert.match(coursePage, /href=\{`\/ultimate\/courses\/\$\{course\.slug\}\/\$\{lesson\.slug\}`\} prefetch=\{false\}/);
+
+  const dashboard = source("app/ultimate/page.tsx");
+  assert.match(dashboard, /href=\{nextCourseHref\} prefetch=\{false\}/);
+  assert.match(dashboard, /function CourseCard[\s\S]*?href=\{href\} prefetch=\{false\}/);
+});
