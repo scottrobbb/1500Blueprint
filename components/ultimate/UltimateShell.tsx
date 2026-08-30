@@ -151,10 +151,9 @@ export function UltimateShell({
 
       <div className="mt-3 border-t border-white/10 pt-3">
         {access.plan !== "max" ? (
-          <Link href="/pricing" onClick={() => setMenuOpen(false)} className="mb-2.5 flex min-h-14 items-center gap-3 rounded-xl border border-sky/15 bg-sky/[0.08] px-3 py-2.5 text-white transition-colors hover:border-sky/30 hover:bg-sky/[0.13]">
-            <span className="grid h-8 w-8 flex-none place-items-center rounded-lg bg-gold/15 text-gold"><LockIcon className="h-4 w-4" /></span>
-            <span className="min-w-0 flex-1"><strong className="block text-xs font-extrabold">{access.plan === "free" ? "Unlock Max" : "Go Max"}</strong><span className="mt-0.5 block truncate text-[10px] text-white/50">{access.plan === "free" ? "Drills, Challenge sets, more tests" : "Planner, courses, weekly calls"}</span></span>
-            <span className="text-sm text-sky">→</span>
+          <Link href="/pricing?plan=max#max-plan" onClick={() => setMenuOpen(false)} className="mb-2.5 flex min-h-11 items-center gap-2 rounded-xl px-3 text-gold transition-colors hover:bg-gold/[0.1]">
+            <UpgradeIcon className="h-4 w-4" />
+            <strong className="text-xs font-extrabold uppercase tracking-[0.08em]">Upgrade</strong>
           </Link>
         ) : null}
         <div className="mb-2 grid grid-cols-2 divide-x divide-white/10 rounded-xl bg-white/[0.06] py-2.5">
@@ -349,6 +348,14 @@ function CloseIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
       <path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function UpgradeIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M12 19V5M6 11l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
