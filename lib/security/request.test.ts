@@ -44,6 +44,9 @@ test("isSameOriginRequest blocks cross-site browser mutations", () => {
   assert.equal(isSameOriginRequest(new Request("https://example.com/api", {
     headers: { "sec-fetch-site": "cross-site" },
   })), false);
+  assert.equal(isSameOriginRequest(new Request("https://deployment.example/api", {
+    headers: { origin: "https://example.com" },
+  }), "https://example.com"), false);
   assert.equal(isSameOriginRequest(new Request("https://example.com/api")), true);
 });
 

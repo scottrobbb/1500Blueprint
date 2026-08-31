@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   accountConfirmationUrl,
+  allowedAppOrigins,
   appBaseUrl,
   canonicalAppUrl,
   magicLinkCallbackUrl,
 } from "./config";
 import { billingBaseUrl } from "../billing/config";
+import { isSameOriginRequest } from "../security/request";
 import robots from "../../app/robots";
 import sitemap from "../../app/sitemap";
 
@@ -39,6 +41,7 @@ test("production auth and billing links use the configured canonical public doma
     VERCEL_URL: "deployment.vercel.app",
     AUTH_PREVIEW_URL: undefined,
     NEXT_PUBLIC_APP_URL: "https://www.new-blueprint.example/",
+    APP_ALLOWED_ORIGINS: undefined,
   }, () => {
     assert.equal(canonicalAppUrl(), "https://www.new-blueprint.example");
     assert.equal(appBaseUrl("https://fallback.example"), "https://www.new-blueprint.example");
@@ -68,6 +71,46 @@ test("production auth and billing links use the configured canonical public doma
   });
 });
 
+test("production accepts only exact allowlisted app origins while retaining one canonical URL", () => {
+  withEnvironment({
+    NODE_ENV: "production",
+    VERCEL_ENV: "production",
+    NEXT_PUBLIC_APP_URL: "https://www.1500satblueprint.com",
+    APP_ALLOWED_ORIGINS: "https://1500blueprint.com, https://www.1500satblueprint.com/",
+  }, () => {
+    assert.equal(canonicalAppUrl(), "https://www.1500satblueprint.com");
+    assert.deepEqual([...allowedAppOrigins()].sort(), [
+      "https://1500blueprint.com",
+      "https://www.1500satblueprint.com",
+    ]);
+
+    const newDomainRequest = new Request("https://1500blueprint.com/api/billing/checkout", {
+      method: "POST",
+      headers: { origin: "https://1500blueprint.com" },
+    });
+    const newDomainBase = billingBaseUrl(newDomainRequest.url);
+    assert.equal(newDomainBase, "https://1500blueprint.com");
+    assert.equal(appBaseUrl("https://1500blueprint.com"), "https://1500blueprint.com");
+    assert.equal(isSameOriginRequest(newDomainRequest, newDomainBase), true);
+    assert.equal(isSameOriginRequest(new Request(newDomainRequest.url, {
+      method: "POST",
+      headers: { origin: "https://www.1500satblueprint.com" },
+    }), newDomainBase), false);
+
+    const unknownRequest = new Request("https://deployment.vercel.app/api/billing/checkout", {
+      method: "POST",
+      headers: { origin: "https://deployment.vercel.app" },
+    });
+    const unknownBase = billingBaseUrl(unknownRequest.url);
+    assert.equal(unknownBase, "https://www.1500satblueprint.com");
+    assert.equal(isSameOriginRequest(unknownRequest, unknownBase), false);
+    assert.equal(isSameOriginRequest(new Request(unknownRequest.url, {
+      method: "POST",
+      headers: { origin: "https://www.1500satblueprint.com" },
+    }), unknownBase), false);
+  });
+});
+
 test("canonical production URLs reject unsafe or ambiguous origins", () => {
   for (const invalid of [
     "http://blueprint.example",
@@ -79,6 +122,21 @@ test("canonical production URLs reject unsafe or ambiguous origins", () => {
   ]) {
     withEnvironment({ NEXT_PUBLIC_APP_URL: invalid }, () => {
       assert.throws(() => canonicalAppUrl(), /HTTPS origin/);
+    });
+  }
+});
+
+test("additional production origins reject wildcards and malformed lists", () => {
+  for (const invalid of [
+    "http://1500blueprint.com",
+    "https://*.1500blueprint.com",
+    "https://1500blueprint.com/path",
+    "https://user:password@1500blueprint.com",
+    "https://1500blueprint.com,",
+    Array.from({ length: 9 }, (_, index) => `https://domain-${index}.example`).join(","),
+  ]) {
+    withEnvironment({ APP_ALLOWED_ORIGINS: invalid }, () => {
+      assert.throws(() => allowedAppOrigins(), /APP_ALLOWED_ORIGINS/);
     });
   }
 });

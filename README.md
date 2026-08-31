@@ -56,6 +56,8 @@ and ensures the canonical monthly and three-month Prices exist on both products.
 Runtime checkout never creates Stripe catalog objects.
 
 ```text
+NEXT_PUBLIC_APP_URL=https://1500blueprint.com
+APP_ALLOWED_ORIGINS=https://1500blueprint.com,https://www.1500satblueprint.com
 BILLING_ENABLED=false
 STRIPE_BILLING_KEY=
 STRIPE_WEBHOOK_SECRET=
@@ -66,6 +68,13 @@ STRIPE_MAX_PRICE_ID=
 STRIPE_MAX_THREE_MONTH_PRICE_ID=
 STRIPE_LEGACY_MAX_PRODUCT_IDS=
 ```
+
+`NEXT_PUBLIC_APP_URL` is the single canonical production origin. During a
+domain overlap, `APP_ALLOWED_ORIGINS` may contain up to eight exact HTTPS
+origins separated by commas. Billing mutations, Checkout return URLs, and the
+billing portal accept only the current request origin when it exactly matches
+that list; wildcards, paths, ports, credentials, and unlisted deployment hosts
+are rejected.
 
 Provision sandbox Core and Max Prices only after `STRIPE_MAX_PRICE_ID` points to
 an existing Blueprint sandbox Price:

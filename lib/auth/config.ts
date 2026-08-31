@@ -8,11 +8,30 @@ export const TOKEN_TTL_SECONDS = 60 * 15; // magic link is valid for 15 minutes
 export const ACTIVE_STATUSES = ["active", "trialing"] as const;
 
 const FALLBACK_CANONICAL_APP_URL = "https://www.1500satblueprint.com";
+const MAX_ALLOWED_APP_ORIGINS = 8;
+const MAX_ALLOWED_APP_ORIGINS_LENGTH = 2048;
 
 export function canonicalAppUrl(): string {
-  return validateCanonicalAppUrl(
+  return validateHttpsAppOrigin(
     process.env.NEXT_PUBLIC_APP_URL?.trim() || FALLBACK_CANONICAL_APP_URL,
+    "NEXT_PUBLIC_APP_URL",
   );
+}
+
+export function allowedAppOrigins(): ReadonlySet<string> {
+  const origins = new Set([canonicalAppUrl()]);
+  const configured = process.env.APP_ALLOWED_ORIGINS?.trim();
+  if (!configured) return origins;
+  if (configured.length > MAX_ALLOWED_APP_ORIGINS_LENGTH) {
+    throw new Error("APP_ALLOWED_ORIGINS is too long");
+  }
+
+  const entries = configured.split(",").map((value) => value.trim());
+  if (entries.length > MAX_ALLOWED_APP_ORIGINS || entries.some((value) => !value)) {
+    throw new Error(`APP_ALLOWED_ORIGINS must contain 1-${MAX_ALLOWED_APP_ORIGINS} origins`);
+  }
+  entries.forEach((value) => origins.add(validateHttpsAppOrigin(value, "APP_ALLOWED_ORIGINS")));
+  return origins;
 }
 
 // Production auth links always use the public domain. Preview deployments keep
@@ -24,10 +43,21 @@ export function appBaseUrl(fallbackOrigin: string): string {
       || fallbackOrigin;
     return normalizeBaseUrl(previewUrl);
   }
-  if (process.env.NODE_ENV === "production") return canonicalAppUrl();
+  if (process.env.NODE_ENV === "production") return productionAppUrl(fallbackOrigin);
 
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
   return normalizeBaseUrl(configured || fallbackOrigin);
+}
+
+export function productionAppUrl(requestUrl: string): string {
+  const canonicalUrl = canonicalAppUrl();
+  let requestOrigin: string;
+  try {
+    requestOrigin = new URL(requestUrl).origin;
+  } catch {
+    return canonicalUrl;
+  }
+  return allowedAppOrigins().has(requestOrigin) ? requestOrigin : canonicalUrl;
 }
 
 export function magicLinkCallbackUrl(token: string, fallbackOrigin: string): string {
@@ -49,12 +79,12 @@ export function accountConfirmationUrl(
   return url.toString();
 }
 
-function validateCanonicalAppUrl(raw: string): string {
+function validateHttpsAppOrigin(raw: string, variableName: string): string {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
-    throw new Error("NEXT_PUBLIC_APP_URL must be a valid absolute URL");
+    throw new Error(`${variableName} must contain valid absolute URLs`);
   }
 
   const validHostname = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
@@ -69,7 +99,7 @@ function validateCanonicalAppUrl(raw: string): string {
     || url.hash
   ) {
     throw new Error(
-      "NEXT_PUBLIC_APP_URL must be an HTTPS origin with a valid DNS hostname",
+      `${variableName} must contain only HTTPS origins with valid DNS hostnames`,
     );
   }
   return url.origin;
