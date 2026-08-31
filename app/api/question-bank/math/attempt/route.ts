@@ -10,6 +10,7 @@ import {
   countWrongQuestionBankResponses,
   recordQuestionBankAttempt,
   type QuestionBankAttemptWrite,
+  type WrongAnswerCount,
 } from "@/lib/question-bank/attempts";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { getStudentAccess } from "@/lib/auth/entitlements";
@@ -78,7 +79,12 @@ export async function POST(request: Request) {
     ) {
       return challengeUpgrade();
     }
-    const revealed = await isAnswerRevealed(session.email, input.questionId, existing.data.correct);
+    const revealed = await isAnswerRevealed(
+      session.email,
+      input.questionId,
+      existing.data.correct,
+      wrongAnswerCount(question?.question.answerType),
+    );
     return NextResponse.json({
       correct: existing.data.correct,
       revealed,
@@ -136,7 +142,12 @@ export async function POST(request: Request) {
   }
 
   const graded = write.correct ?? correct;
-  const revealed = await isAnswerRevealed(session.email, input.questionId, graded);
+  const revealed = await isAnswerRevealed(
+    session.email,
+    input.questionId,
+    graded,
+    wrongAnswerCount(gradingQuestion.question.answerType),
+  );
   return NextResponse.json({
     correct: graded,
     revealed,
@@ -153,10 +164,15 @@ export async function POST(request: Request) {
 // reads includes the response being graded. A history read that fails must not
 // fail the whole request -- the answer was graded and saved, so fall back to
 // withholding the solution rather than handing it over by accident.
-async function isAnswerRevealed(email: string, questionId: string, correct: boolean): Promise<boolean> {
+async function isAnswerRevealed(
+  email: string,
+  questionId: string,
+  correct: boolean,
+  mode: WrongAnswerCount,
+): Promise<boolean> {
   if (correct) return true;
   try {
-    return shouldRevealQuestionBankAnswer(false, await countWrongQuestionBankResponses(email, questionId));
+    return shouldRevealQuestionBankAnswer(false, await countWrongQuestionBankResponses(email, questionId, mode));
   } catch (error) {
     reportServerError("question_bank.math.reveal_check_failed", error, {
       provider: "supabase",
@@ -165,6 +181,10 @@ async function isAnswerRevealed(email: string, questionId: string, correct: bool
     });
     return false;
   }
+}
+
+function wrongAnswerCount(answerType: string | undefined): WrongAnswerCount {
+  return answerType === "grid_in" ? "total" : "distinct";
 }
 
 function parseAttemptBody(value: unknown): AttemptBody | null {

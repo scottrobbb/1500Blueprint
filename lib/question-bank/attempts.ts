@@ -37,12 +37,21 @@ type AttemptRpcRow = {
   stored_correct: boolean | null;
 };
 
-// Distinct wrong responses already on record for this question, matching the
-// `incorrectResponses` bookkeeping the runner keeps client-side -- resubmitting
-// the same wrong answer must not burn the student's retry.
+// How a question's wrong attempts are counted toward revealing its answer.
+//
+// "distinct" suits multiple choice, where the runner disables a choice once it
+// is marked wrong: repeating one is impossible, and counting distinct values
+// stops a stray double-submit from burning the retry.
+//
+// "total" suits free response, where there is no such list to cross off. A
+// stuck student who keeps arriving at the same wrong value would otherwise
+// have to invent a second, different wrong answer just to unlock the solution.
+export type WrongAnswerCount = "distinct" | "total";
+
 export async function countWrongQuestionBankResponses(
   email: string,
   questionId: string,
+  mode: WrongAnswerCount = "distinct",
 ): Promise<number> {
   const result = await supabaseAdmin()
     .from("question_bank_attempts")
@@ -58,8 +67,11 @@ export async function countWrongQuestionBankResponses(
     throw new Error(`Could not load Question Bank attempt history${code}: ${result.error.message}`);
   }
 
+  const rows = result.data ?? [];
+  if (mode === "total") return rows.length;
+
   const responses = new Set<string>();
-  for (const row of result.data ?? []) {
+  for (const row of rows) {
     if (typeof row.response?.value === "string") responses.add(row.response.value);
   }
   return responses.size;

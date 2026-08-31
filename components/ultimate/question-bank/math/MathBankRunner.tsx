@@ -227,7 +227,10 @@ function ObjectiveBankRunner({
   }
 
   async function checkAnswer() {
-    if (!question || !answer.trim() || result?.revealed || result?.response === answer || submitting) return;
+    if (!question || !answer.trim() || result?.revealed || submitting) return;
+    // Multiple choice disables a choice once it is marked wrong, so a repeat
+    // there is always a stray double-submit rather than a real second attempt.
+    if (question.answerType !== "grid_in" && result?.response === answer) return;
     setSubmitting(true);
     setSubmitError(null);
     sessionId.current ??= createToken();
@@ -270,6 +273,7 @@ function ObjectiveBankRunner({
         [question.id]: nextQuestionBankAttemptState(current[question.id], correct, answer),
       }));
       setExplanationOpen(revealed);
+      delete attemptTokens.current[question.id];
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "We could not check that answer.");
     } finally {
@@ -580,7 +584,7 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
               placeholder="Answer"
               className="min-w-0 flex-1 bg-transparent px-3 font-serif text-lg text-[#111] outline-none placeholder:text-[#aaa] focus-visible:outline-none"
             />
-            {!resultForAnswer && !revealed ? (
+            {!revealed ? (
               <button type="button" disabled={!answer.trim() || submitting} onClick={() => void onCheck()} className="min-h-10 rounded-lg bg-[#1aa8ef] px-4 text-sm font-semibold text-white hover:bg-[#1096d8] disabled:cursor-not-allowed disabled:bg-[#d6dae1] disabled:text-[#929db0]">{submitting ? "Checking…" : "Check"}</button>
             ) : null}
           </div>

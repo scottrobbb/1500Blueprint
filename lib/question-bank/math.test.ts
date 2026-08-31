@@ -144,7 +144,14 @@ test("a missed question withholds its solution until a second wrong response", (
   assert.equal(shouldRevealQuestionBankAnswer(true, 1), true);
 });
 
-test("repeating the same wrong response does not burn the retry", () => {
+test("free response reveals after the same wrong value is sent twice", () => {
+  // Counted as "total" server-side for grid-ins: there is no wrong-choice list
+  // to cross off, so a student stuck on one value must still reach the answer.
+  assert.equal(shouldRevealQuestionBankAnswer(false, 1), false);
+  assert.equal(shouldRevealQuestionBankAnswer(false, 2), true);
+});
+
+test("repeating the same wrong choice does not burn a multiple-choice retry", () => {
   const first = nextQuestionBankAttemptState(undefined, false, "B");
   const repeat = nextQuestionBankAttemptState(first, false, "B");
   assert.equal(shouldRevealQuestionBankAnswer(false, repeat.incorrectResponses.length), false);
