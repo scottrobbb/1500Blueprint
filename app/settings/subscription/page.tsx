@@ -17,10 +17,14 @@ export default async function SubscriptionSettingsPage({
     getSubscriptionSettings(session.email),
     searchParams,
   ]);
-  const planView = buildSettingsPlanView(data.access.entitlements, {
-    questionBankUsed: data.questionBankUsed,
-    drillsUsedToday: data.drillsUsedToday,
-  });
+  const planView = buildSettingsPlanView(
+    data.access.entitlements,
+    {
+      questionBankUsed: data.questionBankUsed,
+      drillsUsedToday: data.drillsUsedToday,
+    },
+    data.access.plan,
+  );
 
   return (
     <>

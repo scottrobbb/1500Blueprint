@@ -11,6 +11,7 @@ import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
 import { PAID_ACCESS_STATUSES, scheduledCancellationAt } from "@/lib/billing/policy";
 import type { AchievementCategory } from "@/lib/gamification";
 import { ACHIEVEMENTS, levelProgress, weekStart } from "@/lib/gamification/engine";
+import { questionBankUsageIsMetered } from "@/lib/settings/plan-view";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 
 export type SettingsAccount = {
@@ -299,12 +300,18 @@ export async function getSubscriptionSettings(
     typeof access.entitlements.dailyDrillLimit === "number"
       ? getDrillUsageToday(email)
       : Promise.resolve(null);
+  // An exact count over every attempt row this student has ever written, so
+  // it is only worth paying for on a plan whose row actually quotes a number.
+  const questionBankPromise =
+    questionBankUsageIsMetered(access.entitlements, access.plan)
+      ? getQuestionBankUsage(email)
+      : Promise.resolve(null);
 
   const [subscription, grant, questionBankUsage, drillUsage] =
     await Promise.allSettled([
       subscriptionPromise,
       grantPromise,
-      getQuestionBankUsage(email),
+      questionBankPromise,
       drillPromise,
     ]);
 

@@ -48,6 +48,20 @@ export type SettingsUsageValues = {
   drillsUsedToday: number | null;
 };
 
+// The Question Bank row only quotes a usage number for a plan that is truly
+// metered. Core and Max are unlimited, and Free is bounded by the curated
+// free-tier pool rather than a submission counter (see freeTierOnly filtering
+// in lib/question-bank/*-queries.ts and the matching carve-out in
+// questionBankAllowance) -- so neither has a count worth reading. Callers use
+// this to skip the usage query entirely, which keeps the fetch and the label
+// from ever disagreeing about who is metered.
+export function questionBankUsageIsMetered(
+  entitlements: PlanEntitlements,
+  plan: PlanCode,
+): boolean {
+  return entitlements.questionBankLimit !== "unlimited" && plan !== "free";
+}
+
 function usagePercentage(used: number | null, limit: number | null): number | null {
   if (used === null || limit === null || limit <= 0) return null;
   return Math.min(100, Math.max(0, (used / limit) * 100));
@@ -56,6 +70,7 @@ function usagePercentage(used: number | null, limit: number | null): number | nu
 export function buildSettingsPlanView(
   entitlements: PlanEntitlements,
   usage: SettingsUsageValues,
+  plan: PlanCode,
 ): SettingsPlanView {
   const drillLimit = entitlements.dailyDrillLimit;
   const finiteDrillLimit = typeof drillLimit === "number" ? drillLimit : null;
@@ -65,24 +80,31 @@ export function buildSettingsPlanView(
   const bankLimit = entitlements.questionBankLimit;
   const finiteBankLimit = typeof bankLimit === "number" ? bankLimit : null;
   const bankUnlimited = bankLimit === "unlimited";
+  // Free's row must not report an attempt allowance no part of the app
+  // actually enforces -- name the curated pool it really gets instead.
+  const bankSample = !bankUnlimited && !questionBankUsageIsMetered(entitlements, plan);
 
   return {
     usage: [
       {
         key: "questionBankLimit",
         title: "Question Bank",
-        description: "Lifetime practice attempts across Math and Reading & Writing.",
+        description: "Practice questions across Math and Reading & Writing.",
         included: true,
-        unavailable: !bankUnlimited && usage.questionBankUsed === null,
+        unavailable: !bankUnlimited && !bankSample && usage.questionBankUsed === null,
         unlimited: bankUnlimited,
-        used: bankUnlimited ? null : usage.questionBankUsed,
-        limit: finiteBankLimit,
-        percentage: bankUnlimited ? null : usagePercentage(usage.questionBankUsed, finiteBankLimit),
+        used: bankUnlimited || bankSample ? null : usage.questionBankUsed,
+        limit: bankSample ? null : finiteBankLimit,
+        percentage: bankUnlimited || bankSample
+          ? null
+          : usagePercentage(usage.questionBankUsed, finiteBankLimit),
         valueLabel: bankUnlimited
           ? "Unlimited"
-          : usage.questionBankUsed === null
-            ? "Usage unavailable"
-            : `${usage.questionBankUsed.toLocaleString()} of ${finiteBankLimit?.toLocaleString()} attempts`,
+          : bankSample
+            ? "Sample library"
+            : usage.questionBankUsed === null
+              ? "Usage unavailable"
+              : `${usage.questionBankUsed.toLocaleString()} of ${finiteBankLimit?.toLocaleString()} attempts`,
       },
       {
         key: "fullTestLimit",
