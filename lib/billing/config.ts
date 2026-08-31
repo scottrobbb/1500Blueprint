@@ -1,5 +1,5 @@
 import type { PlanCode } from "@/lib/auth/plans";
-import { resolveProductionOrigin } from "@/lib/auth/config";
+import { productionAppUrl } from "@/lib/auth/config";
 import type { BillingCadence } from "./offers";
 
 export type BillablePlan = Extract<PlanCode, "core" | "max">;
@@ -78,6 +78,6 @@ export function billingBaseUrl(requestUrl: string): string {
   if (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
-  if (process.env.NODE_ENV === "production") return resolveProductionOrigin(new URL(requestUrl).origin);
+  if (process.env.NODE_ENV === "production") return productionAppUrl(requestUrl);
   return new URL(requestUrl).origin;
 }

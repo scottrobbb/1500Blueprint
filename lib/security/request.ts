@@ -87,10 +87,12 @@ export function normalizeHttpUrl(value: unknown, maxLength = 2048): string | nul
 
 export function isSameOriginRequest(request: Request, expectedOrigin?: string): boolean {
   if (request.headers.get("sec-fetch-site") === "cross-site") return false;
-  const origin = request.headers.get("origin");
-  if (!origin) return true;
   try {
-    return new URL(origin).origin === new URL(expectedOrigin ?? request.url).origin;
+    const requestOrigin = new URL(request.url).origin;
+    const trustedOrigin = new URL(expectedOrigin ?? request.url).origin;
+    if (requestOrigin !== trustedOrigin) return false;
+    const origin = request.headers.get("origin");
+    return !origin || new URL(origin).origin === trustedOrigin;
   } catch {
     return false;
   }
