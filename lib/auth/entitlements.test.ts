@@ -86,3 +86,26 @@ test("Desmos 101 and Reading 101 remain available on every plan; Foundations and
   assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.max, "blueprint-foundations"), true);
   assert.equal(hasCourseAccess(PLAN_ENTITLEMENTS.max, "math-subtopic-course"), true);
 });
+
+test("an admin Max grant outranks a lapsed or downgraded subscription", () => {
+  // The reason complimentary access is written to access_grants and not to
+  // users.plan: the legacy plan is only consulted when a student has no
+  // tracked subscription at all, so a comp'd student who once paid would
+  // silently get nothing.
+  assert.equal(effectivePlan(null, null, "max", true), "free");
+  assert.equal(effectivePlan("max", null, "free", true), "max");
+
+  // It also has to beat a live lower-tier subscription rather than tie with it.
+  assert.equal(effectivePlan("max", "core", "free", true), "max");
+
+  // And revoking the grant hands the student back to their own subscription.
+  assert.equal(effectivePlan(null, "core", "free", true), "core");
+  assert.equal(effectivePlan(null, null, "free", true), "free");
+});
+
+test("a granted Max student gets the full Max entitlement set", () => {
+  const granted = accessForPlan("max", "grant", "user-1");
+  assert.equal(granted.active, true);
+  assert.equal(granted.source, "grant");
+  assert.deepEqual(granted.entitlements, PLAN_ENTITLEMENTS.max);
+});
