@@ -11,28 +11,47 @@ function resend(): Resend {
   return client;
 }
 
-const DEFAULT_FROM_ADDRESS = "login@1500satblueprint.com";
-const VERIFIED_FROM_DOMAIN = "1500satblueprint.com";
+const DEFAULT_FROM_ADDRESS = "scott@1500blueprint.com";
+const VERIFIED_FROM_DOMAIN = "1500blueprint.com";
 
 // Vercel can preserve an empty or quoted environment value. Normalize it here
 // and refuse to let EMAIL_FROM override the domain verified in Resend.
 function fromHeader(): string {
   const configured = process.env.EMAIL_FROM?.trim();
+  const resolved = parseEmailFromHeader(configured);
+  if (configured && !resolved.accepted) {
+    console.warn(
+      `Ignoring EMAIL_FROM with domain "${resolved.domain ?? "missing"}"; ` +
+        `magic links must use ${VERIFIED_FROM_DOMAIN}.`,
+    );
+  }
+  return resolved.header;
+}
+
+export function resolveEmailFromHeader(configured: string | undefined): string {
+  return parseEmailFromHeader(configured).header;
+}
+
+function parseEmailFromHeader(configured: string | undefined): {
+  header: string;
+  accepted: boolean;
+  domain: string | null;
+} {
   const raw = stripWrappingQuotes(configured || DEFAULT_FROM_ADDRESS);
   const bracketed = raw.match(/^(.*?)\s*<([^<>]+)>$/);
   const address = (bracketed?.[2] ?? raw).trim().toLowerCase();
-  const domain = address.split("@")[1]?.toLowerCase();
+  const domain = address.split("@")[1]?.toLowerCase() ?? null;
 
   if (!isEmailAddress(address) || domain !== VERIFIED_FROM_DOMAIN) {
-    console.warn(
-      `Ignoring EMAIL_FROM with domain "${domain ?? "missing"}"; ` +
-        `magic links must use ${VERIFIED_FROM_DOMAIN}.`,
-    );
-    return `1500 Blueprint <${DEFAULT_FROM_ADDRESS}>`;
+    return {
+      header: `1500 Blueprint <${DEFAULT_FROM_ADDRESS}>`,
+      accepted: false,
+      domain,
+    };
   }
 
   const name = bracketed?.[1]?.trim() || "1500 Blueprint";
-  return `${name} <${address}>`;
+  return { header: `${name} <${address}>`, accepted: true, domain };
 }
 
 export async function sendMagicLink(email: string, url: string): Promise<void> {
