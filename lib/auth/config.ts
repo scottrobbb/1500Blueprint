@@ -88,12 +88,22 @@ function validateHttpsAppOrigin(raw: string, variableName: string): string {
   }
 
   const validHostname = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+  const localhostHostname = url.hostname === "localhost"
+    || url.hostname === "127.0.0.1"
+    || url.hostname === "::1"
+    || url.hostname === "[::1]"
+    || /^127(?:\.\d{1,3}){3}$/.test(url.hostname);
+  const isLocalHttpOrigin = process.env.NODE_ENV !== "production"
+    && url.protocol === "http:"
+    && localhostHostname;
+  const isHttpsPublicOrigin = url.protocol === "https:"
+    && validHostname.test(url.hostname);
+
   if (
-    url.protocol !== "https:"
-    || !validHostname.test(url.hostname)
+    !(isLocalHttpOrigin || isHttpsPublicOrigin)
     || url.username
     || url.password
-    || url.port
+    || (!isLocalHttpOrigin && url.port)
     || url.pathname !== "/"
     || url.search
     || url.hash

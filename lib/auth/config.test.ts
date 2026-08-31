@@ -111,6 +111,15 @@ test("production accepts only exact allowlisted app origins while retaining one 
   });
 });
 
+test("development accepts localhost origins for local app URLs", () => {
+  withEnvironment({
+    NODE_ENV: "development",
+    NEXT_PUBLIC_APP_URL: "http://localhost:3000",
+  }, () => {
+    assert.equal(canonicalAppUrl(), "http://localhost:3000");
+  });
+});
+
 test("canonical production URLs reject unsafe or ambiguous origins", () => {
   for (const invalid of [
     "http://blueprint.example",
