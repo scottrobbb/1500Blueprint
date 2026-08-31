@@ -88,6 +88,8 @@ test("public and authenticated entry points converge on pricing and Ultimate", (
   assert.match(source("app/api/auth/callback/route.ts"), /destinationAfterMagicLink/);
   assert.match(source("lib/auth/password.ts"), /DEFAULT_AUTH_DESTINATION\s*=\s*["']\/ultimate["']/);
   assert.match(source("proxy.ts"), /const PUBLIC_PATHS\s*=\s*\[[^\]]*["']\/["']/);
+  assert.match(source("proxy.ts"), /["']\/robots\.txt["']/);
+  assert.match(source("proxy.ts"), /["']\/sitemap\.xml["']/);
 });
 
 test("checkout authentication preserves a safe local return path", () => {

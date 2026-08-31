@@ -7,18 +7,28 @@ export const TOKEN_TTL_SECONDS = 60 * 15; // magic link is valid for 15 minutes
 // Stripe subscription statuses that count as an active membership.
 export const ACTIVE_STATUSES = ["active", "trialing"] as const;
 
-export const CANONICAL_APP_URL = "https://www.1500satblueprint.com";
+const FALLBACK_CANONICAL_APP_URL = "https://www.1500satblueprint.com";
+
+export function canonicalAppUrl(): string {
+  return validateCanonicalAppUrl(
+    process.env.NEXT_PUBLIC_APP_URL?.trim() || FALLBACK_CANONICAL_APP_URL,
+  );
+}
 
 // Every production domain the app is intentionally reachable on. A request
 // arriving on any of these is treated as first-party (same-origin checks,
 // auth links, Stripe redirects all stay on the domain the visitor is
 // actually using); anything else falls back to the canonical domain instead
-// of trusting an arbitrary Host header.
+// of trusting an arbitrary Host header. Computed lazily (never at module
+// scope) since canonicalAppUrl() can throw on a malformed env var, and that
+// should only surface when actually resolving a URL, not at import time.
 const ADDITIONAL_APP_ORIGINS = ["https://1500blueprint.com", "https://www.1500blueprint.com"];
-const ALLOWED_APP_ORIGINS = new Set<string>([CANONICAL_APP_URL, ...ADDITIONAL_APP_ORIGINS]);
+function allowedAppOrigins(): Set<string> {
+  return new Set<string>([canonicalAppUrl(), FALLBACK_CANONICAL_APP_URL, ...ADDITIONAL_APP_ORIGINS]);
+}
 
 export function resolveProductionOrigin(origin: string): string {
-  return ALLOWED_APP_ORIGINS.has(origin) ? origin : CANONICAL_APP_URL;
+  return allowedAppOrigins().has(origin) ? origin : canonicalAppUrl();
 }
 
 // Production auth links use whichever known app domain the request actually
@@ -35,6 +45,51 @@ export function appBaseUrl(fallbackOrigin: string): string {
 
   const configured = process.env.NEXT_PUBLIC_APP_URL?.trim();
   return normalizeBaseUrl(configured || fallbackOrigin);
+}
+
+export function magicLinkCallbackUrl(token: string, fallbackOrigin: string): string {
+  const url = new URL("/api/auth/callback", appBaseUrl(fallbackOrigin));
+  url.searchParams.set("token", token);
+  return url.toString();
+}
+
+export function accountConfirmationUrl(
+  tokenHash: string,
+  type: "signup" | "recovery",
+  next: string,
+  fallbackOrigin: string,
+): string {
+  const url = new URL("/account/confirm", appBaseUrl(fallbackOrigin));
+  url.searchParams.set("token_hash", tokenHash);
+  url.searchParams.set("type", type);
+  url.searchParams.set("next", next);
+  return url.toString();
+}
+
+function validateCanonicalAppUrl(raw: string): string {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("NEXT_PUBLIC_APP_URL must be a valid absolute URL");
+  }
+
+  const validHostname = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+  if (
+    url.protocol !== "https:"
+    || !validHostname.test(url.hostname)
+    || url.username
+    || url.password
+    || url.port
+    || url.pathname !== "/"
+    || url.search
+    || url.hash
+  ) {
+    throw new Error(
+      "NEXT_PUBLIC_APP_URL must be an HTTPS origin with a valid DNS hostname",
+    );
+  }
+  return url.origin;
 }
 
 function normalizeBaseUrl(raw: string): string {

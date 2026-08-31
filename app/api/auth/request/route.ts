@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE, appBaseUrl, isDevBypass } from "@/lib/auth/config";
+import { SESSION_COOKIE, isDevBypass, magicLinkCallbackUrl } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getMembership } from "@/lib/auth/stripe";
 import { createLoginToken } from "@/lib/auth/tokens";
@@ -97,8 +97,7 @@ export async function POST(request: Request) {
       : await getMembership(email);
     if (membership.active) {
       const raw = await createLoginToken(email, membership.plan);
-      const base = appBaseUrl(new URL(request.url).origin);
-      const url = `${base}/api/auth/callback?token=${encodeURIComponent(raw)}`;
+      const url = magicLinkCallbackUrl(raw, new URL(request.url).origin);
       await sendMagicLink(email, url);
     }
   } catch (error) {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { CANONICAL_APP_URL } from "@/lib/auth/config";
+import { canonicalAppUrl } from "@/lib/auth/config";
 import { billingBaseUrl } from "./config";
 
 function withEnvironment(
@@ -28,6 +28,7 @@ test("checkout on a second known app domain stays on that domain instead of fail
     VERCEL_ENV: "production",
     BILLING_PREVIEW_URL: undefined,
     VERCEL_URL: undefined,
+    NEXT_PUBLIC_APP_URL: undefined,
   }, () => {
     assert.equal(
       billingBaseUrl("https://1500blueprint.com/api/billing/checkout"),
@@ -42,10 +43,11 @@ test("checkout on an unrecognized domain still falls back to the canonical one",
     VERCEL_ENV: "production",
     BILLING_PREVIEW_URL: undefined,
     VERCEL_URL: undefined,
+    NEXT_PUBLIC_APP_URL: undefined,
   }, () => {
     assert.equal(
       billingBaseUrl("https://attacker.example/api/billing/checkout"),
-      CANONICAL_APP_URL,
+      canonicalAppUrl(),
     );
   });
 });

@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { appBaseUrl, CANONICAL_APP_URL, resolveProductionOrigin } from "./config";
+import {
+  accountConfirmationUrl,
+  appBaseUrl,
+  canonicalAppUrl,
+  magicLinkCallbackUrl,
+  resolveProductionOrigin,
+} from "./config";
+import { billingBaseUrl } from "../billing/config";
+import robots from "../../app/robots";
+import sitemap from "../../app/sitemap";
 
 test("preview auth links stay on the Vercel preview instead of production", () => {
   withEnvironment({
@@ -24,14 +33,67 @@ test("a stable preview auth URL overrides the deployment-specific Vercel URL", (
   });
 });
 
-test("production auth links remain pinned to the canonical public domain", () => {
+test("production auth and billing links use the configured canonical public domain", () => {
   withEnvironment({
     NODE_ENV: "production",
     VERCEL_ENV: "production",
     VERCEL_URL: "deployment.vercel.app",
     AUTH_PREVIEW_URL: undefined,
+    NEXT_PUBLIC_APP_URL: "https://www.new-blueprint.example/",
   }, () => {
-    assert.equal(appBaseUrl("https://fallback.example"), CANONICAL_APP_URL);
+    assert.equal(canonicalAppUrl(), "https://www.new-blueprint.example");
+    assert.equal(appBaseUrl("https://fallback.example"), "https://www.new-blueprint.example");
+    assert.equal(billingBaseUrl("https://fallback.example/api/billing/checkout"), "https://www.new-blueprint.example");
+    assert.equal(
+      magicLinkCallbackUrl("magic-token", "https://fallback.example"),
+      "https://www.new-blueprint.example/api/auth/callback?token=magic-token",
+    );
+    assert.equal(
+      accountConfirmationUrl(
+        "signup-token",
+        "signup",
+        "/ultimate",
+        "https://fallback.example",
+      ),
+      "https://www.new-blueprint.example/account/confirm?token_hash=signup-token&type=signup&next=%2Fultimate",
+    );
+    assert.equal(
+      accountConfirmationUrl(
+        "recovery-token",
+        "recovery",
+        "/account/reset-password",
+        "https://fallback.example",
+      ),
+      "https://www.new-blueprint.example/account/confirm?token_hash=recovery-token&type=recovery&next=%2Faccount%2Freset-password",
+    );
+  });
+});
+
+test("canonical production URLs reject unsafe or ambiguous origins", () => {
+  for (const invalid of [
+    "http://blueprint.example",
+    "https://localhost",
+    "https://blueprint.example:8443",
+    "https://blueprint.example/path",
+    "https://user:password@blueprint.example",
+    "https://blueprint.example?host=other.example",
+  ]) {
+    withEnvironment({ NEXT_PUBLIC_APP_URL: invalid }, () => {
+      assert.throws(() => canonicalAppUrl(), /HTTPS origin/);
+    });
+  }
+});
+
+test("robots and sitemap publish only canonical public pricing URLs", () => {
+  withEnvironment({ NEXT_PUBLIC_APP_URL: "https://blueprint.example" }, () => {
+    const robotsFile = robots();
+    assert.equal(robotsFile.host, "https://blueprint.example");
+    assert.equal(robotsFile.sitemap, "https://blueprint.example/sitemap.xml");
+    assert.deepEqual(sitemap(), [{
+      url: "https://blueprint.example/pricing",
+      changeFrequency: "weekly",
+      priority: 1,
+    }]);
   });
 });
 
@@ -41,6 +103,7 @@ test("a second known app domain stays on itself instead of bouncing to canonical
     VERCEL_ENV: "production",
     VERCEL_URL: "deployment.vercel.app",
     AUTH_PREVIEW_URL: undefined,
+    NEXT_PUBLIC_APP_URL: undefined,
   }, () => {
     assert.equal(appBaseUrl("https://1500blueprint.com"), "https://1500blueprint.com");
     assert.equal(appBaseUrl("https://www.1500blueprint.com"), "https://www.1500blueprint.com");
@@ -48,10 +111,13 @@ test("a second known app domain stays on itself instead of bouncing to canonical
 });
 
 test("resolveProductionOrigin only trusts the app's own known domains", () => {
-  assert.equal(resolveProductionOrigin(CANONICAL_APP_URL), CANONICAL_APP_URL);
-  assert.equal(resolveProductionOrigin("https://1500blueprint.com"), "https://1500blueprint.com");
-  assert.equal(resolveProductionOrigin("https://www.1500blueprint.com"), "https://www.1500blueprint.com");
-  assert.equal(resolveProductionOrigin("https://attacker.example"), CANONICAL_APP_URL);
+  withEnvironment({ NEXT_PUBLIC_APP_URL: undefined }, () => {
+    const canonical = canonicalAppUrl();
+    assert.equal(resolveProductionOrigin(canonical), canonical);
+    assert.equal(resolveProductionOrigin("https://1500blueprint.com"), "https://1500blueprint.com");
+    assert.equal(resolveProductionOrigin("https://www.1500blueprint.com"), "https://www.1500blueprint.com");
+    assert.equal(resolveProductionOrigin("https://attacker.example"), canonical);
+  });
 });
 
 function withEnvironment(
