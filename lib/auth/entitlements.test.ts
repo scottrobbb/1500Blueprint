@@ -52,9 +52,9 @@ test("the strongest active source wins instead of a lower manual grant", () => {
 });
 
 test("explicit persona grants replace stale legacy labels", () => {
-  assert.equal(effectivePlan("free", null, "max"), "free");
-  assert.equal(effectivePlan("core", "max", "free"), "max");
-  assert.equal(effectivePlan(null, null, "max"), "max");
+  assert.equal(effectivePlan("free", null, "max", false), "free");
+  assert.equal(effectivePlan("core", "max", "free", true), "max");
+  assert.equal(effectivePlan(null, null, "max", false), "max");
   assert.equal(effectivePlan(null, null, "max", true), "free");
 });
 

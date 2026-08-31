@@ -68,6 +68,20 @@ test("excludes test accounts from every stat", () => {
   assert.equal(stats.newLast7Days, 1);
 });
 
+test("excludes complimentary Max access from subscriber and conversion totals", () => {
+  const students = [
+    student({ plan: "max", joined: "2026-08-29T00:00:00.000Z", isComplimentary: true }),
+    student({ plan: "max", joined: "2026-08-29T00:00:00.000Z" }),
+    student({ plan: "free", joined: "2026-08-29T00:00:00.000Z" }),
+  ];
+  const stats = computeGrowthStats(students, NOW);
+  assert.equal(stats.totalStudents, 3);
+  assert.equal(stats.max, 1);
+  assert.equal(stats.paid, 1);
+  assert.equal(stats.conversionRate, 1 / 3);
+  assert.equal(stats.weeks.at(-1)?.paid, 1);
+});
+
 test("buckets new signups into the correct 7-day windows", () => {
   const students = [
     student({ plan: "free", joined: "2026-08-29T00:00:00.000Z" }), // 1 day ago -- last 7

@@ -36,9 +36,10 @@ export function computeGrowthStats(
   weekCount = 12,
 ): GrowthStats {
   const real = realStudents(students);
+  const subscribers = real.filter((student) => !student.isComplimentary);
   const free = real.filter((s) => s.plan === "free").length;
-  const core = real.filter((s) => s.plan === "core").length;
-  const max = real.filter((s) => s.plan === "max").length;
+  const core = subscribers.filter((s) => s.plan === "core").length;
+  const max = subscribers.filter((s) => s.plan === "max").length;
   const totalStudents = real.length;
   const paid = core + max;
 
@@ -58,7 +59,7 @@ export function computeGrowthStats(
     weeks.push({
       weekStart: start.toISOString().slice(0, 10),
       free: real.filter((s) => s.joined && s.plan === "free" && inRange(s.joined, start, end)).length,
-      paid: real.filter((s) => s.joined && s.plan !== "free" && inRange(s.joined, start, end)).length,
+      paid: subscribers.filter((s) => s.joined && s.plan !== "free" && inRange(s.joined, start, end)).length,
     });
   }
 

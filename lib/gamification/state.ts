@@ -848,7 +848,7 @@ export async function listStudents(): Promise<StudentRow[]> {
     const subscriptionPlan = paidSubscription ? normalizePlanCode(paidSubscription.plan_code) : null;
     const legacyPlan = resolveStoredPlan(u.plan);
     const plan = u.account_status === "active"
-      ? effectivePlan(grantPlan, subscriptionPlan, legacyPlan)
+      ? effectivePlan(grantPlan, subscriptionPlan, legacyPlan, latestSubscription !== null)
       : "free";
     const accessSource: AccessSource = u.account_status !== "active" ? "free"
       : paidSubscription && plan === subscriptionPlan ? "subscription"

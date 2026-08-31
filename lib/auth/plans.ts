@@ -114,7 +114,7 @@ export function effectivePlan(
   grant: PlanCode | null,
   subscription: PlanCode | null,
   legacy: PlanCode,
-  hasTrackedSubscription = subscription !== null,
+  hasTrackedSubscription: boolean,
 ): PlanCode {
   if (grant || subscription) return highestPlan(grant ?? "free", subscription ?? "free");
   return hasTrackedSubscription ? "free" : legacy;

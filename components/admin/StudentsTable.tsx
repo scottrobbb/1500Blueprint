@@ -140,7 +140,12 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
 
       setStudentRows((current) => current.map((row) => {
         if (row.id !== student.id) return row;
-        const restoredPlan = effectivePlan(row.grantPlan, null, row.legacyPlan);
+        const restoredPlan = effectivePlan(
+          row.grantPlan,
+          null,
+          row.legacyPlan,
+          row.subscriptionStatus !== null,
+        );
         return {
           ...row,
           accountStatus: nextStatus,
