@@ -319,6 +319,7 @@
   min-width: 0;
   padding: 22px;
   position: relative;
+  scroll-margin-top: 20px;
   transform: translateZ(0);
   will-change: transform;
 }
