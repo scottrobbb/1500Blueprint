@@ -5,10 +5,10 @@ import {
   accessForPlan,
   accessForTestPersona,
   effectivePlan,
-  normalizeLegacyPlanCode,
   normalizePlanCode,
   type StudentAccess,
 } from "./plans";
+import { resolveStoredPlan } from "./stored-plan";
 import { billingLivemode } from "@/lib/billing/config";
 import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
 
@@ -75,7 +75,7 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
   const activeSubscription = (subscription ?? []).find((row) => activeStatuses.has(row.status));
   const grantPlan = grant ? normalizePlanCode(grant.plan_code) : "free";
   const subscriptionPlan = activeSubscription ? normalizePlanCode(activeSubscription.plan_code) : "free";
-  const legacyPlan = account.plan ? normalizeLegacyPlanCode(account.plan) : "free";
+  const legacyPlan = resolveStoredPlan(account.plan);
   const plan = effectivePlan(
     grant ? grantPlan : null,
     activeSubscription ? subscriptionPlan : null,

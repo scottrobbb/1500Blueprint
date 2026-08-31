@@ -50,6 +50,16 @@ export function planForPriceId(priceId: string): BillablePlan | null {
   return null;
 }
 
+// Where an active subscription resolves to neither a configured price nor a
+// known legacy product. Stripe has already confirmed these members are paying,
+// so the one answer that is always wrong is "free": under-serving a paying
+// member costs a support ticket and a churn risk, while over-serving one is
+// undone with a click in the students admin panel. Every fallback is logged
+// with its price id so the legacy mapping can be tightened toward zero.
+export function legacyFallbackPlan(): BillablePlan {
+  return process.env.STRIPE_LEGACY_FALLBACK_PLAN?.trim().toLowerCase() === "core" ? "core" : "max";
+}
+
 export function planForLegacyProductId(productId: string): BillablePlan | null {
   if (configuredIds("STRIPE_LEGACY_CORE_PRODUCT_IDS").has(productId)) return "core";
   if (configuredIds("STRIPE_LEGACY_MAX_PRODUCT_IDS").has(productId)) return "max";
