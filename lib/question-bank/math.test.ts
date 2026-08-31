@@ -14,6 +14,7 @@ import {
   prioritizeUnattemptedQuestions,
   questionBankLevel,
   selectQuestionBankSession,
+  shouldRevealQuestionBankAnswer,
   sortByOriginalOrder,
 } from "./math";
 
@@ -133,4 +134,21 @@ test("free access excludes Challenge questions while paid access includes them",
   assert.equal(canAccessQuestionBankLevel("challenge", false), false);
   assert.equal(canAccessQuestionBankLevel("challenge", true), true);
   assert.equal(canAccessQuestionBankLevel("hard", false), true);
+});
+
+test("a missed question withholds its solution until a second wrong response", () => {
+  assert.equal(shouldRevealQuestionBankAnswer(false, 1), false);
+  assert.equal(shouldRevealQuestionBankAnswer(false, 2), true);
+  assert.equal(shouldRevealQuestionBankAnswer(false, 3), true);
+  assert.equal(shouldRevealQuestionBankAnswer(true, 0), true);
+  assert.equal(shouldRevealQuestionBankAnswer(true, 1), true);
+});
+
+test("repeating the same wrong response does not burn the retry", () => {
+  const first = nextQuestionBankAttemptState(undefined, false, "B");
+  const repeat = nextQuestionBankAttemptState(first, false, "B");
+  assert.equal(shouldRevealQuestionBankAnswer(false, repeat.incorrectResponses.length), false);
+
+  const second = nextQuestionBankAttemptState(repeat, false, "C");
+  assert.equal(shouldRevealQuestionBankAnswer(false, second.incorrectResponses.length), true);
 });

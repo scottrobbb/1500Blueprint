@@ -6,11 +6,15 @@ import {
   getMathQuestionForGrading,
   gradeMathResponse,
 } from "@/lib/question-bank/math-queries";
-import { recordQuestionBankAttempt, type QuestionBankAttemptWrite } from "@/lib/question-bank/attempts";
+import {
+  countWrongQuestionBankResponses,
+  recordQuestionBankAttempt,
+  type QuestionBankAttemptWrite,
+} from "@/lib/question-bank/attempts";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { isAdminEmail } from "@/lib/auth/admin";
-import { canAccessQuestionBankLevel } from "@/lib/question-bank/math";
+import { canAccessQuestionBankLevel, shouldRevealQuestionBankAnswer } from "@/lib/question-bank/math";
 import { readJsonBody } from "@/lib/security/request";
 import { reportServerError } from "@/lib/observability/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
@@ -43,11 +47,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Question Bank access is not active.", code: "plan_limit" }, { status: 402 });
   }
   const bankLimit = access?.entitlements.questionBankLimit ?? "unlimited";
-  // Free's content is already bounded by the curated free-tier pool
-  // (freeTierOnly filtering), so the RPC's raw attempt-row counter must not
-  // also cap it -- that would lock a student out after 200 total
-  // submissions even if they've only ever seen a handful of distinct
-  // questions (e.g. retried some more than once).
+  // Nothing meters the bank today -- Core and Max are unlimited, and Free's
+  // exposure is bounded by the curated free-tier pool (freeTierOnly
+  // filtering) rather than by a submission counter. Free in particular must
+  // never reach the RPC's raw attempt-row counter: that would lock a student
+  // out after 200 total submissions even if they've only ever seen a handful
+  // of distinct questions (e.g. retried some more than once). The branch is
+  // kept so a future metered plan is enforced without further wiring.
   const rpcLimit = bankLimit === "unlimited" || access?.plan === "free" ? null : bankLimit;
 
   const existing = await loadAttemptByToken(session.email, input.clientToken);
@@ -72,10 +78,16 @@ export async function POST(request: Request) {
     ) {
       return challengeUpgrade();
     }
+    const revealed = await isAnswerRevealed(session.email, input.questionId, existing.data.correct);
     return NextResponse.json({
       correct: existing.data.correct,
-      explanation: question?.explanation ?? "Your answer was already saved.",
-      correctAnswer: question ? getCorrectAnswerLabel(question) : "",
+      revealed,
+      ...(revealed
+        ? {
+          explanation: question?.explanation ?? "Your answer was already saved.",
+          correctAnswer: question ? getCorrectAnswerLabel(question) : "",
+        }
+        : {}),
     });
   }
 
@@ -123,11 +135,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "That answer token was already used." }, { status: 409 });
   }
 
+  const graded = write.correct ?? correct;
+  const revealed = await isAnswerRevealed(session.email, input.questionId, graded);
   return NextResponse.json({
-    correct: write.correct ?? correct,
-    explanation: gradingQuestion.explanation,
-    correctAnswer: getCorrectAnswerLabel(gradingQuestion),
+    correct: graded,
+    revealed,
+    ...(revealed
+      ? {
+        explanation: gradingQuestion.explanation,
+        correctAnswer: getCorrectAnswerLabel(gradingQuestion),
+      }
+      : {}),
   });
+}
+
+// The attempt is already on record by the time this runs, so the count it
+// reads includes the response being graded. A history read that fails must not
+// fail the whole request -- the answer was graded and saved, so fall back to
+// withholding the solution rather than handing it over by accident.
+async function isAnswerRevealed(email: string, questionId: string, correct: boolean): Promise<boolean> {
+  if (correct) return true;
+  try {
+    return shouldRevealQuestionBankAnswer(false, await countWrongQuestionBankResponses(email, questionId));
+  } catch (error) {
+    reportServerError("question_bank.math.reveal_check_failed", error, {
+      provider: "supabase",
+      route: "/api/question-bank/math/attempt",
+      method: "POST",
+    });
+    return false;
+  }
 }
 
 function parseAttemptBody(value: unknown): AttemptBody | null {

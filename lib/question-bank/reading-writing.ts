@@ -63,6 +63,7 @@ export type ReadingWritingRunnerQuestion = {
 
 export type ReadingWritingAttemptResult = {
   correct: boolean;
+  revealed: boolean;
   explanation: string;
   correctAnswer: string;
 };

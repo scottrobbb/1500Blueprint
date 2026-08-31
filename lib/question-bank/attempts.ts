@@ -37,6 +37,34 @@ type AttemptRpcRow = {
   stored_correct: boolean | null;
 };
 
+// Distinct wrong responses already on record for this question, matching the
+// `incorrectResponses` bookkeeping the runner keeps client-side -- resubmitting
+// the same wrong answer must not burn the student's retry.
+export async function countWrongQuestionBankResponses(
+  email: string,
+  questionId: string,
+): Promise<number> {
+  const result = await supabaseAdmin()
+    .from("question_bank_attempts")
+    .select("response")
+    .eq("email", email)
+    .eq("question_id", questionId)
+    .eq("correct", false)
+    .limit(500)
+    .returns<{ response: { value?: unknown } | null }[]>();
+
+  if (result.error) {
+    const code = result.error.code ? ` [${result.error.code}]` : "";
+    throw new Error(`Could not load Question Bank attempt history${code}: ${result.error.message}`);
+  }
+
+  const responses = new Set<string>();
+  for (const row of result.data ?? []) {
+    if (typeof row.response?.value === "string") responses.add(row.response.value);
+  }
+  return responses.size;
+}
+
 export async function recordQuestionBankAttempt(
   input: QuestionBankAttemptInput,
 ): Promise<QuestionBankAttemptWrite> {
