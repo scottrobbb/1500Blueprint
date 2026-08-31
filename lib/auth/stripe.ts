@@ -1,5 +1,8 @@
 import Stripe from "stripe";
 import { ACTIVE_STATUSES } from "./config";
+import { legacyFallbackPlan, planForLegacyProductId, planForPriceId } from "@/lib/billing/config";
+import { reportServerError } from "@/lib/observability/server";
+import type { StoredPlan } from "./plans";
 
 // Lazily created so an empty key never throws at import/build time.
 let client: Stripe | null = null;
@@ -12,7 +15,9 @@ function stripe(): Stripe {
   return client;
 }
 
-export type Membership = { active: boolean; plan: string | null };
+// plan is a StoredPlan, never a Stripe display value -- see StoredPlan in
+// ./plans for why this type is closed.
+export type Membership = { active: boolean; plan: StoredPlan | null };
 
 type MembershipCustomer = {
   id: string;
@@ -21,7 +26,7 @@ type MembershipCustomer = {
 
 type MembershipSubscription = {
   status: string;
-  items: { data: Array<{ price: { id: string; nickname: string | null } }> };
+  items: { data: Array<{ price: { id: string; nickname: string | null; product: string | null } }> };
 };
 
 export type MembershipDependencies = {
@@ -62,11 +67,41 @@ export async function getMembership(
       (ACTIVE_STATUSES as readonly string[]).includes(s.status),
     );
     if (active) {
-      const price = active.items.data[0]?.price;
-      return { active: true, plan: price?.nickname ?? price?.id ?? null };
+      return { active: true, plan: planForSubscription(active, lookup) };
     }
   }
   return { active: false, plan: null };
+}
+
+// Stripe data becomes a plan code exactly here, at the boundary where it enters
+// the system, rather than being stored raw and guessed at on the way out.
+function planForSubscription(subscription: MembershipSubscription, email: string): StoredPlan {
+  const price = subscription.items.data[0]?.price;
+  if (!price) return reportUnresolvedPlan(email, "no price on subscription");
+
+  const configured = planForPriceId(price.id);
+  if (configured) return configured;
+
+  const legacy = price.product ? planForLegacyProductId(price.product) : null;
+  if (legacy) return legacy;
+
+  // A nickname that names its tier outright is still trustworthy; one that does
+  // not must never be stored, which is what produced the original defect.
+  const nickname = price.nickname?.trim().toLowerCase() ?? "";
+  if (nickname.includes("max")) return "max";
+  if (nickname.includes("core")) return "core";
+
+  return reportUnresolvedPlan(email, `price ${price.id}${price.product ? ` (product ${price.product})` : ""}`);
+}
+
+function reportUnresolvedPlan(email: string, detail: string): StoredPlan {
+  const fallback = legacyFallbackPlan();
+  reportServerError(
+    "auth.membership.plan_unresolved",
+    new Error(`Active subscription for ${email} could not be mapped to a plan: ${detail}. Granted ${fallback}.`),
+    { provider: "stripe", source: "getMembership", reason: detail },
+  );
+  return fallback;
 }
 
 async function findCustomersIgnoringEmailCase(
@@ -116,6 +151,9 @@ function stripeDependencies(): MembershipDependencies {
             price: {
               id: item.price.id,
               nickname: item.price.nickname,
+              // Unexpanded, so this is the product id string -- exactly what
+              // planForLegacyProductId matches against.
+              product: typeof item.price.product === "string" ? item.price.product : item.price.product?.id ?? null,
             },
           })),
         },

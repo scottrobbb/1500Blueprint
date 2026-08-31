@@ -13,7 +13,8 @@ import type {
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { hasStaffRole } from "@/lib/auth/staff";
-import { effectivePlan, normalizeLegacyPlanCode, normalizePlanCode, type AccessSource, type PlanCode } from "@/lib/auth/plans";
+import { effectivePlan, normalizePlanCode, type AccessSource, type PlanCode } from "@/lib/auth/plans";
+import { resolveStoredPlan } from "@/lib/auth/stored-plan";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { drillAllowance } from "@/lib/auth/access-control";
 import { billingLivemode } from "@/lib/billing/config";
@@ -845,7 +846,7 @@ export async function listStudents(): Promise<StudentRow[]> {
     const latestSubscription = latestSubscriptionByUser.get(u.id) ?? null;
     const grantPlan = grant ? normalizePlanCode(grant.plan_code) : null;
     const subscriptionPlan = paidSubscription ? normalizePlanCode(paidSubscription.plan_code) : null;
-    const legacyPlan = normalizeLegacyPlanCode(u.plan);
+    const legacyPlan = resolveStoredPlan(u.plan);
     const plan = u.account_status === "active"
       ? effectivePlan(grantPlan, subscriptionPlan, legacyPlan)
       : "free";

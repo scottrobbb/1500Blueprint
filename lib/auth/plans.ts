@@ -74,10 +74,35 @@ export function normalizePlanCode(value: string | null | undefined): PlanCode {
   return "free";
 }
 
+// Everything the app is allowed to WRITE to users.plan. Keeping this a closed
+// union is what stops the original defect: getMembership used to store a Stripe
+// price nickname (or, with no nickname, the raw price id) into this field, and
+// normalizeLegacyPlanCode quietly read that back as "free" -- dropping active
+// paying members to the free tier. A display string is now a type error.
+export const LEGACY_PLAN_SENTINELS = ["testing", "complimentary", "admin", "dev"] as const;
+export type LegacyPlanSentinel = (typeof LEGACY_PLAN_SENTINELS)[number];
+export type StoredPlan = PlanCode | LegacyPlanSentinel;
+
+export function isLegacyPlanSentinel(value: string): value is LegacyPlanSentinel {
+  return (LEGACY_PLAN_SENTINELS as readonly string[]).includes(value);
+}
+
+// Reading stays permissive -- rows written before the type existed still hold
+// nicknames and price ids. Use storedPlanIsUnreadable to tell a genuine "free"
+// apart from a value this could not parse.
 export function normalizeLegacyPlanCode(value: string | null | undefined): PlanCode {
   const normalized = value?.trim().toLowerCase() ?? "";
-  if (["testing", "complimentary", "admin", "dev"].includes(normalized)) return "max";
+  if (isLegacyPlanSentinel(normalized)) return "max";
   return normalizePlanCode(value);
+}
+
+// True when users.plan holds something this cannot interpret. Such a value
+// means the account's real entitlement is unknown -- never that it is free.
+export function storedPlanIsUnreadable(value: string | null | undefined): boolean {
+  const normalized = value?.trim().toLowerCase() ?? "";
+  if (!normalized) return false;
+  if (isLegacyPlanSentinel(normalized)) return false;
+  return normalizePlanCode(normalized) === "free" && normalized !== "free";
 }
 
 export function highestPlan(...plans: PlanCode[]): PlanCode {
