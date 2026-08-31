@@ -40,7 +40,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
     discordRole: null,
   },
   core: {
-    questionBankLimit: 3000,
+    questionBankLimit: "unlimited",
     fullTestLimit: 2,
     dailyDrillLimit: 20,
     desmos101: true,

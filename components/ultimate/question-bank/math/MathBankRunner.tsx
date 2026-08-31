@@ -172,7 +172,7 @@ function ObjectiveBankRunner({
   });
 
   function setAnswer(value: string) {
-    if (!question || result?.correct) return;
+    if (!question || result?.revealed) return;
     setAnswers((current) => ({ ...current, [question.id]: value }));
     setSubmitError(null);
     setExplanationOpen(false);
@@ -227,7 +227,7 @@ function ObjectiveBankRunner({
   }
 
   async function checkAnswer() {
-    if (!question || !answer.trim() || result?.correct || result?.response === answer || submitting) return;
+    if (!question || !answer.trim() || result?.revealed || result?.response === answer || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
     sessionId.current ??= createToken();
@@ -252,12 +252,16 @@ function ObjectiveBankRunner({
         throw new Error(body.error || "We could not check that answer.");
       }
       const correct = body.correct;
+      // A first miss comes back without an explanation or correct answer --
+      // the student gets another try before the solution is unlocked.
+      const revealed = body.revealed === true;
       setResults((current) => ({
         ...current,
         [question.id]: {
           correct,
-          explanation: body.explanation ?? "A full solution is not available yet.",
-          correctAnswer: body.correctAnswer ?? "",
+          revealed,
+          explanation: revealed ? body.explanation ?? "A full solution is not available yet." : "",
+          correctAnswer: revealed ? body.correctAnswer ?? "" : "",
           response: answer,
         },
       }));
@@ -265,7 +269,7 @@ function ObjectiveBankRunner({
         ...current,
         [question.id]: nextQuestionBankAttemptState(current[question.id], correct, answer),
       }));
-      setExplanationOpen(true);
+      setExplanationOpen(revealed);
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "We could not check that answer.");
     } finally {
@@ -527,6 +531,8 @@ function QuestionStrip({ questionId, index, marked, saving, saveError, eliminato
 function AnswerArea({ question, answer, result, attempt, submitting, submitError, explanationOpen, eliminatorOn, eliminatedChoices, onAnswer, onCheck, onToggleExplanation, onToggleEliminated }: { question: BankRunnerQuestion; answer: string; result: RunnerResult | undefined; attempt: QuestionBankAttemptState | undefined; submitting: boolean; submitError: string | null; explanationOpen: boolean; eliminatorOn: boolean; eliminatedChoices: string[]; onAnswer: (value: string) => void; onCheck: () => void; onToggleExplanation: () => void; onToggleEliminated: (choiceId: string) => void }) {
   const isMultipleChoice = question.answerType === "mc_single";
   const resultForAnswer = result?.response === answer ? result : undefined;
+  const revealed = result?.revealed === true;
+  const awaitingRetry = result !== undefined && !result.correct && !revealed;
 
   return (
     <div className="mt-6">
@@ -540,13 +546,13 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
             return (
               <li key={choice.id} className="flex items-center gap-3">
                 <div className={`flex min-h-[54px] min-w-0 flex-1 items-center rounded-[10px] border px-1.5 transition-colors ${correctSelected ? "border-2 border-[#138a50] bg-[#e8f7ef]" : incorrectSelected ? "border-2 border-[#dc2626] bg-[#fee2e2]" : selected ? "border-2 border-[#139ee9] bg-white" : "border-[#2e2e2e] bg-white hover:bg-[#fafafa]"} ${eliminated ? "opacity-45" : ""}`}>
-                  <button type="button" disabled={result?.correct || incorrectSelected || eliminated || submitting} onClick={() => onAnswer(choice.id)} aria-pressed={selected} className="flex min-h-[50px] min-w-0 flex-1 cursor-pointer items-center gap-3 px-2 py-2 text-left disabled:cursor-not-allowed">
+                  <button type="button" disabled={revealed || incorrectSelected || eliminated || submitting} onClick={() => onAnswer(choice.id)} aria-pressed={selected} className="flex min-h-[50px] min-w-0 flex-1 cursor-pointer items-center gap-3 px-2 py-2 text-left disabled:cursor-not-allowed">
                     <span className={`grid h-8 w-8 flex-none place-items-center rounded-full border text-sm font-semibold ${correctSelected ? "border-[#138a50] bg-[#138a50] text-white" : incorrectSelected ? "border-[#dc2626] bg-[#dc2626] text-white" : selected ? "border-[#139ee9] bg-[#139ee9] text-white" : "border-[#2e2e2e] text-[#111]"}`}>
                       {incorrectSelected ? <CloseIcon className="h-4 w-4" /> : correctSelected ? <CheckIcon className="h-4 w-4" /> : choice.id}
                     </span>
-                    <span className={`min-w-0 flex-1 font-serif text-[17px] leading-6 text-[#111] ${eliminated ? "line-through" : ""}`}><MathText>{choice.text}</MathText></span>
+                    <span className={`min-w-0 flex-1 whitespace-pre-line font-serif text-[17px] leading-6 text-[#111] ${eliminated ? "line-through" : ""}`}><MathText>{choice.text}</MathText></span>
                   </button>
-                  {selected && !resultForAnswer && !result?.correct && (
+                  {selected && !resultForAnswer && !revealed && (
                     <button type="button" onClick={() => void onCheck()} disabled={submitting} className="mr-1 rounded-lg bg-[#1aa8ef] px-4 py-2 text-sm font-semibold text-white hover:bg-[#1096d8] disabled:opacity-60">{submitting ? "Checking…" : "Check"}</button>
                   )}
                 </div>
@@ -569,12 +575,12 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
               inputMode="decimal"
               autoComplete="off"
               value={answer}
-              disabled={result?.correct}
+              disabled={revealed}
               onChange={(event) => onAnswer(normalizeGridInInput(event.target.value))}
               placeholder="Answer"
               className="min-w-0 flex-1 bg-transparent px-3 font-serif text-lg text-[#111] outline-none placeholder:text-[#aaa] focus-visible:outline-none"
             />
-            {!resultForAnswer && !result?.correct ? (
+            {!resultForAnswer && !revealed ? (
               <button type="button" disabled={!answer.trim() || submitting} onClick={() => void onCheck()} className="min-h-10 rounded-lg bg-[#1aa8ef] px-4 text-sm font-semibold text-white hover:bg-[#1096d8] disabled:cursor-not-allowed disabled:bg-[#d6dae1] disabled:text-[#929db0]">{submitting ? "Checking…" : "Check"}</button>
             ) : null}
           </div>
@@ -584,7 +590,19 @@ function AnswerArea({ question, answer, result, attempt, submitting, submitError
 
       {submitError && <p role="alert" className="mt-4 text-sm font-semibold text-[#dc2626]">{submitError}</p>}
 
-      {result && explanationOpen && (
+      {awaitingRetry && (
+        <p role="status" className="mt-5 rounded-[10px] border border-[#f0c9a0] bg-[#fff6ec] px-4 py-3 text-sm font-semibold leading-6 text-[#a4530f]">
+          That is not correct. Try again — the answer and explanation appear after your second attempt.
+        </p>
+      )}
+
+      {revealed && !explanationOpen && (
+        <button type="button" onClick={onToggleExplanation} className="mt-5 min-h-11 rounded-[10px] border border-[#d6d6d6] bg-white px-5 text-sm font-semibold text-[#555] hover:bg-[#f7f7f7]">
+          Show explanation
+        </button>
+      )}
+
+      {revealed && explanationOpen && result && (
         <div className="mt-5 rounded-[10px] border border-[#d7d7d7] bg-[#fafafa] p-5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">

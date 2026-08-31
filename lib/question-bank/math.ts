@@ -84,6 +84,11 @@ export type MathRunnerQuestion = {
   choices: MathChoice[];
 };
 
+// Missing a question should send the student back to it rather than straight
+// to the solution. The correct answer and explanation stay hidden until they
+// have spent this many distinct wrong responses on it.
+export const QUESTION_BANK_WRONG_ANSWERS_BEFORE_REVEAL = 2;
+
 export type QuestionBankAttemptState = {
   correct: boolean;
   response: string;
@@ -98,6 +103,10 @@ export type QuestionBankRunnerState = {
 
 export type MathAttemptResult = {
   correct: boolean;
+  // False while the student still has a retry left on a missed question --
+  // explanation and correctAnswer are withheld from the response entirely in
+  // that case, so the answer can't be read out of the network payload either.
+  revealed: boolean;
   explanation: string;
   correctAnswer: string;
 };
@@ -203,6 +212,13 @@ export function normalizeMathResponse(value: string): string {
 export function calculateAccuracy(correct: number, attempts: number): number | null {
   if (attempts === 0) return null;
   return Math.round((correct / attempts) * 100);
+}
+
+export function shouldRevealQuestionBankAnswer(
+  correct: boolean,
+  wrongResponseCount: number,
+): boolean {
+  return correct || wrongResponseCount >= QUESTION_BANK_WRONG_ANSWERS_BEFORE_REVEAL;
 }
 
 export function nextQuestionBankAttemptState(
