@@ -2,22 +2,118 @@ import { notFound } from "next/navigation";
 import { StudentsTable } from "@/components/admin/StudentsTable";
 import { UltimateAdminFrame } from "@/components/ultimate/UltimateAdminFrame";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
+import { listAdminGrants, type AdminGrant } from "@/lib/auth/grants";
 import { listStudents } from "@/lib/gamification/state";
 
 export default async function UltimateAdminStudentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ billing_refund?: string; rate_limit_reset?: string }>;
+  searchParams: Promise<{ billing_refund?: string; rate_limit_reset?: string; access_grant?: string }>;
 }) {
   const session = await getAdminSession();
   if (!session) notFound();
-  const [students, params] = await Promise.all([listStudents(), searchParams]);
+  const [students, grants, params] = await Promise.all([listStudents(), listAdminGrants(), searchParams]);
   return (
     <UltimateAdminFrame active="students" email={session.email}>
+      <ComplimentaryAccessPanel grants={grants} state={params.access_grant} />
       <RefundPanel state={params.billing_refund} />
       <RateLimitResetPanel state={params.rate_limit_reset} />
       <StudentsTable students={students} />
     </UltimateAdminFrame>
+  );
+}
+
+function ComplimentaryAccessPanel({ grants, state }: { grants: AdminGrant[]; state?: string }) {
+  const messages: Record<string, string> = {
+    granted: "Max access granted. It applies the next time they load a page -- no sign-out needed.",
+    replaced: "That student already had complimentary access; it was replaced with a fresh Max grant.",
+    revoked: "Complimentary access revoked. They drop back to whatever their subscription entitles them to.",
+    not_granted: "That student has no complimentary access to revoke.",
+    invalid: "Enter a valid email address first.",
+    error: "The grant could not be saved. Check the error log before retrying.",
+  };
+  const failed = state === "invalid" || state === "error" || state === "not_granted";
+
+  return (
+    <section className="mb-6 rounded-card border border-navy/15 bg-white p-4 sm:p-5" aria-labelledby="complimentary-heading">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="max-w-2xl">
+          <h2 id="complimentary-heading" className="font-display text-lg font-extrabold text-navy">Complimentary Max access</h2>
+          <p className="mt-1 text-sm leading-6 text-navy/65">
+            Gives a student every Max entitlement without a Stripe subscription, and outranks whatever plan they are on. Revoke at any time. Granting for an email with no account yet creates one, so it is waiting when they sign up.
+          </p>
+        </div>
+        <form action="/api/admin/access-grants" method="post" className="flex w-full flex-col gap-2 lg:max-w-xl">
+          <label htmlFor="grant-email" className="sr-only">Student email</label>
+          <input
+            id="grant-email"
+            name="email"
+            type="email"
+            required
+            autoComplete="off"
+            placeholder="student@example.com"
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-navy/15 bg-white px-3.5 text-base text-navy outline-none transition-colors duration-200 placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15 sm:text-sm"
+          />
+          <label htmlFor="grant-reason" className="sr-only">Reason</label>
+          <input
+            id="grant-reason"
+            name="reason"
+            type="text"
+            maxLength={200}
+            autoComplete="off"
+            placeholder="Reason (optional, shown only to staff)"
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-navy/15 bg-white px-3.5 text-base text-navy outline-none transition-colors duration-200 placeholder:text-navy/35 focus:border-brand focus:ring-2 focus:ring-brand/15 sm:text-sm"
+          />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="submit"
+              name="intent"
+              value="grant"
+              className="min-h-11 flex-1 cursor-pointer rounded-xl bg-brand px-4 text-sm font-extrabold text-white transition-colors duration-200 hover:bg-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+            >
+              Grant Max access
+            </button>
+            <button
+              type="submit"
+              name="intent"
+              value="revoke"
+              formNoValidate
+              className="min-h-11 cursor-pointer rounded-xl border border-navy/20 bg-white px-4 text-sm font-extrabold text-navy transition-colors duration-200 hover:bg-haze focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy sm:px-5"
+            >
+              Revoke
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {state ? (
+        <p
+          role="status"
+          className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${failed ? "border-red-200 bg-white text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}
+        >
+          {messages[state] ?? messages.error}
+        </p>
+      ) : null}
+
+      {grants.length > 0 ? (
+        <div className="mt-5 border-t border-navy/10 pt-4">
+          <h3 className="text-sm font-extrabold text-navy">{grants.length} student{grants.length === 1 ? "" : "s"} with complimentary access</h3>
+          <ul className="mt-2.5 divide-y divide-navy/10">
+            {grants.map((grant) => (
+              <li key={`${grant.email}-${grant.createdAt}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
+                <span className="text-sm font-semibold text-navy">{grant.email}</span>
+                <span className="text-xs text-navy/55">
+                  {grant.plan === "max" ? "Max" : grant.plan === "core" ? "Core" : "Free"}
+                  {grant.reason ? ` · ${grant.reason}` : ""}
+                  {grant.grantedBy ? ` · by ${grant.grantedBy}` : ""}
+                  {grant.expiresAt ? ` · until ${new Date(grant.expiresAt).toLocaleDateString()}` : ""}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
