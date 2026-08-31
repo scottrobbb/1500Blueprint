@@ -117,8 +117,8 @@ function MultipleChoiceFields({
       {content.choices.map((choice) => {
         const correct = content.correct === choice.id;
         return (
-          <div key={choice.id} className={`flex items-center gap-3 rounded-card border px-3 py-2 ${correct ? "border-success/40 bg-success-bg" : "border-navy/15 bg-white"}`}>
-            <label className="flex shrink-0 cursor-pointer items-center gap-2">
+          <div key={choice.id} className={`flex items-start gap-3 rounded-card border px-3 py-2 ${correct ? "border-success/40 bg-success-bg" : "border-navy/15 bg-white"}`}>
+            <label className="flex shrink-0 cursor-pointer items-center gap-2 pt-2">
               <input
                 type="radio"
                 name="targeted-math-correct"
@@ -130,11 +130,13 @@ function MultipleChoiceFields({
                 {choice.id}
               </span>
             </label>
-            <input
+            <textarea
               value={choice.text}
               onChange={(event) => commit(content.choices.map((item) => item.id === choice.id ? { ...item, text: event.target.value } : item))}
-              placeholder={`Choice ${choice.id} (supports $LaTeX$)`}
-              className={fieldInput}
+              rows={2}
+              aria-label={`Choice ${choice.id} text`}
+              placeholder={`Choice ${choice.id} (supports $LaTeX$). Press Enter for another line.`}
+              className={`${fieldInput} min-h-[68px] resize-y leading-6`}
             />
           </div>
         );
@@ -206,9 +208,9 @@ export function Preview({ question }: { question: DrillQuestion }) {
       {content.kind === "mc" ? (
         <div className="mt-5 space-y-2.5">
           {content.choices.map((choice) => (
-            <div key={choice.id} className={`flex items-center gap-3 rounded-card border px-4 py-3 ${choice.id === content.correct ? "border-success bg-success-bg" : "border-navy/15 bg-white"}`}>
+            <div key={choice.id} className={`flex items-start gap-3 rounded-card border px-4 py-3 ${choice.id === content.correct ? "border-success bg-success-bg" : "border-navy/15 bg-white"}`}>
               <span className="font-semibold text-navy">{choice.id}.</span>
-              <span className="font-serif text-[16px] text-exam-ink">{choice.text ? <MathText>{choice.text}</MathText> : "-"}</span>
+              <span className="whitespace-pre-line font-serif text-[16px] text-exam-ink">{choice.text ? <MathText>{choice.text}</MathText> : "-"}</span>
             </div>
           ))}
         </div>
