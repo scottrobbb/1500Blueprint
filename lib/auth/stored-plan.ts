@@ -1,5 +1,4 @@
 import {
-  legacyFallbackPlan,
   planForLegacyProductId,
   planForPriceId,
 } from "@/lib/billing/config";
@@ -11,10 +10,17 @@ import {
 
 // Repairs users.plan rows written before StoredPlan closed the type. Those hold
 // a Stripe price nickname, or -- when the price has no nickname -- the raw price
-// id, which normalizeLegacyPlanCode reads back as "free". Resolving here fixes
-// the affected accounts on their next page load, with no backfill and no
-// re-login, and the login path rewrites the row properly the next time they use
-// a magic link.
+// id, which normalizeLegacyPlanCode reads back as "free".
+//
+// Only values that map to a real plan are honoured. There is deliberately no
+// paid fallback here, unlike the write path in getMembership: Stripe confirms
+// an active subscription at the moment users.plan is written, but nothing
+// clears the row when that subscription later lapses, and legacy members have
+// no student_subscriptions rows for effectivePlan to prefer instead. Treating
+// an unmappable value as paid therefore grants access off a stale cache --
+// which is exactly what it did, handing Max to ~50 lapsed members. At read
+// time an unmappable value means the entitlement is unknown, and unknown must
+// not manufacture access.
 //
 // Deliberately silent: getStudentAccess runs on nearly every request, so
 // reporting here would flood the logs with one line per page view. The write
@@ -24,11 +30,5 @@ export function resolveStoredPlan(stored: string | null | undefined): PlanCode {
   if (!storedPlanIsUnreadable(stored)) return normalizeLegacyPlanCode(stored);
 
   const value = stored.trim();
-  const resolved = planForPriceId(value) ?? planForLegacyProductId(value);
-  if (resolved) return resolved;
-
-  // The value is unreadable, but it was only ever written because Stripe
-  // confirmed an active subscription at login. "free" is the one answer that
-  // is certainly wrong.
-  return legacyFallbackPlan();
+  return planForPriceId(value) ?? planForLegacyProductId(value) ?? "free";
 }
