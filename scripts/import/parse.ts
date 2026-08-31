@@ -310,6 +310,16 @@ function choiceLabel(line: string): { letter: string; inline: string } | null {
   return null;
 }
 
+// A choice spread over several source lines is stacked content -- a system of
+// equations, or one equation per row. Keep the rows as rows: collapse runs of
+// spaces/tabs within a row, but never across the newline that separates them.
+function joinChoiceParts(parts: string[]): string {
+  return parts
+    .map((part) => part.replace(/[^\S\n]+/g, " ").trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
 /**
  * Parse A–D choices from a question's body lines. Primary strategy is line-based
  * (handles "A. text" per line and bare-letter multi-line choices); falls back to
@@ -325,7 +335,7 @@ function parseChoices(body: string[]): { choices: ParsedChoice[]; firstIdx: numb
   for (let i = 0; i < body.length; i++) {
     const lab = choiceLabel(body[i]);
     if (lab && next < 4 && lab.letter === expected[next]) {
-      if (cur) choices.push({ letter: cur.letter, text: cur.parts.join(" ").replace(/\s+/g, " ").trim() });
+      if (cur) choices.push({ letter: cur.letter, text: joinChoiceParts(cur.parts) });
       cur = { letter: lab.letter, parts: lab.inline ? [lab.inline] : [] };
       if (firstIdx < 0) firstIdx = i;
       next++;
@@ -333,7 +343,7 @@ function parseChoices(body: string[]): { choices: ParsedChoice[]; firstIdx: numb
       cur.parts.push(body[i]);
     }
   }
-  if (cur) choices.push({ letter: cur.letter, text: cur.parts.join(" ").replace(/\s+/g, " ").trim() });
+  if (cur) choices.push({ letter: cur.letter, text: joinChoiceParts(cur.parts) });
   if (choices.length === 4) return { choices, firstIdx };
 
   // Fallback: all four choices inline on a single line.
