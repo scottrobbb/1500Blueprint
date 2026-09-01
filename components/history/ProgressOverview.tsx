@@ -34,8 +34,8 @@ export function ProgressOverview({
     <section aria-labelledby={`progress-${variant}-title`} className="mb-8">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">Saved progress</p>
-          <h2 id={`progress-${variant}-title`} className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">
+          {full ? <p className="text-xs font-semibold text-brand-600">Saved progress</p> : null}
+          <h2 id={`progress-${variant}-title`} className={`${full ? "mt-1 " : ""}font-display text-2xl font-extrabold tracking-[-0.025em] text-ink`}>
             {full ? "Your progress, source by source" : "Progress snapshot"}
           </h2>
           <p className="mt-1 text-sm leading-6 text-navy/50">Attempts are counted each time; unique drill questions are labeled separately.</p>
@@ -46,18 +46,19 @@ export function ProgressOverview({
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <MetricCard label="Lessons completed" value={lessonValue} detail={progress.lessons.total > 0 ? `${Math.max(0, progress.lessons.total - progress.lessons.completed)} remaining` : "Saved completions"} />
         <MetricCard label="Questions attempted" value={progress.questions.attempted.toLocaleString()} detail={`${progress.questions.correct} correct · ${progress.questions.incorrect} incorrect`} />
-        <MetricCard label="Answer accuracy" value={percent(progress.questions.accuracy)} detail="Across the sources below" />
+        <MetricCard label="Answer accuracy" value={percent(progress.questions.accuracy)} detail={full ? "Across the sources below" : "Across all practice"} />
         <MetricCard label="Latest test score" value={progress.tests.latestScore?.toLocaleString() ?? "-"} detail={progress.tests.count > 0 ? `${progress.tests.count} completed ${progress.tests.count === 1 ? "test" : "tests"}` : "No completed test yet"} />
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-3" aria-label="Question progress by source">
-        {progress.questions.sources.map((source) => <SourceCard key={source.key} source={source} />)}
-      </div>
+      {full ? <>
+        <div className="mt-4 grid gap-3 lg:grid-cols-3" aria-label="Question progress by source">
+          {progress.questions.sources.map((source) => <SourceCard key={source.key} source={source} />)}
+        </div>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <article className="rounded-[18px] border border-navy/10 bg-white p-5 shadow-[0_1px_3px_rgba(11,42,91,0.04)]">
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <article className="rounded-[18px] border border-navy/10 bg-white p-5">
           <div className="flex items-start justify-between gap-4">
-            <div><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Practice tests</p><h3 className="mt-1 font-display text-lg font-extrabold text-navy">Score progress</h3></div>
+            <div>{full ? <p className="text-xs font-semibold text-brand-600">Practice tests</p> : null}<h3 className={`${full ? "mt-1 " : ""}font-display text-lg font-extrabold text-navy`}>Score progress</h3></div>
             <Link href="/ultimate/tests/completed" className="inline-flex min-h-11 items-center text-xs font-bold text-brand-700 hover:text-navy">Reports →</Link>
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
@@ -81,8 +82,8 @@ export function ProgressOverview({
           </div>
         </article>
 
-        <article className="rounded-[18px] border border-navy/10 bg-white p-5 shadow-[0_1px_3px_rgba(11,42,91,0.04)]">
-          <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Timeline</p><h3 className="mt-1 font-display text-lg font-extrabold text-navy">Recent activity</h3></div><span className="text-xs font-semibold text-navy/35">Newest first</span></div>
+        <article className="rounded-[18px] border border-navy/10 bg-white p-5">
+          <div className="flex items-start justify-between gap-4"><div>{full ? <p className="text-xs font-semibold text-brand-600">Timeline</p> : null}<h3 className={`${full ? "mt-1 " : ""}font-display text-lg font-extrabold text-navy`}>Recent activity</h3></div><span className="text-xs font-semibold text-navy/35">Newest first</span></div>
           {recent.length > 0 ? (
             <ul className="mt-3 divide-y divide-navy/10">
               {recent.map((item) => <ActivityRow key={item.id} item={item} />)}
@@ -91,15 +92,16 @@ export function ProgressOverview({
             <div className="mt-4 rounded-xl border border-dashed border-navy/15 bg-haze/50 px-4 py-6 text-center text-sm text-navy/45">Your completed lessons, practices, drill answers, and tests will appear here.</div>
           )}
         </article>
-      </div>
+        </div>
+      </> : null}
     </section>
   );
 }
 
 function MetricCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <article className="min-w-0 rounded-2xl border border-navy/10 bg-white p-4 shadow-[0_1px_3px_rgba(11,42,91,0.04)] sm:p-5">
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.11em] text-navy/40">{label}</p>
+    <article className="min-w-0 rounded-2xl border border-navy/10 bg-white p-4 sm:p-5">
+      <p className="text-xs font-semibold text-navy/45">{label}</p>
       <strong className="mt-2 block truncate font-display text-2xl font-extrabold tabular-nums text-navy sm:text-3xl">{value}</strong>
       <p className="mt-1 truncate text-[11px] text-navy/45 sm:text-xs">{detail}</p>
     </article>
@@ -108,7 +110,7 @@ function MetricCard({ label, value, detail }: { label: string; value: string; de
 
 function SourceCard({ source }: { source: QuestionProgressSource }) {
   return (
-    <article className="rounded-2xl border border-navy/10 bg-white p-4 shadow-[0_1px_3px_rgba(11,42,91,0.04)]">
+    <article className="rounded-2xl border border-navy/10 bg-white p-4">
       <div className="flex items-center justify-between gap-3"><h3 className="font-display text-sm font-extrabold text-navy">{source.label}</h3><span className="rounded-full bg-ice px-2.5 py-1 text-xs font-extrabold text-brand-700">{percent(source.accuracy)}</span></div>
       <dl className="mt-3 grid grid-cols-3 divide-x divide-navy/10 rounded-xl bg-haze/65 py-2.5 text-center">
         <SmallMetric label="Attempted" value={source.attempted.toLocaleString()} compact />
@@ -123,7 +125,7 @@ function SourceCard({ source }: { source: QuestionProgressSource }) {
 function SmallMetric({ label, value, suffix, compact = false }: { label: string; value: string; suffix?: string; compact?: boolean }) {
   return (
     <div className={compact ? "px-1.5" : "rounded-xl bg-haze/65 px-3 py-2.5"}>
-      <dt className="text-[9px] font-bold uppercase tracking-[0.08em] text-navy/35">{label}</dt>
+      <dt className="text-[10px] font-semibold text-navy/40">{label}</dt>
       <dd className={`mt-1 font-display font-extrabold tabular-nums text-navy ${compact ? "text-sm" : "text-lg"}`}>{value}{suffix}</dd>
     </div>
   );

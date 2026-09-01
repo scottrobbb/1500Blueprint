@@ -104,7 +104,7 @@ export function UltimateShell({
         {navigation.map((section, index) => (
           <div key={section.title ?? index} className="mb-2.5">
             {section.title && (
-              <p className="mx-2 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">
+              <p className="mx-2 mb-1.5 mt-4 text-[11px] font-semibold text-white/50">
                 {section.title}
               </p>
             )}
@@ -124,7 +124,7 @@ export function UltimateShell({
 
         {stats.isAdmin && (
           <div className="mb-2.5">
-            <p className="mx-2 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">
+            <p className="mx-2 mb-1.5 mt-4 text-[11px] font-semibold text-white/50">
               Scott
             </p>
             <RailLink
@@ -137,7 +137,7 @@ export function UltimateShell({
 
         {stats.isExplanationEditor && !stats.isAdmin && (
           <div className="mb-2.5">
-            <p className="mx-2 mb-1.5 mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-white/55">
+            <p className="mx-2 mb-1.5 mt-4 text-[11px] font-semibold text-white/50">
               Staff
             </p>
             <RailLink
@@ -153,7 +153,7 @@ export function UltimateShell({
         {access.plan !== "max" ? (
           <Link href="/pricing" onClick={() => setMenuOpen(false)} className="mb-2.5 flex min-h-11 items-center gap-2 rounded-xl px-3 text-gold transition-colors hover:bg-gold/[0.1]">
             <UpgradeIcon className="h-4 w-4" />
-            <strong className="text-xs font-extrabold uppercase tracking-[0.08em]">Upgrade</strong>
+            <strong className="text-xs font-bold">Upgrade</strong>
           </Link>
         ) : null}
         <div className="mb-2 grid grid-cols-2 divide-x divide-white/10 rounded-xl bg-white/[0.06] py-2.5">
@@ -261,7 +261,7 @@ function RailLink({ item, active, locked = false, onNavigate }: { item: NavItem;
       <Icon className={`h-[18px] w-[18px] flex-none ${active ? "text-sky" : "text-white/55"}`} />
       <span className="min-w-0 flex-1 truncate">{item.label}</span>
       {locked ? (
-        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white/65"><LockIcon className="h-2.5 w-2.5" />Max</span>
+        <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-white/65"><LockIcon className="h-2.5 w-2.5" />Max</span>
       ) : null}
       {item.chip && (
         <span className="rounded-full bg-brand/20 px-1.5 py-0.5 text-[9px] font-bold text-sky">{item.chip}</span>
