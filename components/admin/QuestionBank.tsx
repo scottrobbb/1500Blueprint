@@ -46,7 +46,7 @@ const EMPTY_FILTERS: Filters = {
   search: "",
 };
 
-const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
+const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard", "challenge"];
 const STATUSES: QuestionStatus[] = ["draft", "published"];
 const SECTIONS: { value: SatSection; label: string }[] = [
   { value: "rw", label: "Reading & Writing" },
@@ -389,7 +389,6 @@ function FilterBar({
                 {capitalize(d)}
               </option>
             ))}
-            <option value="challenge">Challenge</option>
           </select>
         </FilterField>
 
@@ -637,10 +636,9 @@ function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-// The stored difficulty is always easy/medium/hard -- Challenge is a "hard"
-// question whose content.source names a Challenge archive (see
-// questionBankLevel). Show that distinction in the table instead of just
-// "Hard" so Challenge rows read the same way they do everywhere else.
+// Challenge is a stored difficulty, but rows the backfill has not reached are
+// still identified by their content.source archive -- questionBankLevel covers
+// both, so the table reads the same way for either.
 function difficultyLabel(question: DrillQuestion): string {
   const level = questionBankLevel(question.difficulty, question.content as Record<string, unknown> | null);
   return level === "challenge" ? "Challenge" : capitalize(question.difficulty);

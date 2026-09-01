@@ -4,7 +4,11 @@
 export type SectionId = "rw" | "math";
 export type ModuleVariant = "easy" | "hard";
 export type ChoiceId = "A" | "B" | "C" | "D";
-export type Difficulty = "easy" | "medium" | "hard";
+// "challenge" is a real stored tier, not a display-only bucket: it is written
+// to drill_questions.difficulty and gates access through the challengeQuestions
+// entitlement. Practice-test questions never carry it -- see the DIFFICULTIES
+// list in TestQuestionEditor, which stays three-valued.
+export type Difficulty = "easy" | "medium" | "hard" | "challenge";
 
 export type Domain =
   // Reading & Writing

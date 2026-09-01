@@ -1,5 +1,7 @@
 export type QuestionBankSection = "rw" | "math";
-export type QuestionBankDifficulty = "easy" | "medium" | "hard";
+// Attempts record the question's stored difficulty, so this has to admit
+// "challenge" or a student's Challenge attempts vanish from the breakdown.
+export type QuestionBankDifficulty = "easy" | "medium" | "hard" | "challenge";
 
 export type QuestionBankSummary = {
   attempted: number;
@@ -60,7 +62,7 @@ export type QuestionBankDashboard = {
 type UnknownRecord = Record<string, unknown>;
 
 const SECTIONS: QuestionBankSection[] = ["rw", "math"];
-const DIFFICULTIES: QuestionBankDifficulty[] = ["easy", "medium", "hard"];
+const DIFFICULTIES: QuestionBankDifficulty[] = ["easy", "medium", "hard", "challenge"];
 
 export function emptyQuestionBankDashboard(now = new Date()): QuestionBankDashboard {
   return {

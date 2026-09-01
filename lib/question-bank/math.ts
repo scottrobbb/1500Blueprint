@@ -8,7 +8,10 @@ export const MATH_DOMAINS = [
 ] as const;
 
 export type MathDomain = (typeof MATH_DOMAINS)[number];
-export type QuestionBankLevel = Difficulty | "challenge";
+// Challenge is now one of the stored Difficulty values, so a level is just a
+// difficulty. The alias is kept because catalog and filter code reads better
+// in terms of "level".
+export type QuestionBankLevel = Difficulty;
 export type MathDifficultyFilter = QuestionBankLevel | "all";
 export type MathCompletionFilter = "all" | "unanswered" | "attempted";
 export type MathAnswerType = "mc_single" | "grid_in";
@@ -241,10 +244,14 @@ export function formatDifficulty(difficulty: Difficulty): string {
   return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
 }
 
+// Challenge is stored on the question now. The source-archive sniff is kept as
+// a fallback so a row the backfill has not reached still reads as Challenge
+// rather than silently reverting to its nominal difficulty.
 export function questionBankLevel(
   difficulty: Difficulty,
   content: Record<string, unknown> | null,
 ): QuestionBankLevel {
+  if (difficulty === "challenge") return "challenge";
   const source = isRecord(content?.source) ? content.source : null;
   const sourceLabel = source
     ? `${stringValue(source.archivePath)} ${stringValue(source.document)}`

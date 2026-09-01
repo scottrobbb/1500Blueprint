@@ -101,6 +101,10 @@ export const DIFFICULTY_WEIGHT: Record<Difficulty, number> = {
   easy: 0.8,
   medium: 1.0,
   hard: 1.3,
+  // Practice-test questions are never tagged challenge -- TestQuestionEditor
+  // offers three tiers -- so this weight is unreachable from a scored test. It
+  // sits above hard so the map stays total and stays sensible if that changes.
+  challenge: 1.5,
 };
 
 /** Route into the easier or harder module 2 based on module-1 performance. */

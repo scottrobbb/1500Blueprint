@@ -1,6 +1,7 @@
 import "server-only";
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
+import type { Difficulty } from "@/lib/sat/types";
 
 type QuestionBankAttemptInput = {
   email: string;
@@ -13,7 +14,7 @@ type QuestionBankAttemptInput = {
   section: "rw" | "math";
   domain: string | null;
   skill: string | null;
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: Difficulty;
   limit: number | null;
 };
 
