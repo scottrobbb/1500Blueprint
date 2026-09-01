@@ -22,6 +22,25 @@ test("only high-value content delivery pages receive account read limits", () =>
   assert.equal(protectedContentPolicy("/api/tests/session"), null);
 });
 
+// A Max student hit the question bank's daily ceiling in ordinary use: it was
+// set to 60, the lowest of any surface, while the window is fixed rather than
+// sliding, so exhausting it cost most of a day. The bank is the surface a paid
+// student navigates most, so its ceiling must not sit below the others'.
+test("the question bank is not throttled harder than lower-frequency surfaces", () => {
+  const dailyFor = (pathname: string) =>
+    protectedContentPolicy(pathname)?.windows.find((window) => window.name === "daily")?.limit ?? 0;
+
+  const questionBank = dailyFor("/ultimate/bank/math/practice");
+  for (const pathname of ["/ultimate/courses/foundations/day-1", "/drills/grammar", "/practice-test/test-1"]) {
+    assert.ok(
+      questionBank >= dailyFor(pathname),
+      `question bank daily limit ${questionBank} is below ${pathname}'s ${dailyFor(pathname)}`,
+    );
+  }
+  // Well clear of what a human can reach by navigating, while still bounded.
+  assert.ok(questionBank >= 300, `question bank daily limit ${questionBank} is too tight for normal paid use`);
+});
+
 test("practice test runners use a fresh quota scope", async () => {
   const scopes: string[] = [];
   await enforceProtectedContentRead("student@example.com", "/practice-test/test-1", {
