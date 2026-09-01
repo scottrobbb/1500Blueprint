@@ -4,6 +4,12 @@ import { LockIcon, LockedBadge } from "@/components/account/UpgradePrompt";
 
 type RequiredPlan = "core" | "max";
 
+// Tests that carry an extra callout on the card art. Keyed by slug so both the
+// label and the tests that get one stay in one place.
+const CHALLENGE_LABEL_BY_SLUG: Record<string, string> = {
+  "practice-test-7": "Math Challenge",
+};
+
 type TestLibraryCardProps = {
   slug: string;
   title: string;
@@ -30,10 +36,11 @@ export function TestLibraryCard({
   draft,
 }: TestLibraryCardProps) {
   const actionLabel = resumable ? "Resume test" : attempts > 0 ? "Retake test" : "Start test";
+  const challengeLabel = CHALLENGE_LABEL_BY_SLUG[slug] ?? null;
 
   return (
     <article className={`group flex h-full flex-col overflow-hidden rounded-[18px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] duration-200 motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_14px_36px_-24px_rgba(11,42,91,0.55)]"}`}>
-      <TestPreview variant={index % 4} locked={locked} />
+      <TestPreview variant={index % 4} locked={locked} challengeLabel={challengeLabel} />
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -83,10 +90,10 @@ export function TestLibraryCard({
   );
 }
 
-function TestPreview({ variant, locked }: { variant: number; locked: boolean }) {
+function TestPreview({ variant, locked, challengeLabel }: { variant: number; locked: boolean; challengeLabel: string | null }) {
   return (
-    <div aria-hidden="true" className={`relative h-[205px] overflow-hidden border-b border-white/10 bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-5 sm:h-[225px] sm:p-6 ${locked ? "grayscale" : ""}`}>
-      <div className={`mx-auto h-full max-w-[500px] overflow-hidden rounded-xl border bg-white shadow-[0_18px_40px_-24px_rgba(6,22,45,0.85)] ${locked ? "border-white/10 opacity-75" : "border-white/25"}`}>
+    <div className={`relative h-[205px] overflow-hidden border-b border-white/10 bg-[linear-gradient(125deg,#0b2a5b,#174b91_65%,#3fa9f5)] p-5 sm:h-[225px] sm:p-6 ${locked ? "grayscale" : ""}`}>
+      <div aria-hidden="true" className={`mx-auto h-full max-w-[500px] overflow-hidden rounded-xl border bg-white shadow-[0_18px_40px_-24px_rgba(6,22,45,0.85)] ${locked ? "border-white/10 opacity-75" : "border-white/25"}`}>
         <div className="flex h-9 items-center justify-between border-b border-navy/10 px-3">
           <span className="h-1.5 w-12 rounded-full bg-navy/10" />
           <span className="inline-flex items-center gap-1.5 text-[8px] font-semibold tabular-nums text-navy/30"><ClockIcon /> 32:00</span>
@@ -97,8 +104,24 @@ function TestPreview({ variant, locked }: { variant: number; locked: boolean }) 
         {variant === 2 ? <MathExam /> : null}
         {variant === 3 ? <ReadingExam /> : null}
       </div>
-      <span className="absolute bottom-2.5 right-4 rounded-full border border-white/20 bg-white/90 px-2 py-1 text-[8px] font-extrabold uppercase tracking-[0.1em] text-brand-600 shadow-sm">Digital SAT</span>
+      {challengeLabel ? (
+        <span className="absolute right-4 top-3 flex flex-col items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-[8px] font-extrabold uppercase leading-none tracking-[0.1em] text-[#c81e1e] shadow-[0_3px_12px_-2px_rgba(6,22,45,0.5)] ring-1 ring-[#dc2626]/25">
+          <FireballIcon />
+          {challengeLabel}
+        </span>
+      ) : null}
+      <span aria-hidden="true" className="absolute bottom-2.5 right-4 rounded-full border border-white/20 bg-white/90 px-2 py-1 text-[8px] font-extrabold uppercase tracking-[0.1em] text-brand-600 shadow-sm">Digital SAT</span>
     </div>
+  );
+}
+
+function FireballIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" aria-hidden="true">
+      <path fill="#dc2626" d="M13.4 1.8c.2 2.4-.7 3.9-2 5.2-1.4 1.4-3 2.6-4 4.4a7.4 7.4 0 0 0-.9 3.6 7 7 0 0 0 14 0c0-2.9-1.3-4.9-2.9-6.7-1.5-1.7-3.1-3.2-4.2-6.5Z" />
+      <path fill="#fb923c" d="M12 22a4 4 0 0 0 4-4c0-1.8-1-2.9-2-3.9-.8-.8-1.5-1.7-1.8-3-1.3 1.4-2.3 2.3-3 3.3-.7 1-1.2 2-1.2 3.3v.3a4 4 0 0 0 4 4Z" />
+      <path fill="#fde047" d="M12 22a1.8 1.8 0 0 0 1.8-1.8c0-.9-.6-1.4-1.1-2-.3-.4-.5-.8-.6-1.3-.6.7-1.1 1.1-1.4 1.6-.3.5-.5 1-.5 1.5v.2c0 1 .8 1.8 1.8 1.8Z" />
+    </svg>
   );
 }
 
