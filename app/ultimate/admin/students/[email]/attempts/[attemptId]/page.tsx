@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { ResultsScreen } from "@/components/test/ResultsScreen";
+import { studentEmailFromParam } from "@/lib/admin/student-lookup";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { getTestAttempt } from "@/lib/gamification/state";
 import { loadTest } from "@/lib/sat/loadTest";
@@ -26,7 +27,7 @@ export default async function UltimateAdminStudentAttemptPage({
   if (!session) notFound();
 
   const { email: rawEmail, attemptId } = await params;
-  const email = rawEmail.trim().toLowerCase();
+  const email = studentEmailFromParam(rawEmail);
 
   // Scoped to the student being viewed, so the id alone cannot reach another
   // student's attempt.
