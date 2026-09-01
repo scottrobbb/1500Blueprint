@@ -37,6 +37,11 @@ import { LineReader } from "./LineReader";
 import { BreakScreen } from "./BreakScreen";
 import { ResultsScreen, type AttemptSaveStatus } from "./ResultsScreen";
 import { DevJumpMenu } from "./DevJumpMenu";
+import {
+  addHighlight as addHighlightTo,
+  removeHighlight as removeHighlightFrom,
+  setHighlightNote as setNoteOn,
+} from "@/lib/sat/highlights";
 
 type SessionSaveReason = "autosave" | "interval" | "exit" | "visibility";
 type SessionSaveOptions = {
@@ -529,20 +534,14 @@ export function TestRunner({
     }).catch(() => {});
   }
 
-  function addHighlight(qid: string, h: Highlight) {
-    setHighlights((prev) => ({ ...prev, [qid]: [...(prev[qid] ?? []), h] }));
+  function addHighlight(questionId: string, highlight: Highlight) {
+    setHighlights((prev) => addHighlightTo(prev, questionId, highlight));
   }
-  function removeHighlight(qid: string, start: number, end: number) {
-    setHighlights((prev) => ({
-      ...prev,
-      [qid]: (prev[qid] ?? []).filter((h) => !(h.start < end && h.end > start)),
-    }));
+  function removeHighlight(questionId: string, start: number, end: number) {
+    setHighlights((prev) => removeHighlightFrom(prev, questionId, start, end));
   }
-  function setHighlightNote(qid: string, id: string, note: string) {
-    setHighlights((prev) => ({
-      ...prev,
-      [qid]: (prev[qid] ?? []).map((h) => (h.id === id ? { ...h, note } : h)),
-    }));
+  function setHighlightNote(questionId: string, id: string, note: string) {
+    setHighlights((prev) => setNoteOn(prev, questionId, id, note));
   }
 
   const devMenu = devMode ? (

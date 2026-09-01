@@ -6,6 +6,7 @@ import { CalculatorPanel } from "@/components/test/CalculatorPanel";
 import { ExplanationText } from "@/components/test/ExplanationText";
 import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
+import { HighlightablePassage, type Highlight } from "@/components/test/HighlightablePassage";
 import { ReferenceModal } from "@/components/test/ReferenceModal";
 import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 import { normalizeGridInInput } from "@/lib/sat/gridIn";
@@ -19,6 +20,11 @@ import {
   type QuestionBankRunnerState,
 } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
+import {
+  addHighlight as addHighlightTo,
+  removeHighlight as removeHighlightFrom,
+  setHighlightNote as setNoteOn,
+} from "@/lib/sat/highlights";
 
 type RunnerResult = MathAttemptResult & { response: string };
 type ToolPanel = "calculator" | "reference" | "directions" | null;
@@ -130,6 +136,21 @@ function ObjectiveBankRunner({
   const [toolPanel, setToolPanel] = useState<ToolPanel>(null);
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [highlightOn, setHighlightOn] = useState(false);
+  // The Highlight tool used to only recolour the browser's own selection, so a
+  // "highlight" vanished the moment the student clicked anywhere else. These
+  // are real, per-question highlights, keyed the same way the practice test
+  // runner keys its own.
+  const [highlights, setHighlights] = useState<Record<string, Highlight[]>>({});
+
+  function addHighlight(questionId: string, highlight: Highlight) {
+    setHighlights((prev) => addHighlightTo(prev, questionId, highlight));
+  }
+  function removeHighlight(questionId: string, start: number, end: number) {
+    setHighlights((prev) => removeHighlightFrom(prev, questionId, start, end));
+  }
+  function setHighlightNote(questionId: string, id: string, note: string) {
+    setHighlights((prev) => setNoteOn(prev, questionId, id, note));
+  }
   const [paused, setPaused] = useState(false);
   const [timerHidden, setTimerHidden] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -143,6 +164,9 @@ function ObjectiveBankRunner({
   const sessionId = useRef<string | null>(null);
   const attemptTokens = useRef<Record<string, { response: string; token: string }>>({});
   const question = orderedQuestions[currentIndex];
+  // Mirrors QuestionScreen: a passage carrying an importer table keeps
+  // QuestionContent's real <table> rendering and cannot be highlighted.
+  const passageHighlightable = Boolean(question?.passage) && !question?.passage?.includes("@@ROW@@");
   const answer = question ? answers[question.id] ?? "" : "";
   const result = question ? results[question.id] : undefined;
 
@@ -358,6 +382,7 @@ function ObjectiveBankRunner({
         timerHidden={timerHidden}
         paused={paused}
         highlightOn={highlightOn}
+        canHighlight={passageHighlightable}
         toolPanel={toolPanel}
         onTogglePause={() => setPaused((value) => !value)}
         onToggleTimer={() => setTimerHidden((value) => !value)}
@@ -384,14 +409,24 @@ function ObjectiveBankRunner({
             <div className={`grid min-h-full selection:bg-[#ffe37a] lg:grid-cols-2 ${highlightOn ? "cursor-text" : ""}`}>
               <section aria-label="Reading passage" className="border-b border-[#e3e3e3] bg-[#fcfcfc] px-5 py-8 lg:border-b-0 lg:border-r lg:px-10 lg:py-10 xl:px-[7.5vw]">
                 <div className="mx-auto max-w-2xl">
-                  {highlightOn && (
+                  {highlightOn && passageHighlightable && (
                     <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-[#fff4bd] px-3 py-2 text-xs font-semibold text-[#555]">
                       <HighlightIcon className="h-4 w-4" /> Select text to highlight while you work.
                     </div>
                   )}
-                  {question.passage && (
+                  {question.passage && (passageHighlightable ? (
+                    <HighlightablePassage
+                      text={question.passage ?? ""}
+                      highlights={highlights[question.id] ?? []}
+                      enabled={highlightOn}
+                      onAdd={(highlight) => addHighlight(question.id, highlight)}
+                      onRemove={(start, end) => removeHighlight(question.id, start, end)}
+                      onSetNote={(id, note) => setHighlightNote(question.id, id, note)}
+                      className="!text-[18px] !leading-[1.65] !text-[#111]"
+                    />
+                  ) : (
                     <QuestionContent text={question.passage} pClassName="font-serif text-[18px] leading-[1.65] text-[#111]" />
-                  )}
+                  ))}
                   {question.figureUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={question.figureUrl} alt="Figure for this question" width={1200} height={800} className="mt-6 h-auto max-h-[420px] max-w-full object-contain" />
@@ -412,12 +447,26 @@ function ObjectiveBankRunner({
             <article className={`mx-auto w-full max-w-3xl px-4 py-8 selection:bg-[#ffe37a] sm:px-0 sm:py-11 ${highlightOn ? "cursor-text" : ""}`}>
               {questionStrip}
               <div className="px-1 py-5 sm:px-0">
-                {highlightOn && (
+                {highlightOn && passageHighlightable && (
                   <div className="mb-4 inline-flex items-center gap-2 rounded-md bg-[#fff4bd] px-3 py-2 text-xs font-semibold text-[#555]">
                     <HighlightIcon className="h-4 w-4" /> Select text to highlight while you work.
                   </div>
                 )}
-                {question.passage && <QuestionContent text={question.passage} pClassName="mb-4 font-serif text-[17px] leading-7 text-[#111]" />}
+                {question.passage && (passageHighlightable ? (
+                  <div className="mb-4">
+                    <HighlightablePassage
+                      text={question.passage}
+                      highlights={highlights[question.id] ?? []}
+                      enabled={highlightOn}
+                      onAdd={(highlight) => addHighlight(question.id, highlight)}
+                      onRemove={(start, end) => removeHighlight(question.id, start, end)}
+                      onSetNote={(id, note) => setHighlightNote(question.id, id, note)}
+                      className="!leading-7 !text-[#111]"
+                    />
+                  </div>
+                ) : (
+                  <QuestionContent text={question.passage} pClassName="mb-4 font-serif text-[17px] leading-7 text-[#111]" />
+                ))}
                 {question.figureUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={question.figureUrl} alt="Figure for this question" width={1200} height={800} className="mb-5 h-auto max-h-80 max-w-full object-contain" />
@@ -467,6 +516,7 @@ function RunnerHeader({
   timerHidden,
   paused,
   highlightOn,
+  canHighlight,
   toolPanel,
   onTogglePause,
   onToggleTimer,
@@ -478,6 +528,7 @@ function RunnerHeader({
   timerHidden: boolean;
   paused: boolean;
   highlightOn: boolean;
+  canHighlight: boolean;
   toolPanel: ToolPanel;
   onTogglePause: () => void;
   onToggleTimer: () => void;
@@ -514,7 +565,7 @@ function RunnerHeader({
         </div>
 
         <nav aria-label={`${subjectLabel} tools`} className="col-span-2 flex items-center justify-end gap-1 border-t border-[#ededed] pt-2 lg:col-span-1 lg:border-0 lg:pt-0">
-          <ToolButton label="Highlight" active={highlightOn} onClick={onToggleHighlight}><HighlightIcon className="h-5 w-5" /></ToolButton>
+          <ToolButton label="Highlight" active={highlightOn} onClick={onToggleHighlight} disabled={!canHighlight}><HighlightIcon className="h-5 w-5" /></ToolButton>
           {subject === "math" && <ToolButton label="Calculator" active={toolPanel === "calculator"} onClick={() => onOpenTool("calculator")}><CalculatorIcon className="h-5 w-5" /></ToolButton>}
           {subject === "math" && <ToolButton label="Reference" active={toolPanel === "reference"} onClick={() => onOpenTool("reference")}><ReferenceIcon className="h-5 w-5" /></ToolButton>}
         </nav>
@@ -523,9 +574,9 @@ function RunnerHeader({
   );
 }
 
-function ToolButton({ label, active, onClick, children }: { label: string; active: boolean; onClick: () => void; children: React.ReactNode }) {
+function ToolButton({ label, active, onClick, children, disabled = false }: { label: string; active: boolean; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onClick} aria-label={label} aria-pressed={active} title={label === "Calculator" ? "Open graphing calculator" : label} className={`inline-flex min-h-11 min-w-11 flex-col items-center justify-center rounded-lg px-2 text-[9px] font-semibold transition-colors sm:min-w-[66px] sm:text-[10px] ${active ? "bg-white text-[#555] ring-2 ring-[#8d8d8d]" : "text-[#888] hover:bg-[#f5f5f5] hover:text-[#333]"}`}>
+    <button type="button" onClick={onClick} disabled={disabled} aria-label={label} aria-pressed={active} title={label === "Calculator" ? "Open graphing calculator" : label} className={`inline-flex min-h-11 min-w-11 flex-col items-center justify-center rounded-lg px-2 text-[9px] font-semibold transition-colors sm:min-w-[66px] sm:text-[10px] ${active ? "bg-white text-[#555] ring-2 ring-[#8d8d8d]" : "text-[#888] hover:bg-[#f5f5f5] hover:text-[#333]"} ${disabled ? "cursor-not-allowed opacity-40 hover:bg-transparent hover:text-[#888]" : ""}`}>
       {children}<span className="mt-0.5 hidden sm:block">{label}</span>
     </button>
   );
