@@ -124,7 +124,7 @@ async function processSubject(subject: SubjectConfig, dryRun: boolean): Promise<
   const byLevel = new Map<QuestionBankLevel, QuestionRow[]>();
   for (const question of questions) {
     if (!isDifficulty(question.difficulty)) continue;
-    const level = questionBankLevel(question.difficulty, question.content);
+    const level = questionBankLevel(question.difficulty);
     const bucket = byLevel.get(level) ?? [];
     bucket.push(question);
     byLevel.set(level, bucket);
@@ -166,7 +166,7 @@ function countByLevel(questions: QuestionRow[]): Record<QuestionBankLevel, numbe
   for (const question of questions) {
     if (!isDifficulty(question.difficulty)) continue;
     if (question.access_tier !== "free") continue;
-    const level = questionBankLevel(question.difficulty, question.content);
+    const level = questionBankLevel(question.difficulty);
     counts[level] += 1;
   }
   return counts;

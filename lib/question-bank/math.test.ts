@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { DIFFICULTIES } from "@/lib/sat/types";
 import test from "node:test";
 import {
   calculateAccuracy,
@@ -121,18 +122,14 @@ test("a correct retry preserves the earlier incorrect attempt", () => {
   });
 });
 
-test("challenge source metadata gets its own navigator level", () => {
-  assert.equal(questionBankLevel("hard", {
-    source: { archivePath: "Math/Challenge Questions/Circles.docx" },
-  }), "challenge");
-  assert.equal(questionBankLevel("hard", {
-    source: { document: "Hard Questions.docx" },
-  }), "hard");
-});
-
-test("a stored challenge difficulty wins without any source metadata", () => {
-  assert.equal(questionBankLevel("challenge", null), "challenge");
-  assert.equal(questionBankLevel("challenge", { source: { document: "Easy Questions.docx" } }), "challenge");
+// A question demoted out of Challenge keeps the challenge string in its source
+// archive forever, so deriving the level from that source made the demotion
+// impossible: the question snapped back to Challenge in the filter and in every
+// level grouping. The stored tier is the only input.
+test("the level is the stored difficulty, whatever the source archive says", () => {
+  for (const difficulty of DIFFICULTIES) {
+    assert.equal(questionBankLevel(difficulty), difficulty);
+  }
 });
 
 test("free access excludes Challenge questions while paid access includes them", () => {

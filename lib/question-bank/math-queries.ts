@@ -162,7 +162,7 @@ function matchesCompletion(
 function matchesDifficultyFilter(row: MathQuestionRow, difficulty: MathDifficultyFilter): boolean {
   if (difficulty === "all") return true;
   const rowDifficulty = isDifficulty(row.difficulty) ? row.difficulty : "medium";
-  return questionBankLevel(rowDifficulty, row.content) === difficulty;
+  return questionBankLevel(rowDifficulty) === difficulty;
 }
 
 // Free-plan sessions are restricted to the curated free-tier pool (a fixed
@@ -179,7 +179,7 @@ function filterForPlan(
   if (options.includeChallenge) return rows;
   return rows.filter((row) => {
     const difficulty = isDifficulty(row.difficulty) ? row.difficulty : "medium";
-    return canAccessQuestionBankLevel(questionBankLevel(difficulty, row.content), false);
+    return canAccessQuestionBankLevel(questionBankLevel(difficulty), false);
   });
 }
 
@@ -418,7 +418,7 @@ function buildSkillMetrics(
     }
 
     if (isDifficulty(question.difficulty)) {
-      const level = questionBankLevel(question.difficulty, question.content);
+      const level = questionBankLevel(question.difficulty);
       const bucket = metric.byLevel[level];
       bucket.available += 1;
       if (attempted) bucket.attempted += 1;
@@ -462,7 +462,7 @@ function toRunnerQuestion(row: MathQuestionRow): MathRunnerQuestion | null {
     domain: taxonomy.domain,
     skill: taxonomy.skill,
     difficulty: row.difficulty,
-    level: questionBankLevel(row.difficulty, row.content),
+    level: questionBankLevel(row.difficulty),
     answerType: row.answer_type as MathAnswerType,
     prompt,
     passage: row.stem?.trim() ? row.passage : null,

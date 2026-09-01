@@ -640,6 +640,6 @@ function capitalize(s: string): string {
 // still identified by their content.source archive -- questionBankLevel covers
 // both, so the table reads the same way for either.
 function difficultyLabel(question: DrillQuestion): string {
-  const level = questionBankLevel(question.difficulty, question.content as Record<string, unknown> | null);
+  const level = questionBankLevel(question.difficulty);
   return level === "challenge" ? "Challenge" : capitalize(question.difficulty);
 }

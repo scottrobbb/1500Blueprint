@@ -24,6 +24,23 @@ function source(path: string): string {
   return readFileSync(join(ROOT, path), "utf8");
 }
 
+// Challenge was originally derived by regex over a question's content.source
+// archive path, before it became a stored difficulty. That derivation is a
+// second source of truth: the source string never changes, so any code still
+// consulting it silently overrides an admin's edit -- a question demoted out of
+// Challenge snapped straight back to it. The stored tier is the only input.
+test("nothing derives the Challenge tier from a question's source archive", () => {
+  const offenders = [
+    "lib/question-bank/math.ts",
+    "lib/question-bank/math-queries.ts",
+    "lib/question-bank/reading-writing-queries.ts",
+    "lib/drills/admin-queries.ts",
+    "components/admin/QuestionBank.tsx",
+    "app/admin/api/question-bank/assign-free-tier/route.ts",
+  ].filter((path) => /archivePath|source,document/i.test(source(path)));
+  assert.deepEqual(offenders, [], "these still sniff content.source for Challenge");
+});
+
 test("every non-public route has an explicit server authentication boundary", () => {
   const missing = routeFiles()
     .map((path) => relative(ROOT, path))

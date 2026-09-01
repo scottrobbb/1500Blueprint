@@ -244,29 +244,18 @@ export function formatDifficulty(difficulty: Difficulty): string {
   return difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
 }
 
-// Challenge is stored on the question now. The source-archive sniff is kept as
-// a fallback so a row the backfill has not reached still reads as Challenge
-// rather than silently reverting to its nominal difficulty.
-export function questionBankLevel(
-  difficulty: Difficulty,
-  content: Record<string, unknown> | null,
-): QuestionBankLevel {
-  if (difficulty === "challenge") return "challenge";
-  const source = isRecord(content?.source) ? content.source : null;
-  const sourceLabel = source
-    ? `${stringValue(source.archivePath)} ${stringValue(source.document)}`
-    : "";
-  return /challenge/i.test(sourceLabel) ? "challenge" : difficulty;
+// The stored difficulty is the only source of truth for a question's bank
+// level. This used to fall back to sniffing content.source for "challenge",
+// from when the tier was derived rather than stored. That fallback outlived
+// its purpose the moment the backfill ran, and it silently overrode admin
+// edits: a question demoted out of Challenge keeps its challenge source
+// string, so it snapped straight back to Challenge in the filter and in every
+// level grouping. It takes no content for that reason -- there is nothing
+// left to derive from.
+export function questionBankLevel(difficulty: Difficulty): QuestionBankLevel {
+  return difficulty;
 }
 
 export function canAccessQuestionBankLevel(level: QuestionBankLevel, challengeQuestions: boolean): boolean {
   return level !== "challenge" || challengeQuestions;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function stringValue(value: unknown): string {
-  return typeof value === "string" ? value : "";
 }
