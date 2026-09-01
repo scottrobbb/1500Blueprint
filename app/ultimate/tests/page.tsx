@@ -44,12 +44,6 @@ export default async function UltimateTestsPage() {
         <div aria-hidden="true" className="absolute bottom-0 right-[31%] h-32 w-32 translate-y-1/2 rounded-full border-[22px] border-brand/[0.08]" />
         <div className="relative grid gap-7 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center lg:p-10">
           <div>
-            <div className="mb-5 flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-sky">
-                <TestsIcon className="h-5 w-5" />
-              </span>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-sky">Bluebook-style digital SAT</p>
-            </div>
             <h1 className="max-w-xl font-display text-[34px] font-extrabold leading-[1.03] tracking-[-0.04em] sm:text-[44px]">Practice the real test, not just the questions.</h1>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-white/62 sm:text-[15px]">Full adaptive modules, official timing, a built-in break, and detailed score reports in a focused exam workspace.</p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -60,11 +54,11 @@ export default async function UltimateTestsPage() {
 
           <div className="rounded-[18px] border border-white/10 bg-white/[0.07] p-5 backdrop-blur-sm sm:p-6">
             <div className="flex items-end justify-between gap-4">
-              <div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Your best score</p><strong className="mt-1 block font-display text-5xl font-extrabold tracking-[-0.05em]">{progress.bestScore?.toLocaleString() ?? "-"}</strong></div>
-              {progress.improvement != null ? <span className={`mb-1 rounded-full px-2.5 py-1 text-xs font-extrabold ${progress.improvement > 0 ? "bg-[#d9fae8] text-[#147a40]" : "bg-white/10 text-white/65"}`}>{progress.improvement >= 0 ? "+" : ""}{progress.improvement} points</span> : null}
+              <div><p className="text-xs font-semibold text-white/55">Your best score</p><strong className="mt-1 block font-display text-5xl font-extrabold tracking-[-0.05em]">{progress.bestScore?.toLocaleString() ?? "-"}</strong></div>
+              {progress.improvement != null ? <span className={`mb-1 rounded-full px-2.5 py-1 text-xs font-bold ${progress.improvement > 0 ? "bg-[#d9fae8] text-[#147a40]" : "bg-white/10 text-white/65"}`}>{progress.improvement >= 0 ? "+" : ""}{progress.improvement} points</span> : null}
             </div>
             <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-sky" style={{ width: `${scoreProgress}%` }} /></div>
-            <div className="mt-2 flex justify-between text-[10px] font-semibold text-white/35"><span>400</span><span>1600</span></div>
+            <div className="mt-2 flex justify-between text-[11px] font-medium text-white/40"><span>400</span><span>1600</span></div>
             <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-5">
               <HeroMetric value={progress.testsDone.toLocaleString()} label="tests completed" />
               <HeroMetric value={availableCount.toLocaleString()} label="tests available" />
@@ -73,16 +67,16 @@ export default async function UltimateTestsPage() {
         </div>
       </section>
 
-      <nav className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-navy/10 bg-white p-1.5 shadow-pop" aria-label="Practice test views">
+      <nav className="mb-6 flex flex-wrap items-center gap-2 rounded-2xl border border-navy/10 bg-white p-1.5" aria-label="Practice test views">
         <span aria-current="page" className="inline-flex min-h-10 items-center rounded-xl bg-navy px-4 text-sm font-bold text-white">Full tests <span className="ml-2 text-white/55">{tests.length}</span></span>
         <Link href="/ultimate/tests/completed" className="inline-flex min-h-10 cursor-pointer items-center rounded-xl px-4 text-sm font-bold text-navy/55 transition-colors hover:bg-ice hover:text-brand-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Score history <span className="ml-2 text-navy/30">{progress.testsDone}</span></Link>
       </nav>
 
-      <section className="mb-7 rounded-[18px] border border-brand/20 bg-ice/50 p-5 shadow-pop sm:p-6" aria-labelledby="test-day-note">
+      <section className="mb-7 rounded-[18px] border border-brand/20 bg-ice/50 p-5 sm:p-6" aria-labelledby="test-day-note">
         <div className="flex items-start gap-4">
           <span className="grid h-10 w-10 flex-none place-items-center rounded-xl bg-brand text-white"><TestDayIcon /></span>
           <div>
-            <h2 id="test-day-note" className="font-display text-lg font-extrabold tracking-[-0.02em] text-navy">Set aside a real testing window</h2>
+            <h2 id="test-day-note" className="font-display text-lg font-bold tracking-[-0.02em] text-navy">Set aside a real testing window</h2>
             <p className="mt-1.5 max-w-3xl text-sm leading-6 text-navy/58">Each test runs through four timed modules with an adaptive second module and a scheduled break. Plan for about 2 hours and 14 minutes; if you need to leave, your in-progress test can be resumed.</p>
           </div>
         </div>
@@ -90,21 +84,20 @@ export default async function UltimateTestsPage() {
 
       {isAdmin ? (
         <div className="mb-5 flex items-start gap-3 rounded-xl border border-gold/30 bg-[#fffaf0] px-4 py-3 text-[12px] font-medium leading-5 text-navy/60">
-          <span className="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full bg-gold/20 text-[10px] font-black text-gold-600">A</span>
+          <span className="mt-0.5 grid h-5 w-5 flex-none place-items-center rounded-full bg-gold/20 text-[11px] font-bold text-gold-600">A</span>
           <span><strong className="text-navy/75">Admin preview:</strong> unpublished tests are visible for QA. Students only see published tests.</span>
         </div>
       ) : null}
 
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.17em] text-brand-600">Test library</p>
-          <h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">Choose your next test</h2>
+          <h2 className="font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">Choose your next test</h2>
         </div>
         {resumableSlugs.size > 0 ? <p className="text-xs font-medium text-navy/45">{resumableSlugs.size} test{resumableSlugs.size === 1 ? "" : "s"} ready to resume</p> : null}
       </div>
 
       {tests.length === 0 ? (
-        <div className="rounded-[18px] border border-dashed border-navy/15 bg-white p-10 text-center text-sm text-navy/50 shadow-pop">No tests are available right now.</div>
+        <div className="rounded-[18px] border border-dashed border-navy/15 bg-white p-10 text-center text-sm text-navy/50">No tests are available right now.</div>
       ) : (
         <ul className="grid gap-5 md:grid-cols-2">
           {tests.map((test, testIndex) => {
@@ -142,7 +135,7 @@ export default async function UltimateTestsPage() {
         <UpgradePrompt currentPlan="core" requiredPlan="max" title="Max adds the full test library" description="Max includes all 5 tests, the complete course library, and a planner that uses your score reports." features={["5 full-length tests", "All advanced courses", "Personal study planner"]} className="mt-8" />
       ) : null}
 
-      <Link href={access.entitlements.dailyDrillLimit === null ? "/pricing" : "/ultimate/drills"} className="group mt-6 flex cursor-pointer items-center gap-4 rounded-[18px] border border-brand/20 bg-ice/50 p-4 text-navy shadow-pop transition-colors hover:border-brand/40 hover:bg-ice sm:p-5">
+      <Link href={access.entitlements.dailyDrillLimit === null ? "/pricing" : "/ultimate/drills"} className="group mt-6 flex cursor-pointer items-center gap-4 rounded-[18px] border border-brand/20 bg-ice/50 p-4 text-navy transition-colors hover:border-brand/40 hover:bg-ice sm:p-5">
         <span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-white text-brand-600 shadow-sm"><TestsIcon className="h-5 w-5" /></span>
         <span className="min-w-0 flex-1">
           <strong className="block font-display text-sm font-semibold">{access.entitlements.dailyDrillLimit === null ? "Unlock daily drills with Max" : "Not ready for a full test?"}</strong>
@@ -155,7 +148,7 @@ export default async function UltimateTestsPage() {
 }
 
 function HeroMetric({ value, label }: { value: string; label: string }) {
-  return <div><strong className="block font-display text-xl font-extrabold text-white">{value}</strong><span className="mt-0.5 block text-[10px] font-medium text-white/40">{label}</span></div>;
+  return <div><strong className="block font-display text-xl font-extrabold text-white">{value}</strong><span className="mt-0.5 block text-[11px] font-medium text-white/45">{label}</span></div>;
 }
 
 function TestDayIcon() {

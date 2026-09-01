@@ -39,17 +39,16 @@ export function TestLibraryCard({
   const challengeLabel = CHALLENGE_LABEL_BY_SLUG[slug] ?? null;
 
   return (
-    <article className={`group flex h-full flex-col overflow-hidden rounded-[18px] border bg-white shadow-pop transition-[transform,border-color,box-shadow] duration-200 motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_14px_36px_-24px_rgba(11,42,91,0.55)]"}`}>
+    <article className={`group flex h-full flex-col overflow-hidden rounded-[18px] border bg-white transition-[transform,border-color,box-shadow] duration-200 motion-reduce:transform-none motion-reduce:transition-none ${locked ? "border-gold/25" : "border-navy/10 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[0_14px_36px_-24px_rgba(11,42,91,0.55)]"}`}>
       <TestPreview variant={index % 4} locked={locked} challengeLabel={challengeLabel} />
       <div className="flex flex-1 flex-col p-5 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[9px] font-extrabold uppercase tracking-[0.15em] text-brand-600">Full adaptive SAT</p>
-            <h3 className="mt-1.5 font-display text-[22px] font-extrabold leading-tight tracking-[-0.03em] text-ink">{title}</h3>
+            <h3 className="font-display text-[22px] font-extrabold leading-tight tracking-[-0.03em] text-ink">{title}</h3>
           </div>
           <div className="flex flex-none flex-wrap justify-end gap-2">
             {bestScore != null ? <ScoreBadge score={bestScore} /> : null}
-            {draft ? <span className="rounded-full border border-gold/25 bg-[#fffaf0] px-2.5 py-1 text-[10px] font-extrabold text-[#70550b]">Draft</span> : null}
+            {draft ? <span className="rounded-full border border-gold/25 bg-[#fffaf0] px-2.5 py-1 text-[11px] font-semibold text-[#70550b]">Draft</span> : null}
             {planLocked ? <LockedBadge plan={requiredPlan} /> : null}
           </div>
         </div>
@@ -110,7 +109,6 @@ function TestPreview({ variant, locked, challengeLabel }: { variant: number; loc
           {challengeLabel}
         </span>
       ) : null}
-      <span aria-hidden="true" className="absolute bottom-2.5 right-4 rounded-full border border-white/20 bg-white/90 px-2 py-1 text-[8px] font-extrabold uppercase tracking-[0.1em] text-brand-600 shadow-sm">Digital SAT</span>
     </div>
   );
 }
@@ -191,7 +189,7 @@ function SkeletonLine({ width, strong = false }: { width: string; strong?: boole
 
 function ScoreBadge({ score }: { score: number }) {
   return (
-    <span className="rounded-full border border-success/20 bg-success-bg px-2.5 py-1 text-right text-[10px] font-extrabold text-success-600">
+    <span className="rounded-full border border-success/20 bg-success-bg px-2.5 py-1 text-right text-[11px] font-bold text-success-600">
       Best <span className="tabular-nums">{score}</span>
     </span>
   );
