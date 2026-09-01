@@ -10,6 +10,7 @@ import { LayersIcon } from "@/components/flashcards/icons";
 import { AccountMenu } from "@/components/shell/AccountMenu";
 import { NotificationBell } from "@/components/shell/NotificationBell";
 import {
+  DiscordIcon,
   DrillsIcon,
   FlameIcon,
   HistoryIcon,
@@ -59,6 +60,10 @@ const navigation: { title?: string; items: NavItem[] }[] = [
     ],
   },
 ];
+
+// The public server invite. Kept here so it is visible next to the rest of the
+// rail configuration rather than inlined in the markup.
+const DISCORD_INVITE_URL = "https://discord.gg/H3FF9P4TBP";
 
 export function UltimateShell({
   stats,
@@ -169,6 +174,17 @@ export function UltimateShell({
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <a
+            href={DISCORD_INVITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => setMenuOpen(false)}
+            aria-label="Join the 1500 Blueprint Discord (opens in a new tab)"
+            title="Join the Discord"
+            className="inline-flex h-9 w-9 flex-none items-center justify-center rounded-lg text-white/55 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            <DiscordIcon className="h-[19px] w-[19px]" />
+          </a>
           <AccountMenu
             name={stats.name}
             initials={stats.initials}
