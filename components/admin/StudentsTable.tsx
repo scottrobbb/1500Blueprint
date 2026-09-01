@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { drillTitle } from "@/lib/drills/registry";
 import { label } from "@/components/drills/shared/ui";
 import { FlameIcon } from "@/components/shell/icons";
@@ -264,7 +265,12 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
                         {s.initials}
                       </span>
                       <div className="min-w-0">
-                        <div className="truncate font-semibold text-ink">{s.name}</div>
+                        <Link
+                          href={`/ultimate/admin/students/${encodeURIComponent(s.email)}`}
+                          className="block truncate font-semibold text-ink hover:text-brand-600 hover:underline"
+                        >
+                          {s.name}
+                        </Link>
                         <div className="truncate text-xs text-navy/50">{s.email}</div>
                       </div>
                     </div>
