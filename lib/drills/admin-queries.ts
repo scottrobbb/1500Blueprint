@@ -320,17 +320,11 @@ export async function listQuestions(
     );
 
   if (filters.drillSlug) query = query.eq("drill_slug", filters.drillSlug);
-  if (filters.difficulty === "challenge") {
-    // Challenge is stored on the question now, but rows the backfill has not
-    // reached are still only identifiable by their source archive -- the same
-    // fallback questionBankLevel applies. Keep these patterns in sync with that
-    // function's /challenge/i regex.
-    query = query.or(
-      "difficulty.eq.challenge,content->source->>archivePath.ilike.%challenge%,content->source->>document.ilike.%challenge%",
-    );
-  } else if (filters.difficulty) {
-    query = query.eq("difficulty", filters.difficulty);
-  }
+  // Challenge is a stored difficulty like any other, so one equality covers
+  // every tier. This used to OR in a content.source match for rows the backfill
+  // had not reached; that clause kept a question in the Challenge filter after
+  // an admin demoted it, because the source string never changes.
+  if (filters.difficulty) query = query.eq("difficulty", filters.difficulty);
   if (filters.answerType) query = query.eq("answer_type", filters.answerType);
   if (filters.status) query = query.eq("status", filters.status);
   if (filters.section) query = query.eq("section", filters.section);
