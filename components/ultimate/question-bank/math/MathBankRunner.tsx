@@ -103,9 +103,26 @@ function ObjectiveBankRunner({
       return 0;
     }
   });
-  const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers(initialState.attempts));
-  const [attempts, setAttempts] = useState<Record<string, QuestionBankAttemptState>>(initialState.attempts);
+  // Attempt state is per sitting, not per account. Seeding it from the
+  // database re-selected the student's previous answer and re-marked every
+  // choice they had got wrong, which gives the answer away on a re-attempt.
+  // Session storage keeps the recap and navigator honest across a mid-session
+  // refresh -- the concern the counters below were written for -- while a
+  // later sitting, a new tab, or a different filter set starts clean.
+  const attemptsKey = `qb-attempts:${subject}:${filters.difficulty}:${filters.completion}:${[...filters.skills].sort().join(",")}`;
+  const [attempts, setAttempts] = useState<Record<string, QuestionBankAttemptState>>(
+    () => readStoredAttempts(attemptsKey),
+  );
+  const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers(attempts));
   const [results, setResults] = useState<Record<string, RunnerResult>>({});
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.sessionStorage.setItem(attemptsKey, JSON.stringify(attempts));
+    } catch {
+      // A full or unavailable session store only costs the refresh recap.
+    }
+  }, [attemptsKey, attempts]);
   const [marked, setMarked] = useState<Set<string>>(() => new Set(initialState.savedQuestionIds));
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -285,10 +302,10 @@ function ObjectiveBankRunner({
     return <EmptySession filters={filters} subject={subject} />;
   }
 
-  // Sourced from `attempts` (seeded from the database and scoped to this
-  // filter set), not the in-memory `results` map -- results only holds
-  // answers checked since the last full page load, so a mid-session refresh
-  // would otherwise make the recap undercount everything checked before it.
+  // Sourced from `attempts` (restored from session storage for this filter
+  // set), not the in-memory `results` map -- results only holds answers
+  // checked since the last full page load, so a mid-session refresh would
+  // otherwise make the recap undercount everything checked before it.
   const checkedCount = Object.keys(attempts).length;
   const correctCount = Object.values(attempts).filter((item) => item.correct).length;
   const questionStrip = (
@@ -767,6 +784,22 @@ function formatTime(totalSeconds: number): string {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function readStoredAttempts(key: string): Record<string, QuestionBankAttemptState> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return {};
+    const parsed: unknown = JSON.parse(raw);
+    return isRecord(parsed) ? (parsed as Record<string, QuestionBankAttemptState>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function initialAnswers(attempts: Record<string, QuestionBankAttemptState>): Record<string, string> {

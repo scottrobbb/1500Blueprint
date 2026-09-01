@@ -3,90 +3,30 @@ import "server-only";
 import type { QuestionBankRunnerState } from "@/lib/question-bank/math";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 
-type AttemptRow = {
-  question_id: string;
-  correct: boolean;
-  response: Record<string, unknown> | null;
-  attempted_at: string;
-};
-
 export async function getQuestionBankRunnerState(
   email: string,
   questionIds: string[],
 ): Promise<QuestionBankRunnerState> {
-  if (questionIds.length === 0) return { attempts: {}, savedQuestionIds: [] };
+  if (questionIds.length === 0) return { savedQuestionIds: [] };
 
-  const attempts: QuestionBankRunnerState["attempts"] = {};
   const savedQuestionIds: string[] = [];
-
   const batches = await Promise.all(
-    chunks(questionIds, 100).map((questionIdBatch) => loadStateBatch(email, questionIdBatch)),
+    chunks(questionIds, 100).map((questionIdBatch) => loadSavedBatch(email, questionIdBatch)),
   );
-  for (const batch of batches) {
-    Object.assign(attempts, batch.attempts);
-    savedQuestionIds.push(...batch.savedQuestionIds);
-  }
+  for (const batch of batches) savedQuestionIds.push(...batch);
 
-  return { attempts, savedQuestionIds };
+  return { savedQuestionIds };
 }
 
-async function loadStateBatch(email: string, questionIds: string[]) {
-  const [attempts, saved] = await Promise.all([
-    loadAttemptStates(email, questionIds),
-    supabaseAdmin()
-      .from("question_bank_saves")
-      .select("question_id")
-      .eq("email", email)
-      .in("question_id", questionIds)
-      .returns<{ question_id: string }[]>(),
-  ]);
+async function loadSavedBatch(email: string, questionIds: string[]): Promise<string[]> {
+  const saved = await supabaseAdmin()
+    .from("question_bank_saves")
+    .select("question_id")
+    .eq("email", email)
+    .in("question_id", questionIds)
+    .returns<{ question_id: string }[]>();
   if (saved.error) throw databaseError("Could not load saved questions", saved.error);
-  return {
-    attempts,
-    savedQuestionIds: (saved.data ?? []).map((row) => row.question_id),
-  };
-}
-
-async function loadAttemptStates(
-  email: string,
-  questionIds: string[],
-): Promise<QuestionBankRunnerState["attempts"]> {
-  const states: QuestionBankRunnerState["attempts"] = {};
-  let offset = 0;
-  while (true) {
-    const result = await supabaseAdmin()
-      .from("question_bank_attempts")
-      .select("question_id,correct,response,attempted_at")
-      .eq("email", email)
-      .in("question_id", questionIds)
-      .order("attempted_at", { ascending: false })
-      .range(offset, offset + 999)
-      .returns<AttemptRow[]>();
-    if (result.error) throw databaseError("Could not load Question Bank attempts", result.error);
-
-    const page = result.data ?? [];
-    for (const row of page) {
-      const state = states[row.question_id];
-      if (!state) {
-        const response = responseValue(row.response);
-        states[row.question_id] = {
-          correct: row.correct,
-          response,
-          hadIncorrectAttempt: !row.correct,
-          incorrectResponses: !row.correct && response ? [response] : [],
-        };
-      } else if (!row.correct) {
-        state.hadIncorrectAttempt = true;
-        const response = responseValue(row.response);
-        if (response && !state.incorrectResponses.includes(response)) {
-          state.incorrectResponses.push(response);
-        }
-      }
-    }
-    if (page.length < 1000) break;
-    offset += 1000;
-  }
-  return states;
+  return (saved.data ?? []).map((row) => row.question_id);
 }
 
 export async function setQuestionBankSaved(
@@ -111,10 +51,6 @@ export async function setQuestionBankSaved(
     : await db.from("question_bank_saves").delete().eq("email", email).eq("question_id", questionId);
 
   return !result.error;
-}
-
-function responseValue(response: Record<string, unknown> | null): string {
-  return typeof response?.value === "string" ? response.value : "";
 }
 
 function chunks<T>(items: readonly T[], size: number): T[][] {

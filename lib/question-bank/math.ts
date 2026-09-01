@@ -99,8 +99,13 @@ export type QuestionBankAttemptState = {
   incorrectResponses: string[];
 };
 
+// Deliberately carries no attempt history. Seeding the runner from past
+// attempts re-selected the student's previous answer and re-marked every
+// choice they had got wrong, which hands them the answer when they come back
+// to a question. It also put that partial answer key in the server-rendered
+// HTML. Attempt state now lives in session storage on the client, so a
+// mid-session refresh still restores it and a later sitting starts clean.
 export type QuestionBankRunnerState = {
-  attempts: Record<string, QuestionBankAttemptState>;
   savedQuestionIds: string[];
 };
 

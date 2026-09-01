@@ -24,6 +24,20 @@ function source(path: string): string {
   return readFileSync(join(ROOT, path), "utf8");
 }
 
+// A question bank page used to server-render every past attempt for the
+// questions in the set, including each wrong choice the student had picked.
+// That both gave the answer away on a re-attempt and shipped a partial answer
+// key in the HTML -- three known-wrong choices identify the fourth. Attempt
+// state belongs to the sitting, in session storage, not to the page payload.
+test("the question bank runner is not seeded with past attempts", () => {
+  const serverState = source("lib/question-bank/runner-state.ts");
+  assert.doesNotMatch(serverState, /question_bank_attempts/);
+  assert.doesNotMatch(serverState, /incorrectResponses/);
+
+  const runner = source("components/ultimate/question-bank/math/MathBankRunner.tsx");
+  assert.doesNotMatch(runner, /initialState\.attempts/);
+});
+
 // Challenge was originally derived by regex over a question's content.source
 // archive path, before it became a stored difficulty. That derivation is a
 // second source of truth: the source string never changes, so any code still
