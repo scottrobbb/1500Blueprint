@@ -5,7 +5,11 @@ import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
 import { MATH_DOMAINS, questionBankLevel, type QuestionBankLevel } from "@/lib/question-bank/math";
 import { READING_WRITING_DOMAINS, READING_WRITING_SKILLS } from "@/lib/question-bank/reading-writing";
 import { readJsonBody } from "@/lib/security/request";
-import type { Difficulty } from "@/lib/sat/types";
+// Challenge counts as a difficulty here so the report's challenge tally stays
+// accurate. Free-tier picks are unaffected: they draw only from the easy,
+// medium and hard buckets, so a Challenge question is never assigned free --
+// it is gated by the challengeQuestions entitlement.
+import { isDifficulty } from "@/lib/sat/types";
 import { reportServerError } from "@/lib/observability/server";
 
 // One-time (re-runnable) setup: assigns question_bank_catalog.access_tier =
@@ -309,10 +313,4 @@ function chunks<T>(items: readonly T[], size: number): T[][] {
   return batches;
 }
 
-// Challenge counts as a difficulty so the report's challenge tally stays
-// accurate. Free-tier picks are unaffected: they draw only from the easy,
-// medium and hard buckets, so a Challenge question is never assigned free --
-// it is gated by the challengeQuestions entitlement.
-function isDifficulty(value: string): value is Difficulty {
-  return value === "easy" || value === "medium" || value === "hard" || value === "challenge";
-}
+

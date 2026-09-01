@@ -1,3 +1,4 @@
+import { isDifficulty } from "@/lib/sat/types";
 export type QuestionBankSection = "rw" | "math";
 // Attempts record the question's stored difficulty, so this has to admit
 // "challenge" or a student's Challenge attempts vanish from the breakdown.
@@ -211,7 +212,7 @@ function sectionValue(value: unknown): QuestionBankSection | null {
 }
 
 function difficultyValue(value: unknown): QuestionBankDifficulty | null {
-  return value === "easy" || value === "medium" || value === "hard" ? value : null;
+  return typeof value === "string" && isDifficulty(value) ? value : null;
 }
 
 function numberValue(value: unknown): number {

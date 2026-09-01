@@ -1,3 +1,4 @@
+import { isDifficulty } from "@/lib/sat/types";
 import { isMathDomain } from "@/lib/question-bank/math";
 import { isReadingWritingDomain } from "@/lib/question-bank/reading-writing";
 
@@ -90,8 +91,4 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isChoiceId(value: unknown): value is (typeof CHOICE_IDS)[number] {
   return CHOICE_IDS.some((id) => id === value);
-}
-
-function isDifficulty(value: string): boolean {
-  return value === "easy" || value === "medium" || value === "hard";
 }
