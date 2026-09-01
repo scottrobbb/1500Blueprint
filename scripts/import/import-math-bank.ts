@@ -18,6 +18,7 @@ import {
   parseMathBankDocx,
   type ParsedMathBankDocument,
   type ParsedMathBankQuestion,
+  type MathBankDifficulty,
 } from "./math-bank";
 
 const BUCKET = "figures";
@@ -44,7 +45,7 @@ type DrillQuestionRow = {
   section: "math";
   domain: string;
   skill: string;
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: MathBankDifficulty;
   answer_type: "mc_single" | "grid_in";
   stem: string;
   passage: string | null;

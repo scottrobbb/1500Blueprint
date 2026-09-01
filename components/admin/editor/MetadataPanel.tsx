@@ -22,7 +22,9 @@ const SECTIONS: { value: SatSection; label: string }[] = [
   { value: "math", label: "Math" },
 ];
 
-const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
+// Question-bank questions carry the Challenge tier; practice-test questions do
+// not (see TestQuestionEditor, which stays three-valued).
+const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard", "challenge"];
 
 // Human labels for the DB answer-type enum (drills constrain which apply).
 const ANSWER_TYPE_LABELS: Record<AnswerType, string> = {

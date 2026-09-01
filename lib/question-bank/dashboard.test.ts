@@ -9,7 +9,8 @@ test("empty dashboard includes both subjects, all difficulties, and twelve weeks
   const dashboard = emptyQuestionBankDashboard(new Date("2026-08-18T12:00:00Z"));
 
   assert.deepEqual(dashboard.subjects.map((subject) => subject.section), ["rw", "math"]);
-  assert.equal(dashboard.difficulty.length, 6);
+  // 2 sections x 4 tiers (easy, medium, hard, challenge).
+  assert.equal(dashboard.difficulty.length, 8);
   assert.equal(dashboard.activity.length, 12);
   assert.equal(dashboard.activity.at(-1)?.weekStart, "2026-08-17");
 });

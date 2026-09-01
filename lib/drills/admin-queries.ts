@@ -253,7 +253,7 @@ export async function updateDrill(slug: string, patch: DrillUpdate): Promise<voi
 
 export type QuestionFilters = {
   drillSlug?: DrillSlug;
-  difficulty?: Difficulty | "challenge";
+  difficulty?: Difficulty;
   answerType?: AnswerType;
   status?: QuestionStatus;
   section?: SatSection;
@@ -292,7 +292,7 @@ export function parseQuestionFilters(
   return {
     filters: {
       drillSlug: str("drillSlug") as DrillSlug | undefined,
-      difficulty: str("difficulty") as Difficulty | "challenge" | undefined,
+      difficulty: str("difficulty") as Difficulty | undefined,
       answerType: str("answerType") as AnswerType | undefined,
       status: str("status") as QuestionStatus | undefined,
       section: str("section") as SatSection | undefined,
@@ -321,13 +321,13 @@ export async function listQuestions(
 
   if (filters.drillSlug) query = query.eq("drill_slug", filters.drillSlug);
   if (filters.difficulty === "challenge") {
-    // Challenge isn't a stored difficulty -- it's a "hard" question whose
-    // content.source names a Challenge archive (see questionBankLevel in
-    // lib/question-bank/math.ts). Keep this ilike pattern in sync with that
+    // Challenge is stored on the question now, but rows the backfill has not
+    // reached are still only identifiable by their source archive -- the same
+    // fallback questionBankLevel applies. Keep these patterns in sync with that
     // function's /challenge/i regex.
-    query = query
-      .eq("difficulty", "hard")
-      .or("content->source->>archivePath.ilike.%challenge%,content->source->>document.ilike.%challenge%");
+    query = query.or(
+      "difficulty.eq.challenge,content->source->>archivePath.ilike.%challenge%,content->source->>document.ilike.%challenge%",
+    );
   } else if (filters.difficulty) {
     query = query.eq("difficulty", filters.difficulty);
   }

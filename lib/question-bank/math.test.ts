@@ -130,6 +130,11 @@ test("challenge source metadata gets its own navigator level", () => {
   }), "hard");
 });
 
+test("a stored challenge difficulty wins without any source metadata", () => {
+  assert.equal(questionBankLevel("challenge", null), "challenge");
+  assert.equal(questionBankLevel("challenge", { source: { document: "Easy Questions.docx" } }), "challenge");
+});
+
 test("free access excludes Challenge questions while paid access includes them", () => {
   assert.equal(canAccessQuestionBankLevel("challenge", false), false);
   assert.equal(canAccessQuestionBankLevel("challenge", true), true);

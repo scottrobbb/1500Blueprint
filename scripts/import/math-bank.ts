@@ -10,14 +10,20 @@ import {
   canonicalSkill,
 } from "../seed-drills/skills";
 
-export type MathBankDifficulty = "easy" | "medium" | "hard";
+// The question bank stores Challenge as its own tier, so the importer keeps it
+// rather than collapsing it into "hard". Practice-test imports still collapse
+// it -- see normalizeDifficulty in taxonomy.ts, which feeds parse-test6.
+export type MathBankDifficulty = "easy" | "medium" | "hard" | "challenge";
 
 export type MathBankFigure = {
   buffer: Buffer;
   contentType: string;
 };
 
-export type ParsedMathBankQuestion = ParsedQuestion & {
+// difficulty is omitted before intersecting: ParsedQuestion carries taxonomy's
+// three-valued Difficulty (it also feeds the practice-test parser), and an
+// intersection would narrow Challenge back out.
+export type ParsedMathBankQuestion = Omit<ParsedQuestion, "difficulty"> & {
   domain: string;
   skill: string;
   difficulty: MathBankDifficulty;
@@ -365,7 +371,7 @@ function canonicalSourceDomain(value: string): string | null {
 function normalizeDifficulty(value: string): MathBankDifficulty | null {
   const normalized = value.toLowerCase().trim();
   if (normalized === "easy" || normalized === "medium" || normalized === "hard") return normalized;
-  return normalized === "challenge" ? "hard" : null;
+  return normalized === "challenge" ? "challenge" : null;
 }
 
 function expandAcceptedAnswers(value: string): string[] {

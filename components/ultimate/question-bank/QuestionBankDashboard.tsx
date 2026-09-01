@@ -363,10 +363,13 @@ function SubjectFocusCard({
         </div>
       ) : (
         <div className="divide-y divide-navy/[0.07] px-5 sm:px-6">
-          {(["easy", "medium", "hard"] as const).map((level) => {
+          {(["easy", "medium", "hard", "challenge"] as const).map((level) => {
             const metric = difficulty.find((item) => item.difficulty === level);
             const attempts = metric?.attempts ?? 0;
             const accuracy = metric?.accuracy ?? 0;
+            // Challenge is gated by plan, so an empty row would read as a
+            // missing result rather than a tier this student cannot reach.
+            if (level === "challenge" && attempts === 0) return null;
             return (
               <div key={level} className="grid grid-cols-[minmax(0,1fr)_132px] items-center gap-5 py-5">
                 <div className="min-w-0">
