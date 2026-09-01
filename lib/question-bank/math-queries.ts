@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { ChoiceId, Difficulty } from "@/lib/sat/types";
+import type { ChoiceId } from "@/lib/sat/types";
 import {
   MATH_DOMAINS,
   boundedQuestionBankSessionLimit,
@@ -26,6 +26,7 @@ import {
 } from "@/lib/question-bank/math";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
+import { isDifficulty } from "@/lib/sat/types";
 import { signCourseAssetReferences } from "@/lib/courses/assets.server";
 
 type MathQuestionRow = {
@@ -525,9 +526,7 @@ function isChoiceId(value: unknown): value is ChoiceId {
   return value === "A" || value === "B" || value === "C" || value === "D";
 }
 
-function isDifficulty(value: string): value is Difficulty {
-  return value === "easy" || value === "medium" || value === "hard";
-}
+
 
 function databaseError(action: string, error: { message: string; code?: string }): Error {
   const code = error.code ? ` [${error.code}]` : "";

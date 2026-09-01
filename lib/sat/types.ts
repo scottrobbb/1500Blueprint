@@ -10,6 +10,16 @@ export type ChoiceId = "A" | "B" | "C" | "D";
 // list in TestQuestionEditor, which stays three-valued.
 export type Difficulty = "easy" | "medium" | "hard" | "challenge";
 
+// The single source of truth for the tier list. Every guard that needs to ask
+// "is this a difficulty?" must use this rather than inlining the values:
+// a stale local copy that omits "challenge" silently filters real questions
+// out of the bank instead of failing loudly.
+export const DIFFICULTIES = ["easy", "medium", "hard", "challenge"] as const satisfies readonly Difficulty[];
+
+export function isDifficulty(value: string | null | undefined): value is Difficulty {
+  return typeof value === "string" && (DIFFICULTIES as readonly string[]).includes(value);
+}
+
 export type Domain =
   // Reading & Writing
   | "Information and Ideas"

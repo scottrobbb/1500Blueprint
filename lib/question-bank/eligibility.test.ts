@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { DIFFICULTIES } from "@/lib/sat/types";
 import {
   isQuestionBankEligibleShape,
   isQuestionBankRuntimeReady,
@@ -31,6 +32,25 @@ const completeReadingQuestion = {
     correct: "A",
   },
 };
+
+// A stale copy of the tier list here filtered every Challenge question out of
+// the bank: isQuestionBankRuntimeReady gates the student math and R&W queries
+// and the admin views, so questions that existed and were correctly tagged
+// simply stopped appearing. Every stored tier must pass.
+test("every stored difficulty tier is runtime ready, challenge included", () => {
+  for (const difficulty of DIFFICULTIES) {
+    assert.equal(
+      isQuestionBankRuntimeReady({ ...completeReadingQuestion, difficulty }),
+      true,
+      `${difficulty} questions must stay in the bank`,
+    );
+  }
+  assert.ok(DIFFICULTIES.includes("challenge"));
+  assert.match(
+    questionBankPublishabilityIssue({ ...completeReadingQuestion, difficulty: "spicy" }) ?? "",
+    /difficulty/i,
+  );
+});
 
 test("requires every runtime field before a catalog row is available", () => {
   assert.equal(isQuestionBankRuntimeReady(completeReadingQuestion), true);
