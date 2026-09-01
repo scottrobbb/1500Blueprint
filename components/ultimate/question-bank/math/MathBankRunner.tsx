@@ -15,6 +15,7 @@ import {
   type MathRunnerQuestion,
   type QuestionBankAttemptState,
   type QuestionBankLevel,
+  type QuestionBankOutcome,
   type QuestionBankRunnerState,
 } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
@@ -302,12 +303,14 @@ function ObjectiveBankRunner({
     return <EmptySession filters={filters} subject={subject} />;
   }
 
-  // Sourced from `attempts` (restored from session storage for this filter
-  // set), not the in-memory `results` map -- results only holds answers
-  // checked since the last full page load, so a mid-session refresh would
-  // otherwise make the recap undercount everything checked before it.
-  const checkedCount = Object.keys(attempts).length;
-  const correctCount = Object.values(attempts).filter((item) => item.correct).length;
+  // The navigator marks and the recap show every sitting, so a question the
+  // student answered last week still reads as done. This sitting wins where
+  // both have an entry, because it is the fresher result. Only the outcome is
+  // merged in -- `attempts` keeps the chosen answer and the wrong choices, and
+  // that half stays scoped to this sitting.
+  const navigatorOutcomes: Record<string, QuestionBankOutcome> = { ...initialState.outcomes, ...attempts };
+  const checkedCount = Object.keys(navigatorOutcomes).length;
+  const correctCount = Object.values(navigatorOutcomes).filter((item) => item.correct).length;
   const questionStrip = (
     <QuestionStrip
       questionId={question.id}
@@ -444,7 +447,7 @@ function ObjectiveBankRunner({
         <RunnerNavigator
           questions={orderedQuestions}
           currentIndex={currentIndex}
-          attempts={attempts}
+          outcomes={navigatorOutcomes}
           marked={marked}
           onGoTo={goTo}
           onClose={() => setNavigatorOpen(false)}
@@ -661,7 +664,7 @@ function RunnerFooter({ currentIndex, total, canGoPrevious, nextLabel, finished,
   );
 }
 
-function RunnerNavigator({ questions, currentIndex, attempts, marked, onGoTo, onClose }: { questions: BankRunnerQuestion[]; currentIndex: number; attempts: Record<string, QuestionBankAttemptState>; marked: Set<string>; onGoTo: (index: number) => void; onClose: () => void }) {
+function RunnerNavigator({ questions, currentIndex, outcomes, marked, onGoTo, onClose }: { questions: BankRunnerQuestion[]; currentIndex: number; outcomes: Record<string, QuestionBankOutcome>; marked: Set<string>; onGoTo: (index: number) => void; onClose: () => void }) {
   return (
     <>
       <button type="button" aria-label="Close question navigator" onClick={onClose} className="fixed inset-0 z-30 bg-black/5" />
@@ -690,7 +693,7 @@ function RunnerNavigator({ questions, currentIndex, attempts, marked, onGoTo, on
         </div>
         <ol className="mt-5 grid grid-cols-[repeat(6,2.75rem)] justify-center gap-x-[7px] gap-y-3 sm:gap-x-5">
           {questions.map((question, index) => {
-            const attempt = attempts[question.id];
+            const attempt = outcomes[question.id];
             const corrected = attempt?.correct === true && attempt.hadIncorrectAttempt;
             const isMarked = marked.has(question.id);
             const statusLabel = attempt ? (corrected ? ", answered correctly after an incorrect attempt" : attempt.correct ? ", answered correctly" : ", answered incorrectly") : "";

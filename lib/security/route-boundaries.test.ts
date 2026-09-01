@@ -25,17 +25,24 @@ function source(path: string): string {
 }
 
 // A question bank page used to server-render every past attempt for the
-// questions in the set, including each wrong choice the student had picked.
-// That both gave the answer away on a re-attempt and shipped a partial answer
-// key in the HTML -- three known-wrong choices identify the fourth. Attempt
-// state belongs to the sitting, in session storage, not to the page payload.
-test("the question bank runner is not seeded with past attempts", () => {
+// questions in the set, including each wrong choice the student had picked --
+// which gave the answer away on a re-attempt, and shipped a partial answer key
+// in the HTML besides, since three known-wrong choices identify the fourth.
+//
+// Past outcomes may cross between sittings, because that is what the navigator
+// marks a question with and it names no choice. The chosen answer and the set
+// of wrong choices may not: they stay in session storage, scoped to the
+// sitting. The boundary is the `response` column.
+test("past attempts reach the runner as outcomes, never as chosen answers", () => {
   const serverState = source("lib/question-bank/runner-state.ts");
-  assert.doesNotMatch(serverState, /question_bank_attempts/);
-  assert.doesNotMatch(serverState, /incorrectResponses/);
+  assert.match(serverState, /select\("question_id,correct"\)/);
+  assert.doesNotMatch(serverState, /"question_id,correct,response|response:|incorrectResponses/);
 
+  // The choice highlighting must read this sitting's attempts, never the
+  // server-provided outcomes.
   const runner = source("components/ultimate/question-bank/math/MathBankRunner.tsx");
   assert.doesNotMatch(runner, /initialState\.attempts/);
+  assert.match(runner, /attempt=\{attempts\[question\.id\]\}/);
 });
 
 // Challenge was originally derived by regex over a question's content.source

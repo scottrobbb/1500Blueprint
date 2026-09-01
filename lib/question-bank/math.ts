@@ -99,13 +99,20 @@ export type QuestionBankAttemptState = {
   incorrectResponses: string[];
 };
 
-// Deliberately carries no attempt history. Seeding the runner from past
-// attempts re-selected the student's previous answer and re-marked every
-// choice they had got wrong, which hands them the answer when they come back
-// to a question. It also put that partial answer key in the server-rendered
-// HTML. Attempt state now lives in session storage on the client, so a
-// mid-session refresh still restores it and a later sitting starts clean.
+// Whether a question was answered right last time, with no record of which
+// choice was picked. That split is the whole point: the outcome is what the
+// navigator marks a question with, while the chosen answer and the set of
+// wrong choices are what would give the answer away on a re-attempt. Only the
+// outcome crosses between sittings.
+export type QuestionBankOutcome = {
+  correct: boolean;
+  hadIncorrectAttempt: boolean;
+};
+
 export type QuestionBankRunnerState = {
+  // Per question, from the student's whole history. Safe to render: it names
+  // no choice, so three wrong attempts still do not identify the fourth.
+  outcomes: Record<string, QuestionBankOutcome>;
   savedQuestionIds: string[];
 };
 
