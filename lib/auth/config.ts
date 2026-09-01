@@ -7,7 +7,7 @@ export const TOKEN_TTL_SECONDS = 60 * 15; // magic link is valid for 15 minutes
 // Stripe subscription statuses that count as an active membership.
 export const ACTIVE_STATUSES = ["active", "trialing"] as const;
 
-const FALLBACK_CANONICAL_APP_URL = "https://www.1500satblueprint.com";
+const FALLBACK_CANONICAL_APP_URL = "https://1500blueprint.com";
 const MAX_ALLOWED_APP_ORIGINS = 8;
 const MAX_ALLOWED_APP_ORIGINS_LENGTH = 2048;
 
