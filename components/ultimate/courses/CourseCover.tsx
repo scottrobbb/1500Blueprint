@@ -8,11 +8,18 @@ type CourseCoverProps = {
   eyebrow?: string | null;
   className?: string;
   priority?: boolean;
-  // Banner mode (default) reserves its own 16:7 box. Fill mode renders with
-  // no intrinsic aspect ratio at all, so a parent that positions this
-  // absolutely (inset-0 h-full w-full) gets a clean crop instead of fighting
-  // the default aspect-ratio via a `!` override, which doesn't reliably win
-  // against an arbitrary-value utility.
+  // Banner mode (default) reserves its own 16:7 box and positions itself
+  // relative. Fill mode has no intrinsic aspect ratio and positions itself
+  // absolutely against the nearest positioned ancestor, so it crops to that
+  // box edge-to-edge.
+  //
+  // Fill mode must own `absolute` rather than take it from className. Tailwind
+  // emits `.relative` after `.absolute`, so with both applied at equal
+  // specificity `relative` wins no matter which order the caller writes them
+  // in. A root that hardcoded `relative` therefore silently beat a caller
+  // passing `absolute inset-0`, leaving the cover in flow: inset by the
+  // parent's padding, with the parent's background showing as a margin and
+  // any following overlay content pushed below the image instead of over it.
   fill?: boolean;
   // Some cover art is a small centered badge on a large background instead
   // of full-bleed art; scaling the image up crops that dead space away so
@@ -25,7 +32,7 @@ export function CourseCover({ src, title, eyebrow, className = "", fill = false,
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   return (
-    <div className={`relative overflow-hidden bg-[#edf2f7] ${fill ? "" : "aspect-[16/7]"} ${className}`}>
+    <div className={`overflow-hidden bg-[#edf2f7] ${fill ? "absolute inset-0" : "relative aspect-[16/7]"} ${className}`}>
       {normalizedSrc && failedSrc !== normalizedSrc ? (
         // Admins can use any HTTPS image host, so this intentionally bypasses Next's fixed remote host allowlist.
         // eslint-disable-next-line @next/next/no-img-element
