@@ -156,7 +156,16 @@ test("every link into a rate-limited course lesson disables prefetch", () => {
   assert.match(coursePage, /href=\{`\/ultimate\/courses\/\$\{course\.slug\}\/\$\{nextLesson\.slug\}`\} prefetch=\{false\}/);
   assert.match(coursePage, /href=\{`\/ultimate\/courses\/\$\{course\.slug\}\/\$\{lesson\.slug\}`\} prefetch=\{false\}/);
 
-  const dashboard = source("app/ultimate/page.tsx");
-  assert.match(dashboard, /href=\{nextCourseHref\} prefetch=\{false\}/);
-  assert.match(dashboard, /function CourseCard[\s\S]*?href=\{href\} prefetch=\{false\}/);
+  // The home page's two lesson links moved into components/ultimate/home when
+  // that page was split into components. Only these two resolve to a lesson URL
+  // -- the dashboard's other links (/ultimate/drills, /ultimate/courses,
+  // /ultimate/bank) point at index pages that carry no read policy.
+  assert.match(
+    source("components/ultimate/home/home-sections.tsx"),
+    /href=\{continueHref\}\s+prefetch=\{false\}/,
+  );
+  assert.match(
+    source("components/ultimate/home/home-course-card.tsx"),
+    /href=\{href\}\s+prefetch=\{false\}/,
+  );
 });
