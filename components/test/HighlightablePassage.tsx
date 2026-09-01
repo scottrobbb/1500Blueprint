@@ -2,15 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { parseUnderlineMarkup } from "@/lib/sat/formattedText";
+import type { Highlight } from "@/lib/sat/highlights";
 import { TrashIcon, UnderlineIcon, NoteIcon } from "./icons";
 
-export type Highlight = {
-  id: string;
-  start: number;
-  end: number;
-  color: string;
-  note?: string;
-};
+// Re-exported so the many `from "./HighlightablePassage"` import sites keep
+// working; the type and its transitions live in lib/sat/highlights.
+export type { Highlight } from "@/lib/sat/highlights";
 
 const COLORS = [
   { key: "#fde68a", label: "Yellow highlight" },
