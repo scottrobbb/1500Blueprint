@@ -26,8 +26,8 @@ export function UpgradePrompt({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-600">Included with {planName(requiredPlan)}</p>
-            <span className="rounded-full bg-haze px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-navy/45">You have {planName(currentPlan)}</span>
+            <p className="text-xs font-bold text-brand-600">Included with {planName(requiredPlan)}</p>
+            <span className="rounded-full bg-haze px-2 py-0.5 text-[10px] font-bold text-navy/50">You have {planName(currentPlan)}</span>
           </div>
           <h2 className="mt-1 font-display text-xl font-extrabold tracking-[-0.02em] text-navy">{title}</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-navy/50">{description}</p>
@@ -45,7 +45,7 @@ export function UpgradePrompt({
 
 export function LockedBadge({ plan, dark = false }: { plan: PaidPlan; dark?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-[0.1em] ${dark ? "border border-white/15 bg-black/20 text-white" : "bg-[#fff4cc] text-[#765800]"}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold ${dark ? "border border-white/15 bg-black/20 text-white" : "bg-[#fff4cc] text-[#765800]"}`}>
       <LockIcon className="h-3 w-3" /> {planName(plan)}
     </span>
   );
