@@ -170,7 +170,9 @@ export async function getHomeContinuation(email: string): Promise<HomeContinuati
   const allowedTestCount = isAdmin
     ? testCatalog.length
     : access?.active
-      ? access.entitlements.fullTestLimit
+      ? (access.entitlements.fullTestLimit === "unlimited"
+        ? testCatalog.length
+        : access.entitlements.fullTestLimit)
       : 0;
   const accessibleTests = new Map(
     testCatalog.slice(0, allowedTestCount).map((test) => [test.slug, test.title]),

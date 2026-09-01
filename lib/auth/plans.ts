@@ -3,7 +3,7 @@ export type AccessSource = "free" | "legacy" | "subscription" | "grant";
 
 export type PlanEntitlements = {
   questionBankLimit: number | "unlimited";
-  fullTestLimit: number;
+  fullTestLimit: number | "unlimited";
   dailyDrillLimit: number | "unlimited" | null;
   desmos101: boolean;
   readingWriting101: boolean;
@@ -54,7 +54,7 @@ export const PLAN_ENTITLEMENTS: Record<PlanCode, PlanEntitlements> = {
   },
   max: {
     questionBankLimit: "unlimited",
-    fullTestLimit: 4,
+    fullTestLimit: "unlimited",
     dailyDrillLimit: "unlimited",
     desmos101: true,
     readingWriting101: true,

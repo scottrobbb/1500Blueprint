@@ -7,7 +7,7 @@ import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getNavStats, getTestProgress } from "@/lib/gamification/state";
 import { getStudentAccess } from "@/lib/auth/entitlements";
-import { FREE_PRACTICE_TEST_SLUG } from "@/lib/auth/access-control";
+import { testIndexIsAccessible } from "@/lib/auth/access-control";
 
 export const metadata = {
   title: "Practice Tests · 1500 Blueprint",
@@ -120,7 +120,7 @@ export default async function PracticeTestsPage() {
               const { num, label } = parseTest(t.slug, t.title);
               const best = progress.bestBySlug[t.slug] ?? null;
               const count = progress.countBySlug[t.slug] ?? 0;
-              const planLocked = t.slug !== FREE_PRACTICE_TEST_SLUG && testIndex >= access.entitlements.fullTestLimit && !isAdmin;
+              const planLocked = !isAdmin && !testIndexIsAccessible(t.slug, testIndex, access.entitlements.fullTestLimit);
               const constructionLocked = t.status !== "published" && !isAdmin;
               const locked = constructionLocked || planLocked;
               const cardContent = (

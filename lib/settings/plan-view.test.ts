@@ -97,3 +97,28 @@ test("a free student with unreadable usage still sees their sample library", () 
   assert.equal(bank?.valueLabel, "Sample library");
   assert.equal(bank?.unavailable, false);
 });
+
+test("max's test row reports the whole published catalog, not a count", () => {
+  const view = buildSettingsPlanView(PLAN_ENTITLEMENTS.max, {
+    questionBankUsed: 25,
+    drillsUsedToday: null,
+  }, "max");
+  const tests = view.usage.find((item) => item.key === "fullTestLimit");
+
+  assert.equal(tests?.unlimited, true);
+  assert.equal(tests?.included, true);
+  assert.equal(tests?.limit, null);
+  assert.equal(tests?.valueLabel, "Every published test");
+});
+
+test("a finite plan still reports its test count", () => {
+  const view = buildSettingsPlanView(PLAN_ENTITLEMENTS.core, {
+    questionBankUsed: 25,
+    drillsUsedToday: 3,
+  }, "core");
+  const tests = view.usage.find((item) => item.key === "fullTestLimit");
+
+  assert.equal(tests?.unlimited, false);
+  assert.equal(tests?.limit, 2);
+  assert.equal(tests?.valueLabel, "2 tests included");
+});

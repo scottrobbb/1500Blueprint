@@ -22,6 +22,7 @@ test("plan capabilities reflect the current tier definition", () => {
   assert.equal(PLAN_ENTITLEMENTS.free.fullTestLimit, 1);
   assert.equal(PLAN_ENTITLEMENTS.core.dailyDrillLimit, 20);
   assert.equal(PLAN_ENTITLEMENTS.max.dailyDrillLimit, "unlimited");
+  assert.equal(PLAN_ENTITLEMENTS.max.fullTestLimit, "unlimited");
   assert.equal(PLAN_ENTITLEMENTS.free.studyPlanner, false);
   assert.equal(PLAN_ENTITLEMENTS.core.studyPlanner, false);
   assert.equal(PLAN_ENTITLEMENTS.max.studyPlanner, true);

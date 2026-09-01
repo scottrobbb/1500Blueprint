@@ -21,12 +21,14 @@ test("core plan reaches tests 1 and 2 (index 0-1) but not test 3", () => {
   assert.equal(testIndexIsAccessible("practice-test-6", 2, limit), false);
 });
 
-test("max plan reaches every currently published test (index 0-3)", () => {
+test("max plan reaches every published test with no cap", () => {
   const limit = PLAN_ENTITLEMENTS.max.fullTestLimit;
-  for (let index = 0; index < limit; index += 1) {
+  assert.equal(limit, "unlimited");
+  // Publishing more tests must not require an entitlement change, so no index
+  // is out of reach -- including ones far past any previous numeric limit.
+  for (const index of [0, 1, 2, 3, 4, 5, 99]) {
     assert.equal(testIndexIsAccessible(`practice-test-${index + 1}`, index, limit), true);
   }
-  assert.equal(testIndexIsAccessible("practice-test-99", limit, limit), false);
 });
 
 test("a slug missing from the published list is never accessible", () => {
