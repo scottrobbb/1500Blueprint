@@ -22,7 +22,7 @@ const HERO_VSL_URL = "https://vimeo.com/1221856607?share=copy&fl=sv&fe=ci";
 const TESTIMONIAL_REEL_URL = "https://vimeo.com/1221904969?share=copy&fl=sv&fe=ci";
 
 const heroChecklist = [
-  "4 Realistic Full-Length Practice Tests",
+  "5 Realistic Full-Length Practice Tests",
   "1250+ Question Bank Qs (with Desmos explanations)",
   "Step-by-step math and reading courses",
   "Weekly group class with Scott",
