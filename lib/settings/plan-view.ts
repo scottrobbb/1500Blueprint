@@ -77,6 +77,10 @@ export function buildSettingsPlanView(
   const drillIncluded = drillLimit !== null;
   const drillUnlimited = drillLimit === "unlimited";
 
+  const testLimit = entitlements.fullTestLimit;
+  const finiteTestLimit = typeof testLimit === "number" ? testLimit : null;
+  const testUnlimited = testLimit === "unlimited";
+
   const bankLimit = entitlements.questionBankLimit;
   const finiteBankLimit = typeof bankLimit === "number" ? bankLimit : null;
   const bankUnlimited = bankLimit === "unlimited";
@@ -110,13 +114,15 @@ export function buildSettingsPlanView(
         key: "fullTestLimit",
         title: "Full digital SATs",
         description: "Published full-length tests available with this plan.",
-        included: entitlements.fullTestLimit > 0,
+        included: testUnlimited || (finiteTestLimit ?? 0) > 0,
         unavailable: false,
-        unlimited: false,
+        unlimited: testUnlimited,
         used: null,
-        limit: entitlements.fullTestLimit,
+        limit: finiteTestLimit,
         percentage: null,
-        valueLabel: `${entitlements.fullTestLimit} ${entitlements.fullTestLimit === 1 ? "test" : "tests"} included`,
+        valueLabel: testUnlimited
+          ? "Every published test"
+          : `${finiteTestLimit} ${finiteTestLimit === 1 ? "test" : "tests"} included`,
       },
       {
         key: "dailyDrillLimit",

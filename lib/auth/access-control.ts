@@ -16,9 +16,16 @@ export const FREE_PRACTICE_TEST_SLUG = "practice-test-1";
 
 // Pure boundary decision, isolated from the Supabase-backed lookups above so
 // the free/core/max cutoffs can be unit tested without a DB.
-export function testIndexIsAccessible(testSlug: string, testIndex: number, fullTestLimit: number): boolean {
+export function testIndexIsAccessible(
+  testSlug: string,
+  testIndex: number,
+  fullTestLimit: number | "unlimited",
+): boolean {
   if (testIndex < 0) return false;
   if (testSlug === FREE_PRACTICE_TEST_SLUG) return true;
+  // Max reads the catalog rather than a cap, so publishing a test releases it
+  // to Max without a matching entitlement bump.
+  if (fullTestLimit === "unlimited") return true;
   return testIndex < fullTestLimit;
 }
 
