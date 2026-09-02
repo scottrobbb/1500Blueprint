@@ -8,6 +8,7 @@ import { GridIn } from "./GridIn";
 import { HighlightablePassage, type Highlight } from "./HighlightablePassage";
 import { MathText } from "./MathText";
 import { QuestionContent } from "./QuestionContent";
+import { isHighlightableText } from "./MathText";
 import { BookmarkIcon, BookmarkFilledIcon, DragHandleIcon } from "./icons";
 
 type Props = {
@@ -27,6 +28,10 @@ type Props = {
   onAddHighlight: (h: Highlight) => void;
   onRemoveHighlight: (start: number, end: number) => void;
   onSetNote: (id: string, note: string) => void;
+  promptHighlights: Highlight[];
+  onAddPromptHighlight: (h: Highlight) => void;
+  onRemovePromptHighlight: (start: number, end: number) => void;
+  onSetPromptNote: (id: string, note: string) => void;
   calcOpen: boolean;
 };
 
@@ -133,6 +138,10 @@ export function QuestionScreen(props: Props) {
     onAddHighlight,
     onRemoveHighlight,
     onSetNote,
+    promptHighlights,
+    onAddPromptHighlight,
+    onRemovePromptHighlight,
+    onSetPromptNote,
     calcOpen,
   } = props;
   const isRW = section.id === "rw";
@@ -172,7 +181,19 @@ export function QuestionScreen(props: Props) {
     />
   );
 
-  const prompt = (
+  // The prompt gets the same highlighting as the passage when it renders as
+  // plain text. Math or table markup keeps the ordinary MathText rendering.
+  const prompt = isHighlightableText(question.prompt) ? (
+    <HighlightablePassage
+      text={question.prompt}
+      highlights={promptHighlights}
+      enabled={highlightEnabled}
+      onAdd={onAddPromptHighlight}
+      onRemove={onRemovePromptHighlight}
+      onSetNote={onSetPromptNote}
+      className="!leading-7"
+    />
+  ) : (
     <p className="font-serif text-[17px] font-normal leading-7 text-exam-ink">
       <MathText>{question.prompt}</MathText>
     </p>

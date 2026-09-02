@@ -41,6 +41,7 @@ import {
   addHighlight as addHighlightTo,
   removeHighlight as removeHighlightFrom,
   setHighlightNote as setNoteOn,
+  promptHighlightKey,
 } from "@/lib/sat/highlights";
 
 type SessionSaveReason = "autosave" | "interval" | "exit" | "visibility";
@@ -716,6 +717,10 @@ export function TestRunner({
           onAddHighlight={(h) => addHighlight(question.id, h)}
           onRemoveHighlight={(s, e) => removeHighlight(question.id, s, e)}
           onSetNote={(id, note) => setHighlightNote(question.id, id, note)}
+          promptHighlights={highlights[promptHighlightKey(question.id)] ?? []}
+          onAddPromptHighlight={(h) => addHighlight(promptHighlightKey(question.id), h)}
+          onRemovePromptHighlight={(s, e) => removeHighlight(promptHighlightKey(question.id), s, e)}
+          onSetPromptNote={(id, note) => setHighlightNote(promptHighlightKey(question.id), id, note)}
           calcOpen={calcOpen}
         />
 
