@@ -21,6 +21,8 @@ const CADENCE_PRICE: Record<"core" | "max", Record<BillingCadence, { perMonth: s
   },
 };
 
+const ALL_PLANS = ["free", "core", "max"] as const;
+
 export function PlansPanel({
   freeFeatures,
   coreFeatures,
@@ -29,6 +31,7 @@ export function PlansPanel({
   billingEnabled,
   initialCadence,
   checkoutTokens,
+  visiblePlans = ALL_PLANS,
 }: {
   freeFeatures: PlanFeature[];
   coreFeatures: PlanFeature[];
@@ -37,11 +40,19 @@ export function PlansPanel({
   billingEnabled: boolean;
   initialCadence: BillingCadence;
   checkoutTokens: Record<"core" | "max", string>;
+  // Single-tier landing pages render a subset. Defaults to every plan, so the
+  // pricing page keeps its three cards without passing anything.
+  visiblePlans?: readonly PlanCode[];
 }) {
   const [cadence, setCadence] = useState<BillingCadence>(initialCadence);
+  const shows = (plan: PlanCode) => visiblePlans.includes(plan);
+  // The billing term only changes a paid price, so it has nothing to switch on
+  // a page showing Free alone.
+  const showCadence = shows("core") || shows("max");
 
   return (
     <>
+      {showCadence ? (
       <div className={styles.cadenceToggle} role="radiogroup" aria-label="Billing term">
         <button
           type="button"
@@ -62,8 +73,10 @@ export function PlansPanel({
           3 months <em>Save $30</em>
         </button>
       </div>
+      ) : null}
 
       <div className={styles.planGrid}>
+        {shows("free") ? (
         <PriceCard
           tier="free"
           name="Free"
@@ -72,6 +85,8 @@ export function PlansPanel({
           cta="Get Started"
           currentPlan={currentPlan}
         />
+        ) : null}
+        {shows("core") ? (
         <PriceCard
           tier="core"
           name="Core"
@@ -82,6 +97,8 @@ export function PlansPanel({
           cadence={cadence}
           checkoutToken={checkoutTokens.core}
         />
+        ) : null}
+        {shows("max") ? (
         <PriceCard
           tier="max"
           name="Max"
@@ -92,6 +109,7 @@ export function PlansPanel({
           cadence={cadence}
           checkoutToken={checkoutTokens.max}
         />
+        ) : null}
       </div>
     </>
   );
