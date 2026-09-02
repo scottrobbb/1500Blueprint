@@ -8,7 +8,7 @@ import { sessionSecret } from "@/lib/auth/session-secret";
 import { enforceProtectedContentRead } from "@/lib/security/protected-content";
 
 // Paths reachable without a session.
-const PUBLIC_PATHS = ["/", "/login", "/pricing", "/account", "/robots.txt", "/sitemap.xml"];
+const PUBLIC_PATHS = ["/", "/login", "/pricing", "/free", "/max", "/account", "/robots.txt", "/sitemap.xml"];
 // The admin CMS is gated to allowlisted admin emails (ADMIN_EMAILS).
 const ADMIN_PREFIX = "/admin";
 
