@@ -85,6 +85,16 @@ export function HistoryIcon({ className }: IconProps) {
   );
 }
 
+// Envelope — email support link in the nav rail (currentColor stroke).
+export function MailIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+      <rect x="2.8" y="5" width="18.4" height="14" rx="2.4" />
+      <path d="m3.6 7.2 7.3 5.3a2 2 0 0 0 2.2 0l7.3-5.3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // Bell — homepage notifications (currentColor stroke).
 export function BellIcon({ className }: IconProps) {
   return (
