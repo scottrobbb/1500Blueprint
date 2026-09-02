@@ -170,15 +170,20 @@ function ObjectiveBankRunner({
   const answer = question ? answers[question.id] ?? "" : "";
   const result = question ? results[question.id] : undefined;
 
+  // Restarting the interval on currentIndex keeps the first tick after a reset
+  // a full second, rather than whatever was left of the previous one.
   useEffect(() => {
     if (paused) return;
     const interval = window.setInterval(() => setElapsedSeconds((value) => value + 1), 1000);
     return () => window.clearInterval(interval);
-  }, [paused]);
+  }, [paused, currentIndex]);
 
+  // Mount only. Every later question starts its clock in goTo, the single
+  // caller of setCurrentIndex, so the reset lives in the event that moves the
+  // student rather than in an effect reacting to it.
   useEffect(() => {
     enteredQuestionAt.current = Date.now();
-  }, [currentIndex]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || finished) return;
@@ -254,6 +259,10 @@ function ObjectiveBankRunner({
   }
 
   function goTo(index: number) {
+    // The timer is per question, not per session, so it reads as pace on the
+    // question in front of the student. Resetting the display alongside
+    // enteredQuestionAt keeps it honest about the durationMs sent on submit.
+    setElapsedSeconds(0);
     enteredQuestionAt.current = Date.now();
     setSubmitError(null);
     setSaveError(null);
