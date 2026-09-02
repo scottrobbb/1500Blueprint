@@ -1,6 +1,6 @@
 import katex from "katex";
 import { Fragment, type ReactNode } from "react";
-import { normalizeBulletMarkup, parseUnderlineMarkup } from "@/lib/sat/formattedText";
+import { normalizeBulletMarkup, parseUnderlineMarkup, unescapeDollarSigns } from "@/lib/sat/formattedText";
 
 // Renders authored LaTeX and legacy plain-text SAT equations with KaTeX. The
 // legacy importer preserved many equations as `C = r·n` or `(x + 1)/2`; those
@@ -41,7 +41,7 @@ export function parseMathSegments(text: string): MathSegment[] {
   for (const match of text.matchAll(MATH_RE)) {
     const index = match.index ?? 0;
     if (index > last) {
-      segments.push({ type: "text", value: text.slice(last, index).replace(/\\\$/g, "$") });
+      segments.push({ type: "text", value: unescapeDollarSigns(text.slice(last, index)) });
     }
     const display = match[1] !== undefined || match[2] !== undefined;
     const value = match[1] ?? match[2] ?? match[3] ?? match[4] ?? "";
@@ -49,9 +49,9 @@ export function parseMathSegments(text: string): MathSegment[] {
     last = index + match[0].length;
   }
   if (last < text.length) {
-    segments.push({ type: "text", value: text.slice(last).replace(/\\\$/g, "$") });
+    segments.push({ type: "text", value: unescapeDollarSigns(text.slice(last)) });
   }
-  return segments.length ? segments : [{ type: "text", value: text.replace(/\\\$/g, "$") }];
+  return segments.length ? segments : [{ type: "text", value: unescapeDollarSigns(text) }];
 }
 
 export function parseLegacyMathSegments(text: string): MathSegment[] {

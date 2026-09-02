@@ -16,6 +16,14 @@ export type FormattedTextSegment = {
 // most of these passages -- it also lets them stay highlightable.
 const BULLET_MARKER = /^[ \t]*(?:\\\(\s*\\bullet\s*\\\)|\\\[\s*\\bullet\s*\\\]|\$\$?\s*\\bullet\s*\$\$?|\\bullet)[ \t]*/gm;
 
+// Authors write a literal dollar sign as "\$" so the math parser does not read
+// it as a delimiter. Every surface that renders source text has to undo that,
+// or the backslash reaches the screen -- MathText does it while splitting math
+// segments, HighlightablePassage has to do it explicitly.
+export function unescapeDollarSigns(text: string): string {
+  return text.replace(/\\\$/g, "$");
+}
+
 export function normalizeBulletMarkup(value: string): string {
   return value.replace(BULLET_MARKER, "\u2022 ");
 }
