@@ -49,6 +49,7 @@ export function PlansPanel({
   // The billing term only changes a paid price, so it has nothing to switch on
   // a page showing Free alone.
   const showCadence = shows("core") || shows("max");
+  const singleTier = visiblePlans.length === 1;
 
   return (
     <>
@@ -75,7 +76,7 @@ export function PlansPanel({
       </div>
       ) : null}
 
-      <div className={styles.planGrid}>
+      <div className={singleTier ? `${styles.planGrid} ${styles.planGridSingle}` : styles.planGrid}>
         {shows("free") ? (
         <PriceCard
           tier="free"
