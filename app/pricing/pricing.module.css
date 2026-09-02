@@ -562,6 +562,13 @@
   text-align: center;
 }
 
+/* The plan panel on the single-tier landing pages, sitting inside
+   .includedSection between its heading and its feature grid. That section
+   already supplies the page gutter, so this only carries the vertical rhythm
+   the standalone .planSection used to provide. */
+.planBlock {
+  margin: 0 auto 72px;
+}
 .includedSection {
   background: #131417;
   color: #fff;
