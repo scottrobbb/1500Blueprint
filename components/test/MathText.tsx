@@ -1,6 +1,6 @@
 import katex from "katex";
 import { Fragment, type ReactNode } from "react";
-import { parseUnderlineMarkup } from "@/lib/sat/formattedText";
+import { normalizeBulletMarkup, parseUnderlineMarkup } from "@/lib/sat/formattedText";
 
 // Renders authored LaTeX and legacy plain-text SAT equations with KaTeX. The
 // legacy importer preserved many equations as `C = r·n` or `(x + 1)/2`; those
@@ -196,7 +196,9 @@ function superscriptValue(value: string): string {
 // ordinary rendering.
 export function isHighlightableText(text: string): boolean {
   if (!text.trim() || text.includes("@@ROW@@")) return false;
-  return parseMathSegments(text).every((segment) => segment.type === "text");
+  // Bullet markers are normalised to a character before rendering, so they are
+  // not math by the time either renderer sees them.
+  return parseMathSegments(normalizeBulletMarkup(text)).every((segment) => segment.type === "text");
 }
 
 export function MathText({ children }: { children: string }) {

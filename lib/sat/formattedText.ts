@@ -5,7 +5,23 @@ export type FormattedTextSegment = {
 
 // Practice-test content is stored as plain text. Support only the exact, safe
 // <u>...</u> pair instead of rendering arbitrary HTML from the question bank.
-export function parseUnderlineMarkup(value: string): FormattedTextSegment[] {
+
+// Rhetorical synthesis notes are authored as a bulleted list, but the bullet
+// itself arrives as LaTeX -- `\(\bullet\)` and friends. Left alone it either
+// prints literally (the highlight renderer does no math) or renders through
+// KaTeX as a small centred math operator, neither of which reads as a bullet.
+//
+// Normalising it to a real character before anything else runs means both
+// renderers show the same list, and -- because the marker was the only math on
+// most of these passages -- it also lets them stay highlightable.
+const BULLET_MARKER = /^[ \t]*(?:\\\(\s*\\bullet\s*\\\)|\\\[\s*\\bullet\s*\\\]|\$\$?\s*\\bullet\s*\$\$?|\\bullet)[ \t]*/gm;
+
+export function normalizeBulletMarkup(value: string): string {
+  return value.replace(BULLET_MARKER, "\u2022 ");
+}
+
+export function parseUnderlineMarkup(rawValue: string): FormattedTextSegment[] {
+  const value = normalizeBulletMarkup(rawValue);
   const segments: FormattedTextSegment[] = [];
   const underlinePattern = /<u>([\s\S]*?)<\/u>/gi;
   let lastIndex = 0;

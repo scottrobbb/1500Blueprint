@@ -165,9 +165,12 @@ function ObjectiveBankRunner({
   const sessionId = useRef<string | null>(null);
   const attemptTokens = useRef<Record<string, { response: string; token: string }>>({});
   const question = orderedQuestions[currentIndex];
-  // Mirrors QuestionScreen: a passage carrying an importer table keeps
-  // QuestionContent's real <table> rendering and cannot be highlighted.
-  const passageHighlightable = Boolean(question?.passage) && !question?.passage?.includes("@@ROW@@");
+  // A passage is only highlightable when its rendered output is its source
+  // string: KaTeX's MathML and importer tables both break the offset mapping
+  // that highlighting depends on. isHighlightableText is the same test the
+  // prompt uses -- an earlier version checked only for tables, which sent
+  // passages holding LaTeX to the renderer that prints it literally.
+  const passageHighlightable = isHighlightableText(question?.passage ?? "");
   // Prompts highlight on the same terms as passages: plain text only, since
   // rendered math breaks the offset mapping the selection relies on.
   const promptHighlightable = isHighlightableText(question?.prompt ?? "");

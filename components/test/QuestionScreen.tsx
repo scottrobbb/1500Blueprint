@@ -146,7 +146,11 @@ export function QuestionScreen(props: Props) {
   } = props;
   const isRW = section.id === "rw";
   const hasPassage = Boolean(question.passage);
-  const hasPassageTable = question.passage?.includes("@@ROW@@") ?? false;
+  // Same test the prompt uses: a passage is only highlightable when its
+  // rendered output is its source string, which KaTeX's MathML and importer
+  // tables both break. A table-only check let a passage holding LaTeX reach
+  // HighlightablePassage, which renders it literally.
+  const passageHighlightable = isHighlightableText(question.passage ?? "");
 
   const [isWide, setIsWide] = useState(true);
   const [leftPct, setLeftPct] = useState(50);
@@ -216,7 +220,7 @@ export function QuestionScreen(props: Props) {
       <main ref={containerRef} className="flex flex-1 overflow-hidden">
         <section className="overflow-y-auto px-10 py-8" style={{ width: `${leftPct}%` }} aria-label="Passage">
           {figure}
-          {hasPassageTable ? (
+          {!passageHighlightable ? (
             <QuestionContent
               text={question.passage ?? ""}
               pClassName="font-serif text-[17px] leading-7 text-exam-ink"
@@ -280,7 +284,7 @@ export function QuestionScreen(props: Props) {
           (isRW ? (
             <div className="mt-5">
               {figure}
-              {hasPassageTable ? (
+              {!passageHighlightable ? (
                 <QuestionContent
                   text={question.passage ?? ""}
                   pClassName="font-serif text-[17px] leading-7 text-exam-ink"
