@@ -82,7 +82,11 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
       const cadence = cadenceValue;
       const session = await deps.getSession();
       if (!session) {
-        const next = `/pricing?billing=ready&plan=${plan}&cadence=${cadence}`;
+        // Resume checkout after authenticating instead of returning to the
+        // pricing page, which made the student pick the same plan a second
+        // time. /checkout re-posts this plan, so the intent survives logging
+        // in, creating an account, and email verification.
+        const next = `/checkout?plan=${plan}&cadence=${cadence}`;
         return redirect(baseUrl, `/account/login?next=${encodeURIComponent(next)}`);
       }
 

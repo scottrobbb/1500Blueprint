@@ -119,6 +119,44 @@ function checkoutCancelCurrentDeps(
   };
 }
 
+test("a logged-out paid click resumes at checkout instead of the pricing page", async () => {
+  let checkoutCalls = 0;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    getSession: async () => null,
+    createCheckout: async () => {
+      checkoutCalls += 1;
+      throw new Error("must not reach Stripe without a session");
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max",
+    cadence: "three_month",
+    checkoutToken: "cdcdcdcd-cdcd-4dcd-8dcd-cdcdcdcdcdcd",
+  }));
+
+  // The plan and cadence ride through authentication in `next`, so the student
+  // is not asked to choose the same plan a second time.
+  const location = new URL(response.headers.get("location") ?? "");
+  assert.equal(response.status, 303);
+  assert.equal(location.pathname, "/account/login");
+  assert.equal(location.searchParams.get("next"), "/checkout?plan=max&cadence=three_month");
+  assert.equal(checkoutCalls, 0);
+});
+
+test("a logged-out click on an unknown plan never reaches the resume page", async () => {
+  const handler = createCheckoutPostHandler(checkoutDeps({ getSession: async () => null }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "enterprise",
+    cadence: "monthly",
+    checkoutToken: "dcdcdcdc-dcdc-4cdc-8cdc-dcdcdcdcdcdc",
+  }));
+
+  assert.equal(new URL(response.headers.get("location") ?? "").pathname, "/pricing");
+  assert.match(response.headers.get("location") ?? "", /billing=invalid/);
+});
+
 test("checkout stays closed before any account or Stripe work when billing is disabled", async () => {
   let sessionCalls = 0;
   let checkoutCalls = 0;
