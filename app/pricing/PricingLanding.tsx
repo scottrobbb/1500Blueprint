@@ -105,32 +105,37 @@ export async function PricingLanding({
         </div>
       </section>
 
-      <section className={styles.planSection} id="plans">
-        {billing ? <BillingNotice state={billing} /> : null}
-
-        {/* A hidden tier's features would still be serialized into the RSC
-            payload, so a single-tier page would ship the other tiers' copy in
-            its page source. Only the visible tier's list is passed. */}
-        <PlansPanel
-          freeFeatures={visiblePlans.includes("free") ? freeFeatures : []}
-          coreFeatures={visiblePlans.includes("core") ? coreFeatures : []}
-          maxFeatures={visiblePlans.includes("max") ? maxFeatures : []}
-          currentPlan={access?.plan ?? null}
-          billingEnabled={billingEnabled}
-          initialCadence={initialCadence}
-          checkoutTokens={checkoutTokens}
-          visiblePlans={visiblePlans}
-        />
-
-        <p className={styles.planFootnote}>{planFootnote}</p>
-      </section>
-
       <section className={styles.includedSection} id="inside">
         <div className={styles.insideHeading}>
           <h2>
             {insideHeadingLead}{" "}
             <span className={styles.insideHeadingHighlight}>{insideHeadingHighlight}</span>
           </h2>
+        </div>
+
+        {/* The plan panel sits between this section's heading and its feature
+            grid rather than in a section of its own. Both sections already
+            share a background, so this only changes where the panel falls in
+            the flow. It keeps id="plans": the hero and bottom Enroll buttons
+            and the footer's Pricing link all scroll to it. */}
+        <div className={styles.planBlock} id="plans">
+          {billing ? <BillingNotice state={billing} /> : null}
+
+          {/* A hidden tier's features would still be serialized into the RSC
+              payload, so a single-tier page would ship the other tiers' copy in
+              its page source. Only the visible tier's list is passed. */}
+          <PlansPanel
+            freeFeatures={visiblePlans.includes("free") ? freeFeatures : []}
+            coreFeatures={visiblePlans.includes("core") ? coreFeatures : []}
+            maxFeatures={visiblePlans.includes("max") ? maxFeatures : []}
+            currentPlan={access?.plan ?? null}
+            billingEnabled={billingEnabled}
+            initialCadence={initialCadence}
+            checkoutTokens={checkoutTokens}
+            visiblePlans={visiblePlans}
+          />
+
+          <p className={styles.planFootnote}>{planFootnote}</p>
         </div>
         <div className={styles.insideGrid}>
           {insideColumns.map((column) => (
