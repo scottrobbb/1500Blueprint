@@ -11,6 +11,14 @@ export type Highlight = {
 
 export type HighlightsByQuestion = Record<string, Highlight[]>;
 
+// A highlight's start/end are offsets into one specific string, so passage and
+// prompt ranges cannot share a list -- the same numbers would point at two
+// different texts. Prompts get their own key in the same map, which keeps the
+// transitions above and the saved-session shape unchanged.
+export function promptHighlightKey(questionId: string): string {
+  return `${questionId}::prompt`;
+}
+
 export function addHighlight(
   all: HighlightsByQuestion,
   questionId: string,

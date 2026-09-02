@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { CalculatorPanel } from "@/components/test/CalculatorPanel";
 import { ExplanationText } from "@/components/test/ExplanationText";
-import { MathText } from "@/components/test/MathText";
+import { MathText, isHighlightableText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import { HighlightablePassage, type Highlight } from "@/components/test/HighlightablePassage";
 import { ReferenceModal } from "@/components/test/ReferenceModal";
@@ -24,6 +24,7 @@ import {
   addHighlight as addHighlightTo,
   removeHighlight as removeHighlightFrom,
   setHighlightNote as setNoteOn,
+  promptHighlightKey,
 } from "@/lib/sat/highlights";
 
 type RunnerResult = MathAttemptResult & { response: string };
@@ -167,6 +168,9 @@ function ObjectiveBankRunner({
   // Mirrors QuestionScreen: a passage carrying an importer table keeps
   // QuestionContent's real <table> rendering and cannot be highlighted.
   const passageHighlightable = Boolean(question?.passage) && !question?.passage?.includes("@@ROW@@");
+  // Prompts highlight on the same terms as passages: plain text only, since
+  // rendered math breaks the offset mapping the selection relies on.
+  const promptHighlightable = isHighlightableText(question?.prompt ?? "");
   const answer = question ? answers[question.id] ?? "" : "";
   const result = question ? results[question.id] : undefined;
 
@@ -446,7 +450,19 @@ function ObjectiveBankRunner({
                 <div className="mx-auto max-w-2xl">
                   {questionStrip}
                   <div className="px-1 py-5 sm:px-0">
-                    <QuestionContent text={question.prompt} pClassName="font-serif text-[17px] leading-[1.55] text-[#111] sm:text-[18px]" />
+                    {promptHighlightable ? (
+                      <HighlightablePassage
+                        text={question.prompt}
+                        highlights={highlights[promptHighlightKey(question.id)] ?? []}
+                        enabled={highlightOn}
+                        onAdd={(highlight) => addHighlight(promptHighlightKey(question.id), highlight)}
+                        onRemove={(start, end) => removeHighlight(promptHighlightKey(question.id), start, end)}
+                        onSetNote={(id, note) => setHighlightNote(promptHighlightKey(question.id), id, note)}
+                        className="!text-[17px] !leading-[1.55] !text-[#111] sm:!text-[18px]"
+                      />
+                    ) : (
+                      <QuestionContent text={question.prompt} pClassName="font-serif text-[17px] leading-[1.55] text-[#111] sm:text-[18px]" />
+                    )}
                     {answerArea}
                   </div>
                 </div>
@@ -480,7 +496,19 @@ function ObjectiveBankRunner({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={question.figureUrl} alt="Figure for this question" width={1200} height={800} className="mb-5 h-auto max-h-80 max-w-full object-contain" />
                 )}
-                <QuestionContent text={question.prompt} pClassName="font-serif text-[17px] leading-[1.55] text-[#111] sm:text-[18px]" />
+                {promptHighlightable ? (
+                      <HighlightablePassage
+                        text={question.prompt}
+                        highlights={highlights[promptHighlightKey(question.id)] ?? []}
+                        enabled={highlightOn}
+                        onAdd={(highlight) => addHighlight(promptHighlightKey(question.id), highlight)}
+                        onRemove={(start, end) => removeHighlight(promptHighlightKey(question.id), start, end)}
+                        onSetNote={(id, note) => setHighlightNote(promptHighlightKey(question.id), id, note)}
+                        className="!text-[17px] !leading-[1.55] !text-[#111] sm:!text-[18px]"
+                      />
+                    ) : (
+                      <QuestionContent text={question.prompt} pClassName="font-serif text-[17px] leading-[1.55] text-[#111] sm:text-[18px]" />
+                    )}
                 {answerArea}
               </div>
             </article>

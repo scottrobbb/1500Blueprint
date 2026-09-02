@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { AnswerMap, AnswerValue, ChoiceId, Section, TestModule } from "@/lib/sat/types";
 import type { PracticeModuleMeta } from "@/lib/sat/modules";
 import type { Highlight } from "./HighlightablePassage";
+import { promptHighlightKey } from "@/lib/sat/highlights";
 import { TestHeader } from "./TestHeader";
 import { PracticeBanner } from "./PracticeBanner";
 import { QuestionScreen } from "./QuestionScreen";
@@ -282,6 +283,10 @@ export function ModuleRunner({
           onAddHighlight={(h) => addHighlight(question.id, h)}
           onRemoveHighlight={(s, e) => removeHighlight(question.id, s, e)}
           onSetNote={(id, note) => setHighlightNote(question.id, id, note)}
+          promptHighlights={highlights[promptHighlightKey(question.id)] ?? []}
+          onAddPromptHighlight={(h) => addHighlight(promptHighlightKey(question.id), h)}
+          onRemovePromptHighlight={(s, e) => removeHighlight(promptHighlightKey(question.id), s, e)}
+          onSetPromptNote={(id, note) => setHighlightNote(promptHighlightKey(question.id), id, note)}
           calcOpen={calcOpen}
         />
 

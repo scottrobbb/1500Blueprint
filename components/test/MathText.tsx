@@ -189,6 +189,16 @@ function superscriptValue(value: string): string {
   return [...value].map((character) => SUPERSCRIPT_DIGITS[character] ?? character).join("");
 }
 
+// Highlighting maps a DOM text offset back onto the source string, which only
+// holds while the rendered output is that string. KaTeX emits accessible MathML
+// beside its visual HTML, so any math makes the offsets point at the wrong
+// characters; importer tables rewrite the text outright. Both fall back to
+// ordinary rendering.
+export function isHighlightableText(text: string): boolean {
+  if (!text.trim() || text.includes("@@ROW@@")) return false;
+  return parseMathSegments(text).every((segment) => segment.type === "text");
+}
+
 export function MathText({ children }: { children: string }) {
   return (
     <Fragment>
