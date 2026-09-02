@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { PlanCode } from "@/lib/auth/plans";
@@ -45,6 +46,10 @@ export function PlansPanel({
   visiblePlans?: readonly PlanCode[];
 }) {
   const [cadence, setCadence] = useState<BillingCadence>(initialCadence);
+  // Backing out of Stripe, or any billing failure, returns here rather than to
+  // the full plan comparison -- a single-tier landing page should not hand the
+  // reader the other tiers on the way back.
+  const returnTo = usePathname();
   const shows = (plan: PlanCode) => visiblePlans.includes(plan);
   // The billing term only changes a paid price, so it has nothing to switch on
   // a page showing Free alone.
@@ -97,6 +102,7 @@ export function PlansPanel({
           billingEnabled={billingEnabled}
           cadence={cadence}
           checkoutToken={checkoutTokens.core}
+          returnTo={returnTo}
         />
         ) : null}
         {shows("max") ? (
@@ -109,6 +115,7 @@ export function PlansPanel({
           billingEnabled={billingEnabled}
           cadence={cadence}
           checkoutToken={checkoutTokens.max}
+          returnTo={returnTo}
         />
         ) : null}
       </div>
@@ -126,6 +133,7 @@ function PriceCard({
   billingEnabled = false,
   cadence,
   checkoutToken,
+  returnTo,
 }: {
   tier: "free" | "core" | "max";
   name: string;
@@ -136,6 +144,7 @@ function PriceCard({
   billingEnabled?: boolean;
   cadence?: BillingCadence;
   checkoutToken?: string;
+  returnTo?: string;
 }) {
   const paid = tier !== "free";
   const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
@@ -177,6 +186,7 @@ function PriceCard({
                 <input type="hidden" name="plan" value={plan} />
                 <input type="hidden" name="cadence" value={cadence ?? "monthly"} />
                 <input type="hidden" name="checkoutToken" value={checkoutToken} />
+                <input type="hidden" name="returnTo" value={returnTo ?? ""} />
                 <button type="submit" className={styles.primaryAction}>
                   {current ? "Manage plan" : cta} <ArrowIcon />
                 </button>

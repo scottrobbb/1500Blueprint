@@ -11,10 +11,12 @@ export function CheckoutRedirect({
   plan,
   cadence,
   checkoutToken,
+  returnTo,
 }: {
   plan: BillablePlan;
   cadence: BillingCadence;
   checkoutToken: string;
+  returnTo: string;
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const submitted = useRef(false);
@@ -32,6 +34,7 @@ export function CheckoutRedirect({
       <input type="hidden" name="plan" value={plan} />
       <input type="hidden" name="cadence" value={cadence} />
       <input type="hidden" name="checkoutToken" value={checkoutToken} />
+      <input type="hidden" name="returnTo" value={returnTo} />
       <p className="text-sm text-navy/60" role="status">Taking you to secure checkout…</p>
       {/* Also the path for anyone whose browser blocks the automatic submit. */}
       <button

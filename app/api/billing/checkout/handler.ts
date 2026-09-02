@@ -7,6 +7,7 @@ import { isBillingCadence } from "@/lib/billing/offers";
 import type { CheckoutIntentClaim } from "@/lib/billing/workflow";
 import type { CheckoutCancelResult } from "@/lib/billing/checkout-intents";
 import { checkoutRequestToken, stripeCheckoutIdempotencyKey } from "@/lib/billing/workflow";
+import { billingReturnPath } from "@/lib/billing/return-path";
 import { isSameOriginRequest, readUrlEncodedForm, RequestBodyTooLargeError } from "@/lib/security/request";
 
 const MAX_FORM_BYTES = 16 * 1024;
@@ -55,7 +56,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
   return async function checkoutPost(request: Request): Promise<Response> {
     const baseUrl = deps.baseUrl(request.url);
     if (!isSameOriginRequest(request, baseUrl)) return new Response("Forbidden", { status: 403 });
-    if (!deps.billingEnabled()) return redirect(baseUrl, "/pricing?billing=unavailable");
+    if (!deps.billingEnabled()) return redirectToPath(baseUrl, "/pricing?billing=unavailable");
 
     // Tracks a reservation this request has claimed but not yet turned into a
     // real Stripe Checkout session, so the catch block below can release it on
@@ -72,12 +73,17 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
       );
     }
 
+    // The surface the student clicked from -- /pricing, /max, /free. Validated to
+    // an internal path so it can only ever point back into the app, and read
+    // before the try so the catch below can return them there too.
+    const returnPath = billingReturnPath(formData.get("returnTo"), "/pricing");
+
     try {
       const plan = formData.get("plan");
       const cadenceValue = formData.get("cadence") ?? "monthly";
-      if (!isBillablePlan(plan)) return redirect(baseUrl, "/pricing?billing=invalid");
+      if (!isBillablePlan(plan)) return redirect(baseUrl, returnPath, "invalid");
       if (!isBillingCadence(cadenceValue)) {
-        return redirect(baseUrl, "/pricing?billing=invalid");
+        return redirect(baseUrl, returnPath, "invalid");
       }
       const cadence = cadenceValue;
       const session = await deps.getSession();
@@ -86,17 +92,17 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         // pricing page, which made the student pick the same plan a second
         // time. /checkout re-posts this plan, so the intent survives logging
         // in, creating an account, and email verification.
-        const next = `/checkout?plan=${plan}&cadence=${cadence}`;
-        return redirect(baseUrl, `/account/login?next=${encodeURIComponent(next)}`);
+        const next = `/checkout?plan=${plan}&cadence=${cadence}&returnTo=${encodeURIComponent(returnPath)}`;
+        return redirectToPath(baseUrl, `/account/login?next=${encodeURIComponent(next)}`);
       }
 
       const account = await deps.findAccount(session.email);
-      if (!account) return redirect(baseUrl, "/account/claim");
-      if (account.status !== "active") return redirect(baseUrl, "/pricing?billing=account");
+      if (!account) return redirectToPath(baseUrl, "/account/claim");
+      if (account.status !== "active") return redirect(baseUrl, returnPath, "account");
       const rate = await deps.consumeRateLimit("stripe-checkout", account.id, { limit: 10, windowSeconds: 60 });
-      if (!rate.allowed) return redirect(baseUrl, "/pricing?billing=rate-limit");
+      if (!rate.allowed) return redirect(baseUrl, returnPath, "rate-limit");
       const requestToken = checkoutRequestToken(formData.get("checkoutToken"));
-      if (!requestToken) return redirect(baseUrl, "/pricing?billing=invalid");
+      if (!requestToken) return redirect(baseUrl, returnPath, "invalid");
       const livemode = deps.livemode();
       const subscriptionState = await deps.findSubscriptionState(account.id, livemode);
       const existingCustomer = subscriptionState.activeCustomerId;
@@ -105,7 +111,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         subscriptionState.hasTrackedSubscriptions
         && subscriptionState.trackedCustomerId !== account.stripeCustomerId
       ) {
-        return redirect(baseUrl, "/pricing?billing=legacy");
+        return redirect(baseUrl, returnPath, "legacy");
       }
       if (existingCustomer) {
         const result = await deps.changePlan(account.id, plan, cadence);
@@ -115,13 +121,13 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
             : result.kind === "downgrade"
               ? "downgrade"
               : "change-cancelled";
-          return redirect(baseUrl, `/pricing?billing=${state}`);
+          return redirect(baseUrl, returnPath, state);
         }
-        const portal = await deps.createPortal(existingCustomer, `${baseUrl}/pricing`);
+        const portal = await deps.createPortal(existingCustomer, `${baseUrl}${returnPath}`);
         return NextResponse.redirect(portal.url, 303);
       }
       if (await deps.hasUntrackedBilling(account, subscriptionState.hasTrackedSubscriptions)) {
-        return redirect(baseUrl, "/pricing?billing=legacy");
+        return redirect(baseUrl, returnPath, "legacy");
       }
 
       let intent = await deps.claimIntent({
@@ -150,7 +156,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
           // The reservation's own plan actually finished checkout already (a
           // narrow race with the webhook); don't paper over an existing paid
           // subscription by silently starting a different one.
-          return redirect(baseUrl, "/pricing?billing=managed");
+          return redirect(baseUrl, returnPath, "managed");
         }
         if (cancelResult === "missing") {
           // No Stripe session was ever created for it (setup failed before
@@ -162,7 +168,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
       if (intent.decision === "ready" && intent.checkoutUrl) {
         return NextResponse.redirect(intent.checkoutUrl, 303);
       }
-      if (intent.decision === "busy") return redirect(baseUrl, "/pricing?billing=checkout-active");
+      if (intent.decision === "busy") return redirect(baseUrl, returnPath, "checkout-active");
       claimedReservation = { userId: account.id, livemode, reservationId: intent.reservationId };
 
       const idempotencyKey = stripeCheckoutIdempotencyKey(intent.reservationId);
@@ -188,7 +194,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         metadata,
         subscription_data: { metadata },
         success_url: `${baseUrl}/api/billing/confirm?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/api/billing/checkout/cancel?reservation_id=${encodeURIComponent(intent.reservationId)}`,
+        cancel_url: `${baseUrl}/api/billing/checkout/cancel?reservation_id=${encodeURIComponent(intent.reservationId)}&return_to=${encodeURIComponent(returnPath)}`,
         expires_at: expiresAt,
       }, idempotencyKey);
 
@@ -228,12 +234,18 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
           });
         }
       }
-      return redirect(baseUrl, isPaymentFailure(error) ? "/pricing?billing=payment" : "/pricing?billing=error");
+      return redirect(baseUrl, returnPath, isPaymentFailure(error) ? "payment" : "error");
     }
   };
 }
 
-function redirect(baseUrl: string, path: string): Response {
+function redirect(baseUrl: string, returnPath: string, state: string): Response {
+  const url = new URL(returnPath, baseUrl);
+  url.searchParams.set("billing", state);
+  return NextResponse.redirect(url, 303);
+}
+
+function redirectToPath(baseUrl: string, path: string): Response {
   return NextResponse.redirect(new URL(path, baseUrl), 303);
 }
 

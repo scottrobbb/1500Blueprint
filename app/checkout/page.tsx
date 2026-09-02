@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { billingCheckoutEnabled, isBillablePlan } from "@/lib/billing/config";
 import { isBillingCadence } from "@/lib/billing/offers";
+import { billingReturnPath } from "@/lib/billing/return-path";
 import { CheckoutRedirect } from "./CheckoutRedirect";
 
 export const metadata = { title: "Checkout | 1500 Blueprint" };
@@ -18,9 +19,12 @@ export const metadata = { title: "Checkout | 1500 Blueprint" };
 export default async function CheckoutPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string; cadence?: string }>;
+  searchParams: Promise<{ plan?: string; cadence?: string; returnTo?: string }>;
 }) {
-  const { plan, cadence: requestedCadence } = await searchParams;
+  const { plan, cadence: requestedCadence, returnTo: requestedReturnTo } = await searchParams;
+  // Where a cancelled or failed checkout should land. Validated to an internal
+  // path, so it survives the round trip without becoming an open redirect.
+  const returnTo = billingReturnPath(requestedReturnTo ?? null, "/pricing");
 
   // Only the internal plan codes are accepted. The Stripe price is resolved
   // server-side in the checkout route from this code, never from the URL, so a
@@ -33,12 +37,13 @@ export default async function CheckoutPage({
   // the shape the rest of the app uses.
   const session = await getSession();
   if (!session) {
-    redirect(`/account/login?next=${encodeURIComponent(`/checkout?plan=${plan}&cadence=${cadence}`)}`);
+    const resume = `/checkout?plan=${plan}&cadence=${cadence}&returnTo=${encodeURIComponent(returnTo)}`;
+    redirect(`/account/login?next=${encodeURIComponent(resume)}`);
   }
 
   return (
     <main className="grid min-h-dvh place-items-center bg-ice px-4">
-      <CheckoutRedirect plan={plan} cadence={cadence} checkoutToken={randomUUID()} />
+      <CheckoutRedirect plan={plan} cadence={cadence} checkoutToken={randomUUID()} returnTo={returnTo} />
     </main>
   );
 }
