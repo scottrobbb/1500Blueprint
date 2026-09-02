@@ -140,8 +140,67 @@ test("a logged-out paid click resumes at checkout instead of the pricing page", 
   const location = new URL(response.headers.get("location") ?? "");
   assert.equal(response.status, 303);
   assert.equal(location.pathname, "/account/login");
-  assert.equal(location.searchParams.get("next"), "/checkout?plan=max&cadence=three_month");
+  assert.equal(
+    location.searchParams.get("next"),
+    "/checkout?plan=max&cadence=three_month&returnTo=%2Fpricing",
+  );
   assert.equal(checkoutCalls, 0);
+});
+
+test("backing out of Stripe returns to the page the plan was clicked from", async () => {
+  let created: Parameters<CheckoutHandlerDeps["createCheckout"]>[0] | null = null;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    createCheckout: async (params) => {
+      created = params;
+      return { id: "cs_test_return", url: "https://checkout.stripe.com/c/pay/cs_test_return" };
+    },
+  }));
+
+  await handler(formRequest("/api/billing/checkout", {
+    plan: "max",
+    cadence: "monthly",
+    checkoutToken: "bcbcbcbc-bcbc-4cbc-8cbc-bcbcbcbcbcbc",
+    returnTo: "/max",
+  }));
+
+  // Stripe's Back link carries the origin page, so a reader who arrived on the
+  // single-tier landing page is not handed the full comparison on the way back.
+  const params = created as unknown as Parameters<CheckoutHandlerDeps["createCheckout"]>[0];
+  assert.match(params.cancel_url, /return_to=%2Fmax/);
+});
+
+test("a billing failure returns to the origin page rather than the pricing page", async () => {
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    consumeRateLimit: async () => ({ allowed: false }),
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max",
+    cadence: "monthly",
+    checkoutToken: "cbcbcbcb-cbcb-4bcb-8bcb-cbcbcbcbcbcb",
+    returnTo: "/max",
+  }));
+
+  const location = new URL(response.headers.get("location") ?? "");
+  assert.equal(location.pathname, "/max");
+  assert.equal(location.searchParams.get("billing"), "rate-limit");
+});
+
+test("an off-site returnTo cannot redirect away from the app", async () => {
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    consumeRateLimit: async () => ({ allowed: false }),
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max",
+    cadence: "monthly",
+    checkoutToken: "dbdbdbdb-dbdb-4bdb-8bdb-dbdbdbdbdbdb",
+    returnTo: "//evil.example/steal",
+  }));
+
+  const location = new URL(response.headers.get("location") ?? "");
+  assert.equal(location.host, "app.example");
+  assert.equal(location.pathname, "/pricing");
 });
 
 test("a logged-out click on an unknown plan never reaches the resume page", async () => {
@@ -345,7 +404,7 @@ test("checkout claims before Stripe and uses the durable reservation for metadat
   );
   assert.equal(
     params.cancel_url,
-    `${APP_URL}/api/billing/checkout/cancel?reservation_id=${RESERVATION_ID}`,
+    `${APP_URL}/api/billing/checkout/cancel?reservation_id=${RESERVATION_ID}&return_to=%2Fpricing`,
   );
   assert.deepEqual(stored, {
     userId: ACCOUNT.id,
@@ -502,7 +561,7 @@ test("the Checkout cancel return releases only the authenticated account reserva
   }));
 
   const response = await handler(new Request(
-    `${APP_URL}/api/billing/checkout/cancel?reservation_id=${RESERVATION_ID}`,
+    `${APP_URL}/api/billing/checkout/cancel?reservation_id=${RESERVATION_ID}&return_to=%2Fpricing`,
   ));
 
   assert.equal(response.status, 303);
