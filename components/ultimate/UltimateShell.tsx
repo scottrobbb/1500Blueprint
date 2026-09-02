@@ -14,6 +14,7 @@ import {
   DrillsIcon,
   FlameIcon,
   HistoryIcon,
+  MailIcon,
   ShieldIcon,
   TestsIcon,
 } from "@/components/shell/icons";
@@ -64,6 +65,11 @@ const navigation: { title?: string; items: NavItem[] }[] = [
 // The public server invite. Kept here so it is visible next to the rest of the
 // rail configuration rather than inlined in the markup.
 const DISCORD_INVITE_URL = "https://discord.gg/H3FF9P4TBP";
+// Gmail's compose URL rather than a mailto:, so the link opens a Gmail draft
+// with the address filled in instead of whatever mail client the machine has
+// registered as its default handler.
+const SUPPORT_EMAIL = "support@1500blueprint.com";
+const SUPPORT_COMPOSE_URL = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(SUPPORT_EMAIL)}`;
 
 export function UltimateShell({
   stats,
@@ -161,6 +167,17 @@ export function UltimateShell({
             <strong className="text-xs font-bold">Upgrade</strong>
           </Link>
         ) : null}
+        <a
+          href={SUPPORT_COMPOSE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => setMenuOpen(false)}
+          title={`Email ${SUPPORT_EMAIL}`}
+          className="mb-2.5 flex min-h-11 items-center gap-2 rounded-xl px-3 text-white/70 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          <MailIcon className="h-4 w-4" />
+          <strong className="text-xs font-bold">Email support</strong>
+        </a>
         <div className="mb-2 grid grid-cols-2 divide-x divide-white/10 rounded-xl bg-white/[0.06] py-2.5">
           <div className="grid grid-rows-[1rem_1rem] gap-0.5 px-3">
             <span className="flex h-4 items-center gap-1 text-xs font-bold leading-4 text-gold">
