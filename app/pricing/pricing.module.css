@@ -308,6 +308,15 @@
   gap: 16px;
   grid-template-columns: repeat(3,minmax(0,1fr));
 }
+/* A single-tier landing page puts one card in a three-column grid, which
+   strands it in the left column while the cadence toggle and footnote above
+   and below it are centred. One column at a normal card's width, centred in
+   the section, lines the three up. The stacked rules below 800px come later in
+   this file and still win, so narrow screens keep their full-width card. */
+.planGridSingle {
+  grid-template-columns: minmax(0,382px);
+  justify-content: center;
+}
 .priceCard {
   background: #000;
   backface-visibility: hidden;
