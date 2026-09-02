@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { parseUnderlineMarkup } from "@/lib/sat/formattedText";
+import { parseUnderlineMarkup, unescapeDollarSigns } from "@/lib/sat/formattedText";
 import type { Highlight } from "@/lib/sat/highlights";
 import { TrashIcon, UnderlineIcon, NoteIcon } from "./icons";
 
@@ -142,7 +142,7 @@ export function HighlightablePassage({
         onMouseUp={handleSelection}
         className={`whitespace-pre-line font-serif text-[17px] leading-[1.7] text-exam-ink ${className ?? ""}`}
       >
-        {renderSegments(text, highlights, openNote)}
+        {renderSegments(unescapeDollarSigns(text), highlights, openNote)}
       </div>
 
       {menu && (
