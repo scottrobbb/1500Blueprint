@@ -10,6 +10,7 @@ import { reportServerError } from "@/lib/observability/server";
 
 type ProfileInput = {
   testDate?: unknown;
+  finishBy?: unknown;
   currentScore?: unknown;
   goalScore?: unknown;
   studyDays?: unknown;
@@ -118,6 +119,8 @@ export async function PUT(req: NextRequest) {
   }
 
   const testDate = date(input.testDate);
+  const finishByProvided = input.finishBy !== null && input.finishBy !== undefined && input.finishBy !== "";
+  const finishBy = finishByProvided ? date(input.finishBy) : null;
   const currentScore = score(input.currentScore, false);
   const goalScore = score(input.goalScore, true);
   const studyDays = days(input.studyDays);
@@ -129,6 +132,9 @@ export async function PUT(req: NextRequest) {
     || (input.currentScore !== null && input.currentScore !== undefined && input.currentScore !== "" && !currentScore)
   ) {
     return NextResponse.json({ error: "Check your test date, scores, study time, and available days." }, { status: 400 });
+  }
+  if (finishByProvided && (!finishBy || finishBy > testDate)) {
+    return NextResponse.json({ error: "Pick a finish date between today and your SAT date." }, { status: 400 });
   }
 
   let existingProfile: Awaited<ReturnType<typeof getStudyPlannerProfile>>;
@@ -150,6 +156,7 @@ export async function PUT(req: NextRequest) {
   const { error } = await supabaseAdmin().from("study_planner_profiles").upsert({
     email: auth.email,
     test_date: testDate,
+    finish_by: finishBy,
     current_score: currentScore,
     score_updated_at: scoreUpdatedAt,
     goal_score: goalScore,

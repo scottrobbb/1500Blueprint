@@ -312,6 +312,111 @@ test("reserves a weak skill for review on the first study day after a full test"
   assert.equal(review?.completed, false);
 });
 
+test("closes the plan window on the finish-by date instead of the SAT date", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ testDate: "2026-10-01", finishBy: "2026-08-23" }),
+  }));
+
+  assert.equal(plan.finishBy, "2026-08-23");
+  assert.equal(plan.endsOn, "2026-08-23");
+  assert.equal(plan.daysToTest, 42);
+  assert.ok(plan.tasks.every((task) => task.date <= "2026-08-23"));
+});
+
+test("leaves the pace alone when the finish-by date has room for the backlog", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ testDate: "2026-10-01", finishBy: "2026-09-20", studyDays: [1, 3, 5] }),
+  }));
+
+  assert.equal(plan.compression.slotsPerDay, 1);
+  assert.deepEqual(plan.compression.studyDays, [1, 3, 5]);
+  assert.deepEqual(plan.compression.addedStudyDays, []);
+  assert.equal(plan.compression.dailyMinutes, 45);
+  assert.equal(plan.compression.onTrack, true);
+});
+
+test("borrows weekend days before stacking more work onto a study day", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ testDate: "2026-10-01", finishBy: "2026-08-27", studyDays: [1, 3] }),
+  }));
+
+  assert.ok(plan.compression.addedStudyDays.includes(6));
+  assert.ok(plan.compression.studyDays.length > 2);
+  assert.ok(plan.tasks.some((task) => task.date === "2026-08-22"));
+});
+
+test("stacks blocks and raises the daily budget when the finish-by date is tight", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({
+      testDate: "2026-10-01",
+      finishBy: "2026-08-22",
+      studyDays: [0, 1, 2, 3, 4, 5, 6],
+      practiceTestDay: 0,
+    }),
+  }));
+  const compression = plan.compression;
+  const perDay = new Map<string, number>();
+  for (const task of plan.tasks) perDay.set(task.date, (perDay.get(task.date) ?? 0) + 1);
+
+  assert.ok(compression.slotsPerDay > 1);
+  assert.ok(compression.dailyMinutes > 45);
+  assert.deepEqual(compression.addedStudyDays, []);
+  assert.ok(Math.max(...perDay.values()) > 1);
+  assert.equal(new Set(plan.tasks.map((task) => task.skill).filter(Boolean)).size,
+    plan.tasks.filter((task) => task.skill).length);
+});
+
+test("keeps a compressed day inside the budget the compression asked for", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ testDate: "2026-10-01", finishBy: "2026-08-24", practiceTestDay: 0 }),
+  }));
+  const minutesByDate = new Map<string, number>();
+  for (const task of plan.tasks.filter((candidate) => candidate.kind !== "full_test")) {
+    minutesByDate.set(task.date, (minutesByDate.get(task.date) ?? 0) + task.estimatedMinutes);
+  }
+
+  assert.ok([...minutesByDate.values()].every((minutes) => minutes <= plan.compression.dailyMinutes));
+});
+
+test("reports that the backlog cannot fit when the finish-by date is unreachable", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ testDate: "2026-10-01", finishBy: "2026-08-21", studyDays: [1, 2, 3, 4, 5] }),
+    courses: Array.from({ length: 40 }, (_, index) => courseWithLesson(`Lesson ${index}`, 15, null)),
+  }));
+
+  assert.equal(plan.compression.onTrack, false);
+  assert.equal(plan.compression.slotsPerDay, 4);
+});
+
+test("empties the week once the finish-by date has gone by", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ testDate: "2026-10-01", finishBy: "2026-08-19", currentScore: 1300 }),
+  }));
+
+  assert.equal(plan.startsOn, "2026-08-20");
+  assert.equal(plan.endsOn, "2026-08-20");
+  assert.deepEqual(plan.tasks, []);
+  assert.equal(plan.compression.finishBy, null);
+});
+
+test("ignores a finish-by date that sits after the SAT date", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ testDate: "2026-08-24", finishBy: "2026-09-30" }),
+  }));
+
+  assert.equal(plan.finishBy, null);
+  assert.equal(plan.endsOn, "2026-08-24");
+});
+
+test("carries the settings the plan was built from", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ studyDays: [3, 1, 5], dailyMinutes: 60, practiceTestDay: 2 }),
+  }));
+
+  assert.deepEqual(plan.settings, { studyDays: [1, 3, 5], dailyMinutes: 60, practiceTestDay: 2 });
+  assert.equal(plan.customizedAt, null);
+});
+
 function input(overrides: Partial<GenerateStudyPlanInput> = {}): GenerateStudyPlanInput {
   return {
     email: "student@example.com",
@@ -342,6 +447,7 @@ function input(overrides: Partial<GenerateStudyPlanInput> = {}): GenerateStudyPl
 function profile(overrides: Partial<GenerateStudyPlanInput["profile"]> = {}): GenerateStudyPlanInput["profile"] {
   return {
     testDate: "2026-10-01",
+    finishBy: null,
     currentScore: null,
     scoreUpdatedAt: null,
     goalScore: 1500,

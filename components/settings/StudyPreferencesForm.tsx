@@ -31,6 +31,9 @@ function PlannerForm({ initialProfile }: { initialProfile: StudyPlannerProfile |
 
   const [profile, setProfile] = useState(initialProfile);
   const [testDate, setTestDate] = useState(validSavedDate);
+  const [finishBy, setFinishBy] = useState(
+    initialProfile?.finishBy && initialProfile.finishBy >= today ? initialProfile.finishBy : "",
+  );
   const [currentScore, setCurrentScore] = useState(initialProfile?.currentScore?.toString() ?? "");
   const [goalScore, setGoalScore] = useState(initialProfile?.goalScore?.toString() ?? "1500");
   const [studyDays, setStudyDays] = useState<number[]>(initialProfile?.studyDays ?? [1, 2, 3, 4, 5]);
@@ -64,8 +67,11 @@ function PlannerForm({ initialProfile }: { initialProfile: StudyPlannerProfile |
       }
     }
 
-    if (stepToValidate === 1 && studyDays.length === 0) {
-      return "Choose at least one study day.";
+    if (stepToValidate === 1) {
+      if (studyDays.length === 0) return "Choose at least one study day.";
+      if (finishBy && (finishBy < today || finishBy > testDate)) {
+        return "Your finish date has to fall between today and your SAT date.";
+      }
     }
 
     return null;
@@ -105,6 +111,7 @@ function PlannerForm({ initialProfile }: { initialProfile: StudyPlannerProfile |
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           testDate,
+          finishBy: finishBy || null,
           currentScore: currentScore === "" ? null : Number(currentScore),
           goalScore: Number(goalScore),
           studyDays,
@@ -217,6 +224,34 @@ function PlannerForm({ initialProfile }: { initialProfile: StudyPlannerProfile |
               </div>
             </fieldset>
 
+            <label className="mt-8 block">
+              <span className="flex items-baseline justify-between gap-3">
+                <span className="text-sm font-extrabold text-navy">Finish studying by</span>
+                {finishBy ? (
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={() => setFinishBy("")}
+                    className="text-xs font-bold text-brand-600 transition-colors hover:text-brand disabled:opacity-50"
+                  >
+                    Use my SAT date
+                  </button>
+                ) : null}
+              </span>
+              <input
+                type="date"
+                min={today}
+                max={testDate}
+                value={finishBy}
+                disabled={saving}
+                onChange={(event) => setFinishBy(event.target.value)}
+                className="mt-3 block h-11 w-full rounded-xl border-2 border-navy/10 bg-white px-4 text-sm font-semibold text-ink outline-none focus:border-brand/60 focus:ring-2 focus:ring-brand/10 disabled:bg-haze"
+              />
+              <span className="mt-2 block text-xs font-semibold text-navy/45">
+                Set a date before your SAT and the plan compresses so every required lesson and skill lands before it.
+              </span>
+            </label>
+
             <fieldset className="mt-8">
               <legend className="text-sm font-extrabold text-navy">Which days can you study?</legend>
               <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-7">
@@ -262,6 +297,7 @@ function PlannerForm({ initialProfile }: { initialProfile: StudyPlannerProfile |
               <h3 className="text-sm font-extrabold text-navy">Review</h3>
               <dl className="mt-3 divide-y-2 divide-navy/[0.07] border-y-2 border-navy/[0.07]">
                 <ReviewRow label="SAT date" value={formatShortDate(testDate)} />
+                <ReviewRow label="Finish studying by" value={finishBy ? formatShortDate(finishBy) : "SAT date"} />
                 <ReviewRow label="Score" value={`${currentScore || "No baseline"} → ${goalScore}`} />
                 <ReviewRow label="Study schedule" value={`${dailyMinutes} min · ${studyDays.map((day) => DAY_LABELS[day]).join(", ")}`} />
                 <ReviewRow label="Full-test day" value={DAY_LABELS[practiceTestDay]} />
