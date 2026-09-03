@@ -130,15 +130,16 @@ ZAPIER_FREE_REGISTER_WEBHOOK_URL=https://hooks.zapier.com/hooks/catch/...
 
 The proxy stores `fbclid` and `utm_medium` from the `/free` landing URL in an
 HttpOnly cookie; a later visit without those parameters leaves the stored click
-alone. The signup action parks them against the email address, because the
-verification email is routinely opened on another device, and
-`/account/confirm` posts `{ name, email, fbclid, utm_medium }` once the account
-is verified and active. The webhook never fires on a CTA click or an
-unconfirmed signup, `free_signup_attribution.notified_at` makes it at most one
-event per email address, and a registration that never passed through `/free`
-sends nothing. Leaving the variable unset disables the call; delivery failures
-are logged as `marketing.free_registration.notice_failed` and never affect
-sign-in.
+alone. The signup action posts `{ name, email, fbclid, utm_medium }` once the
+account is created and the verification email has been sent, which is the point
+the registration completes on the site.
+
+The webhook never fires on a CTA click or on a signup that failed validation,
+and a registration that never passed through `/free` sends nothing.
+`free_signup_attribution.notified_at` is claimed before the request goes out, so
+a resubmitted signup form produces at most one event per email address. Leaving
+the variable unset disables the call; delivery failures are logged as
+`marketing.free_registration.notice_failed` and never affect registration.
 
 ## Explanation editors
 
