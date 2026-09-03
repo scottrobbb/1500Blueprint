@@ -3,6 +3,14 @@ import { jwtVerify, type JWTPayload } from "jose";
 import { canonicalHostRedirect, SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isPasswordAuthEnabled } from "@/lib/auth/password";
+import {
+  FREE_ATTRIBUTION_COOKIE,
+  FREE_ATTRIBUTION_MAX_AGE,
+  mergeAttribution,
+  parseAttributionCookie,
+  readAttributionParams,
+  serializeAttribution,
+} from "@/lib/marketing/attribution";
 import { updateSession as updatePasswordSession } from "@/utils/supabase/proxy";
 import { sessionSecret } from "@/lib/auth/session-secret";
 import { enforceProtectedContentRead } from "@/lib/security/protected-content";
@@ -11,11 +19,44 @@ import { enforceProtectedContentRead } from "@/lib/security/protected-content";
 const PUBLIC_PATHS = ["/", "/login", "/pricing", "/free", "/max", "/account", "/robots.txt", "/sitemap.xml"];
 // The admin CMS is gated to allowlisted admin emails (ADMIN_EMAILS).
 const ADMIN_PREFIX = "/admin";
+const FREE_LANDING_PREFIX = "/free";
 
 function isPublic(pathname: string): boolean {
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname === "/api/billing/checkout" || pathname === "/api/billing/webhook") return true;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
+function isFreeLanding(pathname: string): boolean {
+  return pathname === FREE_LANDING_PREFIX || pathname.startsWith(`${FREE_LANDING_PREFIX}/`);
+}
+
+// Meta ad attribution for the /free landing page. The parameters ride in on
+// the landing URL and are needed much later, when a registration completes, so
+// they are parked in a cookie here: a Server Component cannot set one during
+// render, and this is the only place every /free request already passes
+// through. Nothing about the page changes -- no markup, no client JavaScript,
+// and the cookie is HttpOnly, so it stays out of the document entirely.
+function withFreeAttribution(request: NextRequest, response: NextResponse): NextResponse {
+  if (!isFreeLanding(request.nextUrl.pathname)) return response;
+
+  const existing = parseAttributionCookie(request.cookies.get(FREE_ATTRIBUTION_COOKIE)?.value);
+  const { attribution, changed } = mergeAttribution(
+    existing,
+    readAttributionParams(request.nextUrl.searchParams),
+  );
+  // A visit that carries no parameters contributes nothing, so the stored
+  // click survives untouched.
+  if (!changed) return response;
+
+  response.cookies.set(FREE_ATTRIBUTION_COOKIE, serializeAttribution(attribution), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: request.nextUrl.protocol === "https:",
+    path: "/",
+    maxAge: FREE_ATTRIBUTION_MAX_AGE,
+  });
+  return response;
 }
 
 function isAdminPath(pathname: string): boolean {
@@ -52,7 +93,9 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const publicPath = isPublic(pathname);
-  if (publicPath && !pathname.startsWith("/account")) return NextResponse.next();
+  if (publicPath && !pathname.startsWith("/account")) {
+    return withFreeAttribution(request, NextResponse.next());
+  }
 
   const legacyPayload = await sessionPayload(request);
   let email = typeof legacyPayload?.sub === "string" ? legacyPayload.sub : null;

@@ -44,6 +44,7 @@ declare
     'explanation_edit_log',
     'flashcard_cards',
     'flashcard_sets',
+    'free_signup_attribution',
     'login_tokens',
     'module_attempts',
     'modules',
@@ -73,6 +74,7 @@ declare
   service_only_functions constant text[] := array[
     'add_xp',
     'claim_billing_checkout_intent',
+    'claim_free_registration_notice',
     'community_resolve_handles',
     'community_top_members',
     'consume_ai_submission',
@@ -86,6 +88,7 @@ declare
     'increment_post_views',
     'mark_billing_checkout_session',
     'record_drill_award',
+    'record_free_signup_attribution',
     'record_login',
     'record_objective_drill_answer',
     'record_password_login',

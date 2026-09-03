@@ -119,6 +119,27 @@ For Google Workspace domain-wide delegation, also set
 not discard the Supabase call record; the admin UI surfaces the sync warning so
 the Meet link can be supplied manually.
 
+## Free landing conversions
+
+Registrations that begin on `/free` are reported to Meta through a Zapier
+webhook. Set the catch hook URL and nothing else is required:
+
+```text
+ZAPIER_FREE_REGISTER_WEBHOOK_URL=https://hooks.zapier.com/hooks/catch/...
+```
+
+The proxy stores `fbclid` and `utm_medium` from the `/free` landing URL in an
+HttpOnly cookie; a later visit without those parameters leaves the stored click
+alone. The signup action parks them against the email address, because the
+verification email is routinely opened on another device, and
+`/account/confirm` posts `{ name, email, fbclid, utm_medium }` once the account
+is verified and active. The webhook never fires on a CTA click or an
+unconfirmed signup, `free_signup_attribution.notified_at` makes it at most one
+event per email address, and a registration that never passed through `/free`
+sends nothing. Leaving the variable unset disables the call; delivery failures
+are logged as `marketing.free_registration.notice_failed` and never affect
+sign-in.
+
 ## Explanation editors
 
 Admins manage scoped explanation access at `/ultimate/admin/staff`.

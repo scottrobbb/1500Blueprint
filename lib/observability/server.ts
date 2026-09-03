@@ -5,7 +5,7 @@ import { safeErrorMetadata } from "./error-metadata";
 type ErrorContext = {
   correlationId?: string;
   method?: string;
-  provider?: "anthropic" | "stripe" | "supabase" | "resend" | "next";
+  provider?: "anthropic" | "stripe" | "supabase" | "resend" | "next" | "zapier";
   route?: string;
   source?: string;
   expectedLivemode?: boolean;
