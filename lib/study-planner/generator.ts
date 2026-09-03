@@ -223,9 +223,11 @@ export function generateStudyPlan(input: GenerateStudyPlanInput): StudyPlan {
 
   function addTask(task: Omit<StudyPlanTask, "id" | "position" | "progress" | "completed">) {
     const position = tasks.length + 1;
+    const id = `${planId}-task-${position}`;
     tasks.push({
       ...task,
-      id: `${planId}-task-${position}`,
+      id,
+      href: withPlannerTaskId(task.href, task.kind, id),
       position,
       progress: progress(0, task.targetCount),
       completed: false,
@@ -758,6 +760,23 @@ function questionTarget(candidate: SkillCandidate, availableMinutes: number, rev
     ? candidate.available
     : candidate.available - candidate.attempted;
   return Math.min(timeLimit, inventory);
+}
+
+// A question set belongs to the task that handed it out, and the runner can
+// only pin it if the task id reaches it -- which happens through the link and
+// nowhere else. Stored plans built before this are missing the parameter, so
+// this runs on read-back too, hence setting rather than appending.
+export function withPlannerTaskId(
+  href: string,
+  kind: StudyPlanTaskKind,
+  taskId: string,
+): string {
+  if (kind !== "question_bank" && kind !== "review") return href;
+  const [path, query = ""] = href.split("?");
+  const params = new URLSearchParams(query);
+  if (params.get("task") === taskId) return href;
+  params.set("task", taskId);
+  return `${path}?${params.toString()}`;
 }
 
 function questionBankHref(

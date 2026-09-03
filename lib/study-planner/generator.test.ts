@@ -7,7 +7,7 @@ import type {
   ReadingWritingBankCatalog,
   ReadingWritingSkillMetric,
 } from "@/lib/question-bank/reading-writing";
-import { generateStudyPlan, type GenerateStudyPlanInput } from "./generator";
+import { generateStudyPlan, withPlannerTaskId, type GenerateStudyPlanInput } from "./generator";
 
 const NOW = new Date("2026-08-21T02:30:00.000Z"); // Aug 20 in America/New_York.
 
@@ -193,6 +193,42 @@ test("pairs a lesson with its real linked practice skill and emits a validated e
   assert.equal(url.searchParams.get("difficulty"), "easy");
   assert.ok((sameDayPractice?.targetCount ?? 0) >= 5);
   assert.ok((sameDayPractice?.targetCount ?? 31) <= 30);
+});
+
+// The runner pins the set a task hands out against the task id, and the link
+// is the only thing that carries it there. A lesson or a full test has no set
+// to pin, so they are left alone.
+test("a question-set link carries its task id into the runner", () => {
+  const plan = generateStudyPlan(input({
+    profile: profile({ currentScore: 1100, dailyMinutes: 60 }),
+    mathCatalog: mathCatalog([
+      mathSkill("Linear equations", { accuracy: 30, attempts: 10, attempted: 5 }),
+    ]),
+    readingWritingCatalog: readingCatalog([]),
+    courses: [courseWithLesson("Solving linear equations", 15, null)],
+    testAttempts: [attempt({ createdAt: "2026-08-19T16:00:00.000Z" })],
+  }));
+
+  assert.ok(plan.tasks.some((task) => task.kind === "question_bank"));
+  for (const task of plan.tasks) {
+    const carried = new URL(task.href, "https://example.com").searchParams.get("task");
+    const shouldCarry = task.kind === "question_bank" || task.kind === "review";
+    assert.equal(carried, shouldCarry ? task.id : null, `${task.kind} ${task.href}`);
+  }
+});
+
+test("adding the task id to a link is idempotent and leaves other links alone", () => {
+  const practice = "/ultimate/bank/math/practice?skills=Linear%20equations&from=planner";
+  const once = withPlannerTaskId(practice, "question_bank", "plan-1-task-3");
+  const twice = withPlannerTaskId(once, "question_bank", "plan-1-task-3");
+
+  assert.equal(new URL(once, "https://example.com").searchParams.get("task"), "plan-1-task-3");
+  assert.equal(twice, once);
+  assert.equal(withPlannerTaskId("/ultimate/tests", "full_test", "plan-1-task-1"), "/ultimate/tests");
+  assert.equal(
+    withPlannerTaskId("/ultimate/courses/a/b", "course_lesson", "plan-1-task-2"),
+    "/ultimate/courses/a/b",
+  );
 });
 
 test("keeps ordinary study days within the student's time budget", () => {
