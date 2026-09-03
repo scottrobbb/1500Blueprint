@@ -22,6 +22,11 @@ import {
   type AuthWorkflowState,
 } from "@/lib/auth/password-workflows";
 import { getLegacySession } from "@/lib/auth/session";
+import {
+  FREE_ATTRIBUTION_COOKIE,
+  parseAttributionCookie,
+} from "@/lib/marketing/attribution";
+import { recordFreeSignupAttribution } from "@/lib/marketing/free-registration";
 import { validateProfileName } from "@/lib/settings/profile-name";
 import { reportServerError } from "@/lib/observability/server";
 import { clientAddressFromHeaders } from "@/lib/security/request";
@@ -84,7 +89,15 @@ export async function signUpWithPassword(
     };
   }
 
-  return createPasswordAccount(formData, null);
+  const result = await createPasswordAccount(formData, null);
+  // Success here means the auth user exists and the verification email is out.
+  // The account is not registered yet -- that happens at /account/confirm --
+  // but this is the last moment the /free cookie is in reach, since the
+  // confirmation is routinely opened on another device.
+  if (result.status === "success") {
+    await captureFreeSignupAttribution(normalizeEmail(formData.get("email")));
+  }
+  return result;
 }
 
 export async function claimPasswordAccount(
@@ -311,6 +324,23 @@ async function createPasswordAccount(
   );
   if (result.kind === "redirect") redirect(result.path);
   return result.state;
+}
+
+// Attribution is advisory: a failure here costs one Meta conversion event and
+// must never surface on, or hold up, a registration that otherwise succeeded.
+async function captureFreeSignupAttribution(email: string): Promise<void> {
+  try {
+    const attribution = parseAttributionCookie(
+      (await cookies()).get(FREE_ATTRIBUTION_COOKIE)?.value,
+    );
+    if (!attribution) return;
+    await recordFreeSignupAttribution(email, attribution);
+  } catch (error) {
+    reportServerError("marketing.free_signup_attribution.failed", error, {
+      provider: "supabase",
+      source: "signUpWithPassword",
+    });
+  }
 }
 
 function accountBaseUrl(): string {
