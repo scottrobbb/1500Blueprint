@@ -14,8 +14,13 @@ export type FreeRegistrationNotice = {
 
 export type FreeRegistrationPayload = {
   name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   fbclid: string | null;
+  // Meta's _fbc value for the same click, alongside the raw id rather than
+  // instead of it.
+  fbc: string | null;
   utm_medium: string | null;
 };
 
@@ -62,11 +67,15 @@ export async function runFreeRegistrationNotice(
   }
   if (!claimed) return "already-sent";
 
+  const { first, last } = splitName(notice.name);
   try {
     await dependencies.post(url, {
       name: notice.name,
+      first_name: first,
+      last_name: last,
       email: notice.email,
       fbclid: claimed.fbclid,
+      fbc: claimed.fbc,
       utm_medium: claimed.utm_medium,
     });
   } catch (error) {
@@ -78,4 +87,14 @@ export async function runFreeRegistrationNotice(
   }
 
   return "sent";
+}
+
+// Meta matches first and last name as separate fields, while the signup form
+// collects one display name. The leading token is the first name and whatever
+// follows is the last, so a middle name stays with the surname rather than
+// being dropped; a single-token name simply has no last name.
+export function splitName(name: string): { first: string; last: string } {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  return { first: parts[0], last: parts.slice(1).join(" ") };
 }

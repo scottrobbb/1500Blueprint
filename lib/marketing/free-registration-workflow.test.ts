@@ -3,14 +3,17 @@ import test from "node:test";
 import type { FreeAttribution } from "./attribution";
 import {
   runFreeRegistrationNotice,
+  splitName,
   type FreeRegistrationDependencies,
   type FreeRegistrationPayload,
 } from "./free-registration-workflow";
 
+const FBC = "fb.1.1756900000000.click-1";
+
 const ATTRIBUTED = {
   email: "student@example.com",
   name: "Alex Morgan",
-  attribution: { fbclid: "click-1", utm_medium: "paid_social" },
+  attribution: { fbclid: "click-1", fbc: FBC, utm_medium: "paid_social" },
 };
 
 function dependencies(
@@ -48,8 +51,12 @@ test("a completed registration posts name, email, and attribution", async () => 
   assert.equal(posted[0].url, "https://hooks.zapier.example/free");
   assert.deepEqual(posted[0].payload, {
     name: "Alex Morgan",
+    first_name: "Alex",
+    last_name: "Morgan",
     email: "student@example.com",
     fbclid: "click-1",
+    // The raw click id is kept alongside Meta's derived value, not replaced.
+    fbc: FBC,
     utm_medium: "paid_social",
   });
 });
@@ -85,15 +92,18 @@ test("a registration that never passed through /free is not a conversion", async
 test("a /free registration with no ad parameters still converts", async () => {
   const posted: FreeRegistrationPayload[] = [];
   const outcome = await runFreeRegistrationNotice(
-    { ...ATTRIBUTED, attribution: { fbclid: null, utm_medium: null } },
+    { ...ATTRIBUTED, attribution: { fbclid: null, fbc: null, utm_medium: null } },
     dependencies({ post: async (_url, payload) => { posted.push(payload); } }),
   );
 
   assert.equal(outcome, "sent");
   assert.deepEqual(posted[0], {
     name: "Alex Morgan",
+    first_name: "Alex",
+    last_name: "Morgan",
     email: "student@example.com",
     fbclid: null,
+    fbc: null,
     utm_medium: null,
   });
 });
@@ -115,16 +125,17 @@ test("an unconfigured webhook claims nothing", async () => {
 test("the claimed attribution is what gets sent, not the incoming cookie", async () => {
   const posted: FreeRegistrationPayload[] = [];
   const outcome = await runFreeRegistrationNotice(
-    { ...ATTRIBUTED, attribution: { fbclid: null, utm_medium: "email" } },
+    { ...ATTRIBUTED, attribution: { fbclid: null, fbc: null, utm_medium: "email" } },
     dependencies({
       // The stored row still holds the click behind an earlier attempt.
-      claimConversion: async () => ({ fbclid: "click-1", utm_medium: "email" }),
+      claimConversion: async () => ({ fbclid: "click-1", fbc: FBC, utm_medium: "email" }),
       post: async (_url, payload) => { posted.push(payload); },
     }),
   );
 
   assert.equal(outcome, "sent");
   assert.equal(posted[0].fbclid, "click-1");
+  assert.equal(posted[0].fbc, FBC);
   assert.equal(posted[0].utm_medium, "email");
 });
 
@@ -158,4 +169,13 @@ test("a claim failure is reported without posting", async () => {
   assert.equal(outcome, "failed");
   assert.equal(posts, 0);
   assert.equal(failures.length, 1);
+});
+
+test("a display name is split into the first token and everything after it", () => {
+  assert.deepEqual(splitName("Alex Morgan"), { first: "Alex", last: "Morgan" });
+  assert.deepEqual(splitName("Mary Jane Watson"), { first: "Mary", last: "Jane Watson" });
+  assert.deepEqual(splitName("  Alex   Morgan  "), { first: "Alex", last: "Morgan" });
+  // A single-token name has no last name rather than a duplicated one.
+  assert.deepEqual(splitName("Alex"), { first: "Alex", last: "" });
+  assert.deepEqual(splitName(""), { first: "", last: "" });
 });

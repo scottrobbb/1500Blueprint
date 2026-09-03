@@ -40,10 +40,14 @@ function isFreeLanding(pathname: string): boolean {
 function withFreeAttribution(request: NextRequest, response: NextResponse): NextResponse {
   if (!isFreeLanding(request.nextUrl.pathname)) return response;
 
+  // One clock reading for the whole merge, so a click id and the fbc built
+  // from it always carry the same moment.
+  const nowMs = Date.now();
   const existing = parseAttributionCookie(request.cookies.get(FREE_ATTRIBUTION_COOKIE)?.value);
   const { attribution, changed } = mergeAttribution(
     existing,
-    readAttributionParams(request.nextUrl.searchParams),
+    readAttributionParams(request.nextUrl.searchParams, nowMs),
+    nowMs,
   );
   // A visit that carries no parameters contributes nothing, so the stored
   // click survives untouched.

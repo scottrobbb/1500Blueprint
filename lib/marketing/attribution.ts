@@ -14,16 +14,32 @@ export const FREE_ATTRIBUTION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days, in second
 // Meta is a wrong id, which is worse than none.
 const MAX_FBCLID_LENGTH = 255;
 const MAX_UTM_MEDIUM_LENGTH = 64;
+const MAX_FBC_LENGTH = 300;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
+// fb.<subdomain index>.<click time in ms>.<fbclid>, the format Meta's own
+// pixel writes into the _fbc cookie.
+const FBC_PREFIX = /^fb\.1\.(\d{1,20})\.(.*)$/;
 
 export type FreeAttribution = {
   fbclid: string | null;
+  // Meta's _fbc value, built from the click id and the time it landed. Derived,
+  // never supplied by the URL, and always consistent with fbclid.
+  fbc: string | null;
   utm_medium: string | null;
 };
 
-export function readAttributionParams(params: URLSearchParams): FreeAttribution {
+export function formatFbc(clickTimeMs: number, fbclid: string): string {
+  return `fb.1.${clickTimeMs}.${fbclid}`;
+}
+
+// `nowMs` is the moment the click landed. It is stamped once, here, and then
+// carried unchanged for the life of the cookie: Meta reads it as the click
+// time, so regenerating it later would report the registration as the click.
+export function readAttributionParams(params: URLSearchParams, nowMs: number): FreeAttribution {
+  const fbclid = cleanValue(params.get("fbclid"), MAX_FBCLID_LENGTH);
   return {
-    fbclid: cleanValue(params.get("fbclid"), MAX_FBCLID_LENGTH),
+    fbclid,
+    fbc: fbclid ? formatFbc(nowMs, fbclid) : null,
     utm_medium: cleanValue(params.get("utm_medium"), MAX_UTM_MEDIUM_LENGTH),
   };
 }
@@ -34,8 +50,10 @@ export function readAttributionParams(params: URLSearchParams): FreeAttribution 
 export function parseAttributionCookie(value: string | null | undefined): FreeAttribution | null {
   if (!value) return null;
   const params = new URLSearchParams(value);
+  const fbclid = cleanValue(params.get("fbclid"), MAX_FBCLID_LENGTH);
   return {
-    fbclid: cleanValue(params.get("fbclid"), MAX_FBCLID_LENGTH),
+    fbclid,
+    fbc: readFbc(params.get("fbc"), fbclid),
     utm_medium: cleanValue(params.get("utm_medium"), MAX_UTM_MEDIUM_LENGTH),
   };
 }
@@ -45,6 +63,7 @@ export function serializeAttribution(attribution: FreeAttribution): string {
   // writes a non-empty cookie and is still recognized as a /free arrival.
   const params = new URLSearchParams({ src: "free" });
   if (attribution.fbclid) params.set("fbclid", attribution.fbclid);
+  if (attribution.fbc) params.set("fbc", attribution.fbc);
   if (attribution.utm_medium) params.set("utm_medium", attribution.utm_medium);
   return params.toString();
 }
@@ -57,21 +76,44 @@ export function serializeAttribution(attribution: FreeAttribution): string {
 // attributed click does replace the older value, but only for the parameter it
 // actually carries.
 //
+// fbc is the exception to "field by field": it is derived from the click id,
+// so it travels with fbclid rather than on its own. A new click mints a new
+// fbc at the new click's time, and a preserved click keeps the fbc it was
+// stamped with.
+//
 // `changed` is false when the visit contributes nothing, and the caller then
 // leaves the existing cookie untouched.
 export function mergeAttribution(
   existing: FreeAttribution | null,
   incoming: FreeAttribution,
+  nowMs: number,
 ): { attribution: FreeAttribution; changed: boolean } {
   if (!existing) return { attribution: incoming, changed: true };
 
   const attribution: FreeAttribution = {
     fbclid: incoming.fbclid ?? existing.fbclid,
+    fbc: incoming.fbclid
+      ? incoming.fbc
+      // A stored click with no usable fbc -- one captured before fbc existed,
+      // or a tampered cookie value -- is stamped now rather than left behind.
+      : existing.fbc ?? (existing.fbclid ? formatFbc(nowMs, existing.fbclid) : null),
     utm_medium: incoming.utm_medium ?? existing.utm_medium,
   };
   const changed = attribution.fbclid !== existing.fbclid
+    || attribution.fbc !== existing.fbc
     || attribution.utm_medium !== existing.utm_medium;
   return { attribution, changed };
+}
+
+// A stored fbc counts only when it is exactly the value this click id would
+// produce, give or take the timestamp. Nothing else can be forged into the
+// payload by handing the server a crafted cookie.
+function readFbc(value: unknown, fbclid: string | null): string | null {
+  if (!fbclid) return null;
+  const raw = cleanValue(value, MAX_FBC_LENGTH);
+  if (!raw) return null;
+  const match = FBC_PREFIX.exec(raw);
+  return match && match[2] === fbclid ? raw : null;
 }
 
 function cleanValue(value: unknown, maxLength: number): string | null {
