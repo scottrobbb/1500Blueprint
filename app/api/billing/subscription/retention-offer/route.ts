@@ -1,16 +1,17 @@
 import { findBillingAccount } from "@/lib/billing/accounts";
-import { billingBaseUrl } from "@/lib/billing/config";
-import { openBillingPortal } from "@/lib/billing/portal-configuration";
+import { billingBaseUrl, billingCheckoutEnabled } from "@/lib/billing/config";
+import { acceptRetentionOfferForUser } from "@/lib/billing/retention";
 import { getSession } from "@/lib/auth/session";
 import { reportServerError } from "@/lib/observability/server";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
-import { createPortalPostHandler } from "./handler";
+import { createRetentionOfferPostHandler } from "../handler";
 
-export const POST = createPortalPostHandler({
+export const POST = createRetentionOfferPostHandler({
   baseUrl: billingBaseUrl,
+  billingEnabled: billingCheckoutEnabled,
   getSession,
   findAccount: findBillingAccount,
   consumeRateLimit,
-  createPortal: openBillingPortal,
+  acceptOffer: acceptRetentionOfferForUser,
   reportError: reportServerError,
 });
