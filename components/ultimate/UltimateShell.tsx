@@ -211,7 +211,6 @@ export function UltimateShell({
             wide
             tone="dark"
             test={access.isTestAccount}
-            billing={access.source === "subscription"}
           />
           <NotificationBell tone="dark" communityHrefBase="/ultimate/community" placement="top" align="left" />
         </div>
@@ -248,7 +247,6 @@ export function UltimateShell({
             level={stats.level}
             plan={stats.plan}
             avatarUrl={stats.avatarUrl}
-            billing={access.source === "subscription"}
           />
         </header>
 

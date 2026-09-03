@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { createPortal } from "react-dom";
 import { Avatar } from "./Avatar";
 import { SettingsIcon } from "./icons";
@@ -16,12 +15,12 @@ type Props = {
   wide?: boolean;
   tone?: "light" | "dark";
   test?: boolean;
-  billing?: boolean;
 };
 
-// The nav avatar opens account navigation and the sign-out action.
-export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = false, tone = "light", test = false, billing = false }: Props) {
-  const pathname = usePathname();
+// The nav avatar opens account navigation and the sign-out action. Billing is
+// deliberately not here: it lives on Settings > Subscription, alongside the
+// cancellation flow, so there is one place a student manages their plan.
+export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = false, tone = "light", test = false }: Props) {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -82,18 +81,6 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
               <SettingsIcon className="h-4 w-4" /> Settings
             </Link>
 
-            {billing ? (
-              <form action="/api/billing/portal" method="post" className="border-t border-navy/10">
-                <input type="hidden" name="returnTo" value={pathname} />
-                <button
-                  type="submit"
-                  className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-5 py-3 text-left text-sm font-semibold text-navy/70 transition-colors duration-200 hover:bg-navy/5 hover:text-navy focus-visible:bg-navy/5 focus-visible:outline-none"
-                >
-                  <BillingIcon className="h-4 w-4" /> Manage billing
-                </button>
-              </form>
-            ) : null}
-
             <form action="/api/auth/logout" method="post" className="border-t border-navy/10">
               <button
                 type="submit"
@@ -119,6 +106,5 @@ function planBadgeBg(plan: string): string {
 }
 
 function ChevronIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m7 10 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
-function BillingIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3 9h18M7 15h4" strokeLinecap="round" /></svg>; }
 function SignOutIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M10 5H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h5M14 8l4 4-4 4M8 12h10" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function CloseIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" /></svg>; }
