@@ -271,7 +271,7 @@ export function GrammarDrill({
 
 function XpCard({ xp, score }: { xp: number; score: number }) {
   return (
-    <div className="relative flex flex-col items-center justify-center overflow-hidden rounded-xl bg-[linear-gradient(135deg,#0b2a5b,#1b46a8)] p-[18px] text-center text-white">
+    <div data-theme="light" className="relative flex flex-col items-center justify-center overflow-hidden rounded-xl bg-[linear-gradient(135deg,#0b2a5b,#1b46a8)] p-[18px] text-center text-white">
       <div className="pointer-events-none absolute inset-0 w-[50px] animate-sheen bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent)]" />
       <div className="relative text-[11px] font-semibold uppercase tracking-[0.14em] text-sky">XP Earned</div>
       <div className="relative font-display text-[34px] font-black leading-[1.1] text-gold">+{xp} XP</div>

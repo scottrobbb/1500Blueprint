@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   return (
-    <main className="relative grid min-h-dvh overflow-hidden bg-[#edf4fb] px-4 py-6 sm:px-6 lg:grid-cols-[minmax(320px,0.78fr)_minmax(520px,1.22fr)] lg:p-0">
+    <main className="relative grid min-h-dvh overflow-hidden bg-ice px-4 py-6 sm:px-6 lg:grid-cols-[minmax(320px,0.78fr)_minmax(520px,1.22fr)] lg:p-0">
       <section className="relative hidden overflow-hidden bg-navy p-10 text-white lg:flex lg:flex-col lg:justify-between xl:p-14">
         <div aria-hidden className="absolute -right-40 -top-40 h-[520px] w-[520px] rounded-full border-[74px] border-sky/[0.06]" />
         <div aria-hidden className="absolute -bottom-48 -left-40 h-[460px] w-[460px] rounded-full border-[64px] border-brand/[0.08]" />

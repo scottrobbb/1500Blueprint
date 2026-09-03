@@ -13,6 +13,7 @@ import { getReadingWritingRunnerQuestions } from "@/lib/question-bank/reading-wr
 import { getQuestionBankRunnerState } from "@/lib/question-bank/runner-state";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { questionBankAllowance } from "@/lib/auth/access-control";
+import { BluebookSurface } from "@/components/theme/BluebookSurface";
 
 export const metadata = { title: "Reading & Writing Practice" };
 
@@ -42,13 +43,15 @@ export default async function UltimateReadingWritingPracticePage({ searchParams 
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
   return (
-    <ReadingWritingBankRunner
-      questions={questions}
-      filters={filters}
-      initialState={initialState}
-      returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined}
-      isAdmin={isAdminEmail(session.email)}
-    />
+    <BluebookSurface>
+      <ReadingWritingBankRunner
+        questions={questions}
+        filters={filters}
+        initialState={initialState}
+        returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined}
+        isAdmin={isAdminEmail(session.email)}
+      />
+    </BluebookSurface>
   );
 }
 

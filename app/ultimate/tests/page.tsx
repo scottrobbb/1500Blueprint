@@ -67,7 +67,7 @@ export default async function UltimateTestsPage() {
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-sm font-semibold text-navy/55">Best score</h2>
             {progress.improvement != null ? (
-              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${progress.improvement > 0 ? "bg-[#d9fae8] text-[#147a40]" : "bg-haze text-navy/50"}`}>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${progress.improvement > 0 ? "bg-success-bg text-success-600" : "bg-haze text-navy/50"}`}>
                 {progress.improvement >= 0 ? "+" : ""}{progress.improvement}
               </span>
             ) : null}

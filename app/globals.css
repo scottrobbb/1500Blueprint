@@ -5,16 +5,32 @@
   - Brand tokens (navy / electric blue / gold) for the platform shell.
   - Exam tokens — a faithful replica of College Board's Bluebook: neutral chrome,
     serif content, royal-blue actions. Chrome = sans, question content = serif.
+
+  ---------------------------------------------------------------------------
+  Theming
+  ---------------------------------------------------------------------------
+  Dark mode is a palette swap, not a second set of classes: every `--color-*`
+  token is redeclared per theme, so `bg-white`, `text-navy`, `border-navy/12`
+  and every opacity modifier follow the active theme without a `dark:` variant
+  anywhere in the components.
+
+  The palette inverts by role, not by hue. `navy` is the ink/primary role and
+  turns light; `white` is the surface/on-primary role and turns dark. That keeps
+  this codebase's pervasive navy-on-white and white-on-navy pairings legible in
+  both themes — a filled navy button simply inverts.
+
+  Because the tokens hang off `[data-theme]` rather than only `:root`, any
+  subtree can pin itself. `data-theme="light"` marks the surfaces that must not
+  follow the student's choice: the Bluebook exam replica and its score reports,
+  the marketing landings, and fixed brand artwork with white type burned on.
+
+  Type that must never flip uses the `static-*` tokens.
 */
 
-@theme inline {
-  --font-sans: var(--font-dm-sans);
-  --font-display: var(--font-gabarito);
-  --font-serif: var(--font-noto-serif);
-  --font-exam-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    Helvetica, Arial, sans-serif;
+@theme {
+  /* The token registry Tailwind generates utilities from; the values are the
+     light palette, which also serves any element outside a [data-theme] scope. */
 
-  /* 1500 SAT Blueprint brand */
   --color-navy: #0b2a5b;
   --color-navy-700: #294879;
   --color-ink: #1a233e;
@@ -23,12 +39,90 @@
   --color-sky: #7ccbff;
   --color-ice: #ebf7ff;
   --color-ice-200: #d7f8ff;
-  /* Gamified platform-shell background (hub + test picker). */
   --color-haze: #eef2f7;
+  --color-canvas: #f5f7fa;
   --color-gold: #ffbd20;
   --color-gold-600: #f0a900;
 
-  /* Bluebook-faithful exam tokens */
+  --color-white: #ffffff;
+
+  --color-exam-bg: #ffffff;
+  --color-exam-chrome: #e8edf5;
+  --color-exam-banner: #3159b8;
+  --color-exam-ink: #1d1d1f;
+  --color-exam-muted: #5c5c60;
+  --color-exam-line: #aab0bb;
+  --color-exam-border: #c6cad3;
+  --color-exam-blue: #1e4fd6;
+  --color-exam-blue-600: #1a44b8;
+  --color-exam-select: #1d4ed8;
+  --color-exam-tint: #eef3fe;
+  --color-exam-maroon: #8a1c1c;
+  --color-exam-strike: #6c6c70;
+
+  --color-mist: #f5f8fc;
+  --color-paper: #f3f4f6;
+  --color-success: #16a34a;
+  --color-success-600: #15803d;
+  --color-success-bg: #ecfdf5;
+  --color-danger: #dc2626;
+  --color-danger-600: #b91c1c;
+  --color-danger-bg: #fef2f2;
+  --color-flag: #b45309;
+  --color-flag-bg: #fffbeb;
+
+  --color-cyan-bg: #cefbff;
+  --color-cyan: #168fca;
+  --color-violet-bg: #f9e6ff;
+  --color-violet: #aa2abd;
+
+  --color-shell-50: #f8fafc;
+  --color-shell-100: #f1f5f9;
+  --color-shell-200: #e2e8f0;
+  --color-shell-300: #cbd5e1;
+  --color-shell-400: #94a3b8;
+  --color-shell-500: #64748b;
+  --color-shell-600: #475569;
+  --color-shell-700: #334155;
+  --color-shell-800: #1e293b;
+  --color-shell-950: #020617;
+
+  /* Never themed: type burned onto fixed artwork, or ink on a gold badge. */
+  --color-static-white: #ffffff;
+  --color-static-ink: #10162a;
+}
+
+/* The light palette is repeated here, not inherited from the block above, so a
+   nested [data-theme="light"] subtree — the Bluebook exam replica inside an
+   otherwise dark app — resolves back to light. `:root` rides along so the
+   non-token chrome below still has a value if the attribute is ever absent.
+   Keep this block and the dark one in step. */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* 1500 SAT Blueprint brand. */
+  /* Ink and primary fill. Light in dark mode: the primary button inverts. */
+  --color-navy: #0b2a5b;
+  --color-navy-700: #294879;
+  --color-ink: #1a233e;
+  --color-brand: #3fa9f5;
+  /* The hover step, so it brightens rather than darkens in dark mode. */
+  --color-brand-600: #2b8fe0;
+  --color-sky: #7ccbff;
+  --color-ice: #ebf7ff;
+  --color-ice-200: #d7f8ff;
+  /* Gamified platform-shell background (hub + test picker). */
+  --color-haze: #eef2f7;
+  /* The Ultimate workspace canvas behind the content column. */
+  --color-canvas: #f5f7fa;
+  --color-gold: #ffbd20;
+  --color-gold-600: #f0a900;
+
+  /* Surface / on-primary. `bg-white` is a card, `text-white` sits on a fill. */
+  --color-white: #ffffff;
+
+  /* Bluebook-faithful exam tokens. */
   --color-exam-bg: #ffffff;
   --color-exam-chrome: #e8edf5;
   --color-exam-banner: #3159b8;
@@ -44,8 +138,9 @@
   --color-exam-maroon: #8a1c1c;
   --color-exam-strike: #6c6c70;
 
-  /* Drill suite: 1500-branded surfaces + semantic feedback colors */
+  /* Drill suite: 1500-branded surfaces + semantic feedback colors. */
   --color-mist: #f5f8fc;
+  --color-paper: #f3f4f6;
   --color-success: #16a34a;
   --color-success-600: #15803d;
   --color-success-bg: #ecfdf5;
@@ -54,7 +149,126 @@
   --color-danger-bg: #fef2f2;
   --color-flag: #b45309;
   --color-flag-bg: #fffbeb;
-  --color-paper: #f3f4f6;
+
+  /* Subject colour-coding: math reads cool, reading & writing reads violet. */
+  --color-cyan-bg: #cefbff;
+  --color-cyan: #168fca;
+  --color-violet-bg: #f9e6ff;
+  --color-violet: #aa2abd;
+
+  /* Neutral ramp replacing raw `slate-*` utilities. The light column is
+     Tailwind's slate verbatim, so light mode is unchanged; dark inverts it. */
+  --color-shell-50: #f8fafc;
+  --color-shell-100: #f1f5f9;
+  --color-shell-200: #e2e8f0;
+  --color-shell-300: #cbd5e1;
+  --color-shell-400: #94a3b8;
+  --color-shell-500: #64748b;
+  --color-shell-600: #475569;
+  --color-shell-700: #334155;
+  --color-shell-800: #1e293b;
+  --color-shell-950: #020617;
+
+  /* Chrome that is not a Tailwind color token. */
+  /* Dashed Bluebook separator. */
+  --perforation: #8793a6;
+  /* Tint of the lifted-card shadow. */
+  --shadow-rgb: 11, 42, 91;
+  /* Skeleton loader sweep. */
+  --shimmer-rgb: 11, 42, 91;
+  --background: #ffffff;
+  --foreground: #1a233e;
+}
+
+/* Dark mode. See the header note on how the palette inverts by role. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* 1500 SAT Blueprint brand. */
+  /* Ink and primary fill. Light in dark mode: the primary button inverts. */
+  --color-navy: #e8edf7;
+  --color-navy-700: #c7d3e6;
+  --color-ink: #edf1f9;
+  --color-brand: #4db2f7;
+  /* The hover step, so it brightens rather than darkens in dark mode. */
+  --color-brand-600: #7ac8fb;
+  --color-sky: #9ad8ff;
+  --color-ice: #17222f;
+  --color-ice-200: #1b2c3a;
+  /* Gamified platform-shell background (hub + test picker). */
+  --color-haze: #0d1119;
+  /* The Ultimate workspace canvas behind the content column. */
+  --color-canvas: #0d1119;
+  --color-gold: #f7b52a;
+  --color-gold-600: #ffcb52;
+
+  /* Surface / on-primary. `bg-white` is a card, `text-white` sits on a fill. */
+  --color-white: #171c27;
+
+  /* Bluebook-faithful exam tokens. */
+  --color-exam-bg: #171c27;
+  --color-exam-chrome: #1e2431;
+  --color-exam-banner: #8ab4ff;
+  --color-exam-ink: #e8eaf0;
+  --color-exam-muted: #a3a8b5;
+  --color-exam-line: #464d5c;
+  --color-exam-border: #39404e;
+  --color-exam-blue: #7ea6ff;
+  --color-exam-blue-600: #9db9ff;
+  /* Selected-answer fill — Bluebook's royal blue, not a navy. */
+  --color-exam-select: #7ea6ff;
+  --color-exam-tint: #1a2233;
+  --color-exam-maroon: #ff9a9a;
+  --color-exam-strike: #9a9fab;
+
+  /* Drill suite: 1500-branded surfaces + semantic feedback colors. */
+  --color-mist: #131824;
+  --color-paper: #1b2130;
+  --color-success: #35d07f;
+  --color-success-600: #63e3a2;
+  --color-success-bg: #10251b;
+  --color-danger: #ff6b6b;
+  --color-danger-600: #ff9090;
+  --color-danger-bg: #2b1418;
+  --color-flag: #f0aa5f;
+  --color-flag-bg: #2a210b;
+
+  /* Subject colour-coding: math reads cool, reading & writing reads violet. */
+  --color-cyan-bg: #10262c;
+  --color-cyan: #67c8f0;
+  --color-violet-bg: #251a33;
+  --color-violet: #dda6ea;
+
+  /* Neutral ramp replacing raw `slate-*` utilities. The light column is
+     Tailwind's slate verbatim, so light mode is unchanged; dark inverts it. */
+  --color-shell-50: #141926;
+  --color-shell-100: #1a2030;
+  --color-shell-200: #2a3243;
+  --color-shell-300: #3a4457;
+  --color-shell-400: #7c879b;
+  --color-shell-500: #98a3b7;
+  --color-shell-600: #b3bccd;
+  --color-shell-700: #cbd4e3;
+  --color-shell-800: #dde4ef;
+  --color-shell-950: #f2f5fb;
+
+  /* Chrome that is not a Tailwind color token. */
+  /* Dashed Bluebook separator. */
+  --perforation: #4b5468;
+  /* Tint of the lifted-card shadow. */
+  --shadow-rgb: 0, 0, 0;
+  /* Skeleton loader sweep. */
+  --shimmer-rgb: 232, 237, 247;
+  --background: #0d1119;
+  --foreground: #edf1f9;
+}
+
+@theme inline {
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-gabarito);
+  --font-serif: var(--font-noto-serif);
+  --font-exam-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
 
   /* Academic surfaces: tight, editorial radii (no soft rounded-SaaS look) */
   --radius-card: 3px;
@@ -74,10 +288,6 @@
   --animate-spin-slow: spin-slow 0.8s linear infinite;
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #1a233e;
-}
 
 html {
   -webkit-text-size-adjust: 100%;
@@ -95,7 +305,7 @@ body {
   width: 100%;
   background-image: repeating-linear-gradient(
     to right,
-    #8793a6 0 8px,
+    var(--perforation) 0 8px,
     transparent 8px 13px
   );
 }
@@ -105,6 +315,7 @@ body {
   outline: 2px solid var(--color-exam-blue);
   outline-offset: 2px;
 }
+
 
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -160,9 +371,9 @@ body {
 .shimmer {
   background-image: linear-gradient(
     90deg,
-    rgba(11, 42, 91, 0.06) 25%,
-    rgba(11, 42, 91, 0.13) 37%,
-    rgba(11, 42, 91, 0.06) 63%
+    rgba(var(--shimmer-rgb), 0.06) 25%,
+    rgba(var(--shimmer-rgb), 0.13) 37%,
+    rgba(var(--shimmer-rgb), 0.06) 63%
   );
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
@@ -188,7 +399,7 @@ body {
 
 /* The soft "lifted card" shadow used across gamified drill cards. */
 @utility shadow-pop {
-  box-shadow: 0 1px 3px rgba(11, 42, 91, 0.05), 0 16px 32px -22px rgba(11, 42, 91, 0.35);
+  box-shadow: 0 1px 3px rgba(var(--shadow-rgb), 0.05), 0 16px 32px -22px rgba(var(--shadow-rgb), 0.35);
 }
 
 /* Ultimate uses the same components and data as the current platform, but its

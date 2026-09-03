@@ -198,7 +198,7 @@ function PlanSummary({ plan, profile }: { plan: StudyPlan; profile: StudyPlanner
         <h2 className="font-display text-lg font-extrabold text-ink">Weekly progress</h2>
         <p className="mt-4 font-display text-3xl font-extrabold tracking-[-0.035em] text-ink">{plan.progress.percent}% complete</p>
         <p className="mt-1 text-sm font-semibold text-navy/45">{plan.progress.completed} of {plan.progress.target} tasks</p>
-        <div className="mt-4 h-3 overflow-hidden rounded-full bg-[#dfeef9]" role="progressbar" aria-label="Weekly plan progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={plan.progress.percent}>
+        <div className="mt-4 h-3 overflow-hidden rounded-full bg-brand/15" role="progressbar" aria-label="Weekly plan progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={plan.progress.percent}>
           <div className="h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${plan.progress.percent}%` }} />
         </div>
         <div className="mt-4 flex items-center justify-between gap-3 border-t border-navy/10 pt-3 text-xs">
@@ -337,7 +337,7 @@ function PlannerBlankState({ onStart }: { onStart: () => void }) {
       <button
         type="button"
         onClick={onStart}
-        className="group relative mt-9 flex w-full max-w-xl cursor-pointer flex-col overflow-hidden rounded-2xl bg-[#e9eef5] p-5 text-left transition-colors hover:bg-[#e1e8f1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:p-6"
+        className="group relative mt-9 flex w-full max-w-xl cursor-pointer flex-col overflow-hidden rounded-2xl bg-haze p-5 text-left transition-colors hover:bg-shell-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:p-6"
       >
         <CalendarIcon className="pointer-events-none absolute -bottom-4 -right-4 h-28 w-28 -rotate-12 text-navy opacity-[0.05]" />
         <span className="relative font-display text-xl font-extrabold text-ink">Start from scratch</span>
@@ -686,8 +686,8 @@ function taskLabel(kind: StudyPlanTask["kind"]): string {
 
 function subjectTone(section: NonNullable<StudyPlanTask["section"]>): string {
   return section === "math"
-    ? "bg-[#cefbff] text-[#168fca]"
-    : "bg-[#f9e6ff] text-[#aa2abd]";
+    ? "bg-cyan-bg text-cyan"
+    : "bg-violet-bg text-violet";
 }
 
 function isValidSatScore(value: string): boolean {

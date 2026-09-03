@@ -21,8 +21,8 @@ export default async function UltimateCoursePage({ params }: Props) {
   const nextLesson = course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed) ?? course.modules[0]?.lessons[0];
 
   return (
-    <div className="min-h-dvh bg-[#f5f6f8]">
-      <header className="overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#164582_68%,#2b8fe0)] px-4 py-8 text-white sm:px-7 sm:py-11">
+    <div className="min-h-dvh bg-canvas">
+      <header data-theme="light" className="overflow-hidden bg-[linear-gradient(125deg,#0b2a5b,#164582_68%,#2b8fe0)] px-4 py-8 text-white sm:px-7 sm:py-11">
         <div className="relative mx-auto min-h-[260px] max-w-[1120px]">
           <div
             aria-hidden="true"

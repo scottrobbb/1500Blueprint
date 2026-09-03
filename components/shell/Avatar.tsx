@@ -19,7 +19,7 @@ export function Avatar({ src, initials, alt = "", className = "" }: Props) {
 
   return (
     <span
-      className={`inline-flex items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display font-extrabold text-white ${className}`}
+      className={`inline-flex items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display font-extrabold text-static-white ${className}`}
     >
       {showImage ? (
         // eslint-disable-next-line @next/next/no-img-element

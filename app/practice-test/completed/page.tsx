@@ -22,7 +22,7 @@ export default async function CompletedTestsPage() {
   const testTitles = Object.fromEntries(tests.map((test) => [test.slug, test.title]));
 
   return (
-    <div className="min-h-dvh bg-slate-50 text-ink">
+    <div className="min-h-dvh bg-shell-50 text-ink">
       <AppNav activePage="tests" stats={nav} />
       <CompletedTestsDashboard attempts={attempts} testTitles={testTitles} />
       <footer className="mx-auto w-full max-w-[1100px] px-6 pb-10 text-center text-xs text-navy/40">

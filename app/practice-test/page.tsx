@@ -86,7 +86,7 @@ export default async function PracticeTestsPage() {
               </div>
               <Link
                 href="/practice-test/completed"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-white/25 bg-white px-4 text-[13px] font-bold text-navy transition-colors hover:bg-blue-50"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg border border-white/25 bg-white px-4 text-[13px] font-bold text-navy transition-colors hover:bg-ice"
               >
                 View completed tests
                 <ChevronRightIcon className="h-3.5 w-3.5" />

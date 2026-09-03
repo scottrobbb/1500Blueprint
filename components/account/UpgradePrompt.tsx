@@ -21,7 +21,7 @@ export function UpgradePrompt({
   return (
     <section className={`overflow-hidden rounded-[18px] border border-brand/20 bg-white shadow-pop ${className}`} aria-label={`${requiredPlan} upgrade`}>
       <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center sm:p-6">
-        <span className="grid h-12 w-12 flex-none place-items-center rounded-2xl bg-[#fff5cf] text-[#8a6500]">
+        <span className="grid h-12 w-12 flex-none place-items-center rounded-2xl bg-flag-bg text-flag">
           <LockIcon className="h-5 w-5" />
         </span>
         <div className="min-w-0 flex-1">
@@ -45,7 +45,7 @@ export function UpgradePrompt({
 
 export function LockedBadge({ plan, dark = false }: { plan: PaidPlan; dark?: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold ${dark ? "border border-white/15 bg-black/20 text-white" : "bg-[#fff4cc] text-[#765800]"}`}>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold ${dark ? "border border-white/15 bg-black/20 text-white" : "bg-flag-bg text-flag"}`}>
       <LockIcon className="h-3 w-3" /> {planName(plan)}
     </span>
   );
@@ -54,7 +54,7 @@ export function LockedBadge({ plan, dark = false }: { plan: PaidPlan; dark?: boo
 export function LockedAction({ plan, label }: { plan: PaidPlan; label: string }) {
   return (
     <Link href="/pricing" className="flex min-h-11 items-center justify-between rounded-xl border border-brand/20 bg-ice/70 px-4 text-sm font-extrabold text-navy transition-colors hover:border-brand/40 hover:bg-ice focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-      <span className="inline-flex items-center gap-2"><LockIcon className="h-4 w-4 text-[#8a6500]" />{label}</span>
+      <span className="inline-flex items-center gap-2"><LockIcon className="h-4 w-4 text-flag" />{label}</span>
       <span className="flex-none text-xs text-brand-700">{planName(plan)} →</span>
     </Link>
   );

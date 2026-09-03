@@ -95,7 +95,7 @@ export function ScoreShareModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/55 p-4"
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-shell-950/55 p-4"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) close();
@@ -117,7 +117,7 @@ export function ScoreShareModal({
             type="button"
             onClick={close}
             aria-label="Close share score dialog"
-            className="grid h-11 w-11 cursor-pointer place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-ink"
+            className="grid h-11 w-11 cursor-pointer place-items-center rounded-full text-shell-500 transition-colors hover:bg-shell-100 hover:text-ink"
           >
             <CloseIcon className="h-5 w-5" />
           </button>
@@ -125,6 +125,7 @@ export function ScoreShareModal({
 
         <div
           ref={cardRef}
+          data-theme="light"
           className="mx-auto aspect-square w-full max-w-[430px] overflow-hidden bg-white text-ink"
         >
           <div className="flex items-center justify-between bg-gradient-to-r from-[#143d91] via-[#245ec7] to-[#3288ea] px-5 py-4 text-white">
@@ -135,24 +136,24 @@ export function ScoreShareModal({
             </div>
           </div>
           <div className="flex h-[calc(100%-68px)] flex-col items-center justify-center px-6 py-6 text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Total score</p>
-            <p className="mt-1 font-display text-7xl font-black tracking-tight text-slate-950">{total}</p>
-            <p className="text-sm font-medium text-slate-400">out of 1600</p>
-            <div className="mt-6 grid w-full grid-cols-2 divide-x divide-slate-200 border-y border-slate-200 py-4">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-shell-400">Total score</p>
+            <p className="mt-1 font-display text-7xl font-black tracking-tight text-shell-950">{total}</p>
+            <p className="text-sm font-medium text-shell-400">out of 1600</p>
+            <div className="mt-6 grid w-full grid-cols-2 divide-x divide-shell-200 border-y border-shell-200 py-4">
               <div>
-                <p className="text-xs font-semibold text-slate-500">Reading &amp; Writing</p>
-                <p className="mt-1 font-display text-2xl font-extrabold text-slate-950">{rwScore}</p>
+                <p className="text-xs font-semibold text-shell-500">Reading &amp; Writing</p>
+                <p className="mt-1 font-display text-2xl font-extrabold text-shell-950">{rwScore}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-slate-500">Math</p>
-                <p className="mt-1 font-display text-2xl font-extrabold text-slate-950">{mathScore}</p>
+                <p className="text-xs font-semibold text-shell-500">Math</p>
+                <p className="mt-1 font-display text-2xl font-extrabold text-shell-950">{mathScore}</p>
               </div>
             </div>
-            <p className="mt-5 text-xs font-medium text-slate-400">1500 Blueprint · Practice with a plan</p>
+            <p className="mt-5 text-xs font-medium text-shell-400">1500 Blueprint · Practice with a plan</p>
           </div>
         </div>
 
-        <p className="mt-5 text-center text-sm leading-6 text-slate-600">
+        <p className="mt-5 text-center text-sm leading-6 text-shell-600">
           Downloads as a square image so your score displays cleanly when you share it.
         </p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">

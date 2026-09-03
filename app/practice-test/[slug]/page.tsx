@@ -7,6 +7,7 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
 import { getNavStats } from "@/lib/gamification/state";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { BluebookSurface } from "@/components/theme/BluebookSurface";
 
 export const metadata = {
   title: "Practice Test · 1500 Blueprint",
@@ -34,13 +35,15 @@ export default async function RunTestPage({
     getNavStats(session.email),
   ]);
   return (
-    <TestRunner
-      test={test}
-      slug={slug}
-      studentName={nav.name}
-      devMode={devMode}
-      resumeState={resumeState}
-      returnToUltimate={returnToUltimate}
-    />
+    <BluebookSurface>
+      <TestRunner
+        test={test}
+        slug={slug}
+        studentName={nav.name}
+        devMode={devMode}
+        resumeState={resumeState}
+        returnToUltimate={returnToUltimate}
+      />
+    </BluebookSurface>
   );
 }

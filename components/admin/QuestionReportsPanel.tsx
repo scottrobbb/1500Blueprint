@@ -272,7 +272,7 @@ function CountPill({
   tone: "open" | "resolved" | "muted";
 }) {
   const colors = tone === "open"
-    ? "border-gold/25 bg-gold/10 text-[#775600]"
+    ? "border-gold/25 bg-gold/10 text-flag"
     : tone === "resolved"
       ? "border-success/20 bg-success-bg text-success-600"
       : "border-navy/10 bg-white text-navy/55";
@@ -285,7 +285,7 @@ function CountPill({
 
 function StatusBadge({ status }: { status: QuestionReportStatus }) {
   const colors = status === "open"
-    ? "bg-gold/15 text-[#775600]"
+    ? "bg-gold/15 text-flag"
     : status === "resolved"
       ? "bg-success-bg text-success-600"
       : "bg-navy/[0.08] text-navy/55";

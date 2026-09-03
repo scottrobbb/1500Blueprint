@@ -7,6 +7,7 @@ import { canAccessPracticeTest } from "@/lib/auth/access-control";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getNavStats } from "@/lib/gamification/state";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { BluebookSurface } from "@/components/theme/BluebookSurface";
 
 export const metadata = {
   title: "Practice module · 1500 Blueprint",
@@ -33,13 +34,15 @@ export default async function RunModulePage({
   const returnToUltimate = workspace === "ultimate" && isUltimatePreviewEmail(session.email);
 
   return (
-    <ModuleRunner
-      slug={slug}
-      section={found.section}
-      module={found.module}
-      meta={found.meta}
-      studentName={nav.name}
-      returnToUltimate={returnToUltimate}
-    />
+    <BluebookSurface>
+      <ModuleRunner
+        slug={slug}
+        section={found.section}
+        module={found.module}
+        meta={found.meta}
+        studentName={nav.name}
+        returnToUltimate={returnToUltimate}
+      />
+    </BluebookSurface>
   );
 }

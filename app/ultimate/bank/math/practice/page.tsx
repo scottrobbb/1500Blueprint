@@ -13,6 +13,7 @@ import { getMathRunnerQuestions } from "@/lib/question-bank/math-queries";
 import { getQuestionBankRunnerState } from "@/lib/question-bank/runner-state";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { questionBankAllowance } from "@/lib/auth/access-control";
+import { BluebookSurface } from "@/components/theme/BluebookSurface";
 
 export const metadata = { title: "Math Practice" };
 
@@ -42,13 +43,15 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
   return (
-    <MathBankRunner
-      questions={questions}
-      filters={filters}
-      initialState={initialState}
-      returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined}
-      isAdmin={isAdminEmail(session.email)}
-    />
+    <BluebookSurface>
+      <MathBankRunner
+        questions={questions}
+        filters={filters}
+        initialState={initialState}
+        returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined}
+        isAdmin={isAdminEmail(session.email)}
+      />
+    </BluebookSurface>
   );
 }
 

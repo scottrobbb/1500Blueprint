@@ -78,7 +78,7 @@ export function OnboardingTour({ firstName, dailyTarget }: { firstName: string; 
             href="#practice-drills"
             onClick={finish}
             data-autofocus
-            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-navy-700 active:bg-[#203e6f]"
+            className="inline-flex min-h-11 items-center justify-center rounded-lg bg-navy px-5 text-sm font-semibold text-white transition-colors hover:bg-navy-700 active:bg-navy/85"
           >
             Choose a drill
           </a>

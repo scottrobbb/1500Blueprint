@@ -19,7 +19,7 @@ const BASE_HREF = {
 const countFormatter = new Intl.NumberFormat("en-US");
 
 const primaryAction =
-  "inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-navy px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-navy-700 active:bg-[#203e6f]";
+  "inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-navy px-4 py-2.5 text-center text-sm font-semibold text-white transition-colors hover:bg-navy-700 active:bg-navy/85";
 const secondaryAction =
   "inline-flex min-h-11 items-center justify-center rounded-lg border border-navy/15 bg-white px-4 py-2.5 text-center text-sm font-semibold text-navy transition-colors hover:border-navy/25 hover:bg-haze active:bg-navy/[0.07]";
 

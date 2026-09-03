@@ -89,7 +89,7 @@ function ComplimentaryAccessPanel({ grants, state }: { grants: AdminGrant[]; sta
       {state ? (
         <p
           role="status"
-          className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${failed ? "border-red-200 bg-white text-red-800" : "border-emerald-200 bg-emerald-50 text-emerald-800"}`}
+          className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${failed ? "border-danger/25 bg-white text-danger-600" : "border-success/25 bg-success-bg text-success-600"}`}
         >
           {messages[state] ?? messages.error}
         </p>
@@ -130,10 +130,10 @@ function RefundPanel({ state }: { state?: string }) {
   };
 
   return (
-    <section className="mb-6 rounded-card border border-red-200 bg-red-50/70 p-4 sm:p-5" aria-labelledby="refund-heading">
+    <section className="mb-6 rounded-card border border-danger/25 bg-danger-bg/70 p-4 sm:p-5" aria-labelledby="refund-heading">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="max-w-2xl">
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-red-700">Billing control</p>
+          <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-danger-600">Billing control</p>
           <h2 id="refund-heading" className="mt-1 font-display text-lg font-extrabold text-navy">Refund a first purchase</h2>
           <p className="mt-1 text-sm leading-6 text-navy/65">
             Available only during the first 24 hours. This refunds every paid invoice on the first subscription and cancels access immediately.
@@ -148,11 +148,11 @@ function RefundPanel({ state }: { state?: string }) {
             required
             autoComplete="off"
             placeholder="student@example.com"
-            className="min-h-11 min-w-0 flex-1 rounded-xl border border-red-200 bg-white px-3.5 text-base text-navy outline-none transition-colors duration-200 placeholder:text-navy/35 focus:border-red-500 focus:ring-2 focus:ring-red-200 sm:text-sm"
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-danger/25 bg-white px-3.5 text-base text-navy outline-none transition-colors duration-200 placeholder:text-navy/35 focus:border-danger/70 focus:ring-2 focus:ring-danger/25 sm:text-sm"
           />
           <button
             type="submit"
-            className="min-h-11 cursor-pointer rounded-xl bg-red-700 px-4 text-sm font-extrabold text-white transition-colors duration-200 hover:bg-red-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+            className="min-h-11 cursor-pointer rounded-xl bg-danger px-4 text-sm font-extrabold text-white transition-colors duration-200 hover:bg-danger-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-danger-600"
           >
             Refund &amp; cancel
           </button>
@@ -161,7 +161,7 @@ function RefundPanel({ state }: { state?: string }) {
       {state ? (
         <p
           role="status"
-          className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${state === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-white text-red-800"}`}
+          className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${state === "success" ? "border-success/25 bg-success-bg text-success-600" : "border-danger/25 bg-white text-danger-600"}`}
         >
           {messages[state] ?? messages.error}
         </p>
@@ -210,7 +210,7 @@ function RateLimitResetPanel({ state }: { state?: string }) {
       {state ? (
         <p
           role="status"
-          className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${state === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-navy/15 bg-mist text-navy/70"}`}
+          className={`mt-4 rounded-xl border px-3.5 py-2.5 text-sm font-semibold ${state === "success" ? "border-success/25 bg-success-bg text-success-600" : "border-navy/15 bg-mist text-navy/70"}`}
         >
           {messages[state] ?? messages.error}
         </p>

@@ -120,7 +120,7 @@ export function NotificationBell({
                         n.read ? "" : "bg-brand/[0.045]"
                       }`}
                     >
-                      <span className="mt-0.5 inline-flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display text-[11px] font-extrabold text-white">
+                      <span className="mt-0.5 inline-flex h-8 w-8 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display text-[11px] font-extrabold text-static-white">
                         {initialsOf(n.actorName, n.actorHandle)}
                       </span>
                       <div className="min-w-0 flex-1">
