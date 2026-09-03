@@ -70,10 +70,12 @@ export type RetentionDeps = {
   cadenceForSubscription: (subscription: Stripe.Subscription) => BillingCadence;
   releaseSchedule: (subscription: Stripe.Subscription) => Promise<Stripe.Subscription>;
   clearPending: (subscriptionId: string) => Promise<void>;
+  // A null key means "no idempotency key": correct for state toggles, where a
+  // replayed response is more dangerous than a repeated write.
   updateSubscription: (
     id: string,
     params: Stripe.SubscriptionUpdateParams,
-    idempotencyKey: string,
+    idempotencyKey: string | null,
   ) => Promise<Stripe.Subscription>;
   syncSubscription: (subscription: Stripe.Subscription, userId: string) => Promise<void>;
 };
@@ -125,10 +127,13 @@ export async function cancelSubscriptionWithDeps(
     await deps.clearPending(subscription.id);
   }
 
+  // No idempotency key: cancelling is a state toggle, not a charge, so applying
+  // it twice is harmless — while a fixed key would make a cancel that follows a
+  // resume replay the earlier response and leave Stripe still billing.
   const canceled = await deps.updateSubscription(
     subscription.id,
     { cancel_at_period_end: true, proration_behavior: "none" },
-    `blueprint-cancel-${subscription.id}`,
+    null,
   );
   assertSubscriptionOwner(canceled, row, userId, deps.livemode);
   await deps.syncSubscription(canceled, userId);
@@ -180,6 +185,15 @@ export async function acceptRetentionOfferWithDeps(
   }
 
   try {
+    // Undoing a cancellation is its own write. Keeping it out of the coupon
+    // update means those params never vary, so the idempotency key below stays
+    // valid on a retry after a released claim.
+    const undo = uncancelParams(subscription);
+    if (undo) {
+      const resumed = await deps.updateSubscription(subscription.id, undo, null);
+      assertSubscriptionOwner(resumed, row, userId, deps.livemode);
+    }
+
     // proration_behavior "none" and no item change mean Stripe writes the
     // discount without invoicing: nothing is charged now and the renewal date
     // does not move. The coupon's own `once` duration limits it to that renewal.
@@ -187,12 +201,7 @@ export async function acceptRetentionOfferWithDeps(
     // list is empty, so the coupon stands alone.
     const updated = await deps.updateSubscription(
       subscription.id,
-      {
-        discounts: [{ coupon: deps.couponId }],
-        cancel_at_period_end: false,
-        cancel_at: "",
-        proration_behavior: "none",
-      },
+      { discounts: [{ coupon: deps.couponId }], proration_behavior: "none" },
       `blueprint-retention-${userId}-${subscription.id}`,
     );
     assertSubscriptionOwner(updated, row, userId, deps.livemode);
@@ -231,16 +240,40 @@ export async function resumeSubscriptionWithDeps(
   });
   if (!scheduled) return { status: "not-scheduled", renewsAt: row.current_period_end };
 
-  const subscription = await retrieveOwnedSubscription(deps, row, userId);
-  const resumed = await deps.updateSubscription(
-    subscription.id,
-    { cancel_at_period_end: false, cancel_at: "", proration_behavior: "none" },
-    `blueprint-resume-${subscription.id}-${scheduled}`,
-  );
+  let subscription = await retrieveOwnedSubscription(deps, row, userId);
+  if (subscription.schedule) {
+    subscription = await deps.releaseSchedule(subscription);
+    assertSubscriptionOwner(subscription, row, userId, deps.livemode);
+    await deps.clearPending(subscription.id);
+  }
+
+  const undo = uncancelParams(subscription);
+  // The row said a cancellation was scheduled but Stripe no longer agrees —
+  // a stale sync. Report the truth rather than writing a no-op update.
+  if (!undo) return { status: "not-scheduled", renewsAt: row.current_period_end };
+
+  const resumed = await deps.updateSubscription(subscription.id, undo, null);
   assertSubscriptionOwner(resumed, row, userId, deps.livemode);
   await deps.syncSubscription(resumed, userId);
 
   return { status: "resumed", renewsAt: row.current_period_end };
+}
+
+// Clearing a scheduled cancellation, expressed with whichever field actually
+// carries it. `cancel_at` supersedes `cancel_at_period_end` on the API version
+// this SDK pins, and sending both in one update is rejected outright — which is
+// what broke resuming and accepting while plain cancelling kept working, since
+// that path only ever sent one. Returns null when there is nothing to undo.
+function uncancelParams(
+  subscription: Stripe.Subscription,
+): Stripe.SubscriptionUpdateParams | null {
+  if (typeof subscription.cancel_at === "number") {
+    return { cancel_at: "", proration_behavior: "none" };
+  }
+  if (subscription.cancel_at_period_end) {
+    return { cancel_at_period_end: false, proration_behavior: "none" };
+  }
+  return null;
 }
 
 async function requireActiveSubscription(

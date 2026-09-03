@@ -63,7 +63,7 @@ function retentionDeps(): RetentionDeps {
     updateSubscription: (id, params, idempotencyKey) => billingStripe().subscriptions.update(
       id,
       params,
-      { idempotencyKey },
+      idempotencyKey ? { idempotencyKey } : undefined,
     ),
     syncSubscription: (subscription, ownerId) => syncStripeSubscription(subscription, ownerId),
   };
