@@ -49,7 +49,7 @@ const ACTIVE_ROW: RetentionSubscriptionRow = {
 };
 
 type Calls = {
-  updates: { id: string; params: Stripe.SubscriptionUpdateParams; key: string }[];
+  updates: { id: string; params: Stripe.SubscriptionUpdateParams; key: string | null }[];
   claims: ("show" | "accept")[];
   releases: number;
 };
@@ -163,12 +163,27 @@ test("accepting applies the coupon without charging, cancelling, or moving the r
   assert.equal(result.percentOff, 40);
   assert.equal(result.renewsAt, PERIOD_END);
 
+  // Nothing to undo on the normal path, so the coupon is the only write.
+  assert.equal(d.calls.updates.length, 1);
   const [update] = d.calls.updates;
   assert.deepEqual(update.params.discounts, [{ coupon: COUPON }]);
-  assert.equal(update.params.cancel_at_period_end, false, "accepting must undo a scheduled cancellation");
-  assert.equal(update.params.cancel_at, "");
   assert.equal(update.params.proration_behavior, "none", "nothing may be invoiced today");
   assert.equal(update.params.items, undefined, "no new subscription or price change");
+});
+
+test("accepting undoes a scheduled cancellation in its own write", async () => {
+  for (const [scheduled, expected] of [
+    [{ cancel_at_period_end: true }, { cancel_at_period_end: false, proration_behavior: "none" }],
+    [{ cancel_at: 1_800_000_000 }, { cancel_at: "", proration_behavior: "none" }],
+  ] as const) {
+    const d = deps({ retrieveSubscription: async () => subscription(scheduled) });
+    await acceptRetentionOfferWithDeps(d, USER_ID);
+
+    assert.equal(d.calls.updates.length, 2, "the undo is separate from the coupon write");
+    assert.deepEqual(d.calls.updates[0].params, expected);
+    assert.equal(d.calls.updates[0].key, null, "a state toggle must not be replayable");
+    assert.deepEqual(d.calls.updates[1].params.discounts, [{ coupon: COUPON }]);
+  }
 });
 
 test("an already-discounted subscription is refused, and never spends the claim", async () => {
@@ -270,8 +285,49 @@ test("the acceptance idempotency key is stable for a user and subscription", asy
   await acceptRetentionOfferWithDeps(first, USER_ID);
   await acceptRetentionOfferWithDeps(second, USER_ID);
 
-  assert.equal(first.calls.updates[0].key, second.calls.updates[0].key);
-  assert.match(first.calls.updates[0].key, /sub_123/);
+  const key = first.calls.updates[0].key;
+  assert.equal(key, second.calls.updates[0].key);
+  assert.match(key ?? "", /sub_123/);
+});
+
+test("cancelling carries no idempotency key, so a cancel after a resume still lands", async () => {
+  const d = deps({ claimOffer: async () => ({ decision: "already_shown", shownAt: "x", acceptedAt: null }) });
+  await cancelSubscriptionWithDeps(d, USER_ID);
+
+  assert.equal(d.calls.updates[0].key, null);
+});
+
+// The bug that broke resuming and accepting in production: Stripe rejects an
+// update carrying both fields, and only the plain cancel path sent just one.
+test("no update ever sends both cancel_at and cancel_at_period_end", async () => {
+  const scenarios: Array<() => Promise<unknown>> = [];
+  const recorded: Calls[] = [];
+
+  for (const scheduled of [{}, { cancel_at_period_end: true }, { cancel_at: 1_800_000_000 }]) {
+    const accept = deps({ retrieveSubscription: async () => subscription(scheduled) });
+    recorded.push(accept.calls);
+    scenarios.push(() => acceptRetentionOfferWithDeps(accept, USER_ID));
+
+    const resume = deps({
+      activeSubscription: async () => ({ ...ACTIVE_ROW, cancel_at_period_end: true }),
+      retrieveSubscription: async () => subscription(scheduled),
+    });
+    recorded.push(resume.calls);
+    scenarios.push(() => resumeSubscriptionWithDeps(resume, USER_ID));
+  }
+
+  const cancel = deps({ claimOffer: async () => ({ decision: "already_shown", shownAt: "x", acceptedAt: null }) });
+  recorded.push(cancel.calls);
+  scenarios.push(() => cancelSubscriptionWithDeps(cancel, USER_ID));
+
+  for (const run of scenarios) await run();
+
+  for (const calls of recorded) {
+    for (const update of calls.updates) {
+      const both = "cancel_at" in update.params && "cancel_at_period_end" in update.params;
+      assert.equal(both, false, `Stripe rejects both fields together: ${JSON.stringify(update.params)}`);
+    }
+  }
 });
 
 /* ------------------------------- Identity ------------------------------- */
@@ -314,17 +370,51 @@ test("hasCoupon reads expanded discounts and ignores unexpanded ids", () => {
 /* -------------------------------- Resume -------------------------------- */
 
 test("resuming clears a scheduled cancellation without touching price or billing date", async () => {
-  const d = deps({ activeSubscription: async () => ({ ...ACTIVE_ROW, cancel_at_period_end: true }) });
+  const d = deps({
+    activeSubscription: async () => ({ ...ACTIVE_ROW, cancel_at_period_end: true }),
+    retrieveSubscription: async () => subscription({ cancel_at_period_end: true }),
+  });
   const result = await resumeSubscriptionWithDeps(d, USER_ID);
 
   assert.equal(result.status, "resumed");
   assert.equal(result.renewsAt, PERIOD_END);
   const [update] = d.calls.updates;
-  assert.equal(update.params.cancel_at_period_end, false);
-  assert.equal(update.params.cancel_at, "");
-  assert.equal(update.params.proration_behavior, "none");
-  assert.equal(update.params.items, undefined);
+  assert.deepEqual(update.params, { cancel_at_period_end: false, proration_behavior: "none" });
   assert.equal(update.params.discounts, undefined, "resuming must not touch a discount");
+});
+
+test("resuming clears a cancel_at timestamp with the matching field", async () => {
+  const d = deps({
+    activeSubscription: async () => ({ ...ACTIVE_ROW, cancel_at: "2026-10-01T00:00:00.000Z" }),
+    retrieveSubscription: async () => subscription({ cancel_at: 1_800_000_000 }),
+  });
+
+  await resumeSubscriptionWithDeps(d, USER_ID);
+  assert.deepEqual(d.calls.updates[0].params, { cancel_at: "", proration_behavior: "none" });
+});
+
+test("a row that says cancelling but a Stripe object that does not is reported, not rewritten", async () => {
+  const d = deps({ activeSubscription: async () => ({ ...ACTIVE_ROW, cancel_at_period_end: true }) });
+
+  const result = await resumeSubscriptionWithDeps(d, USER_ID);
+  assert.equal(result.status, "not-scheduled");
+  assert.equal(d.calls.updates.length, 0);
+});
+
+test("resuming releases a schedule before undoing the cancellation", async () => {
+  let released = 0;
+  const d = deps({
+    activeSubscription: async () => ({ ...ACTIVE_ROW, cancel_at_period_end: true }),
+    retrieveSubscription: async () => subscription({ schedule: "sub_sched_1", cancel_at_period_end: true }),
+    releaseSchedule: async (value) => {
+      released += 1;
+      return subscription({ id: value.id, cancel_at_period_end: true });
+    },
+  });
+
+  await resumeSubscriptionWithDeps(d, USER_ID);
+  assert.equal(released, 1);
+  assert.equal(d.calls.updates.length, 1);
 });
 
 test("resuming a subscription that is not cancelling is a no-op", async () => {
