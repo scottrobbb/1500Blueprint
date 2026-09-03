@@ -218,10 +218,7 @@ export function ReadingDrill({
       ) : null}
 
       {phase === "generating" ? (
-        <GradingLoader
-          title="Generating passage..."
-          subtitle="Remember, no backtracking. Lock in."
-        />
+        <GradingLoader title="Generating passage..." subtitle="" />
       ) : null}
 
       {phase === "read" && passage ? (
