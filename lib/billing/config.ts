@@ -22,6 +22,20 @@ export function billingCheckoutEnabled(): boolean {
   return CHECKOUT_REQUIRED_ENV.every((name) => Boolean(process.env[name]?.trim()));
 }
 
+// The "Stay & Save 40%" coupon. Stripe scopes coupons to a mode, so an id
+// created in live mode does not resolve in test mode -- pointing both at one id
+// is why accepting the offer failed everywhere except production. This default
+// is the live coupon and is therefore only offered in live mode; test and
+// preview environments name their own with STRIPE_RETENTION_COUPON_ID, and
+// without one the save offer is simply not made.
+const LIVE_RETENTION_COUPON_ID = "2SfA4hHs";
+
+export function retentionCouponId(livemode: boolean): string | null {
+  const configured = process.env.STRIPE_RETENTION_COUPON_ID?.trim();
+  if (configured) return configured;
+  return livemode ? LIVE_RETENTION_COUPON_ID : null;
+}
+
 export function billingLivemode(): boolean {
   const configuredMode = configuredBillingMode();
   if (configuredMode === "test") return false;
