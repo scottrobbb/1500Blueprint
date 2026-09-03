@@ -85,17 +85,67 @@ export async function revokeComplimentaryAccess(email: string): Promise<boolean>
 // Complimentary accounts use the same magic-link flow as paying students but
 // skip the Stripe lookup. The grant lives in the server-only users table so
 // individual email addresses never need to be committed to source.
-export async function hasComplimentaryAccess(email: string): Promise<boolean> {
+export type ComplimentaryAccessDependencies = {
+  loadAccount: (email: string) => Promise<ComplimentaryAccount | null>;
+  hasActiveGrant: (userId: string) => Promise<boolean>;
+};
+
+export type ComplimentaryAccount = {
+  id: string;
+  plan: string | null;
+  account_status: string;
+};
+
+// Gates whether an account may be sent a magic link and whether a
+// complimentary session stays valid.
+//
+// Two admin tools comp a student and they write different rows. The students
+// panel inserts an access_grants row, which is what getStudentAccess reads and
+// what the runbook tells staff to use; the older /admin/access page sets
+// users.plan. This used to check only users.plan, so a student comped through
+// the recommended panel got the entitlement and then silently received no
+// login email -- the request route falls through to Stripe, finds no
+// subscription, and the response is generic by design so nothing surfaces it.
+//
+// The grant predicate is the one getStudentAccess uses, so the two agree on
+// what an active grant is.
+export async function hasComplimentaryAccess(
+  email: string,
+  dependencies: ComplimentaryAccessDependencies = DEFAULT_COMPLIMENTARY_DEPENDENCIES,
+): Promise<boolean> {
   const normalizedEmail = normalizeComplimentaryEmail(email);
   if (!normalizedEmail) return false;
-  const { data, error } = await supabaseAdmin()
-    .from("users")
-    .select("plan,account_status")
-    .eq("email", normalizedEmail)
-    .maybeSingle<{ plan: string | null; account_status: string }>();
-  if (error) throw new Error(`failed to check complimentary access: ${error.message}`);
-  return data?.plan === COMPLIMENTARY_ACCESS_PLAN && data.account_status === "active";
+  const account = await dependencies.loadAccount(normalizedEmail);
+  if (!account || account.account_status !== "active") return false;
+  if (account.plan === COMPLIMENTARY_ACCESS_PLAN) return true;
+  return dependencies.hasActiveGrant(account.id);
 }
+
+const DEFAULT_COMPLIMENTARY_DEPENDENCIES: ComplimentaryAccessDependencies = {
+  loadAccount: async (email) => {
+    const { data, error } = await supabaseAdmin()
+      .from("users")
+      .select("id,plan,account_status")
+      .eq("email", email)
+      .maybeSingle<ComplimentaryAccount>();
+    if (error) throw new Error(`failed to check complimentary access: ${error.message}`);
+    return data ?? null;
+  },
+  hasActiveGrant: async (userId) => {
+    const now = new Date().toISOString();
+    const { data, error } = await supabaseAdmin()
+      .from("access_grants")
+      .select("id")
+      .eq("user_id", userId)
+      .is("revoked_at", null)
+      .lte("starts_at", now)
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    if (error) throw new Error(`failed to check complimentary grant: ${error.message}`);
+    return Boolean(data);
+  },
+};
 
 // Upsert a member record on successful login (see record_login() in
 // supabase/auth.sql). Non-blocking: a write failure is logged, never blocks login.
