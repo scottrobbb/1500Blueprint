@@ -8,7 +8,7 @@ import {
   refundDeadline,
   scheduledCancellationAt,
 } from "./policy";
-import { billingCheckoutEnabled, planForLegacyProductId, planForPriceId } from "./config";
+import { billingCheckoutEnabled, planForLegacyProductId, planForPriceId, retentionCouponId } from "./config";
 import { billingCadenceForInterval, billingOffer } from "./offers";
 
 test("paid access includes Stripe retry grace but excludes terminal statuses", () => {
@@ -194,3 +194,25 @@ function restoreEnvironmentVariable(name: string, value: string | undefined): vo
   }
   process.env[name] = value;
 }
+
+// Stripe coupon ids do not cross billing modes, so the built-in live coupon is
+// only ever handed to live mode. A test or preview environment names its own or
+// gets nothing, which the retention flow reads as "make no offer".
+test("the retention coupon is resolved per billing mode", () => {
+  const original = process.env.STRIPE_RETENTION_COUPON_ID;
+  try {
+    delete process.env.STRIPE_RETENTION_COUPON_ID;
+    assert.equal(retentionCouponId(false), null);
+    assert.equal(typeof retentionCouponId(true), "string");
+
+    process.env.STRIPE_RETENTION_COUPON_ID = "  test_coupon  ";
+    assert.equal(retentionCouponId(false), "test_coupon");
+    assert.equal(retentionCouponId(true), "test_coupon");
+
+    process.env.STRIPE_RETENTION_COUPON_ID = "   ";
+    assert.equal(retentionCouponId(false), null);
+  } finally {
+    if (original === undefined) delete process.env.STRIPE_RETENTION_COUPON_ID;
+    else process.env.STRIPE_RETENTION_COUPON_ID = original;
+  }
+});

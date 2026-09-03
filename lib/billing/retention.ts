@@ -2,7 +2,7 @@ import "server-only";
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { clearPendingChange, releaseSchedule } from "./changes";
-import { billingLivemode } from "./config";
+import { billingLivemode, retentionCouponId } from "./config";
 import { PAID_ACCESS_STATUSES } from "./policy";
 import { billingStripe } from "./stripe";
 import { stripeSubscriptionCadence, syncStripeSubscription } from "./subscriptions";
@@ -25,11 +25,10 @@ export {
   type ResumeResult,
 } from "./retention-orchestrator";
 
-// The live Stripe coupon behind "Stay & Save 40%": 40% off, duration `once`, so
-// it lands on exactly the next renewal and then falls off by itself. It applies
-// to Core and Max on both monthly and 3-month billing, which is why no
-// per-plan mapping is needed here.
-export const RETENTION_COUPON_ID = process.env.STRIPE_RETENTION_COUPON_ID?.trim() || "2SfA4hHs";
+// 40% off, duration `once`, so it lands on exactly the next renewal and then
+// falls off by itself. It applies to Core and Max on both monthly and 3-month
+// billing, which is why no per-plan mapping is needed here. The id itself is
+// mode-scoped and resolved per environment; see retentionCouponId.
 export const RETENTION_PERCENT_OFF = 40;
 
 export async function cancelSubscriptionForUser(userId: string): Promise<CancellationResult> {
@@ -45,9 +44,10 @@ export async function resumeSubscriptionForUser(userId: string): Promise<ResumeR
 }
 
 function retentionDeps(): RetentionDeps {
+  const livemode = billingLivemode();
   return {
-    livemode: billingLivemode(),
-    couponId: RETENTION_COUPON_ID,
+    livemode,
+    couponId: retentionCouponId(livemode),
     percentOff: RETENTION_PERCENT_OFF,
     activeSubscription: activeSubscriptionForUser,
     claimOffer: claimRetentionOffer,

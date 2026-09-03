@@ -61,7 +61,10 @@ export class BillingRetentionError extends Error {
 
 export type RetentionDeps = {
   livemode: boolean;
-  couponId: string;
+  // Null when this environment has no coupon configured for its billing mode.
+  // The offer is then never made, and cancelling behaves as it did before it
+  // existed -- far better than promising a discount Stripe would reject.
+  couponId: string | null;
   percentOff: number;
   activeSubscription: (userId: string, livemode: boolean) => Promise<RetentionSubscriptionRow | null>;
   claimOffer: (userId: string, action: "show" | "accept") => Promise<RetentionClaim>;
@@ -103,8 +106,9 @@ export async function cancelSubscriptionWithDeps(
   // The save offer is for full-price subscriptions only. A student already on a
   // discount is never shown it — and, because showing is what burns it, is not
   // charged the entitlement either: if that discount later falls off, the offer
-  // is still there for them.
-  if (!hasAnyDiscount(subscription)) {
+  // is still there for them. No configured coupon means no offer, and again no
+  // claim: the entitlement is kept for an environment that can honour it.
+  if (deps.couponId !== null && !hasAnyDiscount(subscription)) {
     const claim = await deps.claimOffer(userId, "show");
     if (claim.decision === "granted") {
       return {
@@ -152,6 +156,17 @@ export async function acceptRetentionOfferWithDeps(
   deps: RetentionDeps,
   userId: string,
 ): Promise<RetentionAcceptResult> {
+  // Nothing to apply, so this is refused before the claim is taken. Reaching
+  // here at all means the offer was never shown, since the cancel path does not
+  // make it without a coupon either.
+  const couponId = deps.couponId;
+  if (couponId === null) {
+    throw new BillingRetentionError(
+      "not-offered",
+      "The save offer is not available on this account right now",
+    );
+  }
+
   const row = await requireActiveSubscription(deps, userId);
   const applied = {
     status: "already-applied",
@@ -163,7 +178,7 @@ export async function acceptRetentionOfferWithDeps(
   // read before the claim is taken — an ineligible account must not spend the
   // offer just by asking for it.
   const subscription = await retrieveOwnedSubscription(deps, row, userId);
-  if (hasCoupon(subscription, deps.couponId)) return applied;
+  if (hasCoupon(subscription, couponId)) return applied;
   if (hasAnyDiscount(subscription)) {
     throw new BillingRetentionError(
       "discounted",
@@ -180,7 +195,7 @@ export async function acceptRetentionOfferWithDeps(
     // flight or a spend from an earlier subscription, only the coupon actually
     // sitting on the subscription proves it landed.
     const latest = await retrieveOwnedSubscription(deps, row, userId);
-    if (hasCoupon(latest, deps.couponId)) return applied;
+    if (hasCoupon(latest, couponId)) return applied;
     throw new BillingRetentionError("spent", "This save offer has already been used");
   }
 
@@ -201,7 +216,7 @@ export async function acceptRetentionOfferWithDeps(
     // list is empty, so the coupon stands alone.
     const updated = await deps.updateSubscription(
       subscription.id,
-      { discounts: [{ coupon: deps.couponId }], proration_behavior: "none" },
+      { discounts: [{ coupon: couponId }], proration_behavior: "none" },
       `blueprint-retention-${userId}-${subscription.id}`,
     );
     assertSubscriptionOwner(updated, row, userId, deps.livemode);

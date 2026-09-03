@@ -12,16 +12,20 @@ import { billingStripe } from "./stripe";
 // details -- stays on.
 //
 // Resolving this configuration is deliberately load-bearing: if it cannot be
-// resolved the portal is not opened at all, since opening it against Stripe's
-// default configuration is exactly the bypass this exists to close.
+// resolved -- or resolves to one that still allows cancelling -- the portal is
+// not opened at all, since opening it against Stripe's default configuration is
+// exactly the bypass this exists to close.
 
 const CONFIGURATION_METADATA_KEY = "platform";
 const CONFIGURATION_METADATA_VALUE = "1500_blueprint";
 // Bump when the feature set below changes, so existing configurations are
 // rewritten on the next portal open instead of silently keeping the old rules.
 const CONFIGURATION_VERSION = "1";
+// The cache is what keeps the portal from re-resolving on every open, but a
+// configuration edited in the Dashboard to switch cancelling back on must not
+// stay trusted for the life of a warm instance, so the answer expires.
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
-let cachedConfigurationId: string | null = null;
 
 const FEATURES: Stripe.BillingPortal.ConfigurationCreateParams.Features = {
   customer_update: {
@@ -34,14 +38,45 @@ const FEATURES: Stripe.BillingPortal.ConfigurationCreateParams.Features = {
   subscription_cancel: { enabled: false },
 };
 
-export async function billingPortalConfigurationId(): Promise<string> {
-  const configured = process.env.STRIPE_PORTAL_CONFIGURATION_ID?.trim();
-  if (configured) return configured;
-  if (cachedConfigurationId) return cachedConfigurationId;
+type PortalConfiguration = {
+  id: string;
+  metadata: Stripe.Metadata | null;
+  features: { subscription_cancel: { enabled: boolean } };
+};
 
-  const stripe = billingStripe();
-  const existing = await stripe.billingPortal.configurations.list({ limit: 100 });
-  const ours = existing.data.find(
+export type PortalConfigurationDeps = {
+  now: () => number;
+  configuredId: () => string | undefined;
+  retrieve: (id: string) => Promise<PortalConfiguration>;
+  list: () => Promise<PortalConfiguration[]>;
+  update: (id: string) => Promise<PortalConfiguration>;
+  create: () => Promise<PortalConfiguration>;
+};
+
+export async function resolvePortalConfigurationId(
+  deps: PortalConfigurationDeps,
+  cache: { current: { id: string; verifiedAt: number } | null },
+): Promise<string> {
+  const now = deps.now();
+  if (cache.current && now - cache.current.verifiedAt < CACHE_TTL_MS) return cache.current.id;
+
+  // A configuration named by env is still only trusted once it has been read
+  // back and shown to have cancelling switched off. Naming the wrong one -- or
+  // Stripe's default -- would otherwise reopen the exact bypass this closes,
+  // and it would do so silently.
+  const configured = deps.configuredId()?.trim();
+  if (configured) {
+    const configuration = await deps.retrieve(configured);
+    if (configuration.features.subscription_cancel.enabled) {
+      throw new Error(
+        `Stripe portal configuration ${configured} allows cancelling; refusing to open the portal against it`,
+      );
+    }
+    cache.current = { id: configuration.id, verifiedAt: now };
+    return configuration.id;
+  }
+
+  const ours = (await deps.list()).find(
     (configuration) =>
       configuration.metadata?.[CONFIGURATION_METADATA_KEY] === CONFIGURATION_METADATA_VALUE,
   );
@@ -53,29 +88,42 @@ export async function billingPortalConfigurationId(): Promise<string> {
       ours.metadata?.config_version !== CONFIGURATION_VERSION
       || ours.features.subscription_cancel.enabled
     ) {
-      const updated = await stripe.billingPortal.configurations.update(ours.id, {
-        features: FEATURES,
-        metadata: {
-          [CONFIGURATION_METADATA_KEY]: CONFIGURATION_METADATA_VALUE,
-          config_version: CONFIGURATION_VERSION,
-        },
-      });
-      cachedConfigurationId = updated.id;
+      const updated = await deps.update(ours.id);
+      cache.current = { id: updated.id, verifiedAt: now };
       return updated.id;
     }
-    cachedConfigurationId = ours.id;
+    cache.current = { id: ours.id, verifiedAt: now };
     return ours.id;
   }
 
-  const created = await stripe.billingPortal.configurations.create({
-    features: FEATURES,
-    metadata: {
-      [CONFIGURATION_METADATA_KEY]: CONFIGURATION_METADATA_VALUE,
-      config_version: CONFIGURATION_VERSION,
-    },
-  });
-  cachedConfigurationId = created.id;
+  const created = await deps.create();
+  cache.current = { id: created.id, verifiedAt: now };
   return created.id;
+}
+
+const cache: { current: { id: string; verifiedAt: number } | null } = { current: null };
+
+const CONFIGURATION_METADATA: Stripe.MetadataParam = {
+  [CONFIGURATION_METADATA_KEY]: CONFIGURATION_METADATA_VALUE,
+  config_version: CONFIGURATION_VERSION,
+};
+
+export async function billingPortalConfigurationId(): Promise<string> {
+  const stripe = billingStripe();
+  return resolvePortalConfigurationId({
+    now: Date.now,
+    configuredId: () => process.env.STRIPE_PORTAL_CONFIGURATION_ID,
+    retrieve: (id) => stripe.billingPortal.configurations.retrieve(id),
+    list: async () => (await stripe.billingPortal.configurations.list({ limit: 100 })).data,
+    update: (id) => stripe.billingPortal.configurations.update(id, {
+      features: FEATURES,
+      metadata: CONFIGURATION_METADATA,
+    }),
+    create: () => stripe.billingPortal.configurations.create({
+      features: FEATURES,
+      metadata: CONFIGURATION_METADATA,
+    }),
+  }, cache);
 }
 
 // The only way the app opens Stripe's portal. Resolving the configuration first

@@ -82,6 +82,32 @@ function deps(overrides: Partial<RetentionDeps> = {}): RetentionDeps & { calls: 
   };
 }
 
+/* ------------------------ Coupon configuration ------------------------ */
+
+// Stripe scopes coupons to a billing mode, so an environment without one of its
+// own must not promise a discount it cannot apply.
+test("with no coupon configured the offer is never made, and the claim is kept", async () => {
+  const d = deps({ couponId: null });
+  const result = await cancelSubscriptionWithDeps(d, USER_ID);
+
+  assert.equal(result.status, "scheduled");
+  assert.deepEqual(d.calls.claims, []);
+  assert.equal(d.calls.updates.length, 1);
+  assert.equal(d.calls.updates[0].params.cancel_at_period_end, true);
+});
+
+test("with no coupon configured accepting is refused before any claim or Stripe write", async () => {
+  const d = deps({ couponId: null });
+  await assert.rejects(
+    () => acceptRetentionOfferWithDeps(d, USER_ID),
+    (error: unknown) => error instanceof BillingRetentionError && error.code === "not-offered",
+  );
+
+  assert.deepEqual(d.calls.claims, []);
+  assert.equal(d.calls.updates.length, 0);
+  assert.equal(d.calls.releases, 0);
+});
+
 /* ---------------------------- Cancellation ---------------------------- */
 
 test("the first confirmed cancellation returns the save offer instead of cancelling", async () => {
