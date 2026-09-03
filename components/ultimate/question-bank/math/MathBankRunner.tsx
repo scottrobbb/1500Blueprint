@@ -36,6 +36,7 @@ type BankRunnerProps = {
   filters: MathSessionFilters;
   initialState: QuestionBankRunnerState;
   returnHref?: string;
+  plannerTaskId?: string;
   isAdmin?: boolean;
 };
 
@@ -44,13 +45,14 @@ export function MathBankRunner({
   filters,
   initialState,
   returnHref,
+  plannerTaskId,
   isAdmin,
 }: BankRunnerProps) {
-  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} isAdmin={isAdmin} subject="math" />;
+  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} plannerTaskId={plannerTaskId} isAdmin={isAdmin} subject="math" />;
 }
 
-export function ReadingWritingBankRunner({ questions, filters, initialState, returnHref, isAdmin }: BankRunnerProps) {
-  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} isAdmin={isAdmin} subject="reading-writing" />;
+export function ReadingWritingBankRunner({ questions, filters, initialState, returnHref, plannerTaskId, isAdmin }: BankRunnerProps) {
+  return <ObjectiveBankRunner questions={questions} filters={filters} initialState={initialState} returnHref={returnHref} plannerTaskId={plannerTaskId} isAdmin={isAdmin} subject="reading-writing" />;
 }
 
 function ObjectiveBankRunner({
@@ -58,16 +60,24 @@ function ObjectiveBankRunner({
   filters,
   initialState,
   returnHref,
+  plannerTaskId,
   isAdmin,
   subject,
 }: BankRunnerProps & { subject: BankSubject }) {
+  // Per-sitting storage is keyed by what decides the set of questions. For an
+  // ordinary session that is the filters; a Study Planner task carries a fixed
+  // set of its own, so it is keyed by the task instead -- two tasks over the
+  // same skill hold different questions and must not share a key.
+  const stateKey = plannerTaskId
+    ? `task:${plannerTaskId}`
+    : `${subject}:${filters.difficulty}:${filters.completion}:${[...filters.skills].sort().join(",")}`;
   // The server re-sorts "unattempted first" on every fetch, so a plain
   // refresh (which re-fetches) would reshuffle every question's number as
   // soon as one gets attempted. Lock in the order the first time this
   // filter set loads in a session, and reuse it on subsequent loads --
   // new/removed questions are reconciled against the saved id list rather
   // than trusting the freshly-fetched order.
-  const orderKey = `qb-order:${subject}:${filters.difficulty}:${filters.completion}:${[...filters.skills].sort().join(",")}`;
+  const orderKey = `qb-order:${stateKey}`;
   const [orderedQuestions] = useState<BankRunnerQuestion[]>(() => {
     if (typeof window === "undefined") return questions;
     try {
@@ -96,19 +106,23 @@ function ObjectiveBankRunner({
     }
   });
 
-  // Resume on the same question after a refresh. Keyed by subject + filters
-  // (not a raw index -- the saved question id is re-located in the ordered
-  // list rather than trusted as a slot).
-  const positionKey = `qb-position:${subject}:${filters.difficulty}:${filters.completion}:${[...filters.skills].sort().join(",")}`;
+  // Resume on the same question after a refresh. Keyed by the session (not a
+  // raw index -- the saved question id is re-located in the ordered list
+  // rather than trusted as a slot).
+  const positionKey = `qb-position:${stateKey}`;
   const [currentIndex, setCurrentIndex] = useState(() => {
-    if (typeof window === "undefined") return 0;
+    // A planner task is reopened days later with the questions already
+    // answered still in its set, so Continue starts on the first question the
+    // student has not answered instead of back at question 1.
+    const resumeIndex = plannerTaskId ? firstUnansweredIndex(orderedQuestions, initialState.outcomes) : 0;
+    if (typeof window === "undefined") return resumeIndex;
     try {
       const savedId = window.sessionStorage.getItem(positionKey);
-      if (!savedId) return 0;
+      if (!savedId) return resumeIndex;
       const index = orderedQuestions.findIndex((item) => item.id === savedId);
-      return index > 0 ? index : 0;
+      return index > 0 ? index : resumeIndex;
     } catch {
-      return 0;
+      return resumeIndex;
     }
   });
   // Attempt state is per sitting, not per account. Seeding it from the
@@ -117,7 +131,7 @@ function ObjectiveBankRunner({
   // Session storage keeps the recap and navigator honest across a mid-session
   // refresh -- the concern the counters below were written for -- while a
   // later sitting, a new tab, or a different filter set starts clean.
-  const attemptsKey = `qb-attempts:${subject}:${filters.difficulty}:${filters.completion}:${[...filters.skills].sort().join(",")}`;
+  const attemptsKey = `qb-attempts:${stateKey}`;
   const [attempts, setAttempts] = useState<Record<string, QuestionBankAttemptState>>(
     () => readStoredAttempts(attemptsKey),
   );
@@ -620,6 +634,17 @@ function ToolButton({ label, active, onClick, children, disabled = false }: { la
       {children}<span className="mt-0.5 hidden sm:block">{label}</span>
     </button>
   );
+}
+
+// The set a planner task replays keeps every question the student has already
+// answered, so the first one without an outcome is where they left off. A set
+// with nothing left opens at the start, on its way to the recap.
+function firstUnansweredIndex(
+  questions: BankRunnerQuestion[],
+  outcomes: Record<string, QuestionBankOutcome>,
+): number {
+  const index = questions.findIndex((question) => !outcomes[question.id]);
+  return index > 0 ? index : 0;
 }
 
 function QuestionStrip({ questionId, index, marked, saving, saveError, eliminatorOn, onToggleMarked, onToggleEliminator }: { questionId: string; index: number; marked: boolean; saving: boolean; saveError: string | null; eliminatorOn: boolean; onToggleMarked: () => void; onToggleEliminator: () => void }) {

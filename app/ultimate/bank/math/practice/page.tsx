@@ -8,9 +8,14 @@ import {
   parseDifficultyFilter,
   parseQuestionLimit,
   parseSkillFilter,
+  pinnedQuestionBankSession,
 } from "@/lib/question-bank/math";
 import { getMathRunnerQuestions } from "@/lib/question-bank/math-queries";
 import { getQuestionBankRunnerState } from "@/lib/question-bank/runner-state";
+import {
+  pinPlannerTaskQuestions,
+  resolvePlannerTaskSession,
+} from "@/lib/study-planner/task-questions";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { questionBankAllowance } from "@/lib/auth/access-control";
 import { BluebookSurface } from "@/components/theme/BluebookSurface";
@@ -31,15 +36,29 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
     completion: parseCompletionFilter(readParam(params.completion)),
   };
   const limit = parseQuestionLimit(readParam(params.limit));
+  const fromPlanner = readParam(params.from) === "planner";
   const [access, allowance] = await Promise.all([
     getStudentAccess(session.email),
     questionBankAllowance(session.email),
   ]);
   if (!allowance.allowed) redirect("/ultimate/bank?upgrade=1");
-  const questions = await getMathRunnerQuestions(session.email, filters, limit, {
+  // A Study Planner task owns a fixed set of questions: opening it a second
+  // time has to hand back the same ones, with the ones already answered still
+  // answered, rather than re-running the filters over what is left.
+  const plannerTask = fromPlanner
+    ? await resolvePlannerTaskSession(session.email, readParam(params.task), "math")
+    : null;
+  const selected = await getMathRunnerQuestions(session.email, filters, limit, {
     includeChallenge: access.entitlements.challengeQuestions,
     freeTierOnly: access.plan === "free",
+    pin: plannerTask?.pin,
   });
+  const questions = plannerTask?.pin.mode === "resume"
+    ? pinnedQuestionBankSession(
+      selected,
+      await pinPlannerTaskQuestions(plannerTask.taskId, selected.map((question) => question.id)),
+    )
+    : selected;
   const initialState = await getQuestionBankRunnerState(session.email, questions.map((question) => question.id));
 
   return (
@@ -48,7 +67,8 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
         questions={questions}
         filters={filters}
         initialState={initialState}
-        returnHref={readParam(params.from) === "planner" ? "/ultimate/planner" : undefined}
+        returnHref={fromPlanner ? "/ultimate/planner" : undefined}
+        plannerTaskId={plannerTask?.taskId}
         isAdmin={isAdminEmail(session.email)}
       />
     </BluebookSurface>
