@@ -1,23 +1,22 @@
-// AI grading endpoint for the explanation/recall drills. The student player
-// (Grammar "Explain Your Process", Reading "Your Summary") POSTs here; we load
-// the protected grading prompt + canonical answer with the service-role client
-// and run Scott's editable prompt through Claude. The grading_prompt never
-// ships to the browser, which is why grading lives server-side.
+// AI grading endpoint for the explanation drills. The student player (Grammar
+// "Explain Your Process") POSTs here; we load the protected grading prompt +
+// canonical answer with the service-role client and run Scott's editable prompt
+// through Claude. The grading_prompt never ships to the browser, which is why
+// grading lives server-side.
+//
+// Reading recall is NOT graded here: its passages are generated per attempt and
+// scored against two weighted tiers of points, which lives in
+// app/api/drills/reading/grade.
 
 import { NextResponse, type NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getSession } from "@/lib/auth/session";
 import { getDrill, getQuestion } from "@/lib/drills/admin-queries";
 import { refundAiSubmission, reserveAiSubmission } from "@/lib/drills/aiQuota";
-import { loadGrammarMastery, loadReadingProgress, recordProgress } from "@/lib/drills/progress";
+import { loadGrammarMastery, recordProgress } from "@/lib/drills/progress";
 import { awardDrill, getNavStats } from "@/lib/gamification/state";
 import type { DrillSlug } from "@/lib/drills/types";
-import type {
-  GrammarContent,
-  LetteredChoice,
-  ReadingContent,
-  WalkthroughStep,
-} from "@/lib/drills/types";
+import type { GrammarContent, LetteredChoice, WalkthroughStep } from "@/lib/drills/types";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { drillAllowance } from "@/lib/auth/access-control";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
@@ -103,23 +102,6 @@ function buildGrammarUser(
     .join("\n\n");
 }
 
-// {score,verdict,captured[]} shape for the Reading drill (grade-summary).
-function buildReadingUser(
-  passageBody: string[],
-  keyPoints: string[],
-  studentText: string,
-): string {
-  const passage = passageBody.join("\n\n");
-  const points = keyPoints.map((p, i) => `${i + 1}. ${p}`).join("\n");
-
-  return [
-    `Passage:\n${passage}`,
-    `Canonical key points (in order):\n${points}`,
-    `Student's summary:\n${studentText}`,
-    'Return strict JSON only: {"score":0-100,"verdict":"<one line>","captured":[{"text":"<key point>","captured":true|false}, ...]}. Output one captured entry per provided key point, in the same order, copying each key point text verbatim.',
-  ].join("\n\n");
-}
-
 export async function POST(req: NextRequest) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -200,9 +182,6 @@ export async function POST(req: NextRequest) {
       selectedChoice,
       studentText,
     );
-  } else if (drill.aiRole === "grade-summary") {
-    const content = question.content as Partial<ReadingContent>;
-    userPrompt = buildReadingUser(content.body ?? [], content.keyPoints ?? [], studentText);
   } else {
     return NextResponse.json(
       { error: `Drill "${drillSlug}" is not AI-graded` },
@@ -371,59 +350,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  let readingProgress: Awaited<ReturnType<typeof loadReadingProgress>> | undefined;
-  if (drillSlug === "reading" && attemptSaved) {
-    try {
-      readingProgress = await loadReadingProgress(session.email);
-    } catch (e) {
-      reportServerError("drill.grade.reading_progress_load_failed", e, {
-        provider: "supabase",
-        route: "/api/drills/grade",
-        method: "POST",
-      });
-    }
-  }
-
   const saveStatus = { mastery: attemptSaved, question: questionSaved };
 
-  if (drill.aiRole === "grade-process") {
-    const feedback = typeof obj.feedback === "string" ? obj.feedback : "";
-    const stepsMissed = Array.isArray(obj.stepsMissed)
-      ? obj.stepsMissed.filter((s): s is string => typeof s === "string")
-      : [];
-    return NextResponse.json({
-      score,
-      verdict,
-      feedback,
-      stepsMissed,
-      grammarMastery,
-      saveStatus,
-      aiUsage: quota,
-      ...(gam ?? {}),
-    });
-  }
-
-  // grade-summary: normalize to one entry per provided key point, in order.
-  const keyPoints = (question.content as Partial<ReadingContent>).keyPoints ?? [];
-  const returned = Array.isArray(obj.captured) ? obj.captured : [];
-  // Match the model's entries to our canonical key points by NORMALIZED text, not
-  // by position — the model may reorder/paraphrase. Unmatched key points default
-  // to not-captured (never pair a key point with an arbitrary positional entry).
-  const norm = (s: string) => s.trim().toLowerCase();
-  const byText = new Map<string, boolean>();
-  for (const entry of returned) {
-    if (entry && typeof entry === "object") {
-      const e = entry as Record<string, unknown>;
-      if (typeof e.text === "string") byText.set(norm(e.text), Boolean(e.captured));
-    }
-  }
-  const captured = keyPoints.map((text) => ({ text, captured: byText.get(norm(text)) ?? false }));
+  const feedback = typeof obj.feedback === "string" ? obj.feedback : "";
+  const stepsMissed = Array.isArray(obj.stepsMissed)
+    ? obj.stepsMissed.filter((s): s is string => typeof s === "string")
+    : [];
 
   return NextResponse.json({
     score,
     verdict,
-    captured,
-    readingProgress,
+    feedback,
+    stepsMissed,
+    grammarMastery,
     saveStatus,
     aiUsage: quota,
     ...(gam ?? {}),

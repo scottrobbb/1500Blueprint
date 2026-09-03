@@ -10,11 +10,9 @@ import type {
   GrammarContent,
   GrammarQuestion,
   LetteredChoice,
-  ReadingContent,
   TargetedMathContent,
   VocabContent,
 } from "./types";
-import type { ReadingItem } from "@/components/drills/reading/ReadingDrill";
 import type { MathQuestion } from "@/components/drills/math/mockData";
 import type { VocabItem } from "@/components/drills/vocab/mock";
 import type { Flashcard } from "@/components/drills/flashcards/mock";
@@ -97,23 +95,6 @@ export function toFlashcards(qs: DrillQuestion[]): Flashcard[] {
       pos: c.pos ?? "",
       definition: c.definition ?? "",
       example: c.example ?? "",
-    });
-  }
-  return out;
-}
-
-// DrillQuestion[] -> ReadingItem[]. Skips items with an empty passage body.
-export function toReadingItems(qs: DrillQuestion[]): ReadingItem[] {
-  const out: ReadingItem[] = [];
-  for (const q of qs) {
-    const c = q.content as ReadingContent;
-    if (!Array.isArray(c.body) || c.body.length === 0) continue;
-    out.push({
-      id: q.id,
-      body: c.body,
-      // Guard against a 0/missing read time (which would skip the timed read).
-      readSeconds: c.readSeconds && c.readSeconds > 0 ? c.readSeconds : 90,
-      keyPoints: Array.isArray(c.keyPoints) ? c.keyPoints : [],
     });
   }
   return out;

@@ -1,25 +1,19 @@
 "use client";
 
-import type { KeyPoint, ReadingPassage } from "./mock";
+import type { GradedReadingPoint } from "@/lib/drills/readingGrading";
 import { CheckIcon } from "@/components/test/icons";
-import { label, surface } from "../shared/ui";
+import { surface } from "../shared/ui";
 
 // --- Phase 1: timed reading ---------------------------------------------------
 
 // The passage sits alone in a centered, generously set serif card so the read
 // is calm and focused. A "Done Reading" button ends the read early.
-export function ReadingCard({
-  passage,
-  onDone,
-}: {
-  passage: ReadingPassage;
-  onDone: () => void;
-}) {
+export function ReadingCard({ body, onDone }: { body: string[]; onDone: () => void }) {
   return (
     <div className="animate-fade-in mx-auto max-w-3xl">
       <article className={`${surface} px-6 py-8 sm:px-10 sm:py-11`}>
         <div className="space-y-5">
-          {passage.body.map((para, i) => (
+          {body.map((para, i) => (
             <p key={i} className="font-serif text-[17px] leading-[1.85] text-exam-ink">
               {para}
             </p>
@@ -61,49 +55,103 @@ export function RecallHeading() {
   );
 }
 
-// --- Phase 3 (feedback): key points checklist ---------------------------------
+// --- Phase 3 (feedback): the two-tier points breakdown ------------------------
 
-// The graded recall: each key point marked captured (success) or missed
-// (danger), with a small captured-count header.
-export function KeyPointsChecklist({ points }: { points: KeyPoint[] }) {
-  const captured = points.filter((p) => p.captured).length;
+// What the recall left on the table, split into the two tiers the score weights:
+// Core is the main idea and resolution (80% of the score), Depth is the
+// supporting layer (20%). Fully recalled points are not listed — the student
+// only needs to see what they lost.
+export function MissedPoints({
+  core,
+  depth,
+}: {
+  core: GradedReadingPoint[];
+  depth: GradedReadingPoint[];
+}) {
+  const missedCore = core.filter((p) => p.recall !== "full");
+  const missedDepth = depth.filter((p) => p.recall !== "full");
+
+  if (missedCore.length === 0 && missedDepth.length === 0) {
+    return (
+      <div className={`${surface} border-success/30 bg-success-bg/40 flex items-start gap-3 px-4 py-4`}>
+        <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-chip bg-success-bg text-success-600">
+          <CheckIcon className="h-3.5 w-3.5" />
+        </span>
+        <div>
+          <h3 className="font-display text-[15px] font-bold text-ink">You captured every point</h3>
+          <p className="mt-0.5 text-sm text-navy/60">
+            Main idea, timeline, and all the supporting detail.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={surface}>
-      <div className="flex items-center justify-between gap-3 border-b border-navy/10 px-4 py-2.5">
-        <h3 className={`${label} text-navy/50`}>Key points</h3>
-        <span className="text-xs font-semibold tabular-nums text-navy/50">
-          {captured}/{points.length} captured
+    <div className={`${surface} border-danger/30 bg-danger-bg/25`}>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-danger/15 px-4 py-3">
+        <h3 className="font-display text-[15px] font-bold text-ink">Points you missed</h3>
+        <span className="text-xs font-semibold tabular-nums text-navy/55">
+          Core {core.length - missedCore.length}/{core.length} · Depth{" "}
+          {depth.length - missedDepth.length}/{depth.length}
         </span>
       </div>
-      <ul className="divide-y divide-navy/8">
+      <div className="divide-y divide-danger/12">
+        <PointGroup
+          heading="Core"
+          note="The main idea and resolution — most of your score."
+          points={missedCore}
+        />
+        <PointGroup
+          heading="Depth"
+          note="Supporting detail that fills the idea in."
+          points={missedDepth}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PointGroup({
+  heading,
+  note,
+  points,
+}: {
+  heading: string;
+  note: string;
+  points: GradedReadingPoint[];
+}) {
+  if (points.length === 0) return null;
+  return (
+    <div className="px-4 py-3">
+      <div className="flex flex-wrap items-baseline gap-x-2">
+        <h4 className="text-[13px] font-bold text-navy">{heading}</h4>
+        <span className="text-xs text-navy/50">{note}</span>
+      </div>
+      <ul className="mt-2 space-y-2">
         {points.map((point, i) => (
-          <li key={i} className="flex items-start gap-3 px-4 py-3">
+          <li key={i} className="flex items-start gap-2.5">
             <span
-              className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-chip ${
-                point.captured
-                  ? "bg-success-bg text-success-600"
+              className={`mt-[3px] flex h-4 w-4 shrink-0 items-center justify-center rounded-chip ${
+                point.recall === "partial"
+                  ? "bg-flag-bg text-flag"
                   : "bg-danger-bg text-danger-600"
               }`}
             >
-              {point.captured ? (
-                <CheckIcon className="h-3.5 w-3.5" />
+              {point.recall === "partial" ? (
+                <HalfIcon className="h-2.5 w-2.5" />
               ) : (
-                <XMarkIcon className="h-3.5 w-3.5" />
+                <XMarkIcon className="h-2.5 w-2.5" />
               )}
             </span>
-            <span
-              className={`font-serif text-[15px] leading-snug ${
-                point.captured ? "text-exam-ink" : "text-navy/55"
-              }`}
-            >
+            <span className="font-serif text-[15px] leading-snug text-exam-ink">
+              <span className="font-sans text-[13px] font-semibold text-navy/70">
+                {point.label}:
+              </span>{" "}
               {point.text}
-            </span>
-            <span
-              className={`ml-auto shrink-0 pl-2 text-[11px] font-semibold uppercase tracking-wide ${
-                point.captured ? "text-success-600" : "text-danger-600"
-              }`}
-            >
-              {point.captured ? "Captured" : "Missed"}
+              {point.recall === "partial" ? (
+                <span className="ml-1.5 text-xs font-semibold text-flag">partly captured</span>
+              ) : null}
             </span>
           </li>
         ))}
@@ -131,7 +179,15 @@ function BookIcon({ className }: { className?: string }) {
 function XMarkIcon({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HalfIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
+      <path d="M4 12h16" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" />
     </svg>
   );
 }

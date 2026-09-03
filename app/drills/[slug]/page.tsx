@@ -16,7 +16,6 @@ import {
   toFlashcards,
   toGrammarQuestions,
   toMathQuestions,
-  toReadingItems,
   toVocabItems,
 } from "@/lib/drills/runtime-map";
 import { DrillEmpty } from "@/components/drills/shared/DrillEmpty";
@@ -87,17 +86,11 @@ export default async function DrillPage({
       return <TargetedMathDrill difficulty={difficulty} questions={questions} returnHref={returnHref} />;
     }
     case "reading": {
-      const raw = await loadDrillQuestions("reading", contentOptions);
-      const [ordered, progress] = email
-        ? await Promise.all([
-            selectForStudent("reading", email, raw),
-            loadReadingProgress(email),
-          ])
-        : [raw, calculateReadingProgress([])];
-      const passages = toReadingItems(ordered);
-      if (passages.length === 0)
-        return <DrillEmpty title="Reading Comprehension Drill" eyebrow="Reading & Writing" returnHref={returnHref} />;
-      return <ReadingDrill passages={passages} initialProgress={progress} returnHref={returnHref} />;
+      // Every run generates its own passage, so there is no question pool to
+      // load — only the level the student is on, which sets the difficulty and
+      // the timer the generator will use.
+      const progress = email ? await loadReadingProgress(email) : calculateReadingProgress([]);
+      return <ReadingDrill initialProgress={progress} returnHref={returnHref} />;
     }
     case "word-scan":
       return <WordScanDrill mode={sp.mode === "bad-mold" ? "bad-mold" : "ceased"} returnHref={returnHref} />;
