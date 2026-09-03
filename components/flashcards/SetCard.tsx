@@ -8,7 +8,7 @@ function termsLabel(n: number): string {
 
 function SharedBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-chip border border-gold-600/30 bg-[#fff7e6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-flag">
+    <span className="inline-flex items-center gap-1 rounded-chip border border-gold-600/30 bg-flag-bg px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-flag">
       Shared
     </span>
   );

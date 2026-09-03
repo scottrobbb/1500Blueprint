@@ -48,7 +48,7 @@ export function TestLibraryCard({
           </div>
           <div className="flex flex-none flex-wrap justify-end gap-2">
             {bestScore != null ? <ScoreBadge score={bestScore} /> : null}
-            {draft ? <span className="rounded-full border border-gold/25 bg-[#fffaf0] px-2.5 py-1 text-[11px] font-semibold text-[#70550b]">Draft</span> : null}
+            {draft ? <span className="rounded-full border border-gold/25 bg-flag-bg px-2.5 py-1 text-[11px] font-semibold text-flag">Draft</span> : null}
             {planLocked ? <LockedBadge plan={requiredPlan} /> : null}
           </div>
         </div>
@@ -63,7 +63,7 @@ export function TestLibraryCard({
           {locked ? (
             planLocked ? (
               <Link href="/pricing" className="inline-flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-brand/20 bg-ice/70 px-4 text-sm font-extrabold text-navy transition-colors hover:border-brand/40 hover:bg-ice focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                <LockIcon className="h-4 w-4 text-[#7a5900]" /> Unlock with {requiredPlan === "core" ? "Core" : "Max"}
+                <LockIcon className="h-4 w-4 text-flag" /> Unlock with {requiredPlan === "core" ? "Core" : "Max"}
               </Link>
             ) : (
               <div className="flex min-h-11 items-center justify-center rounded-xl bg-navy/[0.05] px-4 text-sm font-bold text-navy/40">Coming soon</div>
@@ -104,7 +104,7 @@ function TestPreview({ variant, locked, challengeLabel }: { variant: number; loc
         {variant === 3 ? <ReadingExam /> : null}
       </div>
       {challengeLabel ? (
-        <span className="absolute right-4 top-3 flex flex-col items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-[8px] font-extrabold uppercase leading-none tracking-[0.1em] text-[#c81e1e] shadow-[0_3px_12px_-2px_rgba(6,22,45,0.5)] ring-1 ring-[#dc2626]/25">
+        <span className="absolute right-4 top-3 flex flex-col items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-[8px] font-extrabold uppercase leading-none tracking-[0.1em] text-danger-600 shadow-[0_3px_12px_-2px_rgba(6,22,45,0.5)] ring-1 ring-danger/25">
           <FireballIcon />
           {challengeLabel}
         </span>

@@ -93,7 +93,7 @@ export function QuestionBankDashboardView({ dashboard, access }: { dashboard: Qu
   );
 
   return (
-    <div className="min-h-dvh bg-[#f5f6f8]">
+    <div className="min-h-dvh bg-canvas">
       <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
         <header className="mb-6">
           <div className="flex items-start gap-3">
@@ -218,7 +218,7 @@ function SubjectCard({ subject, challengeLocked }: { subject: QuestionBankSubjec
 
   return (
     <article
-      className={`relative min-h-[200px] overflow-hidden rounded-[20px] bg-gradient-to-r p-5 text-white sm:p-6 ${
+      className={`relative min-h-[200px] overflow-hidden rounded-[20px] bg-gradient-to-r p-5 text-static-white sm:p-6 ${
         isMath ? "from-[#32bea9] to-[#6bd4c1]" : "from-[#ef7f74] to-[#f7a08d]"
       }`}
     >

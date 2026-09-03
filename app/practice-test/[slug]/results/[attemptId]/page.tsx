@@ -8,6 +8,7 @@ import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { getStudyPlannerProfile } from "@/lib/study-planner/profile";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { isAdminEmail } from "@/lib/auth/admin";
+import { BluebookSurface } from "@/components/theme/BluebookSurface";
 
 export const metadata = {
   title: "Your results · 1500 Blueprint",
@@ -56,24 +57,26 @@ export default async function AttemptResultsPage({
   const result = scoreTest(test, attempt.routed, attempt.answers);
 
   return (
-    <ResultsScreen
-      test={test}
-      result={result}
-      routed={attempt.routed}
-      answers={attempt.answers}
-      perQuestionTime={attempt.perQuestionTime}
-      backHref={`/practice-test/${slug}/attempts${returnToUltimate ? "?workspace=ultimate" : ""}`}
-      completedHref={returnToUltimate ? "/ultimate/tests/completed" : undefined}
-      testsHref={returnToUltimate ? "/ultimate/tests" : undefined}
-      attemptDate={formatTaken(attempt.createdAt)}
-      scorePromptAttemptId={attemptId}
-      shouldPromptForScore={Boolean(
-        plannerAccess?.active
-        && plannerAccess.entitlements.studyPlanner
-        && profile
-        && profile.lastScorePromptAttemptId !== attemptId
-        && Date.parse(attempt.createdAt) > Date.parse(profile.scoreUpdatedAt ?? profile.updatedAt)
-      )}
-    />
+    <BluebookSurface>
+      <ResultsScreen
+        test={test}
+        result={result}
+        routed={attempt.routed}
+        answers={attempt.answers}
+        perQuestionTime={attempt.perQuestionTime}
+        backHref={`/practice-test/${slug}/attempts${returnToUltimate ? "?workspace=ultimate" : ""}`}
+        completedHref={returnToUltimate ? "/ultimate/tests/completed" : undefined}
+        testsHref={returnToUltimate ? "/ultimate/tests" : undefined}
+        attemptDate={formatTaken(attempt.createdAt)}
+        scorePromptAttemptId={attemptId}
+        shouldPromptForScore={Boolean(
+          plannerAccess?.active
+          && plannerAccess.entitlements.studyPlanner
+          && profile
+          && profile.lastScorePromptAttemptId !== attemptId
+          && Date.parse(attempt.createdAt) > Date.parse(profile.scoreUpdatedAt ?? profile.updatedAt)
+        )}
+      />
+    </BluebookSurface>
   );
 }

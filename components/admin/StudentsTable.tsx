@@ -261,7 +261,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
                 <tr key={s.email} className="border-b border-navy/8 last:border-b-0 hover:bg-brand/5">
                   <Td>
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display text-xs font-bold text-white">
+                      <span className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display text-xs font-bold text-static-white">
                         {s.initials}
                       </span>
                       <div className="min-w-0">
@@ -392,7 +392,7 @@ function AccessDetails({
         </p>
       ) : null}
       {student.pendingPlan ? (
-        <p className="font-semibold text-[#8a6500]">
+        <p className="font-semibold text-flag">
           Pending {student.pendingPlan.toUpperCase()}{student.pendingCadence ? ` · ${student.pendingCadence === "three_month" ? "3 months" : "monthly"}` : ""}{student.pendingChangeEffectiveAt ? ` · ${fmtDate(student.pendingChangeEffectiveAt)}` : ""}
         </p>
       ) : null}

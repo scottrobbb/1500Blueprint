@@ -71,9 +71,9 @@ function LessonContent({ block, lessonId, initialAttempt }: { block: LessonBlock
   if (block.kind === "text" && block.content.title) {
     const unavailable = block.content.status === "unavailable";
     return (
-      <section className={`rounded-2xl border px-4 py-4 sm:px-5 ${unavailable ? "border-gold/35 bg-[#fff9e9]" : "border-navy/10 bg-haze/50"}`}>
+      <section className={`rounded-2xl border px-4 py-4 sm:px-5 ${unavailable ? "border-gold/35 bg-flag-bg" : "border-navy/10 bg-haze/50"}`}>
         <StepHeading block={block} description={block.content.body} />
-        {unavailable ? <span className="mt-3 inline-flex rounded-full bg-gold/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#8a6500]">Source file needed</span> : null}
+        {unavailable ? <span className="mt-3 inline-flex rounded-full bg-gold/15 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] text-flag">Source file needed</span> : null}
       </section>
     );
   }

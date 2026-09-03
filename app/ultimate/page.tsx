@@ -50,7 +50,7 @@ export default async function UltimateHomePage({ searchParams }: UltimateHomePag
 
       {billing === "success" ? (
         <div
-          className="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800"
+          className="mb-5 rounded-2xl border border-success/25 bg-success-bg px-4 py-3 text-sm font-semibold text-success-600"
           role="status"
         >
           Your subscription is active. Your new plan access is ready.

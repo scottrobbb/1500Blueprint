@@ -73,13 +73,13 @@ function NextCall({ call }: { call: WeeklyCall }) {
   const joinable = Boolean(call.meetingUrl);
   const live = isCallLiveNow(call);
   return (
-    <section className={`relative mt-7 overflow-hidden rounded-[22px] text-white shadow-[0_22px_60px_-38px_rgba(11,42,91,0.95)] ${live ? "bg-[linear-gradient(125deg,#7a1414_0%,#b8261f_64%,#e0432b_100%)]" : "bg-[linear-gradient(125deg,#0b2a5b_0%,#164b87_64%,#248fd1_100%)]"}`}>
+    <section data-theme="light" className={`relative mt-7 overflow-hidden rounded-[22px] text-white shadow-[0_22px_60px_-38px_rgba(11,42,91,0.95)] ${live ? "bg-[linear-gradient(125deg,#7a1414_0%,#b8261f_64%,#e0432b_100%)]" : "bg-[linear-gradient(125deg,#0b2a5b_0%,#164b87_64%,#248fd1_100%)]"}`}>
       <div aria-hidden="true" className="absolute -right-24 -top-32 h-96 w-96 rounded-full border-[54px] border-sky/[0.09]" />
       <div className="relative grid gap-7 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-center lg:p-10">
         <div>
           <div className="flex flex-wrap items-center gap-2">
             {live ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-red-600"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-600" />Happening now</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-danger"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />Happening now</span>
             ) : (
               <span className="rounded-full bg-gold px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy">Next live call</span>
             )}

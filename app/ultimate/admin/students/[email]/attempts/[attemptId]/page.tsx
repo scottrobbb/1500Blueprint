@@ -5,6 +5,7 @@ import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { getTestAttempt } from "@/lib/gamification/state";
 import { loadTest } from "@/lib/sat/loadTest";
 import { scoreTest } from "@/lib/sat/scoring";
+import { BluebookSurface } from "@/components/theme/BluebookSurface";
 
 export const metadata = { title: "Student report" };
 
@@ -42,15 +43,17 @@ export default async function UltimateAdminStudentAttemptPage({
   const result = scoreTest(test, attempt.routed, attempt.answers);
 
   return (
-    <ResultsScreen
-      test={test}
-      result={result}
-      routed={attempt.routed}
-      answers={attempt.answers}
-      perQuestionTime={attempt.perQuestionTime}
-      backHref={`/ultimate/admin/students/${encodeURIComponent(email)}`}
-      backLabel="Back to student"
-      attemptDate={formatTaken(attempt.createdAt)}
-    />
+    <BluebookSurface>
+      <ResultsScreen
+        test={test}
+        result={result}
+        routed={attempt.routed}
+        answers={attempt.answers}
+        perQuestionTime={attempt.perQuestionTime}
+        backHref={`/ultimate/admin/students/${encodeURIComponent(email)}`}
+        backLabel="Back to student"
+        attemptDate={formatTaken(attempt.createdAt)}
+      />
+    </BluebookSurface>
   );
 }

@@ -211,7 +211,7 @@ export function PasswordAuthForm({ mode, email, next = DEFAULT_AUTH_DESTINATION,
       <button
         type="submit"
         disabled={pending}
-        className="mt-6 inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-xl bg-brand px-6 text-[15px] font-extrabold text-white shadow-[0_2px_0_#2b8fe0] transition-colors duration-200 hover:bg-[#4db2f8] disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
+        className="mt-6 inline-flex min-h-12 w-full cursor-pointer items-center justify-center rounded-xl bg-brand px-6 text-[15px] font-extrabold text-white shadow-[0_2px_0_#2b8fe0] transition-colors duration-200 hover:bg-brand disabled:cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
       >
         {pending ? copy.pending : copy.submit}
       </button>

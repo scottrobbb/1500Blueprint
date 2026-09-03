@@ -74,7 +74,7 @@ export function SubjectBankCatalogView({
   }
 
   return (
-    <div className="min-h-dvh bg-[#f5f6f8]">
+    <div className="min-h-dvh bg-canvas">
       <div className="mx-auto w-full max-w-[1120px] px-4 py-7 sm:px-7 sm:py-10">
         <Link
           href="/ultimate/bank"
@@ -149,7 +149,7 @@ export function SubjectBankCatalogView({
             <Link
               href={allPracticeHref}
               prefetch={false}
-              className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-navy px-5 text-sm font-extrabold text-white transition-colors hover:bg-[#15396d] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:mt-0"
+              className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-navy px-5 text-sm font-extrabold text-white transition-colors hover:bg-navy-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:mt-0"
             >
               Start all topics <ArrowRightIcon className="h-4 w-4" />
             </Link>
@@ -245,7 +245,7 @@ function SkillRow({
             checked={checked}
             onChange={onToggle}
             disabled={skill.available === 0}
-            className="mt-0.5 h-5 w-5 flex-none accent-[#169bd5]"
+            className="mt-0.5 h-5 w-5 flex-none accent-brand"
           />
           <span>
             <span className="block text-sm font-bold leading-5 text-navy sm:text-[15px]">{skill.name}</span>
@@ -317,7 +317,7 @@ function buildPracticeHref(
 
 function accuracyTone(accuracy: number | null): string {
   if (accuracy == null) return "bg-navy/20";
-  if (accuracy >= 85) return "bg-[#16a36a]";
+  if (accuracy >= 85) return "bg-success";
   if (accuracy >= 60) return "bg-gold";
   return "bg-flag";
 }

@@ -11,7 +11,7 @@ function withBlank(passage: string | null | undefined) {
     <Fragment key={i}>
       <MathText>{part}</MathText>
       {i < parts.length - 1 ? (
-        <span className="rounded-[3px] bg-[#fff3cd] px-1.5 py-px align-baseline">_____</span>
+        <span className="rounded-[3px] bg-flag-bg px-1.5 py-px align-baseline">_____</span>
       ) : null}
     </Fragment>
   ));

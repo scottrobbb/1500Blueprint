@@ -220,9 +220,9 @@ export function UltimateShell({
   );
 
   return (
-    <div className="min-h-dvh bg-[#f5f7fa] text-ink lg:grid lg:grid-cols-[244px_minmax(0,1fr)]">
+    <div className="min-h-dvh bg-canvas text-ink lg:grid lg:grid-cols-[244px_minmax(0,1fr)]">
       <a href="#ultimate-main" className="sr-only z-[80] rounded-md bg-white px-4 py-2 text-sm font-semibold text-navy focus:not-sr-only focus:fixed focus:left-3 focus:top-3">Skip to content</a>
-      <aside className="sticky top-0 hidden h-dvh border-r border-white/10 bg-[#0c2348] px-3 pb-3 pt-5 lg:block">{rail}</aside>
+      <aside data-theme="light" className="sticky top-0 hidden h-dvh border-r border-white/10 bg-[#0c2348] px-3 pb-3 pt-5 lg:block">{rail}</aside>
 
       <div className="min-w-0">
         <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-navy/10 bg-white/95 px-4 backdrop-blur lg:hidden">
@@ -260,7 +260,7 @@ export function UltimateShell({
               className="absolute inset-0 bg-navy/45 backdrop-blur-[2px]"
               onClick={() => setMenuOpen(false)}
             />
-            <aside role="dialog" aria-modal="true" aria-label="Navigation" className="relative h-dvh w-[min(86vw,280px)] overscroll-contain border-r border-white/10 bg-[#0c2348] px-3 pb-3 pt-5 shadow-2xl">
+            <aside data-theme="light" role="dialog" aria-modal="true" aria-label="Navigation" className="relative h-dvh w-[min(86vw,280px)] overscroll-contain border-r border-white/10 bg-[#0c2348] px-3 pb-3 pt-5 shadow-2xl">
               <button
                 type="button"
                 onClick={() => setMenuOpen(false)}

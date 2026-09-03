@@ -31,7 +31,7 @@ export function Avatar({
   return (
     <span className="relative inline-flex flex-none" style={{ height: size, width: size }}>
       <span
-        className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display font-extrabold text-white"
+        className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#3fa9f5,#0b2a5b)] font-display font-extrabold text-static-white"
         style={{ fontSize: Math.round(size * 0.36) }}
         aria-hidden={showImage ? undefined : true}
       >

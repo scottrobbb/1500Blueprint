@@ -5,6 +5,7 @@ import { getModuleByKey } from "@/lib/sat/modules";
 import { getModuleAttempt } from "@/lib/sat/moduleAttempts";
 import { ModuleResults } from "@/components/test/ModuleResults";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
+import { BluebookSurface } from "@/components/theme/BluebookSurface";
 
 export const metadata = {
   title: "Module result · 1500 Blueprint",
@@ -49,17 +50,19 @@ export default async function ModuleAttemptResultsPage({
   const timeUsed = Object.values(attempt.perQuestionTime).reduce((a, b) => a + b, 0);
 
   return (
-    <ModuleResults
-      meta={resolved.meta}
-      module={resolved.module}
-      answers={attempt.answers}
-      perQuestionTime={attempt.perQuestionTime}
-      timeUsedSeconds={timeUsed}
-      slug={slug}
-      attemptDate={formatTaken(attempt.createdAt)}
-      backHref={`/practice-test/${slug}/attempts${workspaceQuery}`}
-      modulesHref={`/practice-test/${slug}/modules${workspaceQuery}`}
-      testsHref={returnToUltimate ? "/ultimate/tests" : "/practice-test"}
-    />
+    <BluebookSurface>
+      <ModuleResults
+        meta={resolved.meta}
+        module={resolved.module}
+        answers={attempt.answers}
+        perQuestionTime={attempt.perQuestionTime}
+        timeUsedSeconds={timeUsed}
+        slug={slug}
+        attemptDate={formatTaken(attempt.createdAt)}
+        backHref={`/practice-test/${slug}/attempts${workspaceQuery}`}
+        modulesHref={`/practice-test/${slug}/modules${workspaceQuery}`}
+        testsHref={returnToUltimate ? "/ultimate/tests" : "/practice-test"}
+      />
+    </BluebookSurface>
   );
 }

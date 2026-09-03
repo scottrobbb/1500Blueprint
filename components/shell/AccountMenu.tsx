@@ -97,7 +97,7 @@ export function AccountMenu({ name, initials, level, plan, avatarUrl, wide = fal
             <form action="/api/auth/logout" method="post" className="border-t border-navy/10">
               <button
                 type="submit"
-                className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-5 py-3 text-left text-sm font-bold text-red-700 transition-colors duration-200 hover:bg-red-50 focus-visible:bg-red-50 focus-visible:outline-none"
+                className="flex min-h-12 w-full cursor-pointer items-center gap-3 px-5 py-3 text-left text-sm font-bold text-danger-600 transition-colors duration-200 hover:bg-danger-bg focus-visible:bg-danger-bg focus-visible:outline-none"
               >
                 <SignOutIcon className="h-4 w-4" /> Sign out
               </button>
@@ -115,7 +115,7 @@ function planBadgeBg(plan: string): string {
   const normalized = plan.toLowerCase();
   if (normalized === "core") return "bg-sky";
   if (normalized === "max") return "bg-gold";
-  return "bg-gray-500";
+  return "bg-shell-500";
 }
 
 function ChevronIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m7 10 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }

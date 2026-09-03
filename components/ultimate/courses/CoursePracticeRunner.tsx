@@ -92,8 +92,8 @@ export function CoursePracticeRunner({
   if (grade) {
     return (
       <section className="overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-[0_18px_45px_-34px_rgba(12,35,72,0.55)]">
-        <div className={`px-5 py-6 sm:px-7 ${grade.passed ? "bg-success-bg" : "bg-[#fff8e4]"}`}>
-          <p className={`text-[10px] font-extrabold uppercase tracking-[0.15em] ${grade.passed ? "text-success-600" : "text-[#8a6500]"}`}>{grade.completedAt ? "Saved practice result" : grade.passed ? "Practice mastered" : "Keep working"}</p>
+        <div className={`px-5 py-6 sm:px-7 ${grade.passed ? "bg-success-bg" : "bg-flag-bg"}`}>
+          <p className={`text-[10px] font-extrabold uppercase tracking-[0.15em] ${grade.passed ? "text-success-600" : "text-flag"}`}>{grade.completedAt ? "Saved practice result" : grade.passed ? "Practice mastered" : "Keep working"}</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4"><div><h2 className="font-display text-2xl font-extrabold text-navy">{practice.title}</h2><p className="mt-1 text-sm text-navy/55">{grade.correctCount} of {grade.questionCount} correct</p></div><strong className="font-display text-4xl font-extrabold text-navy">{grade.score}%</strong></div>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-7"><p className="text-sm text-navy/55">{grade.attemptCount ? `${grade.attemptCount} saved ${grade.attemptCount === 1 ? "attempt" : "attempts"} · Best ${grade.bestScore}%` : `Passing score: ${practice.passingScore}%`}</p><button type="button" onClick={retry} className="min-h-11 cursor-pointer rounded-xl bg-navy px-5 text-sm font-extrabold text-white transition-colors hover:bg-navy/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">Try again</button></div>
@@ -101,7 +101,7 @@ export function CoursePracticeRunner({
     );
   }
 
-  if (!question) return <p className="rounded-2xl border border-gold/35 bg-[#fff9e9] p-5 text-sm font-semibold text-[#745700]">This practice does not have any published questions yet.</p>;
+  if (!question) return <p className="rounded-2xl border border-gold/35 bg-flag-bg p-5 text-sm font-semibold text-flag">This practice does not have any published questions yet.</p>;
 
   return (
     <section className="overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-[0_18px_45px_-34px_rgba(12,35,72,0.55)]">

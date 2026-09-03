@@ -29,7 +29,7 @@ export default async function UltimateCommunityPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1120px] px-4 pb-16 pt-7 sm:px-7">
-      <section className="relative mb-5 overflow-hidden rounded-[18px] bg-[linear-gradient(125deg,#0b2a5b,#174778)] p-6 text-white shadow-pop sm:p-7">
+      <section data-theme="light" className="relative mb-5 overflow-hidden rounded-[18px] bg-[linear-gradient(125deg,#0b2a5b,#174778)] p-6 text-white shadow-pop sm:p-7">
         <div aria-hidden="true" className="absolute -right-10 -top-16 h-48 w-48 rounded-full border-[28px] border-sky/10" />
         <div className="relative flex flex-wrap items-end justify-between gap-5">
           <div className="max-w-2xl">

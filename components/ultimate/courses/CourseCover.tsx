@@ -32,7 +32,7 @@ export function CourseCover({ src, title, eyebrow, className = "", fill = false,
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
 
   return (
-    <div className={`overflow-hidden bg-[#edf2f7] ${fill ? "absolute inset-0" : "relative aspect-[16/7]"} ${className}`}>
+    <div className={`overflow-hidden bg-haze ${fill ? "absolute inset-0" : "relative aspect-[16/7]"} ${className}`}>
       {normalizedSrc && failedSrc !== normalizedSrc ? (
         // Admins can use any HTTPS image host, so this intentionally bypasses Next's fixed remote host allowlist.
         // eslint-disable-next-line @next/next/no-img-element

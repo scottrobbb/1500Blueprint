@@ -183,7 +183,9 @@ export default async function PricingPage({
   const checkoutTokens = { core: randomUUID(), max: randomUUID() };
 
   return (
-    <main className={styles.page}>
+    // The landing pages carry their own self-contained palette, so they stay on
+    // the light token set regardless of the visitor's dark-mode choice.
+    <main data-theme="light" className={styles.page}>
       <a href="#pricing-content" className={styles.skipLink}>Skip to pricing content</a>
 
       <header className={styles.header}>

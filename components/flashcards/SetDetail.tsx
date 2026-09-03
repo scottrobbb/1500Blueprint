@@ -48,7 +48,7 @@ export function SetDetail({
             <span
               className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.12em] ${
                 shared
-                  ? "border border-gold-600/30 bg-[#fff7e6] text-flag"
+                  ? "border border-gold-600/30 bg-flag-bg text-flag"
                   : "bg-navy/6 text-navy/55"
               }`}
             >

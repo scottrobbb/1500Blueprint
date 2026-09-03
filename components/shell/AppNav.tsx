@@ -86,7 +86,7 @@ export function AppNav({
               href="/admin"
               aria-label="Admin panel"
               title="Admin panel"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-flag transition-colors hover:bg-[#fff7e6]"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-flag transition-colors hover:bg-flag-bg"
             >
               <ShieldIcon className="h-[18px] w-[18px]" />
             </Link>
