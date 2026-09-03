@@ -139,13 +139,11 @@ export async function POST() {
     return NextResponse.json({ error: "Passage generation is not configured" }, { status: 500 });
   }
 
+  // The level decides the difficulty and the timer, so a passage cannot be
+  // generated without it.
   let progress: Awaited<ReturnType<typeof loadReadingProgress>>;
-  let avoidTopics: string[];
   try {
-    [progress, avoidTopics] = await Promise.all([
-      loadReadingProgress(session.email),
-      recentPassageTopics(session.email),
-    ]);
+    progress = await loadReadingProgress(session.email);
   } catch (error) {
     reportServerError("drill.reading.progress_load_failed", error, {
       provider: "supabase",
@@ -154,6 +152,17 @@ export async function POST() {
     });
     return NextResponse.json({ error: "Could not load your reading level" }, { status: 503 });
   }
+
+  // Recent topics only steer the generator away from repeats. Losing them costs
+  // variety, never the drill, so this failure is logged and stepped over.
+  const avoidTopics = await recentPassageTopics(session.email).catch((error: unknown) => {
+    reportServerError("drill.reading.recent_topics_load_failed", error, {
+      provider: "supabase",
+      route: "/api/drills/reading/passage",
+      method: "POST",
+    });
+    return [] as string[];
+  });
 
   const level = readingLevel(progress.level);
 
