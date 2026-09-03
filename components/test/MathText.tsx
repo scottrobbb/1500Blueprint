@@ -11,7 +11,13 @@ const EXPONENT_RE = /\^(\([^)]*\)|[+−-]?[A-Za-z0-9]+)/g;
 // Accept the delimiters used across both imported question banks and the
 // hand-authored CMS. Display math must be matched before inline dollars so a
 // `$$...$$` block is not misread as stray literal dollar signs.
-const MATH_RE = /(?<!\\)\$\$([\s\S]+?)(?<!\\)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(?<!\\)\$([^$\n]+?)(?<!\\)\$/g;
+//
+// Inline `$...$` deliberately stops at a newline: prose carrying unescaped
+// dollar amounts would otherwise let one `$` swallow everything up to the next
+// one paragraphs away. A complete LaTeX environment is exempt -- `\begin{...}`
+// through `\end{...}` is unambiguously math, and a table written that way
+// spans lines in the source -- so it is matched first, across newlines.
+const MATH_RE = /(?<!\\)\$\$([\s\S]+?)(?<!\\)\$\$|\\\[([\s\S]+?)\\\]|\\\(([\s\S]+?)\\\)|(?<!\\)\$(\s*\\begin\{[\s\S]*?\\end\{[A-Za-z*]+\}\s*)(?<!\\)\$|(?<!\\)\$([^$\n]+?)(?<!\\)\$/g;
 const LEGACY_ROOT = String.raw`(?:[A-Za-z0-9]+)?(?:[⁰¹²³⁴⁵⁶⁷⁸⁹]+√|√|∛|∜)\([^()\n]+\)`;
 const LEGACY_ATOM = String.raw`(?:${LEGACY_ROOT}|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]|\([^()\n]+\)|[A-Za-z0-9]+(?:\.[0-9]+)?[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]*(?:\^\(?[A-Za-z0-9+\-\/]+\)?)?(?:\([^()\n]+\))?)`;
 const LEGACY_OPERATOR = String.raw`(?:\s*[+\-−×·*/÷]\s*)`;
@@ -44,7 +50,7 @@ export function parseMathSegments(text: string): MathSegment[] {
       segments.push({ type: "text", value: unescapeDollarSigns(text.slice(last, index)) });
     }
     const display = match[1] !== undefined || match[2] !== undefined;
-    const value = match[1] ?? match[2] ?? match[3] ?? match[4] ?? "";
+    const value = match[1] ?? match[2] ?? match[3] ?? match[4] ?? match[5] ?? "";
     segments.push({ type: "math", value: value.trim(), ...(display ? { display: true } : {}) });
     last = index + match[0].length;
   }
