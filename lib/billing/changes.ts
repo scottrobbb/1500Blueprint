@@ -73,7 +73,7 @@ async function activeSubscriptionForUser(
   return data ?? null;
 }
 
-async function releaseSchedule(subscription: Stripe.Subscription): Promise<Stripe.Subscription> {
+export async function releaseSchedule(subscription: Stripe.Subscription): Promise<Stripe.Subscription> {
   const scheduleId = stripeId(subscription.schedule);
   if (!scheduleId) return subscription;
   const schedule = await billingStripe().subscriptionSchedules.retrieve(scheduleId);
@@ -83,7 +83,7 @@ async function releaseSchedule(subscription: Stripe.Subscription): Promise<Strip
   return billingStripe().subscriptions.retrieve(subscription.id);
 }
 
-async function clearPendingChange(subscriptionId: string): Promise<void> {
+export async function clearPendingChange(subscriptionId: string): Promise<void> {
   const { error } = await supabaseAdmin()
     .from("student_subscriptions")
     .update({

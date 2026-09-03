@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CancelSubscriptionCard } from "@/components/settings/CancelSubscriptionCard";
 import type { PlanCode } from "@/lib/auth/plans";
 import type { SettingsPlanView } from "@/lib/settings/plan-view";
 import type { SubscriptionSettingsData } from "@/lib/settings/data";
@@ -91,6 +92,11 @@ export function SubscriptionSettingsView({
                 >
                   {subscription ? "Change plan" : "Upgrade plan"}
                 </Link>
+              ) : null}
+              {/* Only a live, not-yet-cancelled subscription has anything to
+                  cancel — and it is the only case the save offer can act on. */}
+              {subscription && !cancellationAt ? (
+                <CancelSubscriptionCard renewsAt={subscription.currentPeriodEnd} />
               ) : null}
             </div>
           ) : null}
