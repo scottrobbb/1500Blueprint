@@ -3,6 +3,7 @@ import { findBillingAccount, ensureStripeCustomer, hasUntrackedStripeBilling } f
 import { changeBillingPlan } from "@/lib/billing/changes";
 import { billingBaseUrl, billingCheckoutEnabled, billingLivemode } from "@/lib/billing/config";
 import { resolveBillingPriceId } from "@/lib/billing/prices";
+import { openBillingPortal } from "@/lib/billing/portal-configuration";
 import { billingStripe } from "@/lib/billing/stripe";
 import { cancelCheckoutIntent, claimCheckoutIntent, releaseCheckoutIntent, storeCheckoutSession } from "@/lib/billing/checkout-intents";
 import { getSession } from "@/lib/auth/session";
@@ -23,10 +24,7 @@ export const POST = createCheckoutPostHandler({
   findSubscriptionState,
   hasUntrackedBilling: hasUntrackedStripeBilling,
   changePlan: changeBillingPlan,
-  createPortal: async (customerId, returnUrl) => billingStripe().billingPortal.sessions.create({
-    customer: customerId,
-    return_url: returnUrl,
-  }),
+  createPortal: openBillingPortal,
   claimIntent: claimCheckoutIntent,
   releaseIntent: releaseCheckoutIntent,
   cancelIntent: cancelCheckoutIntent,

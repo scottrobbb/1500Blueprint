@@ -13,6 +13,7 @@ import {
   BillingRetentionError,
   type CancellationResult,
   type RetentionAcceptResult,
+  type ResumeResult,
 } from "@/lib/billing/retention-orchestrator";
 import { isSameOriginRequest } from "@/lib/security/request";
 
@@ -37,12 +38,16 @@ export type RetentionOfferDeps = SubscriptionActionDeps & {
   acceptOffer: (userId: string) => Promise<RetentionAcceptResult>;
 };
 
+export type ResumeDeps = SubscriptionActionDeps & {
+  resumeSubscription: (userId: string) => Promise<ResumeResult>;
+};
+
 const RETENTION_ERROR_STATUS: Record<BillingRetentionError["code"], number> = {
   account: 404,
   subscription: 409,
   "not-offered": 409,
   spent: 409,
-  "in-flight": 409,
+  discounted: 409,
 };
 
 export function createSubscriptionCancelPostHandler(deps: CancelDeps) {
@@ -66,6 +71,18 @@ export function createRetentionOfferPostHandler(deps: RetentionOfferDeps) {
       // either a double-click or someone probing it.
       rateLimit: { scope: "billing-retention-offer", limit: 5, windowSeconds: 60 },
       run: (userId) => deps.acceptOffer(userId),
+    });
+  };
+}
+
+// Undoing a scheduled cancellation, which Stripe's portal no longer offers.
+export function createSubscriptionResumePostHandler(deps: ResumeDeps) {
+  return async function subscriptionResumePost(request: Request): Promise<Response> {
+    return runAction(deps, request, {
+      route: "/api/billing/subscription/resume",
+      event: "billing.subscription.resume_failed",
+      rateLimit: { scope: "billing-resume", limit: 8, windowSeconds: 60 },
+      run: (userId) => deps.resumeSubscription(userId),
     });
   };
 }

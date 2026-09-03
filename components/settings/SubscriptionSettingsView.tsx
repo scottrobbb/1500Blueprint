@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { CancelSubscriptionCard } from "@/components/settings/CancelSubscriptionCard";
+import { ResumeSubscriptionButton } from "@/components/settings/ResumeSubscriptionButton";
 import type { PlanCode } from "@/lib/auth/plans";
 import type { SettingsPlanView } from "@/lib/settings/plan-view";
 import type { SubscriptionSettingsData } from "@/lib/settings/data";
@@ -94,9 +95,13 @@ export function SubscriptionSettingsView({
                 </Link>
               ) : null}
               {/* Only a live, not-yet-cancelled subscription has anything to
-                  cancel — and it is the only case the save offer can act on. */}
+                  cancel — and it is the only case the save offer can act on.
+                  Once one is scheduled, the same slot offers the way back. */}
               {subscription && !cancellationAt ? (
                 <CancelSubscriptionCard renewsAt={subscription.currentPeriodEnd} />
+              ) : null}
+              {subscription && cancellationAt ? (
+                <ResumeSubscriptionButton accessEndsAt={cancellationAt} />
               ) : null}
             </div>
           ) : null}

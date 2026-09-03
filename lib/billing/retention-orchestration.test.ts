@@ -5,6 +5,8 @@ import {
   BillingRetentionError,
   acceptRetentionOfferWithDeps,
   cancelSubscriptionWithDeps,
+  resumeSubscriptionWithDeps,
+  hasAnyDiscount,
   hasCoupon,
   type RetentionClaim,
   type RetentionDeps,
@@ -169,16 +171,45 @@ test("accepting applies the coupon without charging, cancelling, or moving the r
   assert.equal(update.params.items, undefined, "no new subscription or price change");
 });
 
-test("an existing discount is carried over rather than replaced", async () => {
+test("an already-discounted subscription is refused, and never spends the claim", async () => {
   const d = deps({
     retrieveSubscription: async () => subscription({ discounts: [discount("other_coupon", "di_existing")] }),
   });
+
+  await assert.rejects(
+    acceptRetentionOfferWithDeps(d, USER_ID),
+    (error: unknown) => error instanceof BillingRetentionError && error.code === "discounted",
+  );
+  assert.deepEqual(d.calls.claims, [], "an ineligible account must not burn its claim by asking");
+  assert.equal(d.calls.updates.length, 0);
+});
+
+test("an unexpanded discount id still counts as discounted, so nothing stacks", async () => {
+  const d = deps({ retrieveSubscription: async () => subscription({ discounts: ["di_unexpanded"] }) });
+
+  await assert.rejects(
+    acceptRetentionOfferWithDeps(d, USER_ID),
+    (error: unknown) => error instanceof BillingRetentionError && error.code === "discounted",
+  );
+  assert.equal(d.calls.updates.length, 0);
+});
+
+test("a discounted student is never shown the offer, and keeps it for later", async () => {
+  const d = deps({
+    retrieveSubscription: async () => subscription({ discounts: [discount("other_coupon")] }),
+  });
+
+  const result = await cancelSubscriptionWithDeps(d, USER_ID);
+  assert.equal(result.status, "scheduled", "cancelling proceeds straight through");
+  assert.deepEqual(d.calls.claims, [], "the offer is not burned by a cancellation they never saw it on");
+  assert.equal(d.calls.updates[0].params.cancel_at_period_end, true);
+});
+
+test("the applied coupon stands alone on the subscription", async () => {
+  const d = deps();
   await acceptRetentionOfferWithDeps(d, USER_ID);
 
-  assert.deepEqual(d.calls.updates[0].params.discounts, [
-    { discount: "di_existing" },
-    { coupon: COUPON },
-  ]);
+  assert.deepEqual(d.calls.updates[0].params.discounts, [{ coupon: COUPON }]);
 });
 
 test("the offer can only ever be claimed once, across resubscribes and devices", async () => {
@@ -267,9 +298,47 @@ test("both paths refuse a Stripe subscription that is not this account's", async
   }
 });
 
+test("hasAnyDiscount counts every discount, expanded or not", () => {
+  assert.equal(hasAnyDiscount(subscription()), false);
+  assert.equal(hasAnyDiscount(subscription({ discounts: [discount("any")] })), true);
+  assert.equal(hasAnyDiscount(subscription({ discounts: ["di_unexpanded"] })), true);
+});
+
 test("hasCoupon reads expanded discounts and ignores unexpanded ids", () => {
   assert.equal(hasCoupon(subscription({ discounts: [discount(COUPON)] }), COUPON), true);
   assert.equal(hasCoupon(subscription({ discounts: [discount("other")] }), COUPON), false);
   assert.equal(hasCoupon(subscription({ discounts: ["di_unexpanded"] }), COUPON), false);
   assert.equal(hasCoupon(subscription(), COUPON), false);
+});
+
+/* -------------------------------- Resume -------------------------------- */
+
+test("resuming clears a scheduled cancellation without touching price or billing date", async () => {
+  const d = deps({ activeSubscription: async () => ({ ...ACTIVE_ROW, cancel_at_period_end: true }) });
+  const result = await resumeSubscriptionWithDeps(d, USER_ID);
+
+  assert.equal(result.status, "resumed");
+  assert.equal(result.renewsAt, PERIOD_END);
+  const [update] = d.calls.updates;
+  assert.equal(update.params.cancel_at_period_end, false);
+  assert.equal(update.params.cancel_at, "");
+  assert.equal(update.params.proration_behavior, "none");
+  assert.equal(update.params.items, undefined);
+  assert.equal(update.params.discounts, undefined, "resuming must not touch a discount");
+});
+
+test("resuming a subscription that is not cancelling is a no-op", async () => {
+  const d = deps();
+  const result = await resumeSubscriptionWithDeps(d, USER_ID);
+
+  assert.equal(result.status, "not-scheduled");
+  assert.equal(d.calls.updates.length, 0);
+});
+
+test("resuming never spends or restores the save offer", async () => {
+  const d = deps({ activeSubscription: async () => ({ ...ACTIVE_ROW, cancel_at: "2026-10-01T00:00:00.000Z" }) });
+  await resumeSubscriptionWithDeps(d, USER_ID);
+
+  assert.deepEqual(d.calls.claims, []);
+  assert.equal(d.calls.releases, 0);
 });

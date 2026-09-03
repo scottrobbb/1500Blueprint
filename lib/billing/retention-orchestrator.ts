@@ -41,6 +41,8 @@ export type CancellationResult =
   | { status: "scheduled"; accessEndsAt: string | null }
   | { status: "already-scheduled"; accessEndsAt: string | null };
 
+export type ResumeResult = { status: "resumed" | "not-scheduled"; renewsAt: string | null };
+
 export type RetentionAcceptResult = {
   status: "accepted" | "already-applied";
   percentOff: number;
@@ -49,7 +51,7 @@ export type RetentionAcceptResult = {
 
 export class BillingRetentionError extends Error {
   constructor(
-    public readonly code: "account" | "subscription" | "not-offered" | "spent" | "in-flight",
+    public readonly code: "account" | "subscription" | "not-offered" | "spent" | "discounted",
     message: string,
   ) {
     super(message);
@@ -94,20 +96,26 @@ export async function cancelSubscriptionWithDeps(
     return { status: "already-scheduled", accessEndsAt: alreadyScheduled };
   }
 
-  const claim = await deps.claimOffer(userId, "show");
-  if (claim.decision === "granted") {
-    const subscription = await retrieveOwnedSubscription(deps, row, userId);
-    return {
-      status: "offer",
-      offer: {
-        percentOff: deps.percentOff,
-        cadence: deps.cadenceForSubscription(subscription),
-        renewsAt: row.current_period_end,
-      },
-    };
+  let subscription = await retrieveOwnedSubscription(deps, row, userId);
+
+  // The save offer is for full-price subscriptions only. A student already on a
+  // discount is never shown it — and, because showing is what burns it, is not
+  // charged the entitlement either: if that discount later falls off, the offer
+  // is still there for them.
+  if (!hasAnyDiscount(subscription)) {
+    const claim = await deps.claimOffer(userId, "show");
+    if (claim.decision === "granted") {
+      return {
+        status: "offer",
+        offer: {
+          percentOff: deps.percentOff,
+          cadence: deps.cadenceForSubscription(subscription),
+          renewsAt: row.current_period_end,
+        },
+      };
+    }
   }
 
-  let subscription = await retrieveOwnedSubscription(deps, row, userId);
   // A scheduled downgrade would otherwise outlive the cancellation and quietly
   // restart billing on the cheaper plan, so it goes first. Same order the plan
   // change path uses before it mutates a subscription.
@@ -140,52 +148,47 @@ export async function acceptRetentionOfferWithDeps(
   userId: string,
 ): Promise<RetentionAcceptResult> {
   const row = await requireActiveSubscription(deps, userId);
-  const claim = await deps.claimOffer(userId, "accept");
+  const applied = {
+    status: "already-applied",
+    percentOff: deps.percentOff,
+    renewsAt: row.current_period_end,
+  } as const;
 
+  // Stripe is the authority on whether this subscription is discounted, so it is
+  // read before the claim is taken — an ineligible account must not spend the
+  // offer just by asking for it.
+  const subscription = await retrieveOwnedSubscription(deps, row, userId);
+  if (hasCoupon(subscription, deps.couponId)) return applied;
+  if (hasAnyDiscount(subscription)) {
+    throw new BillingRetentionError(
+      "discounted",
+      "This subscription already has a discount, so the save offer does not apply",
+    );
+  }
+
+  const claim = await deps.claimOffer(userId, "accept");
   if (claim.decision === "not_offered") {
     throw new BillingRetentionError("not-offered", "This offer has not been made to this account");
   }
-
   if (claim.decision !== "granted") {
     // Someone already holds the claim. Whether that is a double-click still in
     // flight or a spend from an earlier subscription, only the coupon actually
-    // sitting on this subscription proves it landed.
-    const existing = await retrieveOwnedSubscription(deps, row, userId);
-    if (hasCoupon(existing, deps.couponId)) {
-      return {
-        status: "already-applied",
-        percentOff: deps.percentOff,
-        renewsAt: row.current_period_end,
-      };
-    }
+    // sitting on the subscription proves it landed.
+    const latest = await retrieveOwnedSubscription(deps, row, userId);
+    if (hasCoupon(latest, deps.couponId)) return applied;
     throw new BillingRetentionError("spent", "This save offer has already been used");
   }
 
   try {
-    let subscription = await retrieveOwnedSubscription(deps, row, userId);
-    if (hasCoupon(subscription, deps.couponId)) {
-      return {
-        status: "already-applied",
-        percentOff: deps.percentOff,
-        renewsAt: row.current_period_end,
-      };
-    }
-
-    // Existing discounts are carried over rather than replaced: `discounts` is a
-    // whole-list write, so sending only the retention coupon would silently strip
-    // a deal the student already had.
-    const discounts: Stripe.SubscriptionUpdateParams.Discount[] = [
-      ...existingDiscountIds(subscription).map((discount) => ({ discount })),
-      { coupon: deps.couponId },
-    ];
-
     // proration_behavior "none" and no item change mean Stripe writes the
     // discount without invoicing: nothing is charged now and the renewal date
     // does not move. The coupon's own `once` duration limits it to that renewal.
+    // `discounts` is a whole-list write, and this path is only reached when the
+    // list is empty, so the coupon stands alone.
     const updated = await deps.updateSubscription(
       subscription.id,
       {
-        discounts,
+        discounts: [{ coupon: deps.couponId }],
         cancel_at_period_end: false,
         cancel_at: "",
         proration_behavior: "none",
@@ -193,8 +196,7 @@ export async function acceptRetentionOfferWithDeps(
       `blueprint-retention-${userId}-${subscription.id}`,
     );
     assertSubscriptionOwner(updated, row, userId, deps.livemode);
-    subscription = updated;
-    await deps.syncSubscription(subscription, userId);
+    await deps.syncSubscription(updated, userId);
 
     return {
       status: "accepted",
@@ -205,6 +207,40 @@ export async function acceptRetentionOfferWithDeps(
     await deps.releaseAcceptance(userId).catch(() => undefined);
     throw error;
   }
+}
+
+// Any discount at all, ours or anyone's. Unexpanded entries are bare ids, which
+// still prove a discount exists — so this stays correct even when the retrieve
+// did not expand them, and errs toward "not eligible" rather than stacking.
+export function hasAnyDiscount(subscription: Stripe.Subscription): boolean {
+  return subscription.discounts.length > 0;
+}
+
+// Undoing a scheduled cancellation. Stripe's portal used to offer this next to
+// its cancel button; with that button switched off, this is the only way back,
+// so it lives here rather than leaving a student to email support.
+export async function resumeSubscriptionWithDeps(
+  deps: RetentionDeps,
+  userId: string,
+): Promise<ResumeResult> {
+  const row = await requireActiveSubscription(deps, userId);
+  const scheduled = scheduledCancellationAt({
+    cancelAt: row.cancel_at,
+    cancelAtPeriodEnd: row.cancel_at_period_end,
+    currentPeriodEnd: row.current_period_end,
+  });
+  if (!scheduled) return { status: "not-scheduled", renewsAt: row.current_period_end };
+
+  const subscription = await retrieveOwnedSubscription(deps, row, userId);
+  const resumed = await deps.updateSubscription(
+    subscription.id,
+    { cancel_at_period_end: false, cancel_at: "", proration_behavior: "none" },
+    `blueprint-resume-${subscription.id}-${scheduled}`,
+  );
+  assertSubscriptionOwner(resumed, row, userId, deps.livemode);
+  await deps.syncSubscription(resumed, userId);
+
+  return { status: "resumed", renewsAt: row.current_period_end };
 }
 
 async function requireActiveSubscription(
@@ -238,12 +274,6 @@ export function hasCoupon(subscription: Stripe.Subscription, couponId: string): 
     if (!coupon) return false;
     return typeof coupon === "string" ? coupon === couponId : coupon.id === couponId;
   });
-}
-
-function existingDiscountIds(subscription: Stripe.Subscription): string[] {
-  return subscription.discounts.map((discount) =>
-    typeof discount === "string" ? discount : discount.id,
-  );
 }
 
 // Same identity gate the plan-change and refund paths use: Stripe is asked for a

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 // The in-app cancellation flow. Confirming does not cancel on its own: the
@@ -24,6 +25,7 @@ type OfferResponse = {
 };
 
 export function CancelSubscriptionCard({ renewsAt }: { renewsAt: string | null }) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("idle");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -67,6 +69,9 @@ export function CancelSubscriptionCard({ renewsAt }: { renewsAt: string | null }
       }
       setEndsAt(data.accessEndsAt ?? renewsAt);
       setStep("canceled");
+      // "Plan status" and "Next renewal" sit above this card and are rendered on
+      // the server, so they would otherwise still read Active until a reload.
+      router.refresh();
     });
   }
 
@@ -75,6 +80,7 @@ export function CancelSubscriptionCard({ renewsAt }: { renewsAt: string | null }
       setPercentOff(data.percentOff ?? percentOff);
       setNextRenewal(data.renewsAt ?? nextRenewal);
       setStep("saved");
+      router.refresh();
     });
   }
 
@@ -122,9 +128,13 @@ export function CancelSubscriptionCard({ renewsAt }: { renewsAt: string | null }
             {pending ? "Applying…" : `Stay & Save ${percentOff}%`}
           </PrimaryButton>
           <SecondaryButton onClick={cancel} disabled={pending}>
-            Continue Cancellation
+            {pending ? "Working…" : "Continue Cancellation"}
           </SecondaryButton>
         </div>
+        <p className="mt-3 text-xs font-semibold text-navy/45">
+          Continuing cancels your subscription at the end of the current period. This offer is
+          available once.
+        </p>
       </Panel>
     );
   }

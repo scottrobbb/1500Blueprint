@@ -9,17 +9,20 @@ import { stripeSubscriptionCadence, syncStripeSubscription } from "./subscriptio
 import {
   acceptRetentionOfferWithDeps,
   cancelSubscriptionWithDeps,
+  resumeSubscriptionWithDeps,
   type CancellationResult,
   type RetentionAcceptResult,
   type RetentionClaim,
   type RetentionDeps,
   type RetentionSubscriptionRow,
+  type ResumeResult,
 } from "./retention-orchestrator";
 
 export {
   BillingRetentionError,
   type CancellationResult,
   type RetentionAcceptResult,
+  type ResumeResult,
 } from "./retention-orchestrator";
 
 // The live Stripe coupon behind "Stay & Save 40%": 40% off, duration `once`, so
@@ -35,6 +38,10 @@ export async function cancelSubscriptionForUser(userId: string): Promise<Cancell
 
 export async function acceptRetentionOfferForUser(userId: string): Promise<RetentionAcceptResult> {
   return acceptRetentionOfferWithDeps(retentionDeps(), userId);
+}
+
+export async function resumeSubscriptionForUser(userId: string): Promise<ResumeResult> {
+  return resumeSubscriptionWithDeps(retentionDeps(), userId);
 }
 
 function retentionDeps(): RetentionDeps {
