@@ -24,12 +24,19 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [retuning, setRetuning] = useState(false);
   const [retuneError, setRetuneError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [busyTaskId, setBusyTaskId] = useState<string | null>(null);
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
   const today = todayInNewYork();
   const profileExpired = profile !== null && profile.testDate < today;
+  const finishByPassed = !profileExpired && profile !== null
+    && profile.finishBy !== null && profile.finishBy < today;
 
-  async function retunePlan() {
+  async function regeneratePlan() {
     setOptionsOpen(false);
+    setConfirmRegenerate(false);
+    setEditing(false);
     setRetuning(true);
     setRetuneError(null);
     try {
@@ -45,19 +52,65 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
     }
   }
 
+  function requestRegenerate() {
+    setOptionsOpen(false);
+    if (plan?.customizedAt) {
+      setRetuneError(null);
+      setConfirmRegenerate(true);
+      return;
+    }
+    void regeneratePlan();
+  }
+
+  async function applyEdit(edit: Record<string, string>) {
+    if (!plan) return;
+    setBusyTaskId(edit.taskId);
+    setRetuneError(null);
+    try {
+      const response = await fetch("/api/study-planner/plan", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ planId: plan.id, ...edit }),
+      });
+      const body = (await response.json()) as { plan?: StudyPlan; error?: string };
+      if (!response.ok || !body.plan) throw new Error(body.error ?? "Could not save your schedule change.");
+      setPlan(body.plan);
+    } catch (reason) {
+      setRetuneError(reason instanceof Error ? reason.message : "Could not save your schedule change.");
+    } finally {
+      setBusyTaskId(null);
+    }
+  }
+
+  const schedule: ScheduleEditing | null = editing && plan
+    ? {
+      busyTaskId,
+      onDone: () => setEditing(false),
+      onMove: (taskId, date) => void applyEdit({ action: "move", taskId, date }),
+      onReorder: (taskId, direction) => void applyEdit({ action: "reorder", taskId, direction }),
+      onRemove: (taskId) => void applyEdit({ action: "remove", taskId }),
+    }
+    : null;
+
   return (
     <div>
       {profile ? (
         <PlannerHeader
           hasProfile
+          editing={editing}
+          canEditTimeline={Boolean(plan) && !profileExpired && !finishByPassed}
           optionsOpen={optionsOpen}
           retuning={retuning}
           onEdit={() => {
             setOptionsOpen(false);
             setSetupOpen(true);
           }}
+          onEditTimeline={() => {
+            setOptionsOpen(false);
+            setEditing((value) => !value);
+          }}
           onOptionsChange={setOptionsOpen}
-          onRetune={() => void retunePlan()}
+          onRegenerate={requestRegenerate}
         />
       ) : null}
 
@@ -67,12 +120,28 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
         </p>
       ) : null}
 
+      {confirmRegenerate ? (
+        <RegenerateConfirm
+          retuning={retuning}
+          onCancel={() => setConfirmRegenerate(false)}
+          onConfirm={() => void regeneratePlan()}
+        />
+      ) : null}
+
       {profileExpired && profile ? (
         <ExpiredPlan profile={profile} onEdit={() => setSetupOpen(true)} />
+      ) : finishByPassed && profile ? (
+        <FinishedPlan profile={profile} today={today} onEdit={() => setSetupOpen(true)} />
       ) : plan && profile ? (
-        <ActivePlan plan={plan} profile={profile} />
+        <ActivePlan
+          plan={plan}
+          profile={profile}
+          editing={schedule}
+          retuning={retuning}
+          onRegenerate={requestRegenerate}
+        />
       ) : profile ? (
-        <PlanUnavailable retuning={retuning} onRetune={() => void retunePlan()} />
+        <PlanUnavailable retuning={retuning} onRetune={() => void regeneratePlan()} />
       ) : (
         <PlannerBlankState onStart={() => setSetupOpen(true)} />
       )}
@@ -85,6 +154,7 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
             setProfile(nextProfile);
             if (nextPlan) setPlan(nextPlan);
             setSetupOpen(false);
+            setEditing(false);
             router.refresh();
           }}
         />
@@ -93,20 +163,54 @@ export function StudyPlanner({ initialProfile, initialPlan }: Props) {
   );
 }
 
+type ScheduleEditing = {
+  busyTaskId: string | null;
+  onDone: () => void;
+  onMove: (taskId: string, date: string) => void;
+  onReorder: (taskId: string, direction: "up" | "down") => void;
+  onRemove: (taskId: string) => void;
+};
+
+function RegenerateConfirm({
+  retuning,
+  onCancel,
+  onConfirm,
+}: {
+  retuning: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <section className="mb-5 flex flex-col gap-3 rounded-xl border border-navy/10 bg-white px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-sm font-semibold text-ink">Regenerating replaces the schedule changes you made this week.</p>
+      <div className="flex flex-none gap-2">
+        <button type="button" onClick={onCancel} className="min-h-10 cursor-pointer rounded-xl border border-navy/15 bg-white px-4 text-sm font-bold text-navy hover:border-navy/30">Keep my changes</button>
+        <button type="button" disabled={retuning} onClick={onConfirm} className="min-h-10 cursor-pointer rounded-xl bg-brand px-4 text-sm font-bold text-white hover:bg-brand-600 disabled:cursor-wait disabled:opacity-60">{retuning ? "Regenerating…" : "Regenerate"}</button>
+      </div>
+    </section>
+  );
+}
+
 function PlannerHeader({
   hasProfile,
+  canEditTimeline,
+  editing,
   optionsOpen,
   retuning,
   onEdit,
+  onEditTimeline,
   onOptionsChange,
-  onRetune,
+  onRegenerate,
 }: {
   hasProfile: boolean;
+  canEditTimeline: boolean;
+  editing: boolean;
   optionsOpen: boolean;
   retuning: boolean;
   onEdit: () => void;
+  onEditTimeline: () => void;
   onOptionsChange: (open: boolean) => void;
-  onRetune: () => void;
+  onRegenerate: () => void;
 }) {
   return (
     <header className="mb-8 flex items-start justify-between gap-4">
@@ -135,11 +239,17 @@ function PlannerHeader({
             <div role="menu" className="absolute right-0 top-[calc(100%+8px)] z-20 w-56 overflow-hidden rounded-xl border border-navy/10 bg-white p-1.5 shadow-xl">
               <button type="button" role="menuitem" onClick={onEdit} className="flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold text-navy hover:bg-haze">
                 <EditIcon className="h-4 w-4 text-navy/50" />
-                Edit plan
+                Plan settings
               </button>
-              <button type="button" role="menuitem" disabled={retuning} onClick={onRetune} className="flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold text-navy hover:bg-haze disabled:cursor-wait disabled:opacity-50">
+              {canEditTimeline ? (
+                <button type="button" role="menuitem" onClick={onEditTimeline} className="flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold text-navy hover:bg-haze">
+                  <RearrangeIcon className="h-4 w-4 text-navy/50" />
+                  {editing ? "Done rearranging" : "Rearrange this week"}
+                </button>
+              ) : null}
+              <button type="button" role="menuitem" disabled={retuning} onClick={onRegenerate} className="flex min-h-10 w-full cursor-pointer items-center gap-2.5 rounded-lg px-3 text-left text-sm font-semibold text-navy hover:bg-haze disabled:cursor-wait disabled:opacity-50">
                 <RefreshIcon className={`h-4 w-4 text-navy/50 ${retuning ? "animate-spin" : ""}`} />
-                {retuning ? "Refreshing plan…" : "Refresh from progress"}
+                {retuning ? "Regenerating plan…" : "Regenerate plan"}
               </button>
             </div>
           ) : null}
@@ -152,13 +262,25 @@ function PlannerHeader({
 function ActivePlan({
   plan,
   profile,
+  editing,
+  retuning,
+  onRegenerate,
 }: {
   plan: StudyPlan;
   profile: StudyPlannerProfile;
+  editing: ScheduleEditing | null;
+  retuning: boolean;
+  onRegenerate: () => void;
 }) {
   return (
     <div className="space-y-7">
+      {settingsChanged(plan, profile) ? (
+        <SettingsChangedNotice retuning={retuning} onRegenerate={onRegenerate} />
+      ) : null}
+
       <PlanSummary plan={plan} profile={profile} />
+
+      <CompressionNotice compression={plan.compression} />
 
       <section>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -166,9 +288,16 @@ function ActivePlan({
             <p className="text-sm font-medium text-navy/45">This week</p>
             <h2 className="mt-1 font-display text-2xl font-extrabold tracking-[-0.025em] text-ink">{formatDateRange(plan.startsOn, plan.endsOn)}</h2>
           </div>
-          <p className="text-sm font-medium text-navy/45">{plan.progress.completed} of {plan.progress.target} tasks complete</p>
+          {editing ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-sm font-medium text-navy/45">Move a task to another day, reorder it, or take it out</p>
+              <button type="button" onClick={editing.onDone} className="min-h-10 flex-none cursor-pointer rounded-xl bg-navy px-4 text-sm font-bold text-white transition-colors hover:bg-navy-700">Done</button>
+            </div>
+          ) : (
+            <p className="text-sm font-medium text-navy/45">{plan.progress.completed} of {plan.progress.target} tasks complete</p>
+          )}
         </div>
-        <PlanSchedule plan={plan} />
+        <PlanSchedule plan={plan} editing={editing} />
       </section>
 
       {plan.focusAreas.length > 0 ? (
@@ -222,30 +351,109 @@ function PlanSummary({ plan, profile }: { plan: StudyPlan; profile: StudyPlanner
             <span className="text-brand-600">{plan.goalScore.toLocaleString()}</span>
           </span>
         </div>
+
+        {profile.finishBy ? (
+          <div className="mt-3 flex items-center justify-between gap-3 border-t border-navy/10 pt-3 text-xs">
+            <span className="font-semibold text-navy/40">Finish studying by</span>
+            <span className="font-bold text-navy/55">{formatReviewDate(profile.finishBy)}</span>
+          </div>
+        ) : null}
       </div>
     </section>
   );
 }
 
-function PlanSchedule({ plan }: { plan: StudyPlan }) {
+function CompressionNotice({ compression }: { compression: StudyPlan["compression"] }) {
+  if (!compression.finishBy) return null;
+  const stacked = compression.slotsPerDay > 1;
+  const borrowed = compression.addedStudyDays;
+  if (compression.onTrack && !stacked && borrowed.length === 0) return null;
+
+  if (!compression.onTrack) {
+    return (
+      <section className="rounded-2xl border border-danger/15 bg-danger-bg p-5 sm:p-6">
+        <h2 className="font-display text-lg font-extrabold text-danger-600">Your remaining work does not fit before {formatReviewDate(compression.finishBy)}</h2>
+        <p className="mt-2 text-sm leading-6 text-danger-600/85">
+          Even at {compression.slotsPerDay} blocks a day across {compression.studyDaysRemaining} {compression.studyDaysRemaining === 1 ? "study day" : "study days"}, {compression.requiredItems} lessons and skills are still waiting. Move the finish date later, add study days, or raise your daily time.
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rounded-2xl border border-navy/10 bg-white p-5 sm:p-6">
+      <h2 className="font-display text-lg font-extrabold text-ink">Compressed to finish by {formatReviewDate(compression.finishBy)}</h2>
+      <p className="mt-2 text-sm leading-6 text-navy/55">
+        {compression.requiredItems} lessons and skills across {compression.studyDaysRemaining} {compression.studyDaysRemaining === 1 ? "study day" : "study days"}
+        {stacked ? `, so each day runs ${compression.slotsPerDay} blocks in ${compression.dailyMinutes} minutes` : ""}
+        {borrowed.length > 0 ? `. We added ${listDays(borrowed)} to your schedule` : ""}.
+      </p>
+    </section>
+  );
+}
+
+function SettingsChangedNotice({ retuning, onRegenerate }: { retuning: boolean; onRegenerate: () => void }) {
+  return (
+    <section className="flex flex-col gap-3 rounded-2xl border border-navy/10 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <p className="text-sm font-semibold text-ink">This week was built before your latest schedule settings.</p>
+      <button type="button" disabled={retuning} onClick={onRegenerate} className="inline-flex min-h-10 flex-none cursor-pointer items-center justify-center rounded-xl bg-brand px-4 text-sm font-bold text-white hover:bg-brand-600 disabled:cursor-wait disabled:opacity-60">
+        {retuning ? "Regenerating…" : "Regenerate plan"}
+      </button>
+    </section>
+  );
+}
+
+function PlanSchedule({ plan, editing }: { plan: StudyPlan; editing: ScheduleEditing | null }) {
   const days = useMemo(() => dateRange(plan.startsOn, plan.endsOn).map((date) => ({
     date,
     tasks: plan.tasks.filter((task) => task.date === date).sort((a, b) => a.position - b.position),
-  })).filter(({ date, tasks }) => tasks.length > 0 || date === plan.testDate), [plan]);
+  })), [plan]);
+  // Rearranging shows every day in the window so an emptied day is still a
+  // visible target; reading the plan shows only the days that carry something.
+  const visibleDays = editing
+    ? days
+    : days.filter(({ date, tasks }) => tasks.length > 0 || date === plan.testDate);
   const primaryTaskId = days.flatMap(({ tasks }) => tasks).find((task) => !task.completed)?.id ?? null;
+  const moveTargets = days
+    .map(({ date }) => date)
+    .filter((date) => date !== plan.testDate);
 
-  if (days.length === 0) {
+  if (visibleDays.length === 0) {
     return <div className="rounded-2xl border-2 border-navy/10 bg-white px-6 py-12 text-center"><p className="text-sm font-semibold text-navy/50">No tasks are scheduled for this week.</p></div>;
   }
 
   return (
     <ol className="divide-y-2 divide-haze overflow-hidden rounded-2xl border-2 border-navy/10 bg-white">
-      {days.map(({ date, tasks }) => <WeekDayRow key={date} date={date} tasks={tasks} isExamDate={date === plan.testDate} primaryTaskId={primaryTaskId} />)}
+      {visibleDays.map(({ date, tasks }) => (
+        <WeekDayRow
+          key={date}
+          date={date}
+          tasks={tasks}
+          isExamDate={date === plan.testDate}
+          primaryTaskId={primaryTaskId}
+          editing={editing}
+          moveTargets={moveTargets}
+        />
+      ))}
     </ol>
   );
 }
 
-function WeekDayRow({ date, tasks, isExamDate, primaryTaskId }: { date: string; tasks: StudyPlanTask[]; isExamDate: boolean; primaryTaskId: string | null }) {
+function WeekDayRow({
+  date,
+  tasks,
+  isExamDate,
+  primaryTaskId,
+  editing,
+  moveTargets,
+}: {
+  date: string;
+  tasks: StudyPlanTask[];
+  isExamDate: boolean;
+  primaryTaskId: string | null;
+  editing: ScheduleEditing | null;
+  moveTargets: string[];
+}) {
   const daySection = tasks.find((task) => task.section)?.section ?? null;
 
   return (
@@ -256,14 +464,83 @@ function WeekDayRow({ date, tasks, isExamDate, primaryTaskId }: { date: string; 
         <p className="mt-1 text-sm font-semibold">{formatMonth(date)}</p>
       </div>
       <div className="min-w-0 flex-1 divide-y-2 divide-haze">
-        {tasks.map((task) => <PlanTaskRow key={task.id} task={task} section={task.section ?? daySection} primary={task.id === primaryTaskId} />)}
+        {tasks.map((task, index) => (
+          <PlanTaskRow
+            key={task.id}
+            task={task}
+            section={task.section ?? daySection}
+            primary={task.id === primaryTaskId}
+            editing={editing}
+            moveTargets={moveTargets}
+            canMoveUp={index > 0}
+            canMoveDown={index < tasks.length - 1}
+          />
+        ))}
         {isExamDate ? <ExamDateRow /> : null}
+        {editing && tasks.length === 0 && !isExamDate ? (
+          <p className="py-3.5 text-sm font-semibold text-navy/35 first:pt-1 last:pb-1">Nothing scheduled</p>
+        ) : null}
       </div>
     </li>
   );
 }
 
-function PlanTaskRow({ task, section, primary }: { task: StudyPlanTask; section: StudyPlanTask["section"]; primary: boolean }) {
+function TaskEditControls({
+  task,
+  editing,
+  moveTargets,
+  canMoveUp,
+  canMoveDown,
+}: {
+  task: StudyPlanTask;
+  editing: ScheduleEditing;
+  moveTargets: string[];
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+}) {
+  const busy = editing.busyTaskId === task.id;
+
+  return (
+    <div className="flex flex-none items-center gap-1.5">
+      <select
+        value={task.date}
+        disabled={busy}
+        aria-label={`Day for ${task.title}`}
+        onChange={(event) => editing.onMove(task.id, event.target.value)}
+        className="min-h-10 cursor-pointer rounded-xl border border-navy/15 bg-white px-2 text-xs font-bold text-navy outline-none focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:cursor-wait disabled:opacity-50 sm:text-sm"
+      >
+        {moveTargets.map((date) => <option key={date} value={date}>{formatWeekday(date)} {formatDay(date)}</option>)}
+      </select>
+      <button type="button" disabled={busy || !canMoveUp} aria-label={`Move ${task.title} earlier in the day`} onClick={() => editing.onReorder(task.id, "up")} className="grid h-10 w-9 flex-none cursor-pointer place-items-center rounded-xl border border-navy/15 bg-white text-navy/55 hover:border-brand/40 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-35">
+        <ArrowUpIcon className="h-4 w-4" />
+      </button>
+      <button type="button" disabled={busy || !canMoveDown} aria-label={`Move ${task.title} later in the day`} onClick={() => editing.onReorder(task.id, "down")} className="grid h-10 w-9 flex-none cursor-pointer place-items-center rounded-xl border border-navy/15 bg-white text-navy/55 hover:border-brand/40 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-35">
+        <ArrowUpIcon className="h-4 w-4 rotate-180" />
+      </button>
+      <button type="button" disabled={busy} aria-label={`Remove ${task.title} from the plan`} onClick={() => editing.onRemove(task.id)} className="grid h-10 w-9 flex-none cursor-pointer place-items-center rounded-xl border border-navy/15 bg-white text-navy/55 hover:border-danger/40 hover:text-danger-600 disabled:cursor-wait disabled:opacity-50">
+        <CloseIcon className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function PlanTaskRow({
+  task,
+  section,
+  primary,
+  editing,
+  moveTargets,
+  canMoveUp,
+  canMoveDown,
+}: {
+  task: StudyPlanTask;
+  section: StudyPlanTask["section"];
+  primary: boolean;
+  editing: ScheduleEditing | null;
+  moveTargets: string[];
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+}) {
   const progressText = task.kind === "course_lesson"
     ? task.completed ? "Lesson completed" : "Assigned lesson"
     : task.kind === "full_test"
@@ -286,7 +563,15 @@ function PlanTaskRow({ task, section, primary }: { task: StudyPlanTask; section:
           <span>{progressText}</span>
         </p>
       </div>
-      {!task.completed ? (
+      {editing ? (
+        <TaskEditControls
+          task={task}
+          editing={editing}
+          moveTargets={moveTargets}
+          canMoveUp={canMoveUp}
+          canMoveDown={canMoveDown}
+        />
+      ) : !task.completed ? (
         <Link href={task.href} className={`inline-flex min-h-10 flex-none items-center gap-1 rounded-xl border px-3.5 text-xs font-bold transition-colors sm:px-4 sm:text-sm ${primary ? "border-navy bg-navy text-white hover:border-brand-600 hover:bg-brand-600" : "border-navy/15 bg-white text-navy hover:border-brand/40 hover:text-brand-600"}`}>
           {task.progress.completed > 0 ? "Continue" : "Start"}<ChevronRightIcon className="h-3.5 w-3.5" />
         </Link>
@@ -311,6 +596,21 @@ function ExpiredPlan({ profile, onEdit }: { profile: StudyPlannerProfile; onEdit
       <h2 className="mt-5 font-display text-2xl font-extrabold text-ink">Choose your next SAT date</h2>
       <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-navy/50">Your {formatLongDate(profile.testDate)} test date has passed. Pick a new date and we will rebuild the week while keeping your completed work in your learning history.</p>
       <button type="button" onClick={onEdit} className="mt-6 min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-bold text-white hover:bg-brand-600">Update test date</button>
+    </section>
+  );
+}
+
+function FinishedPlan({ profile, today, onEdit }: { profile: StudyPlannerProfile; today: string; onEdit: () => void }) {
+  const daysLeft = Math.max(0, Math.round(
+    (Date.parse(`${profile.testDate}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 86_400_000,
+  ));
+
+  return (
+    <section className="rounded-2xl border-2 border-navy/10 bg-white px-6 py-10 text-center sm:px-10 sm:py-14">
+      <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-ice text-brand-600"><CheckIcon className="h-7 w-7" /></span>
+      <h2 className="mt-5 font-display text-2xl font-extrabold text-ink">You planned to be finished by {formatLongDate(profile.finishBy ?? today)}</h2>
+      <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-navy/50">Your SAT is {daysLeft} {daysLeft === 1 ? "day" : "days"} away. Move the finish date later or clear it to keep getting weekly plans.</p>
+      <button type="button" onClick={onEdit} className="mt-6 min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-bold text-white hover:bg-brand-600">Update finish date</button>
     </section>
   );
 }
@@ -388,6 +688,7 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
   const [noScoreYet, setNoScoreYet] = useState(profile ? profile.currentScore === null : true);
   const [goalScore, setGoalScore] = useState(profile?.goalScore?.toString() ?? "1500");
   const [studyDays, setStudyDays] = useState<number[]>(profile?.studyDays ?? [1, 2, 3, 4, 5]);
+  const [finishBy, setFinishBy] = useState(profile?.finishBy && profile.finishBy >= today ? profile.finishBy : "");
   const [practiceTestDay, setPracticeTestDay] = useState(profile?.practiceTestDay ?? 6);
   const [dailyMinutes, setDailyMinutes] = useState(profile?.dailyMinutes ?? 45);
   const [busy, setBusy] = useState(false);
@@ -427,6 +728,10 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
       setError("Choose at least one day when you can study.");
       return;
     }
+    if (step === 1 && finishBy && (finishBy < today || finishBy > testDate)) {
+      setError("Your finish date has to fall between today and your SAT date.");
+      return;
+    }
     setStepDirection("forward");
     setStep((value) => Math.min(2, value + 1));
   }
@@ -450,7 +755,7 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
       const response = await fetch("/api/study-planner/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ testDate, currentScore: noScoreYet ? null : currentScore, goalScore, studyDays, practiceTestDay, dailyMinutes }),
+        body: JSON.stringify({ testDate, finishBy: finishBy || null, currentScore: noScoreYet ? null : currentScore, goalScore, studyDays, practiceTestDay, dailyMinutes }),
       });
       const data = (await response.json()) as { profile?: StudyPlannerProfile; plan?: StudyPlan; error?: string };
       if (!response.ok || !data.profile) throw new Error(data.error ?? "Could not save your plan.");
@@ -500,9 +805,13 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
               /> : null}
               {step === 1 ? <ScheduleStep
                 dailyMinutes={dailyMinutes}
+                finishBy={finishBy}
                 practiceTestDay={practiceTestDay}
                 studyDays={studyDays}
+                testDate={testDate}
+                today={today}
                 onDailyMinutesChange={setDailyMinutes}
+                onFinishByChange={setFinishBy}
                 onPracticeTestDayChange={setPracticeTestDay}
                 onToggleDay={toggleDay}
               /> : null}
@@ -510,6 +819,7 @@ function PlannerSetup({ profile, onClose, onSave }: { profile: StudyPlannerProfi
                 <PlanReview
                   currentScore={currentScore}
                   dailyMinutes={dailyMinutes}
+                  finishBy={finishBy}
                   goalScore={goalScore}
                   noScoreYet={noScoreYet}
                   practiceTestDay={practiceTestDay}
@@ -590,7 +900,7 @@ function ScoreStep({
   );
 }
 
-function ScheduleStep({ dailyMinutes, practiceTestDay, studyDays, onDailyMinutesChange, onPracticeTestDayChange, onToggleDay }: { dailyMinutes: number; practiceTestDay: number; studyDays: number[]; onDailyMinutesChange: (minutes: number) => void; onPracticeTestDayChange: (day: number) => void; onToggleDay: (day: number) => void }) {
+function ScheduleStep({ dailyMinutes, finishBy, practiceTestDay, studyDays, testDate, today, onDailyMinutesChange, onFinishByChange, onPracticeTestDayChange, onToggleDay }: { dailyMinutes: number; finishBy: string; practiceTestDay: number; studyDays: number[]; testDate: string; today: string; onDailyMinutesChange: (minutes: number) => void; onFinishByChange: (value: string) => void; onPracticeTestDayChange: (day: number) => void; onToggleDay: (day: number) => void }) {
   return (
     <div className="space-y-6">
       <fieldset>
@@ -601,6 +911,14 @@ function ScheduleStep({ dailyMinutes, practiceTestDay, studyDays, onDailyMinutes
         <legend className="text-sm font-bold text-ink">Which days can you study?</legend>
         <div className="mt-3 grid grid-cols-7 gap-1.5 sm:gap-2">{dayLabels.map((label, day) => <button key={label} type="button" onClick={() => onToggleDay(day)} aria-pressed={studyDays.includes(day)} className={`min-h-12 cursor-pointer rounded-xl border text-xs font-bold transition-colors ${studyDays.includes(day) ? "border-brand bg-brand text-white" : "border-navy/15 bg-fill text-navy/55 hover:border-brand/35 hover:bg-ice"}`}>{label}</button>)}</div>
       </fieldset>
+      <div>
+        <div className="flex items-baseline justify-between gap-3">
+          <label htmlFor="finish-studying-by" className="text-sm font-bold text-ink">Finish studying by</label>
+          {finishBy ? <button type="button" onClick={() => onFinishByChange("")} className="cursor-pointer text-xs font-bold text-brand-600 hover:text-brand">Use my SAT date</button> : null}
+        </div>
+        <input id="finish-studying-by" type="date" min={today} max={testDate} value={finishBy} onChange={(event) => onFinishByChange(event.target.value)} className="mt-2 block min-h-12 w-full border border-navy/15 bg-fill px-3 text-base font-medium text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+        <p className="mt-2 text-xs leading-5 text-navy/45">Set a date before your SAT and we compress the plan so every required lesson and skill lands before it.</p>
+      </div>
       <fieldset>
         <legend className="text-sm font-bold text-ink">Preferred full-test day</legend>
         <div className="mt-3 flex flex-wrap gap-2">{dayLabels.map((label, day) => <button key={label} type="button" onClick={() => onPracticeTestDayChange(day)} aria-pressed={practiceTestDay === day} className={`min-h-10 cursor-pointer rounded-full px-4 text-sm font-bold transition-colors ${practiceTestDay === day ? "bg-navy text-white" : "border border-navy/15 text-navy/60 hover:border-brand"}`}>{label}</button>)}</div>
@@ -609,11 +927,15 @@ function ScheduleStep({ dailyMinutes, practiceTestDay, studyDays, onDailyMinutes
   );
 }
 
-function PlanReview({ currentScore, dailyMinutes, goalScore, noScoreYet, practiceTestDay, studyDays, testDate }: { currentScore: string; dailyMinutes: number; goalScore: string; noScoreYet: boolean; practiceTestDay: number; studyDays: number[]; testDate: string }) {
+function PlanReview({ currentScore, dailyMinutes, finishBy, goalScore, noScoreYet, practiceTestDay, studyDays, testDate }: { currentScore: string; dailyMinutes: number; finishBy: string; goalScore: string; noScoreYet: boolean; practiceTestDay: number; studyDays: number[]; testDate: string }) {
   return (
     <section aria-label="Plan summary" className="space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <ReviewMetric label="SAT date" value={formatReviewDate(testDate)} />
+        <ReviewMetric
+          label="SAT date"
+          value={formatReviewDate(testDate)}
+          detail={finishBy ? `Studying wraps ${formatReviewDate(finishBy)}` : undefined}
+        />
         <ReviewMetric
           label="Score goal"
           value={noScoreYet
@@ -682,6 +1004,21 @@ function taskLabel(kind: StudyPlanTask["kind"]): string {
   if (kind === "review") return "Review";
   if (kind === "course_lesson") return "Lesson";
   return "Practice";
+}
+
+function settingsChanged(plan: StudyPlan, profile: StudyPlannerProfile): boolean {
+  return plan.testDate !== profile.testDate
+    || plan.finishBy !== profile.finishBy
+    || plan.goalScore !== profile.goalScore
+    || plan.settings.dailyMinutes !== profile.dailyMinutes
+    || plan.settings.practiceTestDay !== profile.practiceTestDay
+    || plan.settings.studyDays.join(",") !== [...profile.studyDays].sort((a, b) => a - b).join(",");
+}
+
+function listDays(days: number[]): string {
+  const names = days.map((day) => fullDayName(day));
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 function subjectTone(section: NonNullable<StudyPlanTask["section"]>): string {
@@ -759,4 +1096,6 @@ function ClockIcon({ className }: { className?: string }) { return <svg viewBox=
 function ChevronDownIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m7 9.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function EditIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function RefreshIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M19 8a7.5 7.5 0 1 0 .2 7.5M19 4v4h-4" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function ArrowUpIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
+function RearrangeIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M4 7h10M4 12h16M4 17h7" strokeLinecap="round" /><path d="m17 14 3 3-3 3" strokeLinecap="round" strokeLinejoin="round" /></svg>; }
 function CloseIcon({ className }: { className?: string }) { return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" strokeLinecap="round" /></svg>; }

@@ -2,6 +2,7 @@ import { supabaseAdmin } from "@/utils/supabase/admin";
 
 export type StudyPlannerProfile = {
   testDate: string;
+  finishBy: string | null;
   currentScore: number | null;
   scoreUpdatedAt: string | null;
   goalScore: number;
@@ -15,6 +16,7 @@ export type StudyPlannerProfile = {
 
 type ProfileRow = {
   test_date: string;
+  finish_by: string | null;
   current_score: number | null;
   score_updated_at: string | null;
   goal_score: number;
@@ -29,6 +31,7 @@ type ProfileRow = {
 function fromRow(row: ProfileRow): StudyPlannerProfile {
   return {
     testDate: row.test_date,
+    finishBy: row.finish_by,
     currentScore: row.current_score,
     scoreUpdatedAt: row.score_updated_at,
     goalScore: row.goal_score,
@@ -44,7 +47,7 @@ function fromRow(row: ProfileRow): StudyPlannerProfile {
 export async function getStudyPlannerProfile(email: string): Promise<StudyPlannerProfile | null> {
   const { data, error } = await supabaseAdmin()
     .from("study_planner_profiles")
-    .select("test_date,current_score,score_updated_at,goal_score,study_days,practice_test_day,daily_minutes,active_plan_id,last_score_prompt_attempt_id,updated_at")
+    .select("test_date,finish_by,current_score,score_updated_at,goal_score,study_days,practice_test_day,daily_minutes,active_plan_id,last_score_prompt_attempt_id,updated_at")
     .eq("email", email)
     .maybeSingle<ProfileRow>();
 

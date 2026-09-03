@@ -8,9 +8,11 @@ import { listTests } from "@/lib/sat/loadTest";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { reportServerError } from "@/lib/observability/server";
 import type { StudyPlannerProfile } from "./profile";
+import { rescheduleTasks, sameSchedule, type StudyPlanEdit } from "./reschedule";
 import {
   generateStudyPlan,
   type StudyPlan,
+  type StudyPlanCompression,
   type StudyPlanFocus,
   type StudyPlanPhase,
   type StudyPlanProgress,
@@ -21,14 +23,17 @@ import {
 } from "./generator";
 
 export { generateStudyPlan } from "./generator";
+export type { StudyPlanEdit } from "./reschedule";
 export type {
   GenerateStudyPlanInput,
   StudyPlan,
+  StudyPlanCompression,
   StudyPlanFocus,
   StudyPlanPhase,
   StudyPlanProgress,
   StudyPlanScoreRunway,
   StudyPlanSection,
+  StudyPlanSettings,
   StudyPlanTask,
   StudyPlanTaskKind,
 } from "./generator";
@@ -40,6 +45,7 @@ type PlanRow = {
   starts_on: string;
   ends_on: string;
   test_date: string;
+  finish_by: string | null;
   phase: string;
   goal_score: number;
   current_score: number | null;
@@ -51,6 +57,8 @@ type PlanRow = {
   study_days: number[];
   daily_minutes: number;
   practice_test_day: number;
+  compression: StudyPlanCompression | null;
+  customized_at: string | null;
   profile_updated_at: string;
 };
 
@@ -106,6 +114,7 @@ const PLAN_COLUMNS = [
   "starts_on",
   "ends_on",
   "test_date",
+  "finish_by",
   "phase",
   "goal_score",
   "current_score",
@@ -117,6 +126,8 @@ const PLAN_COLUMNS = [
   "study_days",
   "daily_minutes",
   "practice_test_day",
+  "compression",
+  "customized_at",
   "profile_updated_at",
 ].join(",");
 
@@ -156,7 +167,10 @@ export async function regenerateStudyPlan(
   profile: StudyPlannerProfile,
   now: Date = new Date(),
 ): Promise<StudyPlan> {
-  if (profile.testDate < todayInNewYork(now)) {
+  const today = todayInNewYork(now);
+  // Neither a passed SAT date nor a passed finish-by date leaves work to
+  // schedule, so hand back an unsaved empty snapshot instead of a stored plan.
+  if (profile.testDate < today || (profile.finishBy !== null && profile.finishBy < today)) {
     return generateStudyPlan({
       email,
       profile,
@@ -165,7 +179,7 @@ export async function regenerateStudyPlan(
       courses: [],
       testAttempts: [],
       now,
-      planId: `expired-${todayInNewYork(now)}`,
+      planId: profile.testDate < today ? `expired-${today}` : `finished-${today}`,
     });
   }
   const [mathCatalog, readingWritingCatalog, courses, testAttempts, tests] = await Promise.all([
@@ -192,6 +206,110 @@ export async function regenerateStudyPlan(
   return applyEvidence(plan);
 }
 
+export class StudyPlanEditError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "StudyPlanEditError";
+    this.status = status;
+  }
+}
+
+// Manual rescheduling. The plan itself stays the generated snapshot; only the
+// day a task sits on, its order inside that day, and whether it is still in the
+// week can change, and the plan records that a student touched it.
+export async function editStudyPlan(
+  email: string,
+  profile: StudyPlannerProfile,
+  planId: string,
+  edit: StudyPlanEdit,
+  now: Date = new Date(),
+): Promise<StudyPlan> {
+  if (profile.activePlanId !== planId) {
+    throw new StudyPlanEditError("This week was rebuilt. Reload the planner and try again.", 409);
+  }
+  const stored = await loadStudyPlan(email, planId);
+  if (!stored) {
+    throw new StudyPlanEditError("That study plan could not be found.", 404);
+  }
+  const plan = stored.plan;
+  const target = plan.tasks.find((task) => task.id === edit.taskId);
+  if (!target) {
+    throw new StudyPlanEditError("That task is no longer in your plan.", 404);
+  }
+  if (edit.action === "move") {
+    if (edit.date < plan.startsOn || edit.date > plan.endsOn) {
+      throw new StudyPlanEditError("Pick a day inside this week's plan.", 400);
+    }
+    if (edit.date === plan.testDate) {
+      throw new StudyPlanEditError("Test day stays clear of study tasks.", 400);
+    }
+    if (edit.date === target.date) return applyEvidence(plan);
+  }
+
+  const tasks = rescheduleTasks(plan.tasks, edit);
+  if (sameSchedule(plan.tasks, tasks)) return applyEvidence(plan);
+
+  const customizedAt = now.toISOString();
+  await persistTaskOrder(
+    planId,
+    email,
+    tasks,
+    edit.action === "remove" ? target.id : null,
+    customizedAt,
+  );
+  return applyEvidence({ ...plan, tasks, customizedAt });
+}
+
+async function persistTaskOrder(
+  planId: string,
+  email: string,
+  tasks: StudyPlanTask[],
+  removedTaskId: string | null,
+  customizedAt: string,
+): Promise<void> {
+  const db = supabaseAdmin();
+  if (removedTaskId) {
+    const removal = await db
+      .from("study_planner_tasks")
+      .delete()
+      .eq("id", removedTaskId)
+      .eq("plan_id", planId);
+    if (removal.error) throw databaseError("Could not remove that task", removal.error);
+  }
+
+  if (tasks.length > 0) {
+    // One statement, so the deferred (plan_id, position) uniqueness only has to
+    // hold once every task has been renumbered.
+    const reorder = await db.from("study_planner_tasks").upsert(tasks.map((task) => ({
+      id: task.id,
+      plan_id: planId,
+      task_date: task.date,
+      position: task.position,
+      kind: task.kind,
+      section: task.section,
+      skill: task.skill,
+      title: task.title,
+      description: task.description,
+      reason: task.reason,
+      href: task.href,
+      estimated_minutes: task.estimatedMinutes,
+      target_count: task.targetCount,
+      course_lesson_id: task.courseLessonId,
+      test_slug: task.testSlug,
+    })), { onConflict: "id" });
+    if (reorder.error) throw databaseError("Could not save your schedule change", reorder.error);
+  }
+
+  const stamp = await db
+    .from("study_planner_plans")
+    .update({ customized_at: customizedAt })
+    .eq("id", planId)
+    .eq("email", email);
+  if (stamp.error) throw databaseError("Could not save your schedule change", stamp.error);
+}
+
 async function persistPlan(plan: StudyPlan, profile: StudyPlannerProfile): Promise<void> {
   const db = supabaseAdmin();
   const planResult = await db.from("study_planner_plans").insert({
@@ -201,6 +319,7 @@ async function persistPlan(plan: StudyPlan, profile: StudyPlannerProfile): Promi
     starts_on: plan.startsOn,
     ends_on: plan.endsOn,
     test_date: plan.testDate,
+    finish_by: plan.finishBy,
     phase: plan.phase,
     goal_score: plan.goalScore,
     current_score: plan.currentScore,
@@ -212,6 +331,8 @@ async function persistPlan(plan: StudyPlan, profile: StudyPlannerProfile): Promi
     study_days: profile.studyDays,
     daily_minutes: profile.dailyMinutes,
     practice_test_day: profile.practiceTestDay,
+    compression: plan.compression,
+    customized_at: null,
     profile_updated_at: profile.updatedAt,
   });
   if (planResult.error) throw databaseError("Could not save study plan", planResult.error);
@@ -296,6 +417,7 @@ async function loadStudyPlan(
       startsOn: row.starts_on,
       endsOn: row.ends_on,
       testDate: row.test_date,
+      finishBy: row.finish_by,
       phase: asPhase(row.phase),
       goalScore: row.goal_score,
       currentScore: row.current_score,
@@ -304,9 +426,33 @@ async function loadStudyPlan(
       scoreRunway: row.score_runway,
       focusAreas: row.focus_areas,
       totalMinutes: row.total_minutes,
+      compression: storedCompression(row),
+      settings: {
+        studyDays: [...row.study_days].sort((left, right) => left - right),
+        dailyMinutes: row.daily_minutes,
+        practiceTestDay: row.practice_test_day,
+      },
+      customizedAt: row.customized_at,
       tasks,
       progress: progress(0, tasks.length),
     },
+  };
+}
+
+// Plans written before the finish-by column existed carry an empty compression
+// object, so fall back to the settings the plan was actually built from.
+function storedCompression(row: PlanRow): StudyPlanCompression {
+  const stored = row.compression;
+  if (stored && typeof stored.slotsPerDay === "number") return stored;
+  return {
+    finishBy: row.finish_by,
+    requiredItems: 0,
+    studyDaysRemaining: 0,
+    slotsPerDay: 1,
+    dailyMinutes: row.daily_minutes,
+    studyDays: [...row.study_days].sort((left, right) => left - right),
+    addedStudyDays: [],
+    onTrack: true,
   };
 }
 
@@ -362,11 +508,12 @@ async function applyEvidence(plan: StudyPlan): Promise<StudyPlan> {
 
 function fromTaskRow(row: TaskRow): StudyPlanTask {
   const targetCount = Math.max(1, row.target_count);
+  const kind = asTaskKind(row.kind);
   return {
     id: row.id,
     date: row.task_date,
     position: row.position,
-    kind: asTaskKind(row.kind),
+    kind,
     section: isSection(row.section) ? row.section : null,
     skill: row.skill,
     title: row.title,
@@ -387,6 +534,7 @@ function isReusable(row: PlanRow, profile: StudyPlannerProfile, now: Date): bool
   return row.starts_on <= today
     && row.ends_on >= today
     && row.test_date === profile.testDate
+    && row.finish_by === profile.finishBy
     && row.goal_score === profile.goalScore
     && row.daily_minutes === profile.dailyMinutes
     && row.practice_test_day === profile.practiceTestDay
