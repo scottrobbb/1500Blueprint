@@ -26,7 +26,7 @@ import {
   FREE_ATTRIBUTION_COOKIE,
   parseAttributionCookie,
 } from "@/lib/marketing/attribution";
-import { recordFreeSignupAttribution } from "@/lib/marketing/free-registration";
+import { notifyFreeRegistration } from "@/lib/marketing/free-registration";
 import { validateProfileName } from "@/lib/settings/profile-name";
 import { reportServerError } from "@/lib/observability/server";
 import { clientAddressFromHeaders } from "@/lib/security/request";
@@ -90,12 +90,11 @@ export async function signUpWithPassword(
   }
 
   const result = await createPasswordAccount(formData, null);
-  // Success here means the auth user exists and the verification email is out.
-  // The account is not registered yet -- that happens at /account/confirm --
-  // but this is the last moment the /free cookie is in reach, since the
-  // confirmation is routinely opened on another device.
+  // The registration is complete from the site's side here: the account exists
+  // and the verification email is out. Everything after this happens in an
+  // inbox, so this is the moment the conversion is reported.
   if (result.status === "success") {
-    await captureFreeSignupAttribution(normalizeEmail(formData.get("email")));
+    await reportFreeRegistration(formData);
   }
   return result;
 }
@@ -326,21 +325,21 @@ async function createPasswordAccount(
   return result.state;
 }
 
-// Attribution is advisory: a failure here costs one Meta conversion event and
-// must never surface on, or hold up, a registration that otherwise succeeded.
-async function captureFreeSignupAttribution(email: string): Promise<void> {
-  try {
-    const attribution = parseAttributionCookie(
+// Reports a completed Free registration to the ad account. The cookie is read
+// here rather than passed in because only a registration that started on /free
+// carries one, and that is exactly what makes this a landing page conversion.
+//
+// notifyFreeRegistration swallows its own failures: a marketing event must
+// never surface on, or hold up, a registration that already succeeded.
+async function reportFreeRegistration(formData: FormData): Promise<void> {
+  const name = validateProfileName(stringValue(formData.get("name")).trim());
+  await notifyFreeRegistration({
+    email: normalizeEmail(formData.get("email")),
+    name: name.valid ? name.name : "",
+    attribution: parseAttributionCookie(
       (await cookies()).get(FREE_ATTRIBUTION_COOKIE)?.value,
-    );
-    if (!attribution) return;
-    await recordFreeSignupAttribution(email, attribution);
-  } catch (error) {
-    reportServerError("marketing.free_signup_attribution.failed", error, {
-      provider: "supabase",
-      source: "signUpWithPassword",
-    });
-  }
+    ),
+  });
 }
 
 function accountBaseUrl(): string {

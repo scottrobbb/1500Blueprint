@@ -7,7 +7,6 @@ import {
   isPasswordSignupEnabled,
   safeNextPath,
 } from "@/lib/auth/password";
-import { notifyFreeRegistration } from "@/lib/marketing/free-registration";
 import { createClient } from "@/utils/supabase/server";
 import { reportServerError } from "@/lib/observability/server";
 
@@ -56,19 +55,6 @@ export async function GET(request: Request) {
     });
     await supabase.auth.signOut({ scope: "local" });
     return NextResponse.redirect(new URL("/account/login?error=account", base));
-  }
-
-  // Registration is complete here and nowhere earlier: the email is verified,
-  // the student account row exists on the free plan, and the session is set.
-  // Recovery confirmations belong to accounts that registered long ago, so
-  // only a signup verification can be a conversion.
-  if (verificationType === "signup" && data.user.email) {
-    await notifyFreeRegistration({
-      email: data.user.email,
-      name: typeof data.user.user_metadata?.display_name === "string"
-        ? data.user.user_metadata.display_name
-        : "",
-    });
   }
 
   return NextResponse.redirect(new URL(next, base));

@@ -12,7 +12,11 @@ import {
 // Server-only by construction: the Zapier URL is a credential -- anyone
 // holding it can write into the ad account's conversion feed -- so it is read
 // here and nowhere a client bundle can reach.
-const WEBHOOK_TIMEOUT_MS = 5_000;
+//
+// The timeout is short because this runs while the student waits on the signup
+// form. Zapier answers a catch hook in a few hundred milliseconds; anything
+// slower is a blip, and a blip must not hold up the confirmation screen.
+const WEBHOOK_TIMEOUT_MS = 3_000;
 
 export function freeRegisterWebhookUrl(): string | null {
   const configured = process.env.ZAPIER_FREE_REGISTER_WEBHOOK_URL?.trim();
@@ -26,33 +30,20 @@ export function freeRegisterWebhookUrl(): string | null {
   }
 }
 
-// Called when the signup form has succeeded and the verification email is out.
-// The /free cookie only exists in the browser that landed there, while the
-// registration completes wherever that email is opened -- routinely another
-// device -- so the attribution is parked against the email while both are in
-// hand.
-export async function recordFreeSignupAttribution(
-  email: string,
-  attribution: FreeAttribution,
-): Promise<void> {
-  const { error } = await supabaseAdmin().rpc("record_free_signup_attribution", {
-    p_email: email,
-    p_fbclid: attribution.fbclid,
-    p_utm_medium: attribution.utm_medium,
-  });
-  if (error) throw new Error(`failed to record free signup attribution: ${error.message}`);
-}
-
-// Called once the account is verified, linked, and active. Never throws: this
-// sits on the confirmation redirect, and a marketing event is not worth
-// costing a student their sign-in.
+// Called once the registration completes on the site: the account exists and
+// the verification email has been sent. Never throws -- a marketing event is
+// not worth failing a registration that already succeeded.
 export async function notifyFreeRegistration(notice: FreeRegistrationNotice): Promise<void> {
   try {
     await runFreeRegistrationNotice(
-      { email: notice.email.trim().toLowerCase(), name: notice.name.trim() },
+      {
+        email: notice.email.trim().toLowerCase(),
+        name: notice.name.trim(),
+        attribution: notice.attribution,
+      },
       {
         webhookUrl: freeRegisterWebhookUrl,
-        claimAttribution,
+        claimConversion,
         post: postRegistration,
         reportFailure: (error) => {
           reportServerError("marketing.free_registration.notice_failed", error, {
@@ -70,9 +61,15 @@ export async function notifyFreeRegistration(notice: FreeRegistrationNotice): Pr
   }
 }
 
-async function claimAttribution(email: string): Promise<FreeAttribution | null> {
-  const { data, error } = await supabaseAdmin()
-    .rpc("claim_free_registration_notice", { p_email: email });
+async function claimConversion(
+  email: string,
+  attribution: FreeAttribution,
+): Promise<FreeAttribution | null> {
+  const { data, error } = await supabaseAdmin().rpc("claim_free_registration_notice", {
+    p_email: email,
+    p_fbclid: attribution.fbclid,
+    p_utm_medium: attribution.utm_medium,
+  });
   if (error) throw new Error(`failed to claim free registration notice: ${error.message}`);
   if (!data || typeof data !== "object") return null;
 

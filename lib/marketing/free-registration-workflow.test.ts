@@ -7,25 +7,29 @@ import {
   type FreeRegistrationPayload,
 } from "./free-registration-workflow";
 
-const NOTICE = { email: "student@example.com", name: "Alex Morgan" };
+const ATTRIBUTED = {
+  email: "student@example.com",
+  name: "Alex Morgan",
+  attribution: { fbclid: "click-1", utm_medium: "paid_social" },
+};
 
 function dependencies(
   overrides: Partial<FreeRegistrationDependencies> = {},
 ): FreeRegistrationDependencies {
   return {
     webhookUrl: () => "https://hooks.zapier.example/free",
-    claimAttribution: async () => ({ fbclid: "click-1", utm_medium: "paid_social" }),
+    claimConversion: async (_email, attribution) => attribution,
     post: async () => undefined,
     reportFailure: () => undefined,
     ...overrides,
   };
 }
 
-// A single conditional claim in the database is the whole duplicate guard, so
+// A single conditional write in the database is the whole duplicate guard, so
 // the workflow must never post without winning one.
-function singleClaim(attribution: FreeAttribution) {
+function singleClaim() {
   let claimed = false;
-  return async (): Promise<FreeAttribution | null> => {
+  return async (_email: string, attribution: FreeAttribution): Promise<FreeAttribution | null> => {
     if (claimed) return null;
     claimed = true;
     return attribution;
@@ -35,7 +39,7 @@ function singleClaim(attribution: FreeAttribution) {
 test("a completed registration posts name, email, and attribution", async () => {
   const posted: Array<{ url: string; payload: FreeRegistrationPayload }> = [];
   const outcome = await runFreeRegistrationNotice(
-    NOTICE,
+    ATTRIBUTED,
     dependencies({ post: async (url, payload) => { posted.push({ url, payload }); } }),
   );
 
@@ -50,39 +54,57 @@ test("a completed registration posts name, email, and attribution", async () => 
   });
 });
 
-test("a replayed confirmation finds the claim taken and sends nothing", async () => {
+test("a second registration attempt for the same address sends nothing", async () => {
   let posts = 0;
   const shared = dependencies({
-    claimAttribution: singleClaim({ fbclid: "click-1", utm_medium: "paid_social" }),
+    claimConversion: singleClaim(),
     post: async () => { posts += 1; },
   });
 
-  assert.equal(await runFreeRegistrationNotice(NOTICE, shared), "sent");
-  assert.equal(await runFreeRegistrationNotice(NOTICE, shared), "no-attribution");
+  assert.equal(await runFreeRegistrationNotice(ATTRIBUTED, shared), "sent");
+  assert.equal(await runFreeRegistrationNotice(ATTRIBUTED, shared), "already-sent");
   assert.equal(posts, 1);
 });
 
 test("a registration that never passed through /free is not a conversion", async () => {
+  let claims = 0;
   let posts = 0;
   const outcome = await runFreeRegistrationNotice(
-    NOTICE,
+    { ...ATTRIBUTED, attribution: null },
     dependencies({
-      claimAttribution: async () => null,
+      claimConversion: async (_email, attribution) => { claims += 1; return attribution; },
       post: async () => { posts += 1; },
     }),
   );
 
   assert.equal(outcome, "no-attribution");
+  assert.equal(claims, 0);
   assert.equal(posts, 0);
+});
+
+test("a /free registration with no ad parameters still converts", async () => {
+  const posted: FreeRegistrationPayload[] = [];
+  const outcome = await runFreeRegistrationNotice(
+    { ...ATTRIBUTED, attribution: { fbclid: null, utm_medium: null } },
+    dependencies({ post: async (_url, payload) => { posted.push(payload); } }),
+  );
+
+  assert.equal(outcome, "sent");
+  assert.deepEqual(posted[0], {
+    name: "Alex Morgan",
+    email: "student@example.com",
+    fbclid: null,
+    utm_medium: null,
+  });
 });
 
 test("an unconfigured webhook claims nothing", async () => {
   let claims = 0;
   const outcome = await runFreeRegistrationNotice(
-    NOTICE,
+    ATTRIBUTED,
     dependencies({
       webhookUrl: () => null,
-      claimAttribution: async () => { claims += 1; return null; },
+      claimConversion: async () => { claims += 1; return null; },
     }),
   );
 
@@ -90,29 +112,44 @@ test("an unconfigured webhook claims nothing", async () => {
   assert.equal(claims, 0);
 });
 
+test("the claimed attribution is what gets sent, not the incoming cookie", async () => {
+  const posted: FreeRegistrationPayload[] = [];
+  const outcome = await runFreeRegistrationNotice(
+    { ...ATTRIBUTED, attribution: { fbclid: null, utm_medium: "email" } },
+    dependencies({
+      // The stored row still holds the click behind an earlier attempt.
+      claimConversion: async () => ({ fbclid: "click-1", utm_medium: "email" }),
+      post: async (_url, payload) => { posted.push(payload); },
+    }),
+  );
+
+  assert.equal(outcome, "sent");
+  assert.equal(posted[0].fbclid, "click-1");
+  assert.equal(posted[0].utm_medium, "email");
+});
+
 test("a rejected delivery is reported and keeps its claim", async () => {
   const failures: unknown[] = [];
-  const claim = singleClaim({ fbclid: "click-1", utm_medium: null });
   const shared = dependencies({
-    claimAttribution: claim,
+    claimConversion: singleClaim(),
     post: async () => { throw new Error("Zapier rejected the free registration event (500)"); },
     reportFailure: (error) => failures.push(error),
   });
 
-  assert.equal(await runFreeRegistrationNotice(NOTICE, shared), "failed");
+  assert.equal(await runFreeRegistrationNotice(ATTRIBUTED, shared), "failed");
   assert.equal(failures.length, 1);
-  // The confirmation token is single-use, so releasing the claim could only
-  // ever produce a duplicate, never a retry.
-  assert.equal(await runFreeRegistrationNotice(NOTICE, shared), "no-attribution");
+  // A duplicate conversion skews the ad account's optimization, so a retry is
+  // deliberately not offered.
+  assert.equal(await runFreeRegistrationNotice(ATTRIBUTED, shared), "already-sent");
 });
 
 test("a claim failure is reported without posting", async () => {
   let posts = 0;
   const failures: unknown[] = [];
   const outcome = await runFreeRegistrationNotice(
-    NOTICE,
+    ATTRIBUTED,
     dependencies({
-      claimAttribution: async () => { throw new Error("database unavailable"); },
+      claimConversion: async () => { throw new Error("database unavailable"); },
       post: async () => { posts += 1; },
       reportFailure: (error) => failures.push(error),
     }),
