@@ -9,8 +9,10 @@ import { supabaseAdmin } from "@/utils/supabase/admin";
 import { reportServerError } from "@/lib/observability/server";
 import type { StudyPlannerProfile } from "./profile";
 import { rescheduleTasks, sameSchedule, type StudyPlanEdit } from "./reschedule";
+import { loadPinnedQuestionIds } from "./task-questions";
 import {
   generateStudyPlan,
+  withPlannerTaskId,
   type StudyPlan,
   type StudyPlanCompression,
   type StudyPlanFocus,
@@ -465,10 +467,11 @@ async function applyEvidence(plan: StudyPlan): Promise<StudyPlan> {
   const targetSections = [...new Set(questionTasks.map((task) => task.section))];
   const targetSkills = [...new Set(questionTasks.map((task) => task.skill))];
 
-  const [questionAttempts, lessonCompletions, testAttempts] = await Promise.all([
+  const [questionAttempts, lessonCompletions, testAttempts, pinnedQuestions] = await Promise.all([
     loadQuestionEvidence(plan.email, plan.generatedAt, targetSections, targetSkills),
     loadLessonEvidence(plan.email, plan.generatedAt, lessonIds),
     loadTestEvidence(plan.email, plan.generatedAt, hasTestTask),
+    loadPinnedQuestionIds(questionTasks.map((task) => task.id)),
   ]);
 
   const attemptsBySkill = new Map<string, Set<string>>();
@@ -486,8 +489,20 @@ async function applyEvidence(plan: StudyPlan): Promise<StudyPlan> {
 
   const tasks = plan.tasks.map((task): StudyPlanTask => {
     let completedCount = 0;
+    // A pinned set can be smaller than the plan asked for, when the task's
+    // filters had less than that left in the bank. The student is done when
+    // they have finished the set they were actually handed.
+    let targetCount = task.targetCount;
     if (hasQuestionTarget(task)) {
-      completedCount = attemptsBySkill.get(skillKey(task.section, task.skill))?.size ?? 0;
+      const attempted = attemptsBySkill.get(skillKey(task.section, task.skill)) ?? new Set<string>();
+      // Once a task has pinned its questions only those count. The student
+      // sees that exact set in the runner, so counting every attempt in the
+      // skill would credit this task for work done elsewhere in the bank.
+      const pinned = pinnedQuestions.get(task.id);
+      completedCount = pinned
+        ? pinned.filter((questionId) => attempted.has(questionId)).length
+        : attempted.size;
+      if (pinned) targetCount = Math.min(task.targetCount, pinned.length);
     } else if (task.kind === "course_lesson" && task.courseLessonId) {
       completedCount = completedLessons.has(task.courseLessonId) ? 1 : 0;
     } else if (task.kind === "full_test") {
@@ -499,8 +514,8 @@ async function applyEvidence(plan: StudyPlan): Promise<StudyPlan> {
         unusedTestAttempts.splice(attemptIndex, 1);
       }
     }
-    const taskProgress = progress(completedCount, task.targetCount);
-    return { ...task, progress: taskProgress, completed: taskProgress.percent === 100 };
+    const taskProgress = progress(completedCount, targetCount);
+    return { ...task, targetCount, progress: taskProgress, completed: taskProgress.percent === 100 };
   });
   const completedTasks = tasks.filter((task) => task.completed).length;
   return { ...plan, tasks, progress: progress(completedTasks, tasks.length) };
@@ -519,7 +534,7 @@ function fromTaskRow(row: TaskRow): StudyPlanTask {
     title: row.title,
     description: row.description,
     reason: row.reason,
-    href: row.href,
+    href: withPlannerTaskId(row.href, kind, row.id),
     estimatedMinutes: row.estimated_minutes,
     targetCount,
     courseLessonId: row.course_lesson_id,
