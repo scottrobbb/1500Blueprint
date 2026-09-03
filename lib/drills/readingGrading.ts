@@ -42,44 +42,81 @@ export const RECALL_CREDIT: Record<ReadingRecall, number> = {
   missed: 0,
 };
 
-export const READING_CORE_LABELS = ["Topic", "Main finding", "Timeline"] as const;
+// The third core point is whichever the passage actually supports: a passage
+// built on a change over time has a Timeline; one built on an anomaly has a
+// Resolution. These are the positional fallbacks when the model omits a label.
+export const READING_CORE_LABELS = ["Topic", "Main finding", "Resolution"] as const;
 export const READING_DEPTH_LABELS = ["Mechanism", "Consequences", "Significance"] as const;
 
-// Word budgets and prose targets per level difficulty.
+// What each rung of the ladder asks for. Difficulty scales with how much a
+// reader has to hold at once — competing claims, exceptions, technical terms,
+// figures — and NOT with sentence length. The passages stay short because the
+// timer is what tightens as the levels climb; a longer passage at level 6 would
+// be testing reading speed, not recall.
 const DIFFICULTY_BRIEF: Record<ReadingDifficulty, string> = {
-  medium:
-    "180-220 words. Clear, accessible academic prose in the register of an SAT Reading passage: plain sentences, concrete nouns, at most one technical term (defined in context).",
-  hard:
-    "230-270 words. Denser academic prose: longer sentences with subordinate clauses, abstract vocabulary, two or three technical terms used without definition, and at least one qualifying or contrasting claim.",
-  extreme:
-    "280-330 words. Extremely dense scholarly prose at the hardest end of the SAT range: multi-clause sentences, nominalizations, several technical terms, at least two competing findings or interpretations, and several specific figures, dates, and named entities packed closely together.",
+  medium: [
+    "100-130 words.",
+    "One clear finding and why it matters.",
+    "At most one technical term, glossed in parentheses.",
+    "Two or three specific figures.",
+  ].join(" "),
+  hard: [
+    "115-145 words.",
+    "An established view or expectation, then a finding that complicates it.",
+    "Two technical terms, each glossed in parentheses.",
+    "Three or four specific figures.",
+  ].join(" "),
+  extreme: [
+    "135-175 words.",
+    "Build it on one of these shapes: (a) a general rule, then a specific exception, then what the exception shows; (b) an observation that looks paradoxical, then the mechanism that resolves it; (c) two named research teams with competing explanations, then the distinction between them.",
+    "Three to five technical terms, each glossed in parentheses.",
+    "Five or more specific figures — years, percentages, measurement ranges, sample sizes, species or genus names.",
+    "The load comes from how much there is to hold at once. Do not reach for longer sentences.",
+  ].join(" "),
 };
+
+// Two passages at the hardest tier, to fix the register and shape. They are
+// shown for their build, never their subject.
+const STYLE_EXEMPLARS = [
+  "Hartwell's 2019 neuroimaging studies revealed that children with autism spectrum disorder exhibit hyperactive mirror neuron systems (brain circuits that fire both when performing an action and observing others perform the same action) during social observation tasks, contradicting the widely accepted mirror neuron deficit hypothesis that had dominated explanations for social cognition impairments in these populations. This hyperactivation proves puzzling because enhanced mirror neuron function should theoretically improve, rather than impair, the ability to understand others' intentions and emotional states through automatic neural mimicry. The most compelling explanation suggests that excessive mirror neuron firing creates a paradoxical interference effect, where overwhelming neural resonance with observed actions actually disrupts the complex integration processes required for higher-order social understanding.",
+  "Most bioluminescent fungi employ their light emission as a broad-spectrum attractant that draws diverse arthropod species indiscriminately, thereby maximizing spore dispersal opportunities through what mycologists term the \"generalist hypothesis\" (which posits that evolutionary success derives from casting the widest possible net for potential vectors). Panellus pusillus, however, exhibits highly selective photonic behavior that attracts exclusively nocturnal beetles of the genus Tritoma while simultaneously repelling other insects through wavelength modulation between 480-520 nanometers — a phenomenon that occurs only when ambient humidity exceeds 85 percent and soil nitrogen levels drop below critical thresholds. This specificity emerges because the fungus has co-evolved with Tritoma species whose specialized photoreceptors are uniquely calibrated to detect these precise spectral conditions, creating an exclusive mutualistic partnership. The Panellus exception demonstrates that the generalist model fails when environmental constraints favor precision over breadth in vector recruitment strategies.",
+];
 
 export function readingPassageSystemPrompt(): string {
   return [
     "You write short nonfiction reading passages for a memory-recall drill on the digital SAT, then list the ideas a strong recall must contain.",
-    "The passage must be original, factually plausible, self-contained, and free of any question, heading, title, or byline. Write it as flowing prose only.",
-    "Vary the subject every time. Draw from science, social science, history, economics, technology, art history, and archaeology. Never write about the same topic twice in a row.",
-    "The passage must report a definite finding or change and must cover a definite time frame with specific years, so a reader can state a topic, a finding, and a timeline.",
-    "It must also contain concrete surface detail — names of people, institutions, and places — that is NOT part of the main idea. This detail is the decoy layer and must never be needed to state what the passage is about.",
+    "The passage must be original, factually plausible, self-contained, and free of any question, heading, title, or byline. Write it as one paragraph of flowing prose.",
+    "Vary the subject every time. Draw from biology, neuroscience, ecology, physics, archaeology, economics, history, linguistics, art history, and the social sciences.",
+    "Write in clear academic prose. Every sentence carries one idea and stays under about 40 words, and no passage opens with a long multi-clause sentence.",
+    "Difficulty comes from how much a reader has to hold at once — competing claims, exceptions, technical terms, figures — never from tangled syntax, stacked subordinate clauses, or nominalized abstraction. A dense passage a reader cannot parse is a failed passage.",
+    "The passage must report a definite finding, change, or anomaly, and must end by resolving it: what the finding shows, why the anomaly happens, or what distinguishes the competing accounts.",
+    "Gloss each technical term in parentheses the first time it appears.",
+    "Include at least one name of a person, team, or institution that is NOT needed to state what the passage is about. This is the decoy layer. Species names, measurements, and terms that carry the finding are content, not decoys.",
+    "Stay inside the word budget you are given. A passage over budget is worse than one under it.",
     "Return strict JSON only, with no prose outside the object.",
   ].join(" ");
 }
 
 export function buildReadingPassageUser(difficulty: ReadingDifficulty, avoidTopics: string[]): string {
   const avoid = avoidTopics.length
-    ? `Do not write about any of these recent topics: ${avoidTopics.join("; ")}.`
+    ? `Do not write about any of these recent subjects: ${avoidTopics.join("; ")}.`
     : "";
 
   return [
     `Difficulty: ${difficulty}. ${DIFFICULTY_BRIEF[difficulty]}`,
     avoid,
-    "Split the passage into 1-3 paragraphs.",
-    "Then list exactly 3 core points and exactly 3 depth points.",
-    `Core points use exactly these labels, in this order: ${READING_CORE_LABELS.join(", ")}. Core points are the main idea and resolution of the passage: what it is about, what was found or changed, and when it happened.`,
-    `Depth points use exactly these labels, in this order: ${READING_DEPTH_LABELS.join(", ")}. Depth points are the supporting layer: how it worked, what followed from it, and why it mattered.`,
+    [
+      "Two passages at the hardest tier, for register and shape only — never borrow their subjects.",
+      difficulty === "extreme"
+        ? "Match them."
+        : "They sit above what you are writing: match their clarity and their build, but carry less at once and stay inside your word budget.",
+      `\n\n${STYLE_EXEMPLARS.map((x) => `---\n${x}`).join("\n\n")}\n---`,
+    ].join(" "),
+    "Write one paragraph, then list exactly 3 core points and exactly 3 depth points.",
+    'Core points are the main idea and its resolution. Label the first two "Topic" and "Main finding". Label the third "Timeline" when the passage turns on a specific time frame, or "Resolution" when it turns on what the finding shows or explains — pick whichever the passage actually supports.',
+    `Depth points use exactly these labels, in this order: ${READING_DEPTH_LABELS.join(", ")}. Depth points are the supporting layer: how it works, what follows from it, and why it matters.`,
     "Every point must be a single clause of at most 20 words, stated so a grader can check whether a student's summary contains that idea. Never make a point that is only a person's name, an institution's name, or a decorative detail.",
-    'Return strict JSON only: {"topic":"<3-6 word subject label>","body":["<paragraph>", ...],"corePoints":[{"label":"Topic","text":"..."},{"label":"Main finding","text":"..."},{"label":"Timeline","text":"..."}],"depthPoints":[{"label":"Mechanism","text":"..."},{"label":"Consequences","text":"..."},{"label":"Significance","text":"..."}]}',
+    'Return strict JSON only: {"topic":"<3-6 word subject label>","body":["<the paragraph>"],"corePoints":[{"label":"Topic","text":"..."},{"label":"Main finding","text":"..."},{"label":"Timeline|Resolution","text":"..."}],"depthPoints":[{"label":"Mechanism","text":"..."},{"label":"Consequences","text":"..."},{"label":"Significance","text":"..."}]}',
   ]
     .filter(Boolean)
     .join("\n\n");
