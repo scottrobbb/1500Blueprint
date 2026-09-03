@@ -16,10 +16,8 @@ import {
   calculateAccuracy,
   canAccessQuestionBankLevel,
   emptyLevelBreakdown,
-  prioritizeBoundedQuestions,
-  prioritizeUnattemptedQuestions,
+  questionBankSession,
   questionBankLevel,
-  selectQuestionBankSession,
   sortByOriginalOrder,
   type QuestionBankLevel,
 } from "@/lib/question-bank/math";
@@ -111,39 +109,20 @@ export async function getReadingWritingRunnerQuestions(
     selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill))
   ));
   const difficultyRows = skillRows.filter((row) => matchesDifficultyFilter(row, filters.difficulty));
-  const preferredRows = difficultyRows.filter((row) => matchesCompletion(row.id, filters.completion, activity));
   const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
-  const preferred = toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(preferredRows, activity.attemptedIds));
-  if (preferred.length >= sessionLimit) {
-    return sortByOriginalOrder(selectQuestionBankSession(preferred, sessionLimit, activity.attemptedIds), orderIndex);
-  }
-
-  // Fills out the session by relaxing the completion filter only -- the
-  // selected difficulty/level is never relaxed, so filtering to "Challenge"
-  // never pads the session with non-challenge questions to hit the size.
-  const candidates = prioritizeBoundedQuestions(
-    [
-      preferred,
-      toReadingWritingRunnerQuestions(prioritizeUnattemptedQuestions(difficultyRows, activity.attemptedIds)),
-    ],
-    rows.length,
+  // The session is restored to the corpus's original order so a question's
+  // number in the panel never shifts with the filters (see sortByOriginalOrder).
+  return sortByOriginalOrder(
+    questionBankSession(
+      toReadingWritingRunnerQuestions(difficultyRows),
+      filters.completion,
+      activity.attemptedIds,
+      sessionLimit,
+    ),
+    orderIndex,
   );
-  // prioritizeUnattemptedQuestions only influences which questions make the
-  // cut when the session has to be truncated -- the questions shown are
-  // always restored to their stable, original order (see sortByOriginalOrder)
-  // so a question's number in the panel never shifts based on completion.
-  return sortByOriginalOrder(selectQuestionBankSession(candidates, sessionLimit, activity.attemptedIds), orderIndex);
 }
 
-function matchesCompletion(
-  questionId: string,
-  completion: MathSessionFilters["completion"],
-  activity: QuestionActivity,
-): boolean {
-  if (completion === "all") return true;
-  const attempted = activity.attemptedIds.has(questionId);
-  return completion === "attempted" ? attempted : !attempted;
-}
 
 // Challenge questions carry a raw difficulty (usually "hard") but are
 // carved into their own "challenge" level -- comparing by level instead of

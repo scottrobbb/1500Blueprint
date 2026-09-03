@@ -186,6 +186,38 @@ export function prioritizeBoundedQuestions<T extends { id: string }>(
   return questions;
 }
 
+// A narrowing completion filter is a constraint, not a preference. The runner
+// used to top a short session back up to its full size by relaxing this filter,
+// so choosing "Unattempted" and having fewer than a session's worth left handed
+// the student attempted questions anyway -- in the runner and in the panel.
+// A filtered session is allowed to be short.
+export function questionsMatchingCompletion<T extends { id: string }>(
+  rows: readonly T[],
+  completion: MathCompletionFilter,
+  attemptedIds: ReadonlySet<string>,
+): T[] {
+  if (completion === "all") return [...rows];
+  const wantAttempted = completion === "attempted";
+  return rows.filter((row) => attemptedIds.has(row.id) === wantAttempted);
+}
+
+// The whole selection for one session: honour the completion filter, put unseen
+// questions first so a truncated session spends its slots on them, then cut to
+// size. Shared so the math and Reading & Writing runners cannot drift apart.
+export function questionBankSession<T extends { id: string; figureUrl: string | null }>(
+  rows: readonly T[],
+  completion: MathCompletionFilter,
+  attemptedIds: ReadonlySet<string>,
+  sessionLimit: number,
+): T[] {
+  const matching = questionsMatchingCompletion(rows, completion, attemptedIds);
+  return selectQuestionBankSession(
+    prioritizeUnattemptedQuestions(matching, attemptedIds),
+    sessionLimit,
+    attemptedIds,
+  );
+}
+
 export function selectQuestionBankSession<T extends { id: string; figureUrl: string | null }>(
   questions: T[],
   limit: number,
