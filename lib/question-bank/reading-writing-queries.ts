@@ -16,10 +16,12 @@ import {
   calculateAccuracy,
   canAccessQuestionBankLevel,
   emptyLevelBreakdown,
-  questionBankSession,
+  pinnedQuestionBankSession,
   questionBankLevel,
+  resumedQuestionBankSession,
   sortByOriginalOrder,
   type QuestionBankLevel,
+  type QuestionBankSessionPin,
 } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import { supabaseAdmin } from "@/utils/supabase/admin";
@@ -96,12 +98,17 @@ export async function getReadingWritingRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
   limit: number | null = null,
-  options: { includeChallenge?: boolean; freeTierOnly?: boolean } = {},
+  options: { includeChallenge?: boolean; freeTierOnly?: boolean; pin?: QuestionBankSessionPin } = {},
 ): Promise<ReadingWritingRunnerQuestion[]> {
   const rows = filterForPlan(await loadEligibleReadingRows(), {
     includeChallenge: options.includeChallenge ?? true,
     freeTierOnly: options.freeTierOnly ?? false,
   });
+  // A replayed set is already in the order the student saw it numbered in, so
+  // it skips both the selection below and the re-sort at the end.
+  if (options.pin?.mode === "replay") {
+    return toReadingWritingRunnerQuestions(pinnedQuestionBankSession(rows, options.pin.questionIds));
+  }
   const orderIndex = new Map(rows.map((row, index) => [row.id, index]));
   const activity = await loadQuestionActivity(email, rows.map((question) => question.id));
   const selectedSkills = new Set(filters.skills);
@@ -110,10 +117,19 @@ export async function getReadingWritingRunnerQuestions(
   ));
   const difficultyRows = skillRows.filter((row) => matchesDifficultyFilter(row, filters.difficulty));
   const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
+  // Carried questions are matched against the skill pool rather than the
+  // difficulty-filtered one: they are questions this student has already
+  // answered for the task, and dropping one because its difficulty sits
+  // outside the filter would take finished work off the task's counter.
+  const carriedIds = new Set(options.pin?.questionIds ?? []);
+  const carriedRows = carriedIds.size === 0
+    ? []
+    : skillRows.filter((row) => carriedIds.has(row.id));
   // The session is restored to the corpus's original order so a question's
   // number in the panel never shifts with the filters (see sortByOriginalOrder).
   return sortByOriginalOrder(
-    questionBankSession(
+    resumedQuestionBankSession(
+      toReadingWritingRunnerQuestions(carriedRows),
       toReadingWritingRunnerQuestions(difficultyRows),
       filters.completion,
       activity.attemptedIds,

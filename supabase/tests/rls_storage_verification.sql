@@ -64,6 +64,7 @@ declare
     'study_planner_plans',
     'study_planner_profiles',
     'study_planner_tasks',
+    'study_planner_task_questions',
     'test_attempts',
     'test_sessions',
     'tests',

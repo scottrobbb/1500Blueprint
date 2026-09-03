@@ -218,6 +218,51 @@ export function questionBankSession<T extends { id: string; figureUrl: string | 
   );
 }
 
+// How a session relates to a question set that has already been handed out.
+// A Study Planner task promises one fixed set -- the student is meant to come
+// back to the same 15 questions, not to a fresh 15 -- so the task pins its ids
+// the first time it is opened and replays them afterwards.
+export type QuestionBankSessionPin =
+  | { mode: "replay"; questionIds: readonly string[] }
+  | { mode: "resume"; questionIds: readonly string[] };
+
+// Replay: rebuild the session from pinned ids, in the order they were pinned,
+// dropping any question that has since left the bank. The completion filter and
+// the session limit are deliberately not consulted -- they chose the set once.
+export function pinnedQuestionBankSession<T extends { id: string }>(
+  rows: readonly T[],
+  pinnedIds: readonly string[],
+): T[] {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return pinnedIds
+    .map((id) => byId.get(id))
+    .filter((row): row is T => row !== undefined);
+}
+
+// Resume: the first open of a task the student has already worked, either
+// before pinning shipped or straight from the Question Bank. Questions they
+// have already answered for the task open the session so that work is still
+// theirs, and the normal selection fills whatever slots are left.
+export function resumedQuestionBankSession<T extends { id: string; figureUrl: string | null }>(
+  carriedRows: readonly T[],
+  rows: readonly T[],
+  completion: MathCompletionFilter,
+  attemptedIds: ReadonlySet<string>,
+  sessionLimit: number,
+): T[] {
+  const carried = carriedRows.slice(0, sessionLimit);
+  const carriedIds = new Set(carried.map((row) => row.id));
+  return [
+    ...carried,
+    ...questionBankSession(
+      rows.filter((row) => !carriedIds.has(row.id)),
+      completion,
+      attemptedIds,
+      sessionLimit - carried.length,
+    ),
+  ];
+}
+
 export function selectQuestionBankSession<T extends { id: string; figureUrl: string | null }>(
   questions: T[],
   limit: number,
