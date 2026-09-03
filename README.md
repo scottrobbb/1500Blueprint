@@ -129,10 +129,27 @@ ZAPIER_FREE_REGISTER_WEBHOOK_URL=https://hooks.zapier.com/hooks/catch/...
 ```
 
 The proxy stores `fbclid` and `utm_medium` from the `/free` landing URL in an
-HttpOnly cookie; a later visit without those parameters leaves the stored click
-alone. The signup action posts `{ name, email, fbclid, utm_medium }` once the
-account is created and the verification email has been sent, which is the point
-the registration completes on the site.
+HttpOnly cookie, and builds Meta's `fbc` value (`fb.1.<click time in ms>.<fbclid>`)
+at the same moment, so the timestamp is the click's rather than the
+registration's. A later visit without those parameters leaves the stored click
+alone. The signup action posts once the account is created and the verification
+email has been sent, which is the point the registration completes on the site:
+
+```json
+{
+  "name": "Alex Morgan",
+  "first_name": "Alex",
+  "last_name": "Morgan",
+  "email": "student@example.com",
+  "fbclid": "IwAR...",
+  "fbc": "fb.1.1756900000000.IwAR...",
+  "utm_medium": "paid_social"
+}
+```
+
+The signup form collects one display name, so the leading token is the first
+name and whatever follows is the last. `fbclid` is sent raw alongside `fbc`,
+not replaced by it.
 
 The webhook never fires on a CTA click or on a signup that failed validation,
 and a registration that never passed through `/free` sends nothing.

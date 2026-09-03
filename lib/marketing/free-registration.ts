@@ -68,14 +68,16 @@ async function claimConversion(
   const { data, error } = await supabaseAdmin().rpc("claim_free_registration_notice", {
     p_email: email,
     p_fbclid: attribution.fbclid,
+    p_fbc: attribution.fbc,
     p_utm_medium: attribution.utm_medium,
   });
   if (error) throw new Error(`failed to claim free registration notice: ${error.message}`);
   if (!data || typeof data !== "object") return null;
 
-  const claimed = data as { fbclid?: unknown; utm_medium?: unknown };
+  const claimed = data as { fbclid?: unknown; fbc?: unknown; utm_medium?: unknown };
   return {
     fbclid: typeof claimed.fbclid === "string" ? claimed.fbclid : null,
+    fbc: typeof claimed.fbc === "string" ? claimed.fbc : null,
     utm_medium: typeof claimed.utm_medium === "string" ? claimed.utm_medium : null,
   };
 }
