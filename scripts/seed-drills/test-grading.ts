@@ -1,7 +1,7 @@
-/** Live test of the AI grading pipeline. Replicates exactly what
- *  app/api/drills/grade/route.ts does (system = the drill's editable
- *  grading_prompt; user = question + critical path / key points + student text)
- *  and grades a STRONG vs WEAK answer so the differentiation is visible.
+/** Live test of the AI grading pipelines. Replicates exactly what the grading
+ *  routes do (system = the drill's editable grading_prompt; user = the question
+ *  or passage + the checkable points + student text) and grades a STRONG vs
+ *  WEAK answer so the differentiation is visible.
  *  Run: npx tsx scripts/seed-drills/test-grading.ts */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -76,42 +76,55 @@ async function grammar() {
 
 async function reading() {
   const { data: drill } = await admin.from("drills").select("grading_prompt").eq("slug", "reading").single();
-  const { data: qs } = await admin
-    .from("drill_questions")
-    .select("id,content")
-    .eq("drill_slug", "reading")
-    .eq("status", "published")
+  // Reading passages are generated per attempt, so grade the most recent one
+  // rather than an authored question. Run the drill once to seed a row.
+  const { data: rows } = await admin
+    .from("reading_generated_passages")
+    .select("id,body,core_points,depth_points")
+    .order("created_at", { ascending: false })
     .limit(1);
-  const q = qs![0];
-  const c = q.content as { body: string[]; keyPoints: string[] };
-  const points = c.keyPoints.map((p, i) => `${i + 1}. ${p}`).join("\n");
+  const p = rows?.[0];
+  if (!p) {
+    console.log("\n===== READING — skipped: no generated passage yet (run the drill once) =====");
+    return;
+  }
+  const points = (list: { label: string; text: string }[]) =>
+    list.map((x, i) => `${i + 1}. [${x.label}] ${x.text}`).join("\n");
+  const core = p.core_points as { label: string; text: string }[];
+  const depth = p.depth_points as { label: string; text: string }[];
 
-  const strong = c.keyPoints.join(" ");
+  const strong = [...core, ...depth].map((x) => x.text).join(" ");
   const weak = "It was about some science discovery, I think. I don't really remember the specifics.";
 
   const build = (studentText: string) =>
     [
-      `Passage:\n${c.body.join("\n\n")}`,
-      `Canonical key points (in order):\n${points}`,
+      `Passage:\n${(p.body as string[]).join("\n\n")}`,
+      `CORE points (the main idea and resolution):\n${points(core)}`,
+      `DEPTH points (the supporting layer):\n${points(depth)}`,
       `Student's summary:\n${studentText}`,
-      'Return strict JSON only: {"score":0-100,"verdict":"<one line>","captured":[{"text":"<key point>","captured":true|false}, ...]}.',
+      'Return strict JSON only: {"verdict":"<one sentence>","core":[{"label":"<label>","recall":"full|partial|missed"}, ...],"depth":[{"label":"<label>","recall":"full|partial|missed"}, ...],"fabrications":["<unsupported claim>", ...]}.',
     ].join("\n\n");
 
-  console.log(`\n===== READING (grade-summary) — question ${q.id} =====`);
+  // Mirrors scoreReadingRecall: core is weighted at 80%, depth at 20%.
+  const credit: Record<string, number> = { full: 1, partial: 0.5, missed: 0 };
+  const ratio = (list: { recall: string }[] = []) =>
+    list.length === 0 ? 1 : list.reduce((sum, x) => sum + (credit[x.recall] ?? 0), 0) / list.length;
+  const score = (r: { core?: { recall: string }[]; depth?: { recall: string }[]; fabrications?: string[] }) =>
+    Math.max(0, Math.round((0.8 * ratio(r.core) + 0.2 * ratio(r.depth)) * 100) - Math.min(20, (r.fabrications?.length ?? 0) * 5));
+
+  console.log(`\n===== READING (recall grading) — passage ${p.id} =====`);
   const a = await grade(drill!.grading_prompt, build(strong));
-  const aCap = (a.captured ?? []).filter((x: { captured: boolean }) => x.captured).length;
-  console.log(`\n[STRONG summary, recalls all key points]`);
-  console.log(`  score=${a.score}  verdict="${a.verdict}"  captured=${aCap}/${c.keyPoints.length}`);
+  console.log(`\n[STRONG summary, recalls every point]`);
+  console.log(`  score=${score(a)}  verdict="${a.verdict}"`);
   const b = await grade(drill!.grading_prompt, build(weak));
-  const bCap = (b.captured ?? []).filter((x: { captured: boolean }) => x.captured).length;
   console.log(`\n[WEAK summary, gist only]`);
-  console.log(`  score=${b.score}  verdict="${b.verdict}"  captured=${bCap}/${c.keyPoints.length}`);
+  console.log(`  score=${score(b)}  verdict="${b.verdict}"`);
 }
 
 async function main() {
   await grammar();
   await reading();
-  console.log("\n(Done. This runs the same Claude call + Scott's grading_prompt the live /api/drills/grade route uses.)");
+  console.log("\n(Done. This runs the same Claude calls + Scott's grading_prompts the live grading routes use.)");
 }
 main().catch((e) => {
   console.error(e);

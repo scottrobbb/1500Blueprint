@@ -56,6 +56,7 @@ declare
     'question_reports',
     'question_content_edit_log',
     'questions',
+    'reading_generated_passages',
     'sat_skills',
     'staff_roles',
     'student_recent_activity',
