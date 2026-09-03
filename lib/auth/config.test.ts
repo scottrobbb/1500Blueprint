@@ -5,6 +5,7 @@ import {
   allowedAppOrigins,
   appBaseUrl,
   canonicalAppUrl,
+  canonicalHostRedirect,
   magicLinkCallbackUrl,
 } from "./config";
 import { billingBaseUrl } from "../billing/config";
@@ -181,3 +182,60 @@ function withEnvironment(
     }
   }
 }
+
+const PRODUCTION_HOSTS = {
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  NEXT_PUBLIC_APP_URL: "https://1500blueprint.com",
+  APP_ALLOWED_ORIGINS: "https://www.1500satblueprint.com,https://1500satblueprint.com",
+} as const;
+
+test("a request on the deployment's Vercel host is moved to the canonical domain", () => {
+  withEnvironment(PRODUCTION_HOSTS, () => {
+    assert.equal(
+      canonicalHostRedirect("https://1500-blueprint.vercel.app/max?utm=yt"),
+      "https://1500blueprint.com/max?utm=yt",
+    );
+    // Path and query survive, so a shared deep link still lands where it meant to.
+    assert.equal(
+      canonicalHostRedirect("https://1500-blueprint.vercel.app/checkout?plan=max&cadence=monthly"),
+      "https://1500blueprint.com/checkout?plan=max&cadence=monthly",
+    );
+  });
+});
+
+test("the canonical domain and every allowed origin are left alone", () => {
+  withEnvironment(PRODUCTION_HOSTS, () => {
+    assert.equal(canonicalHostRedirect("https://1500blueprint.com/pricing"), null);
+    // The second production domain has to keep working on its own host.
+    assert.equal(canonicalHostRedirect("https://www.1500satblueprint.com/pricing"), null);
+    assert.equal(canonicalHostRedirect("https://1500satblueprint.com/pricing"), null);
+  });
+});
+
+test("webhook and API traffic is never redirected", () => {
+  withEnvironment(PRODUCTION_HOSTS, () => {
+    // A sender holds a fixed URL; a redirect breaks delivery instead of moving
+    // a person.
+    assert.equal(canonicalHostRedirect("https://1500-blueprint.vercel.app/api/billing/webhook"), null);
+    assert.equal(canonicalHostRedirect("https://1500-blueprint.vercel.app/api/tests/complete"), null);
+  });
+});
+
+test("previews and local development are never redirected", () => {
+  withEnvironment({ ...PRODUCTION_HOSTS, VERCEL_ENV: "preview" }, () => {
+    assert.equal(canonicalHostRedirect("https://preview-branch.vercel.app/pricing"), null);
+  });
+  withEnvironment({ ...PRODUCTION_HOSTS, VERCEL_ENV: undefined, NODE_ENV: "development" }, () => {
+    assert.equal(canonicalHostRedirect("http://localhost:3000/pricing"), null);
+  });
+});
+
+test("localhost is left alone even when VERCEL_ENV is pinned to production", () => {
+  // .env.local pins VERCEL_ENV=production to exercise production code paths, so
+  // the loopback bypass is what keeps `next dev` off the live site.
+  withEnvironment(PRODUCTION_HOSTS, () => {
+    assert.equal(canonicalHostRedirect("http://localhost:3000/pricing"), null);
+    assert.equal(canonicalHostRedirect("http://127.0.0.1:3000/max"), null);
+  });
+});

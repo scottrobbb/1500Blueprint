@@ -7,6 +7,7 @@ export const TOKEN_TTL_SECONDS = 60 * 15; // magic link is valid for 15 minutes
 // Stripe subscription statuses that count as an active membership.
 export const ACTIVE_STATUSES = ["active", "trialing"] as const;
 
+const LOOPBACK_HOSTNAMES = new Set(["localhost", "127.0.0.1", "::1", "[::1]"]);
 const FALLBACK_CANONICAL_APP_URL = "https://1500blueprint.com";
 const MAX_ALLOWED_APP_ORIGINS = 8;
 const MAX_ALLOWED_APP_ORIGINS_LENGTH = 2048;
@@ -32,6 +33,48 @@ export function allowedAppOrigins(): ReadonlySet<string> {
   }
   entries.forEach((value) => origins.add(validateHttpsAppOrigin(value, "APP_ALLOWED_ORIGINS")));
   return origins;
+}
+
+// Vercel gives every deployment a *.vercel.app hostname, and the production one
+// serves the real app. Anyone who lands there gets a working parallel copy of
+// the site they cannot leave -- every proxy redirect preserves the incoming
+// host -- and whose checkout silently 403s, because billingBaseUrl resolves to
+// the canonical origin and the same-origin check then rejects the POST.
+//
+// Returns the canonical URL such a request should be sent to, or null to leave
+// it alone. Every origin in allowedAppOrigins() is left alone, which is what
+// keeps a second production domain working.
+export function canonicalHostRedirect(requestUrl: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(requestUrl);
+  } catch {
+    return null;
+  }
+
+  // Checked before VERCEL_ENV, not after: a local .env may pin VERCEL_ENV to
+  // "production" to exercise production code paths, and without this a
+  // developer loading localhost would be redirected to the live site.
+  if (LOOPBACK_HOSTNAMES.has(url.hostname)) return null;
+
+  // Preview deployments are meant to live on their own *.vercel.app host.
+  if (process.env.VERCEL_ENV !== "production") return null;
+
+  // A webhook sender holds a fixed URL, so redirecting one breaks delivery
+  // rather than relocating a person. Only navigations are worth moving.
+  if (url.pathname.startsWith("/api/")) return null;
+
+  // Compared by host, not full origin: a proxied http:// origin would otherwise
+  // look foreign and bounce a legitimate domain to canonical.
+  const allowedHosts = new Set(
+    [...allowedAppOrigins()].map((origin) => new URL(origin).host),
+  );
+  if (allowedHosts.has(url.host)) return null;
+
+  const target = new URL(canonicalAppUrl());
+  target.pathname = url.pathname;
+  target.search = url.search;
+  return target.toString();
 }
 
 // Production auth links always use the public domain. Preview deployments keep

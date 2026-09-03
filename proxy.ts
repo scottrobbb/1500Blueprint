@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify, type JWTPayload } from "jose";
-import { SESSION_COOKIE } from "@/lib/auth/config";
+import { canonicalHostRedirect, SESSION_COOKIE } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isPasswordAuthEnabled } from "@/lib/auth/password";
 import { updateSession as updatePasswordSession } from "@/utils/supabase/proxy";
@@ -42,6 +42,14 @@ async function sessionPayload(request: NextRequest): Promise<JWTPayload | null> 
 // auth endpoints are reachable logged out. The /admin area additionally requires an
 // admin email (defense-in-depth; pages/routes re-check via getAdminSession).
 export async function proxy(request: NextRequest) {
+  // Before anything else: a request on a host this app does not own -- the
+  // deployment's own *.vercel.app URL, in practice -- is moved to the canonical
+  // domain, path and query intact. Every redirect below clones nextUrl and so
+  // preserves whatever host it arrived on, which is right for the second
+  // production domain and wrong for that one.
+  const canonicalUrl = canonicalHostRedirect(request.nextUrl.toString());
+  if (canonicalUrl) return NextResponse.redirect(canonicalUrl, 308);
+
   const { pathname } = request.nextUrl;
   const publicPath = isPublic(pathname);
   if (publicPath && !pathname.startsWith("/account")) return NextResponse.next();
