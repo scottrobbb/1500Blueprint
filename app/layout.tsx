@@ -25,11 +25,32 @@ const notoSerif = Noto_Serif({
   display: "swap",
 });
 
+const SHARE_DESCRIPTION =
+  "Full-length adaptive digital SAT practice tests, a 1250+ question bank with Desmos explanations, targeted drills, and courses.";
+
 export const metadata: Metadata = {
   metadataBase: new URL(canonicalAppUrl()),
   title: "1500 Blueprint | Practice",
   description:
     "Full-length, Bluebook-style digital SAT practice tests from the 1500 Blueprint.",
+  // What Messages, Slack, and X read when the link is shared -- they use these,
+  // never <title>. Set once here and inherited by every route, so the bare
+  // domain (which redirects to /pricing) is shared under the brand rather than
+  // under a page name. A page that overrides `openGraph` replaces this whole
+  // block, so add to it rather than redeclaring it downstream.
+  openGraph: {
+    type: "website",
+    siteName: "1500 Blueprint",
+    title: "1500 Blueprint",
+    description: SHARE_DESCRIPTION,
+    url: "/",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "1500 Blueprint",
+    description: SHARE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({
