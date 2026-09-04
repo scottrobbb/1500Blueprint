@@ -10,7 +10,7 @@ import {
 } from "./plans";
 import { resolveStoredPlan } from "./stored-plan";
 import { billingLivemode } from "@/lib/billing/config";
-import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
+import { subscriptionGrantsAccess } from "@/lib/billing/policy";
 
 export type { AccessSource, PlanCode, PlanEntitlements, StudentAccess } from "./plans";
 export { accessForPlan, canAccessCourse, normalizeLegacyPlanCode, normalizePlanCode, PLAN_ENTITLEMENTS } from "./plans";
@@ -24,7 +24,7 @@ type AccountRow = {
 };
 
 type PlanRow = { plan_code: string };
-type SubscriptionRow = PlanRow & { status: string };
+type SubscriptionRow = PlanRow & { status: string; payment_failed_at: string | null };
 
 export async function getStudentAccess(email: string): Promise<StudentAccess> {
   const admin = supabaseAdmin();
@@ -59,7 +59,7 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
         .maybeSingle<PlanRow>(),
       admin
         .from("student_subscriptions")
-        .select("plan_code,status")
+        .select("plan_code,status,payment_failed_at")
         .eq("user_id", account.id)
         .eq("livemode", billingLivemode())
         .order("updated_at", { ascending: false })
@@ -71,8 +71,13 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
     throw new Error(`failed to load student subscription: ${subscriptionError.message}`);
   }
 
-  const activeStatuses = new Set<string>(PAID_ACCESS_STATUSES);
-  const activeSubscription = (subscription ?? []).find((row) => activeStatuses.has(row.status));
+  // A past_due row stops counting once its grace window closes, so a renewal
+  // that never gets paid cannot keep funding access. See subscriptionGrantsAccess.
+  const checkedAt = new Date();
+  const activeSubscription = (subscription ?? []).find((row) => subscriptionGrantsAccess(
+    { status: row.status, paymentFailedAt: row.payment_failed_at },
+    checkedAt,
+  ));
   const grantPlan = grant ? normalizePlanCode(grant.plan_code) : "free";
   const subscriptionPlan = activeSubscription ? normalizePlanCode(activeSubscription.plan_code) : "free";
   const legacyPlan = resolveStoredPlan(account.plan);

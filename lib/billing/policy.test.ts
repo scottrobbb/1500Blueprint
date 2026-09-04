@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   hasPaidAccessStatus,
+  PAYMENT_FAILURE_GRACE_DAYS,
+  subscriptionGrantsAccess,
   isRefundEligible,
   pendingChangeHasTakenEffect,
   planChangeDirection,
@@ -17,6 +19,49 @@ test("paid access includes Stripe retry grace but excludes terminal statuses", (
   assert.equal(hasPaidAccessStatus("past_due"), true);
   assert.equal(hasPaidAccessStatus("unpaid"), false);
   assert.equal(hasPaidAccessStatus("canceled"), false);
+});
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const failedAt = new Date("2026-09-01T12:00:00.000Z");
+const graceCloses = new Date(failedAt.getTime() + PAYMENT_FAILURE_GRACE_DAYS * DAY_MS);
+
+test("a paid subscription grants access regardless of any recorded failure", () => {
+  for (const status of ["active", "trialing"]) {
+    assert.equal(
+      subscriptionGrantsAccess({ status, paymentFailedAt: failedAt.toISOString() }, graceCloses),
+      true,
+      `${status} is paid; a stale failure stamp must not revoke it`,
+    );
+  }
+});
+
+test("a failed renewal keeps access through the grace window and loses it after", () => {
+  const row = { status: "past_due", paymentFailedAt: failedAt.toISOString() };
+  assert.equal(subscriptionGrantsAccess(row, failedAt), true);
+  assert.equal(subscriptionGrantsAccess(row, new Date(graceCloses.getTime() - 1000)), true);
+  assert.equal(subscriptionGrantsAccess(row, graceCloses), true, "the boundary itself is inclusive");
+  assert.equal(subscriptionGrantsAccess(row, new Date(graceCloses.getTime() + 1000)), false);
+  // The incident this closes: Stripe left the subscription past_due and access
+  // continued for months.
+  assert.equal(subscriptionGrantsAccess(row, new Date(failedAt.getTime() + 60 * DAY_MS)), false);
+});
+
+test("past_due with no usable failure stamp keeps the grace rather than revoking on a race", () => {
+  assert.equal(subscriptionGrantsAccess({ status: "past_due", paymentFailedAt: null }, graceCloses), true);
+  assert.equal(
+    subscriptionGrantsAccess({ status: "past_due", paymentFailedAt: "not a date" }, graceCloses),
+    true,
+  );
+});
+
+test("terminal statuses never grant access, however recent", () => {
+  for (const status of ["canceled", "unpaid", "incomplete", "incomplete_expired", "paused"]) {
+    assert.equal(
+      subscriptionGrantsAccess({ status, paymentFailedAt: null }, failedAt),
+      false,
+      `${status} must not grant access`,
+    );
+  }
 });
 
 test("plan changes use immediate upgrades and scheduled downgrades", () => {
