@@ -19,7 +19,7 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { drillAllowance } from "@/lib/auth/access-control";
 import { billingLivemode } from "@/lib/billing/config";
 import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
-import { PAID_ACCESS_STATUSES, scheduledCancellationAt } from "@/lib/billing/policy";
+import { scheduledCancellationAt, subscriptionGrantsAccess } from "@/lib/billing/policy";
 import { isComplimentaryAccount } from "@/lib/auth/complimentary";
 import type { AnswerMap, ModuleVariant, PracticeTest, SectionId } from "@/lib/sat/types";
 import { parsePracticeTestSnapshot } from "@/lib/sat/testSnapshot";
@@ -732,6 +732,7 @@ type RosterSubscription = {
   pending_plan_code: string | null;
   pending_billing_cadence: string | null;
   pending_change_effective_at: string | null;
+  payment_failed_at: string | null;
   updated_at: string;
 };
 
@@ -774,7 +775,7 @@ export async function listStudents(): Promise<StudentRow[]> {
       .returns<RosterGrant[]>()),
     loadRosterPages<RosterSubscription>("student subscriptions", (from, to) => db
       .from("student_subscriptions")
-      .select("id,user_id,plan_code,status,current_period_start,current_period_end,cancel_at,cancel_at_period_end,pending_plan_code,pending_billing_cadence,pending_change_effective_at,updated_at")
+      .select("id,user_id,plan_code,status,current_period_start,current_period_end,cancel_at,cancel_at_period_end,pending_plan_code,pending_billing_cadence,pending_change_effective_at,payment_failed_at,updated_at")
       .eq("livemode", billingLivemode())
       .order("updated_at", { ascending: false })
       .order("id")
@@ -784,14 +785,20 @@ export async function listStudents(): Promise<StudentRow[]> {
 
   const grantByUser = new Map<string, RosterGrant>();
   for (const grant of grants) if (!grantByUser.has(grant.user_id)) grantByUser.set(grant.user_id, grant);
+  const rosterCheckedAt = new Date();
   const latestSubscriptionByUser = new Map<string, RosterSubscription>();
   const paidSubscriptionByUser = new Map<string, RosterSubscription>();
   for (const subscription of subscriptions) {
     if (!latestSubscriptionByUser.has(subscription.user_id)) {
       latestSubscriptionByUser.set(subscription.user_id, subscription);
     }
+    // Same grace rule getStudentAccess applies, so the roster shows the plan the
+    // student actually has rather than one an unpaid renewal is still claiming.
     if (
-      (PAID_ACCESS_STATUSES as readonly string[]).includes(subscription.status)
+      subscriptionGrantsAccess(
+        { status: subscription.status, paymentFailedAt: subscription.payment_failed_at },
+        rosterCheckedAt,
+      )
       && !paidSubscriptionByUser.has(subscription.user_id)
     ) {
       paidSubscriptionByUser.set(subscription.user_id, subscription);

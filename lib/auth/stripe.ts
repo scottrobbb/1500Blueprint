@@ -54,13 +54,12 @@ export async function getMembership(
     : await findCustomersIgnoringEmailCase(lookup, dependencies);
   if (customers.length === 0) return { active: false, plan: null };
 
-  // TEMPORARY (testing only): when MEMBERSHIP_REQUIRE_ACTIVE_SUB=false, any existing
-  // Stripe customer counts as a member — no subscription required. Remove that env
-  // var to restore the active-subscription gate before real students use this.
-  if (process.env.MEMBERSHIP_REQUIRE_ACTIVE_SUB === "false") {
-    return { active: true, plan: "testing" };
-  }
-
+  // A MEMBERSHIP_REQUIRE_ACTIVE_SUB=false escape hatch used to sit here and let
+  // any existing Stripe customer through as plan "testing" -- which resolves to
+  // Max, and which record_login then wrote to users.plan permanently. Stripe
+  // creates a customer for an abandoned or declined Checkout too, so it handed
+  // full access to people whose payment never succeeded. Gone deliberately: the
+  // only way past this gate is an active subscription.
   for (const customer of customers) {
     const subscriptions = await dependencies.listSubscriptions(customer.id);
     const active = subscriptions.find((s) =>
