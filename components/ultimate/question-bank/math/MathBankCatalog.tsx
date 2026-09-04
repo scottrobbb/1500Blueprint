@@ -124,6 +124,7 @@ export function SubjectBankCatalogView({
               ["all", "All questions"],
               ["unanswered", "Not attempted"],
               ["attempted", "Attempted"],
+              ["incorrect", "Still incorrect"],
             ]}
           />
           {selectedSkills.size > 0 && (

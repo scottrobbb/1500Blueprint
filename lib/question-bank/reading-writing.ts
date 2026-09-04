@@ -23,7 +23,7 @@ export const READING_WRITING_SKILLS = [
 
 export type ReadingWritingDomain = (typeof READING_WRITING_DOMAINS)[number];
 export type ReadingWritingDifficultyFilter = Difficulty | "all";
-export type ReadingWritingCompletionFilter = "all" | "unanswered" | "attempted";
+export type ReadingWritingCompletionFilter = "all" | "unanswered" | "attempted" | "incorrect";
 
 export type ReadingWritingChoice = {
   id: ChoiceId;

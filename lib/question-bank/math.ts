@@ -13,7 +13,7 @@ export type MathDomain = (typeof MATH_DOMAINS)[number];
 // in terms of "level".
 export type QuestionBankLevel = Difficulty;
 export type MathDifficultyFilter = QuestionBankLevel | "all";
-export type MathCompletionFilter = "all" | "unanswered" | "attempted";
+export type MathCompletionFilter = "all" | "unanswered" | "attempted" | "incorrect";
 export type MathAnswerType = "mc_single" | "grid_in";
 
 // Applies only when no skill is selected ("Start all topics") — an unfocused
@@ -135,7 +135,7 @@ export function parseDifficultyFilter(value: string | undefined): MathDifficulty
 }
 
 export function parseCompletionFilter(value: string | undefined): MathCompletionFilter {
-  return value === "unanswered" || value === "attempted" ? value : "all";
+  return value === "unanswered" || value === "attempted" || value === "incorrect" ? value : "all";
 }
 
 export function parseSkillFilter(value: string | undefined): string[] {
@@ -191,14 +191,38 @@ export function prioritizeBoundedQuestions<T extends { id: string }>(
 // so choosing "Unattempted" and having fewer than a session's worth left handed
 // the student attempted questions anyway -- in the runner and in the panel.
 // A filtered session is allowed to be short.
+export type QuestionBankActivity = {
+  attemptedIds: ReadonlySet<string>;
+  // Answered at least once and never once answered correctly. A question the
+  // student later gets right leaves this set, which is what makes it a review
+  // queue rather than a permanent record of every miss.
+  incorrectIds: ReadonlySet<string>;
+};
+
+// The still-wrong questions, derived from the per-question attempt tallies both
+// subjects already load. Kept here so math and Reading & Writing cannot decide
+// "incorrect" differently.
+export function incorrectQuestionIds(
+  attemptsByQuestion: ReadonlyMap<string, { attempts: number; correct: number }>,
+): Set<string> {
+  const incorrect = new Set<string>();
+  for (const [questionId, tally] of attemptsByQuestion) {
+    if (tally.attempts > 0 && tally.correct === 0) incorrect.add(questionId);
+  }
+  return incorrect;
+}
+
 export function questionsMatchingCompletion<T extends { id: string }>(
   rows: readonly T[],
   completion: MathCompletionFilter,
-  attemptedIds: ReadonlySet<string>,
+  activity: QuestionBankActivity,
 ): T[] {
   if (completion === "all") return [...rows];
+  // "Incorrect" is a subset of "attempted", not a fourth exclusive bucket: a
+  // question the student got wrong is still one they have seen.
+  if (completion === "incorrect") return rows.filter((row) => activity.incorrectIds.has(row.id));
   const wantAttempted = completion === "attempted";
-  return rows.filter((row) => attemptedIds.has(row.id) === wantAttempted);
+  return rows.filter((row) => activity.attemptedIds.has(row.id) === wantAttempted);
 }
 
 // The whole selection for one session: honour the completion filter, put unseen
@@ -207,14 +231,14 @@ export function questionsMatchingCompletion<T extends { id: string }>(
 export function questionBankSession<T extends { id: string; figureUrl: string | null }>(
   rows: readonly T[],
   completion: MathCompletionFilter,
-  attemptedIds: ReadonlySet<string>,
+  activity: QuestionBankActivity,
   sessionLimit: number,
 ): T[] {
-  const matching = questionsMatchingCompletion(rows, completion, attemptedIds);
+  const matching = questionsMatchingCompletion(rows, completion, activity);
   return selectQuestionBankSession(
-    prioritizeUnattemptedQuestions(matching, attemptedIds),
+    prioritizeUnattemptedQuestions(matching, activity.attemptedIds),
     sessionLimit,
-    attemptedIds,
+    activity.attemptedIds,
   );
 }
 
@@ -247,7 +271,7 @@ export function resumedQuestionBankSession<T extends { id: string; figureUrl: st
   carriedRows: readonly T[],
   rows: readonly T[],
   completion: MathCompletionFilter,
-  attemptedIds: ReadonlySet<string>,
+  activity: QuestionBankActivity,
   sessionLimit: number,
 ): T[] {
   const carried = carriedRows.slice(0, sessionLimit);
@@ -257,7 +281,7 @@ export function resumedQuestionBankSession<T extends { id: string; figureUrl: st
     ...questionBankSession(
       rows.filter((row) => !carriedIds.has(row.id)),
       completion,
-      attemptedIds,
+      activity,
       sessionLimit - carried.length,
     ),
   ];
