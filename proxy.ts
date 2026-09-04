@@ -15,8 +15,11 @@ import { updateSession as updatePasswordSession } from "@/utils/supabase/proxy";
 import { sessionSecret } from "@/lib/auth/session-secret";
 import { enforceProtectedContentRead } from "@/lib/security/protected-content";
 
-// Paths reachable without a session.
-const PUBLIC_PATHS = ["/", "/login", "/pricing", "/free", "/max", "/account", "/robots.txt", "/sitemap.xml"];
+// Paths reachable without a session. /opengraph-image is the share card: it has
+// no file extension, so the matcher below does not exclude it the way it
+// excludes /icon.png, and a link preview is always fetched signed out -- gate it
+// and every shared link renders with no image.
+const PUBLIC_PATHS = ["/", "/login", "/pricing", "/free", "/max", "/account", "/robots.txt", "/sitemap.xml", "/opengraph-image"];
 // The admin CMS is gated to allowlisted admin emails (ADMIN_EMAILS).
 const ADMIN_PREFIX = "/admin";
 const FREE_LANDING_PREFIX = "/free";
