@@ -119,6 +119,28 @@ function checkoutCancelCurrentDeps(
   };
 }
 
+// TEMPORARY, alongside allow_promotion_codes in the checkout handler. When
+// promotion codes are switched back off, this test goes with them -- it failing
+// is the reminder that the other half of the change exists.
+test("checkout opens with promotion codes available", async () => {
+  let created: Parameters<CheckoutHandlerDeps["createCheckout"]>[0] | null = null;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    createCheckout: async (params) => {
+      created = params;
+      return { id: "cs_test_promo", url: "https://checkout.stripe.com/c/pay/cs_test_promo" };
+    },
+  }));
+
+  await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    cadence: "monthly",
+    checkoutToken: "dededede-dede-4ede-8ede-dededededede",
+  }));
+
+  const params = created as unknown as Parameters<CheckoutHandlerDeps["createCheckout"]>[0];
+  assert.equal(params.allow_promotion_codes, true);
+});
+
 test("a logged-out paid click resumes at checkout instead of the pricing page", async () => {
   let checkoutCalls = 0;
   const handler = createCheckoutPostHandler(checkoutDeps({

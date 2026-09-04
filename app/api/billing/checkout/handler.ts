@@ -22,6 +22,11 @@ type CheckoutCreateParams = {
   success_url: string;
   cancel_url: string;
   expires_at: number;
+  // TEMPORARY: promotion codes are open at checkout. Remove this field, the
+  // value passed below, and the test that pins it to turn them off again. It
+  // cannot be combined with a `discounts` list, so anything added here later
+  // has to pick one or the other.
+  allow_promotion_codes: boolean;
 };
 
 export type BillingSubscriptionState = {
@@ -196,6 +201,7 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         success_url: `${baseUrl}/api/billing/confirm?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/api/billing/checkout/cancel?reservation_id=${encodeURIComponent(intent.reservationId)}&return_to=${encodeURIComponent(returnPath)}`,
         expires_at: expiresAt,
+        allow_promotion_codes: true,
       }, idempotencyKey);
 
       if (!checkout.url) throw new Error("Stripe Checkout did not return a redirect URL");
