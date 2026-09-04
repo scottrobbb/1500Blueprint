@@ -874,12 +874,26 @@ function EmptySession({ filters, subject }: { filters: MathSessionFilters; subje
   const filtered = filters.skills.length > 0 || filters.difficulty !== "all" || filters.completion !== "all";
   const subjectLabel = subject === "math" ? "Math" : "Reading & Writing";
   const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
+  // An empty "Still incorrect" set is the student having nothing outstanding,
+  // not a filter that found nothing, so it says so rather than reading as a
+  // dead end -- and explains what puts a question back on this list.
+  const clear = filters.completion === "incorrect";
   return (
     <main className="grid min-h-dvh place-items-center bg-[#f5f6f8] px-4">
       <div className="max-w-lg rounded-[24px] border border-navy/10 bg-white p-8 text-center shadow-pop">
-        <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand/10 text-brand-600"><FilterIcon className="h-7 w-7" /></span>
-        <h1 className="mt-5 font-display text-2xl font-extrabold text-navy">No matching {subjectLabel} questions</h1>
-        <p className="mt-2 text-sm leading-6 text-navy/50">{filtered ? "That combination of topics and filters has no available questions yet." : `The ${subjectLabel} bank is ready for content, but no questions are currently published.`}</p>
+        <span className={`mx-auto grid h-14 w-14 place-items-center rounded-2xl ${clear ? "bg-success/10 text-success-600" : "bg-brand/10 text-brand-600"}`}>
+          {clear ? <CheckIcon className="h-7 w-7" /> : <FilterIcon className="h-7 w-7" />}
+        </span>
+        <h1 className="mt-5 font-display text-2xl font-extrabold text-navy">
+          {clear ? `No ${subjectLabel} questions to review` : `No matching ${subjectLabel} questions`}
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-navy/50">
+          {clear
+            ? "You have answered every question in this selection correctly. A question comes back here when you miss it, and leaves once you get it right."
+            : filtered
+              ? "That combination of topics and filters has no available questions yet."
+              : `The ${subjectLabel} bank is ready for content, but no questions are currently published.`}
+        </p>
         <Link href={catalogHref} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-600">Change filters</Link>
       </div>
     </main>

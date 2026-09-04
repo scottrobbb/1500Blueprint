@@ -13,7 +13,7 @@ const corpus: Row[] = Array.from({ length: 40 }, (_, index) => ({
 // the runner re-ran the "unattempted first" selection, so the 12 he had
 // finished fell out of the session and 12 new ones took their place.
 test("a planner task hands back the questions it handed out", () => {
-  const first = questionBankSession(corpus, "unanswered", new Set(), 15);
+  const first = questionBankSession(corpus, "unanswered", { attemptedIds: new Set(), incorrectIds: new Set<string>() }, 15);
   const answered = new Set(first.slice(0, 12).map((row) => row.id));
 
   const reopened = pinnedQuestionBankSession(corpus, first.map((row) => row.id));
@@ -23,10 +23,10 @@ test("a planner task hands back the questions it handed out", () => {
 });
 
 test("without the pin the same reopen replaces every answered question", () => {
-  const first = questionBankSession(corpus, "unanswered", new Set(), 15);
+  const first = questionBankSession(corpus, "unanswered", { attemptedIds: new Set(), incorrectIds: new Set<string>() }, 15);
   const answered = new Set(first.slice(0, 12).map((row) => row.id));
 
-  const reopened = questionBankSession(corpus, "unanswered", answered, 15);
+  const reopened = questionBankSession(corpus, "unanswered", { attemptedIds: answered, incorrectIds: new Set<string>() }, 15);
 
   assert.equal(reopened.filter((row) => answered.has(row.id)).length, 0);
 });
@@ -48,7 +48,7 @@ test("the first open carries the work already done into the set", () => {
   const carried = corpus.slice(0, 12);
   const answered = new Set(carried.map((row) => row.id));
 
-  const session = resumedQuestionBankSession(carried, corpus, "unanswered", answered, 15);
+  const session = resumedQuestionBankSession(carried, corpus, "unanswered", { attemptedIds: answered, incorrectIds: new Set<string>() }, 15);
 
   assert.equal(session.length, 15);
   assert.deepEqual(session.slice(0, 12).map((row) => row.id), carried.map((row) => row.id));
@@ -60,7 +60,7 @@ test("carried work never overruns the size the task asked for", () => {
   const carried = corpus.slice(0, 20);
   const answered = new Set(carried.map((row) => row.id));
 
-  const session = resumedQuestionBankSession(carried, corpus, "unanswered", answered, 15);
+  const session = resumedQuestionBankSession(carried, corpus, "unanswered", { attemptedIds: answered, incorrectIds: new Set<string>() }, 15);
 
   assert.equal(session.length, 15);
   assert.ok(session.every((row) => answered.has(row.id)));
@@ -68,7 +68,7 @@ test("carried work never overruns the size the task asked for", () => {
 
 test("with nothing carried it is an ordinary session", () => {
   assert.deepEqual(
-    resumedQuestionBankSession([], corpus, "unanswered", new Set(["q1"]), 15),
-    questionBankSession(corpus, "unanswered", new Set(["q1"]), 15),
+    resumedQuestionBankSession([], corpus, "unanswered", { attemptedIds: new Set(["q1"]), incorrectIds: new Set<string>() }, 15),
+    questionBankSession(corpus, "unanswered", { attemptedIds: new Set(["q1"]), incorrectIds: new Set<string>() }, 15),
   );
 });
