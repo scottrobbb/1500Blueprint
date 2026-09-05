@@ -22,10 +22,6 @@ import {
   type AuthWorkflowState,
 } from "@/lib/auth/password-workflows";
 import { getLegacySession } from "@/lib/auth/session";
-import {
-  FREE_ATTRIBUTION_COOKIE,
-  parseAttributionCookie,
-} from "@/lib/marketing/attribution";
 import { notifyFreeRegistration } from "@/lib/marketing/free-registration";
 import { validateProfileName } from "@/lib/settings/profile-name";
 import { reportServerError } from "@/lib/observability/server";
@@ -325,20 +321,12 @@ async function createPasswordAccount(
   return result.state;
 }
 
-// Reports a completed Free registration to the ad account. The cookie is read
-// here rather than passed in because only a registration that started on /free
-// carries one, and that is exactly what makes this a landing page conversion.
-//
-// notifyFreeRegistration swallows its own failures: a marketing event must
-// never surface on, or hold up, a registration that already succeeded.
+// Every successful new registration is eligible, including direct pricing signups.
 async function reportFreeRegistration(formData: FormData): Promise<void> {
   const name = validateProfileName(stringValue(formData.get("name")).trim());
   await notifyFreeRegistration({
     email: normalizeEmail(formData.get("email")),
     name: name.valid ? name.name : "",
-    attribution: parseAttributionCookie(
-      (await cookies()).get(FREE_ATTRIBUTION_COOKIE)?.value,
-    ),
   });
 }
 

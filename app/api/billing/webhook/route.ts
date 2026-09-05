@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { notifyPurchase } from "@/lib/marketing/purchases";
 import { billingLivemode } from "@/lib/billing/config";
 import { syncStripeRefund } from "@/lib/billing/refunds";
 import { billingStripe } from "@/lib/billing/stripe";
@@ -80,6 +81,7 @@ async function processEvent(event: Stripe.Event): Promise<void> {
       if (!subscriptionId) return;
       await reconcileSubscription(subscriptionId, null, event);
       await syncPaymentState(subscriptionId, event.type === "invoice.payment_failed", event.created);
+      if (event.type === "invoice.paid") await notifyPurchase(event.data.object, subscriptionId);
       return;
     }
     case "refund.updated":
