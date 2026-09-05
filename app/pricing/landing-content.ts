@@ -26,7 +26,7 @@ export const coreFeatures: PlanFeature[] = [
 // named above it.
 export const maxFeatures: PlanFeature[] = [
   { label: "1250+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
-  { label: "5 full-length adaptive digital SATs", icon: "file" },
+  { label: "6 full-length adaptive digital SATs", icon: "file" },
   { label: "Unlimited daily drills", icon: "bolt" },
   { label: "Access to all courses, quizzes, and flashcards", icon: "book" },
   { label: "Weekly group calls with Scott (recorded)", icon: "star" },
@@ -117,7 +117,7 @@ export const freePlanFootnote =
 /* -------------------------------- /max -------------------------------- */
 
 export const maxHeroChecklist = [
-  "5 Realistic Full-Length Practice Tests",
+  "6 Realistic Full-Length Practice Tests",
   "1250+ Question Bank Qs (with Desmos explanations)",
   "Step-by-step math and reading courses",
   "Weekly group class with Scott",

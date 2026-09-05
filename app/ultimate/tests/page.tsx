@@ -127,9 +127,9 @@ export default async function UltimateTestsPage() {
       )}
 
       {access.plan === "free" ? (
-        <UpgradePrompt currentPlan="free" requiredPlan="max" title="Max unlocks the full test library" description="Use the free test as a baseline, then compare it against 4 more adaptive scores with unlimited daily practice." features={["5 full-length tests", "Unlimited daily drills", "Challenge questions"]} className="mt-8" />
+        <UpgradePrompt currentPlan="free" requiredPlan="max" title="Max unlocks the full test library" description="Use the free test as a baseline, then compare it against 5 more adaptive scores with unlimited daily practice." features={["6 full-length tests", "Unlimited daily drills", "Challenge questions"]} className="mt-8" />
       ) : access.plan === "core" ? (
-        <UpgradePrompt currentPlan="core" requiredPlan="max" title="Max adds the full test library" description="Max includes all 5 tests, the complete course library, and a planner that uses your score reports." features={["5 full-length tests", "All advanced courses", "Personal study planner"]} className="mt-8" />
+        <UpgradePrompt currentPlan="core" requiredPlan="max" title="Max adds the full test library" description="Max includes all 6 tests, the complete course library, and a planner that uses your score reports." features={["6 full-length tests", "All advanced courses", "Personal study planner"]} className="mt-8" />
       ) : null}
 
       <Link href={access.entitlements.dailyDrillLimit === null ? "/pricing" : "/ultimate/drills"} className="group mt-6 flex cursor-pointer items-center gap-4 rounded-2xl border border-navy/10 bg-white p-5 text-navy transition-colors hover:border-brand/35">
