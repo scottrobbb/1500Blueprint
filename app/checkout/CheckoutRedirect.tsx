@@ -1,17 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { ReferralField } from "@/components/marketing/ReferralField";
 import type { BillingCadence } from "@/lib/billing/offers";
 import type { BillablePlan } from "@/lib/billing/config";
-
-declare global {
-  interface Window {
-    rewardful?: (action: string, ...args: unknown[]) => void;
-  }
-}
-
-// How long to wait for Rewardful before posting without a referral.
-const REWARDFUL_WAIT_MS = 2000;
 
 // Checkout is created by a POST so it keeps the same-origin check and the
 // reservation/rate-limit pipeline in /api/billing/checkout. A redirect after
@@ -29,38 +21,24 @@ export function CheckoutRedirect({
 }) {
   const formRef = useRef<HTMLFormElement>(null);
   const submitted = useRef(false);
+  // This form posts itself on arrival, so it would otherwise outrun Rewardful
+  // and drop the affiliate's commission. ReferralField reports either a
+  // referral or its absence -- it always settles, ad blocker or not -- and the
+  // effect below runs only after that render has committed, so the field is in
+  // the DOM by the time anything is submitted.
+  const [referralResolved, setReferralResolved] = useState(false);
 
   useEffect(() => {
-    const submit = () => {
-      // React runs effects twice in development; a second POST would claim a
-      // second reservation for the same purchase.
-      if (submitted.current) return;
-      submitted.current = true;
-      formRef.current?.requestSubmit();
-    };
-
-    // Rewardful writes the hidden referral input when it attaches to this form,
-    // and this form posts itself the moment it mounts -- so submitting before
-    // their script is ready silently drops the affiliate's commission. The
-    // timeout is the load-bearing half: rw.js is third-party and an ad blocker
-    // can stop it dead, and no student is going to wait on a tracking script to
-    // reach checkout.
-    const timer = window.setTimeout(submit, REWARDFUL_WAIT_MS);
-    window.rewardful?.("ready", () => {
-      window.clearTimeout(timer);
-      submit();
-    });
-    return () => window.clearTimeout(timer);
-  }, []);
+    // React runs effects twice in development; a second POST would claim a
+    // second reservation for the same purchase.
+    if (!referralResolved || submitted.current) return;
+    submitted.current = true;
+    formRef.current?.requestSubmit();
+  }, [referralResolved]);
 
   return (
-    <form
-      ref={formRef}
-      action="/api/billing/checkout"
-      method="post"
-      className="text-center"
-      data-rewardful="true"
-    >
+    <form ref={formRef} action="/api/billing/checkout" method="post" className="text-center">
+      <ReferralField onResolved={() => setReferralResolved(true)} />
       <input type="hidden" name="plan" value={plan} />
       <input type="hidden" name="cadence" value={cadence} />
       <input type="hidden" name="checkoutToken" value={checkoutToken} />
