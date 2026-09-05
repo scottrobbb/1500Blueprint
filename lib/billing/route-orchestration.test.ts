@@ -76,6 +76,7 @@ function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHan
       billingCadence: "monthly",
     }),
     ensureCustomer: async () => "cus_123",
+    attachReferral: async () => undefined,
     resolvePrice: async () => "price_core_monthly",
     createCheckout: async () => ({
       id: "cs_test_123456789",
@@ -167,6 +168,74 @@ test("a logged-out paid click resumes at checkout instead of the pricing page", 
     "/checkout?plan=max&cadence=three_month&returnTo=%2Fpricing",
   );
   assert.equal(checkoutCalls, 0);
+});
+
+test("a referred purchase records the affiliate on the customer, not on client_reference_id", async () => {
+  const referral = "b533bfca-7c70-4dec-9691-e136a8d9a26c";
+  const attached: Array<[string, string | null]> = [];
+  let created: Parameters<CheckoutHandlerDeps["createCheckout"]>[0] | null = null;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    attachReferral: async (customerId, value) => { attached.push([customerId, value]); },
+    createCheckout: async (params) => {
+      created = params;
+      return { id: "cs_test_ref", url: "https://checkout.stripe.com/c/pay/cs_test_ref" };
+    },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    cadence: "monthly",
+    checkoutToken: "efefefef-efef-4fef-8fef-efefefefefef",
+    referral,
+  }));
+
+  assert.equal(response.status, 303);
+  assert.deepEqual(attached, [["cus_123", referral]]);
+  // Rewardful's default Stripe instructions would put the referral here, where
+  // /api/billing/confirm compares it to the account id and would reject the
+  // session after the card was charged.
+  assert.equal(created!.client_reference_id, ACCOUNT.id);
+});
+
+test("a referral that is not Rewardful's UUID never reaches Stripe", async () => {
+  const attached: Array<string | null> = [];
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    attachReferral: async (_customerId, value) => { attached.push(value); },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    cadence: "monthly",
+    checkoutToken: "dfdfdfdf-dfdf-4fdf-8fdf-dfdfdfdfdfdf",
+    referral: "'; drop table users --",
+  }));
+
+  assert.equal(response.status, 303, "a junk referral is ignored, never a refused purchase");
+  assert.deepEqual(attached, [null]);
+});
+
+test("a Rewardful outage costs the commission, never the sale", async () => {
+  const reported: string[] = [];
+  let checkoutUrl: string | null = null;
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    attachReferral: async () => { throw new Error("Stripe customer update failed"); },
+    createCheckout: async () => {
+      checkoutUrl = "https://checkout.stripe.com/c/pay/cs_test_outage";
+      return { id: "cs_test_outage", url: checkoutUrl };
+    },
+    reportError: (event) => { reported.push(event); },
+  }));
+
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "core",
+    cadence: "monthly",
+    checkoutToken: "afafafaf-afaf-4faf-8faf-afafafafafaf",
+    referral: "b533bfca-7c70-4dec-9691-e136a8d9a26c",
+  }));
+
+  assert.equal(response.status, 303);
+  assert.equal(response.headers.get("location"), checkoutUrl, "the student still reaches Stripe");
+  assert.deepEqual(reported, ["billing.checkout.referral_attach_failed"]);
 });
 
 test("backing out of Stripe returns to the page the plan was clicked from", async () => {
