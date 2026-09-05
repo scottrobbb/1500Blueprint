@@ -11,7 +11,7 @@ const UPGRADE_BY_PLAN: Partial<Record<PlanCode, UpgradeConfig>> = {
   free: {
     title: "Unlock the full practice loop",
     description: "Keep your free course and diagnostic, then add the daily repetition that turns weak skills into reliable points.",
-    features: ["Unlimited daily drills", "Challenge Question sets", "5 full-length tests"],
+    features: ["Unlimited daily drills", "Challenge Question sets", "6 full-length tests"],
   },
   core: {
     title: "Add Scott's complete weekly system",
