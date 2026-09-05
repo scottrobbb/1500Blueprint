@@ -1,4 +1,6 @@
 import type Stripe from "stripe";
+import { conversionContext } from "@/lib/marketing/context";
+import { conversionsEnabled, saveConversionContext } from "@/lib/marketing/delivery";
 import { attachReferralToCustomer, findBillingAccount, ensureStripeCustomer, hasUntrackedStripeBilling } from "@/lib/billing/accounts";
 import { changeBillingPlan } from "@/lib/billing/changes";
 import { billingBaseUrl, billingCheckoutEnabled, billingLivemode } from "@/lib/billing/config";
@@ -19,7 +21,14 @@ export const POST = createCheckoutPostHandler({
   livemode: billingLivemode,
   now: Date.now,
   getSession,
-  findAccount: findBillingAccount,
+  findAccount: async (email) => {
+    const account = await findBillingAccount(email);
+    if (account && conversionsEnabled()) {
+      try { await saveConversionContext(email, await conversionContext("/checkout")); }
+      catch (error) { reportServerError("marketing.checkout.attribution_failed", error, { provider: "supabase" }); }
+    }
+    return account;
+  },
   consumeRateLimit,
   findSubscriptionState,
   hasUntrackedBilling: hasUntrackedStripeBilling,

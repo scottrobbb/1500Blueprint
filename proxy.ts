@@ -25,6 +25,8 @@ const ADMIN_PREFIX = "/admin";
 const FREE_LANDING_PREFIX = "/free";
 
 function isPublic(pathname: string): boolean {
+  // The cron route authenticates its own bearer secret, without a student cookie.
+  if (pathname === "/api/cron/marketing") return true;
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname === "/api/billing/checkout" || pathname === "/api/billing/webhook") return true;
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -41,7 +43,10 @@ function isFreeLanding(pathname: string): boolean {
 // through. Nothing about the page changes -- no markup, no client JavaScript,
 // and the cookie is HttpOnly, so it stays out of the document entirely.
 function withFreeAttribution(request: NextRequest, response: NextResponse): NextResponse {
-  if (!isFreeLanding(request.nextUrl.pathname)) return response;
+  const landing = isFreeLanding(request.nextUrl.pathname);
+  const hasAttribution = request.nextUrl.searchParams.has("fbclid") || request.nextUrl.searchParams.has("utm_medium");
+  if (!landing && !hasAttribution) return response;
+  if (request.nextUrl.pathname.startsWith("/api/") || request.nextUrl.pathname.startsWith("/account/confirm")) return response;
 
   // One clock reading for the whole merge, so a click id and the fbc built
   // from it always carry the same moment.
@@ -56,7 +61,10 @@ function withFreeAttribution(request: NextRequest, response: NextResponse): Next
   // click survives untouched.
   if (!changed) return response;
 
-  response.cookies.set(FREE_ATTRIBUTION_COOKIE, serializeAttribution(attribution), {
+  const serialized = new URLSearchParams(serializeAttribution(attribution));
+  const prior = new URLSearchParams(request.cookies.get(FREE_ATTRIBUTION_COOKIE)?.value ?? "");
+  serialized.set("landing_page", hasAttribution ? request.nextUrl.pathname : prior.get("landing_page") ?? request.nextUrl.pathname);
+  response.cookies.set(FREE_ATTRIBUTION_COOKIE, serialized.toString(), {
     httpOnly: true,
     sameSite: "lax",
     secure: request.nextUrl.protocol === "https:",
@@ -114,7 +122,7 @@ export async function proxy(request: NextRequest) {
     email = passwordSession.identity?.email ?? null;
   }
 
-  if (publicPath) return passwordResponse ?? NextResponse.next();
+  if (publicPath) return withFreeAttribution(request, passwordResponse ?? NextResponse.next());
 
   if (!email) {
     const loginUrl = request.nextUrl.clone();

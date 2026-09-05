@@ -4,7 +4,7 @@ import { join, relative } from "node:path";
 import test from "node:test";
 
 const ROOT = process.cwd();
-const AUTH_BOUNDARY = /getSession|getAdminSession|getExplanationEditorSession|getQuestionContentEditorSession|webhooks\.constructEvent|consumeLoginToken|exchangeCodeForSession|verifyOtp|auth\.signOut/;
+const AUTH_BOUNDARY = /getSession|getAdminSession|getExplanationEditorSession|getQuestionContentEditorSession|webhooks\.constructEvent|consumeLoginToken|exchangeCodeForSession|verifyOtp|auth\.signOut|isAuthorizedCron/;
 const PUBLIC_ROUTES = new Set([
   "app/account/confirm/route.ts",
   "app/api/auth/callback/route.ts",

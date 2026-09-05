@@ -119,44 +119,58 @@ For Google Workspace domain-wide delegation, also set
 not discard the Supabase call record; the admin UI surfaces the sync warning so
 the Meet link can be supplied manually.
 
-## Free landing conversions
+## Meta conversion tracking
 
-Registrations that begin on `/free` are reported to Meta through a Zapier
-webhook. Set the catch hook URL and nothing else is required:
+Two Zaps send website events to Scott's existing Meta dataset:
+
+- Registration: Catch Hook -> Facebook Conversions / Send Other Event / CompleteRegistration.
+- Initial purchase: Catch Hook -> Facebook Conversions / Send Other Event / Purchase.
+
+Production configuration:
 
 ```text
-ZAPIER_FREE_REGISTER_WEBHOOK_URL=https://hooks.zapier.com/hooks/catch/...
+META_CONVERSIONS_ENABLED=true
+ZAPIER_FREE_REGISTER_WEBHOOK_URL=<registration Catch Hook URL>
+ZAPIER_PURCHASE_WEBHOOK_URL=<purchase Catch Hook URL>
+CRON_SECRET=<random secret, at least 32 characters>
 ```
 
-The proxy stores `fbclid` and `utm_medium` from the `/free` landing URL in an
-HttpOnly cookie, and builds Meta's `fbc` value (`fb.1.<click time in ms>.<fbclid>`)
-at the same moment, so the timestamp is the click's rather than the
-registration's. A later visit without those parameters leaves the stored click
-alone. The signup action posts once the account is created and the verification
-email has been sent, which is the point the registration completes on the site:
+Only Vercel Production sends conversions. Preview and local runs never send to
+these hooks. Apply the `meta_conversion_delivery` migration before enabling it.
 
-```json
-{
-  "name": "Alex Morgan",
-  "first_name": "Alex",
-  "last_name": "Morgan",
-  "email": "student@example.com",
-  "fbclid": "IwAR...",
-  "fbc": "fb.1.1756900000000.IwAR...",
-  "utm_medium": "paid_social"
-}
-```
+Registration fires after a new account and its verification email are created,
+including signups that did not visit `/free`. Logins, account claims, rejected
+forms, and page views do not fire. An existing `free_signup_attribution.notified_at`
+continues to suppress previously reported registrations during the rollout.
 
-The signup form collects one display name, so the leading token is the first
-name and whatever follows is the last. `fbclid` is sent raw alongside `fbc`,
-not replaced by it.
+Purchase fires from a verified live Stripe `invoice.paid` webhook, only for a
+positive, collected initial subscription invoice belonging to a tracked Blueprint
+account. Renewals, plan changes, test accounts, test-mode invoices, manual paid
+invoices, and zero-dollar invoices are excluded. Value is actual USD amount paid
+after discounts, converted from cents. No customer or subscription migration is
+needed.
 
-The webhook never fires on a CTA click or on a signup that failed validation,
-and a registration that never passed through `/free` sends nothing.
-`free_signup_attribution.notified_at` is claimed before the request goes out, so
-a resubmitted signup form produces at most one event per email address. Leaving
-the variable unset disables the call; delivery failures are logged as
-`marketing.free_registration.notice_failed` and never affect registration.
+The browser's landing attribution is preserved in an HttpOnly cookie. The
+registration and authenticated checkout routes persist matching context for the
+later Stripe webhook. `fbc` retains the click timestamp; `event_time` is the
+conversion timestamp. The current site does not install a Meta browser pixel;
+`fbp` is included only if an existing valid browser cookie is available.
+
+Map `event_time`, `event_id`, `event_source_url`, `email`, `first_name`,
+`last_name`, `external_id`, `client_ip_address`, `client_user_agent`, `fbc`, `fbp`,
+`value`, and `content_name` from the hook into the corresponding Meta fields.
+Set Action Source to Website and Currency to USD. Put `utm_medium` and
+`conversion_kind` in Additional Data. Zapier hashes customer matching fields.
+Never map the raw `fbclid` into Meta's `fbc` field. If a browser conversion pixel
+is added later, it must share this exact event name and event ID.
+
+`marketing_conversion_events` stores immutable event IDs and original payloads.
+A leased queue retries failed requests through `/api/cron/marketing` every five
+minutes. `accepted_by_zapier` means the Catch Hook accepted the request; it does
+not prove Meta accepted the downstream action. Check Zap history for downstream
+errors and Meta responses, and enable Zapier Autoreplay when available. Events
+that remain unsent for six days expire for manual review. No payload or hook
+credential is written to application logs.
 
 ## Explanation editors
 
