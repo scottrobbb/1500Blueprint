@@ -871,7 +871,7 @@ function SummaryMetric({ value, label }: { value: string; label: string }) {
 }
 
 function EmptySession({ filters, subject }: { filters: MathSessionFilters; subject: BankSubject }) {
-  const filtered = filters.skills.length > 0 || filters.difficulty !== "all" || filters.completion !== "all";
+  const filtered = filters.skills.length > 0 || filters.difficulty.length > 0 || filters.completion !== "all";
   const subjectLabel = subject === "math" ? "Math" : "Reading & Writing";
   const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
   // An empty "Still incorrect" set is the student having nothing outstanding,

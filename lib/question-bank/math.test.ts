@@ -4,6 +4,8 @@ import test from "node:test";
 import {
   calculateAccuracy,
   canAccessQuestionBankLevel,
+  difficultyFilterParam,
+  levelMatchesDifficultyFilter,
   nextQuestionBankAttemptState,
   normalizeMathResponse,
   parseCompletionFilter,
@@ -15,13 +17,14 @@ import {
   prioritizeUnattemptedQuestions,
   questionBankLevel,
   selectQuestionBankSession,
+  skillMetricForDifficulty,
   shouldRevealQuestionBankAnswer,
   sortByOriginalOrder,
 } from "./math";
 
 test("math bank filters reject unsupported query values", () => {
-  assert.equal(parseDifficultyFilter("hard"), "hard");
-  assert.equal(parseDifficultyFilter("impossible"), "all");
+  assert.deepEqual(parseDifficultyFilter("hard"), ["hard"]);
+  assert.deepEqual(parseDifficultyFilter("impossible"), []);
   assert.equal(parseCompletionFilter("attempted"), "attempted");
   assert.equal(parseCompletionFilter("correct"), "all");
   assert.equal(parseQuestionLimit("12"), 12);
@@ -160,4 +163,79 @@ test("repeating the same wrong choice does not burn a multiple-choice retry", ()
 
   const second = nextQuestionBankAttemptState(repeat, false, "C");
   assert.equal(shouldRevealQuestionBankAnswer(false, second.incorrectResponses.length), true);
+});
+
+/* --------------------------- Combined difficulty --------------------------- */
+
+test("difficulty levels combine, and old single-value links still work", () => {
+  assert.deepEqual(parseDifficultyFilter("hard|challenge"), ["hard", "challenge"]);
+  // Links written before levels could be combined, including the study
+  // planner's generated hrefs.
+  assert.deepEqual(parseDifficultyFilter("easy"), ["easy"]);
+  assert.deepEqual(parseDifficultyFilter("all"), []);
+  assert.deepEqual(parseDifficultyFilter(undefined), []);
+  assert.deepEqual(parseDifficultyFilter(""), []);
+});
+
+test("a difficulty list is cleaned up rather than trusted", () => {
+  assert.deepEqual(parseDifficultyFilter("hard|hard|challenge"), ["hard", "challenge"]);
+  assert.deepEqual(parseDifficultyFilter(" hard | challenge "), ["hard", "challenge"]);
+  assert.deepEqual(parseDifficultyFilter("hard|impossible"), ["hard"]);
+  assert.deepEqual(parseDifficultyFilter("impossible|nonsense"), []);
+});
+
+test("a filter naming every level is written as no filter at all", () => {
+  assert.equal(difficultyFilterParam([]), null);
+  assert.equal(difficultyFilterParam(["easy", "medium", "hard", "challenge"]), null);
+  // Always in level order, so the same selection makes the same URL.
+  assert.equal(difficultyFilterParam(["challenge", "hard"]), "hard|challenge");
+});
+
+test("a level always matches an empty filter and only itself otherwise", () => {
+  assert.equal(levelMatchesDifficultyFilter("easy", []), true);
+  assert.equal(levelMatchesDifficultyFilter("easy", ["hard", "challenge"]), false);
+  assert.equal(levelMatchesDifficultyFilter("challenge", ["hard", "challenge"]), true);
+});
+
+// Challenge questions are carved out of their nominal difficulty bucket, so
+// combining levels is a plain sum -- nothing is counted twice, and the accuracy
+// is recomputed from the tallies rather than averaged from percentages.
+test("a combined selection sums its levels and recomputes one accuracy", () => {
+  const metric = {
+    available: 100,
+    attempted: 40,
+    accuracy: 70,
+    byLevel: {
+      easy: { available: 40, attempted: 20, attempts: 20, correct: 18, accuracy: 90 },
+      medium: { available: 30, attempted: 10, attempts: 10, correct: 7, accuracy: 70 },
+      hard: { available: 20, attempted: 6, attempts: 10, correct: 5, accuracy: 50 },
+      challenge: { available: 10, attempted: 4, attempts: 10, correct: 1, accuracy: 10 },
+    },
+  };
+
+  const combined = skillMetricForDifficulty(metric, ["hard", "challenge"]);
+  assert.equal(combined.available, 30);
+  assert.equal(combined.attempted, 10);
+  // 6 correct from 20 attempts, not the 30% that averaging 50 and 10 would give.
+  assert.equal(combined.accuracy, 30);
+
+  assert.deepEqual(skillMetricForDifficulty(metric, []), { available: 100, attempted: 40, accuracy: 70 });
+  // A single level is the bucket's own numbers, accuracy included.
+  assert.deepEqual(skillMetricForDifficulty(metric, ["hard"]), { available: 20, attempted: 6, accuracy: 50 });
+});
+
+test("a combined selection with no attempts reports no accuracy", () => {
+  const metric = {
+    available: 10,
+    attempted: 0,
+    accuracy: null,
+    byLevel: {
+      easy: { available: 5, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+      medium: { available: 5, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+      hard: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+      challenge: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+    },
+  };
+
+  assert.equal(skillMetricForDifficulty(metric, ["easy", "medium"]).accuracy, null);
 });

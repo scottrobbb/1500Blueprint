@@ -18,6 +18,7 @@ import {
   emptyLevelBreakdown,
   incorrectQuestionIds,
   pinnedQuestionBankSession,
+  levelMatchesDifficultyFilter,
   questionBankLevel,
   resumedQuestionBankSession,
   sortByOriginalOrder,
@@ -145,9 +146,9 @@ export async function getReadingWritingRunnerQuestions(
 // carved into their own "challenge" level -- comparing by level instead of
 // raw difficulty keeps "Hard" and "Challenge" mutually exclusive.
 function matchesDifficultyFilter(row: ReadingQuestionRow, difficulty: MathSessionFilters["difficulty"]): boolean {
-  if (difficulty === "all") return true;
+  if (difficulty.length === 0) return true;
   const rowDifficulty = isDifficulty(row.difficulty) ? row.difficulty : "medium";
-  return questionBankLevel(rowDifficulty) === difficulty;
+  return levelMatchesDifficultyFilter(questionBankLevel(rowDifficulty), difficulty);
 }
 
 // Free-plan sessions are restricted to the curated free-tier pool (a fixed
@@ -345,6 +346,8 @@ function buildSkillMetrics(
       bucket.available += 1;
       if (attempted) bucket.attempted += 1;
       if (questionActivity) {
+        bucket.attempts += questionActivity.attempts;
+        bucket.correct += questionActivity.correct;
         const attemptTotals = byLevelAttempts.get(metric.name) ?? { easy: { attempts: 0, correct: 0 }, medium: { attempts: 0, correct: 0 }, hard: { attempts: 0, correct: 0 }, challenge: { attempts: 0, correct: 0 } };
         attemptTotals[level].attempts += questionActivity.attempts;
         attemptTotals[level].correct += questionActivity.correct;

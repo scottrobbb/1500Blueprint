@@ -12,7 +12,10 @@ export type MathDomain = (typeof MATH_DOMAINS)[number];
 // difficulty. The alias is kept because catalog and filter code reads better
 // in terms of "level".
 export type QuestionBankLevel = Difficulty;
-export type MathDifficultyFilter = QuestionBankLevel | "all";
+// Levels can be combined -- a student revising hard questions usually wants
+// challenge ones in the same session. Empty means every level, which is what
+// an absent or unrecognised filter falls back to.
+export type MathDifficultyFilter = readonly QuestionBankLevel[];
 export type MathCompletionFilter = "all" | "unanswered" | "attempted" | "incorrect";
 export type MathAnswerType = "mc_single" | "grid_in";
 
@@ -31,6 +34,10 @@ export type MathChoice = {
 export type QuestionBankLevelBreakdown = Record<QuestionBankLevel, {
   available: number;
   attempted: number;
+  // Raw tallies, kept so a combined selection can compute one exact accuracy
+  // instead of averaging percentages that each mean something different.
+  attempts: number;
+  correct: number;
   accuracy: number | null;
 }>;
 
@@ -46,12 +53,14 @@ export type MathSkillMetric = {
   byLevel: QuestionBankLevelBreakdown;
 };
 
+export const QUESTION_BANK_LEVELS = ["easy", "medium", "hard", "challenge"] as const;
+
 export function emptyLevelBreakdown(): QuestionBankLevelBreakdown {
   return {
-    easy: { available: 0, attempted: 0, accuracy: null },
-    medium: { available: 0, attempted: 0, accuracy: null },
-    hard: { available: 0, attempted: 0, accuracy: null },
-    challenge: { available: 0, attempted: 0, accuracy: null },
+    easy: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+    medium: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+    hard: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+    challenge: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
   };
 }
 
@@ -64,8 +73,44 @@ export function skillMetricForDifficulty(
   metric: { available: number; attempted: number; accuracy: number | null; byLevel: QuestionBankLevelBreakdown },
   difficulty: MathDifficultyFilter,
 ): { available: number; attempted: number; accuracy: number | null } {
-  if (difficulty === "all") return { available: metric.available, attempted: metric.attempted, accuracy: metric.accuracy };
-  return metric.byLevel[difficulty];
+  if (difficulty.length === 0) {
+    return { available: metric.available, attempted: metric.attempted, accuracy: metric.accuracy };
+  }
+  // Levels are disjoint -- challenge is carved out of its nominal difficulty
+  // bucket -- so combining them is a plain sum with nothing counted twice, and
+  // the accuracy comes from the summed tallies rather than an average of
+  // percentages weighted by nothing.
+  let available = 0;
+  let attempted = 0;
+  let attempts = 0;
+  let correct = 0;
+  let sawAccuracy = false;
+  for (const level of new Set(difficulty)) {
+    const bucket = metric.byLevel[level];
+    available += bucket.available;
+    attempted += bucket.attempted;
+    attempts += bucket.attempts;
+    correct += bucket.correct;
+    if (bucket.accuracy !== null) sawAccuracy = true;
+  }
+  return {
+    available,
+    attempted,
+    accuracy: sawAccuracy && attempts > 0 ? calculateAccuracy(correct, attempts) : null,
+  };
+}
+
+export function isQuestionBankLevel(value: string): value is QuestionBankLevel {
+  return (QUESTION_BANK_LEVELS as readonly string[]).includes(value);
+}
+
+// Selected levels match a question when the filter names its level; an empty
+// filter matches everything.
+export function levelMatchesDifficultyFilter(
+  level: QuestionBankLevel,
+  difficulty: MathDifficultyFilter,
+): boolean {
+  return difficulty.length === 0 || difficulty.includes(level);
 }
 
 export type MathBankCatalog = {
@@ -130,8 +175,24 @@ export function isMathDomain(value: string | null): value is MathDomain {
   return MATH_DOMAINS.some((domain) => domain === value);
 }
 
+// Reads both the pipe-separated list this writes today and the single value
+// links written before levels could be combined, so old bookmarks and the
+// study planner's generated hrefs keep working. "all", empty and unrecognised
+// values all mean no restriction.
 export function parseDifficultyFilter(value: string | undefined): MathDifficultyFilter {
-  return value === "easy" || value === "medium" || value === "hard" || value === "challenge" ? value : "all";
+  if (!value) return [];
+  const levels = value
+    .split("|")
+    .map((level) => level.trim())
+    .filter(isQuestionBankLevel);
+  return [...new Set(levels)];
+}
+
+export function difficultyFilterParam(difficulty: MathDifficultyFilter): string | null {
+  const levels = QUESTION_BANK_LEVELS.filter((level) => difficulty.includes(level));
+  return levels.length === 0 || levels.length === QUESTION_BANK_LEVELS.length
+    ? null
+    : levels.join("|");
 }
 
 export function parseCompletionFilter(value: string | undefined): MathCompletionFilter {
