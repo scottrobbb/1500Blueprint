@@ -3,6 +3,7 @@ import "server-only";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { billingLivemode } from "./config";
 import { PAID_ACCESS_STATUSES } from "./policy";
+import { referralMetadataUpdate } from "./referrals";
 import { billingStripe } from "./stripe";
 
 export type BillingAccount = {
@@ -136,4 +137,30 @@ export async function ensureStripeCustomer(account: BillingAccount): Promise<str
     .eq("id", account.id)
   if (error) throw new Error(`failed to save Stripe customer: ${error.message}`);
   return customer.id;
+}
+
+// Records the affiliate that sent this customer, for Rewardful.
+//
+// A separate update rather than a field on the create above: that create is
+// idempotent on the account id, and Stripe rejects a replay of an idempotency
+// key whose parameters have changed, so a varying referral there is a latent
+// 400. It also has to work for a customer who already exists -- a student who
+// signed up free, or let a subscription lapse, and only now converts through a
+// link -- which is the majority of referred purchases.
+export async function attachReferralToCustomer(
+  customerId: string,
+  referral: string | null,
+): Promise<void> {
+  if (!referral) return;
+  const stripe = billingStripe();
+  const customer = await stripe.customers.retrieve(customerId);
+  if (customer.deleted) return;
+
+  const update = referralMetadataUpdate(customer.metadata, referral);
+  if (!update) return;
+
+  // Stripe merges metadata keys rather than replacing the object, so platform
+  // and user_id -- which hasUntrackedStripeBilling reads to tell this app's
+  // customers from legacy ones -- survive this write untouched.
+  await stripe.customers.update(customerId, { metadata: update });
 }

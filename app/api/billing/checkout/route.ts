@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { findBillingAccount, ensureStripeCustomer, hasUntrackedStripeBilling } from "@/lib/billing/accounts";
+import { attachReferralToCustomer, findBillingAccount, ensureStripeCustomer, hasUntrackedStripeBilling } from "@/lib/billing/accounts";
 import { changeBillingPlan } from "@/lib/billing/changes";
 import { billingBaseUrl, billingCheckoutEnabled, billingLivemode } from "@/lib/billing/config";
 import { resolveBillingPriceId } from "@/lib/billing/prices";
@@ -29,6 +29,7 @@ export const POST = createCheckoutPostHandler({
   releaseIntent: releaseCheckoutIntent,
   cancelIntent: cancelCheckoutIntent,
   ensureCustomer: ensureStripeCustomer,
+  attachReferral: attachReferralToCustomer,
   resolvePrice: resolveBillingPriceId,
   createCheckout: async (params, idempotencyKey) => billingStripe().checkout.sessions.create(
     params as Stripe.Checkout.SessionCreateParams,

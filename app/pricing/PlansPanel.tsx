@@ -182,7 +182,8 @@ function PriceCard({
         {paid ? (
           billingEnabled ? (
             <>
-              <form action="/api/billing/checkout" method="post">
+              {/* data-rewardful makes their script inject the hidden referral input. */}
+              <form action="/api/billing/checkout" method="post" data-rewardful="true">
                 <input type="hidden" name="plan" value={plan} />
                 <input type="hidden" name="cadence" value={cadence ?? "monthly"} />
                 <input type="hidden" name="checkoutToken" value={checkoutToken} />

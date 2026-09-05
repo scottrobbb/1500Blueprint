@@ -7,6 +7,7 @@ import { isBillingCadence } from "@/lib/billing/offers";
 import type { CheckoutIntentClaim } from "@/lib/billing/workflow";
 import type { CheckoutCancelResult } from "@/lib/billing/checkout-intents";
 import { checkoutRequestToken, stripeCheckoutIdempotencyKey } from "@/lib/billing/workflow";
+import { rewardfulReferral } from "@/lib/billing/referrals";
 import { billingReturnPath } from "@/lib/billing/return-path";
 import { isSameOriginRequest, readUrlEncodedForm, RequestBodyTooLargeError } from "@/lib/security/request";
 
@@ -51,6 +52,7 @@ export type CheckoutHandlerDeps = {
   releaseIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<boolean>;
   cancelIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<CheckoutCancelResult>;
   ensureCustomer: (account: BillingAccount) => Promise<string>;
+  attachReferral: (customerId: string, referral: string | null) => Promise<void>;
   resolvePrice: (plan: BillablePlan, cadence: BillingCadence) => Promise<string>;
   createCheckout: (params: CheckoutCreateParams, idempotencyKey: string) => Promise<{ id: string; url: string | null }>;
   storeCheckout: (input: { userId: string; livemode: boolean; reservationId: string; sessionId: string; sessionUrl: string }) => Promise<void>;
@@ -86,6 +88,9 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
     try {
       const plan = formData.get("plan");
       const cadenceValue = formData.get("cadence") ?? "monthly";
+      // Written into the form by Rewardful's script. Absent for an ordinary
+      // visitor, and never a reason to refuse a purchase.
+      const referral = rewardfulReferral(formData.get("referral"));
       if (!isBillablePlan(plan)) return redirect(baseUrl, returnPath, "invalid");
       if (!isBillingCadence(cadenceValue)) {
         return redirect(baseUrl, returnPath, "invalid");
@@ -183,6 +188,19 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
       }
 
       const customerId = await deps.ensureCustomer(account);
+      // Attribution is recorded on the customer, never on client_reference_id:
+      // that carries account.id and /api/billing/confirm rejects a session
+      // whose value does not match. Stepped over on failure -- a commission is
+      // worth less than the sale, so Rewardful must never block checkout.
+      try {
+        await deps.attachReferral(customerId, referral);
+      } catch (error) {
+        deps.reportError("billing.checkout.referral_attach_failed", error, {
+          provider: "stripe",
+          route: "/api/billing/checkout",
+          method: "POST",
+        });
+      }
       const priceId = await deps.resolvePrice(plan, cadence);
       const metadata = {
         platform: "1500_blueprint",
