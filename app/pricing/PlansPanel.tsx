@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { PlanCode } from "@/lib/auth/plans";
 import type { BillingCadence } from "@/lib/billing/offers";
+import { ReferralField } from "@/components/marketing/ReferralField";
 import { FeatureGlyph, type FeatureIcon } from "./FeatureGlyph";
 import styles from "./pricing.module.css";
 
@@ -182,8 +183,8 @@ function PriceCard({
         {paid ? (
           billingEnabled ? (
             <>
-              {/* data-rewardful makes their script inject the hidden referral input. */}
-              <form action="/api/billing/checkout" method="post" data-rewardful="true">
+              <form action="/api/billing/checkout" method="post">
+                <ReferralField />
                 <input type="hidden" name="plan" value={plan} />
                 <input type="hidden" name="cadence" value={cadence ?? "monthly"} />
                 <input type="hidden" name="checkoutToken" value={checkoutToken} />
