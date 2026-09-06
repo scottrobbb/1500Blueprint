@@ -35,14 +35,18 @@ test("math bank filters reject unsupported query values", () => {
   assert.equal(parseQuestionLimit(undefined), null);
 });
 
-test("an unfiltered 'all topics' session stays capped, but a topic-filtered session is not", () => {
-  assert.equal(boundedQuestionBankSessionLimit(null, false), 30);
-  assert.equal(boundedQuestionBankSessionLimit(12, false), 12);
-  assert.equal(boundedQuestionBankSessionLimit(1_000, false), 30);
+// "Start all topics" was capped at 30 while a topic-filtered session got 500,
+// so choosing the whole bank returned the smallest session in the app and the
+// student's difficulty and completion filters were applied to 30 questions
+// with the rest discarded. Every session now shares one ceiling.
+test("a session takes everything that matched, whether or not a topic is chosen", () => {
+  assert.equal(boundedQuestionBankSessionLimit(null), 500);
+  assert.equal(boundedQuestionBankSessionLimit(1_000), 500);
 
-  assert.equal(boundedQuestionBankSessionLimit(null, true), 500);
-  assert.equal(boundedQuestionBankSessionLimit(12, true), 12);
-  assert.equal(boundedQuestionBankSessionLimit(1_000, true), 500);
+  // An explicit limit is still honoured -- the study planner asks for exact
+  // set sizes and must keep getting them.
+  assert.equal(boundedQuestionBankSessionLimit(12), 12);
+  assert.equal(boundedQuestionBankSessionLimit(1), 1);
 });
 
 test("bounded sessions advance unseen questions before recycling attempted ones", () => {
