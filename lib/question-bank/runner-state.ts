@@ -23,6 +23,18 @@ export async function getQuestionBankRunnerState(
   return { outcomes, savedQuestionIds };
 }
 
+// The runner state above is scoped to one session's questions. Filtering the
+// bank down to marked questions needs the whole set, before any session exists.
+export async function listSavedQuestionIds(email: string): Promise<Set<string>> {
+  const { data, error } = await supabaseAdmin()
+    .from("question_bank_saves")
+    .select("question_id")
+    .eq("email", email)
+    .returns<{ question_id: string }[]>();
+  if (error) throw databaseError("Could not load saved questions", error);
+  return new Set((data ?? []).map((row) => row.question_id));
+}
+
 async function loadStateBatch(email: string, questionIds: string[]) {
   const [outcomes, saved] = await Promise.all([
     loadOutcomes(email, questionIds),

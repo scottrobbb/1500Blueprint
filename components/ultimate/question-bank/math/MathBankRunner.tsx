@@ -890,7 +890,7 @@ function SummaryMetric({ value, label }: { value: string; label: string }) {
 }
 
 function EmptySession({ filters, subject }: { filters: MathSessionFilters; subject: BankSubject }) {
-  const filtered = filters.skills.length > 0 || filters.difficulty.length > 0 || filters.completion !== "all";
+  const filtered = filters.skills.length > 0 || filters.difficulty.length > 0 || filters.completion !== "all" || filters.savedOnly;
   const subjectLabel = subject === "math" ? "Math" : "Reading & Writing";
   const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
   // An empty "Still incorrect" set is the student having nothing outstanding,
@@ -904,14 +904,20 @@ function EmptySession({ filters, subject }: { filters: MathSessionFilters; subje
           {clear ? <CheckIcon className="h-7 w-7" /> : <FilterIcon className="h-7 w-7" />}
         </span>
         <h1 className="mt-5 font-display text-2xl font-extrabold text-navy">
-          {clear ? `No ${subjectLabel} questions to review` : `No matching ${subjectLabel} questions`}
+          {clear
+            ? `No ${subjectLabel} questions to review`
+            : filters.savedOnly
+              ? `No marked ${subjectLabel} questions`
+              : `No matching ${subjectLabel} questions`}
         </h1>
         <p className="mt-2 text-sm leading-6 text-navy/50">
           {clear
             ? "You have answered every question in this selection correctly. A question comes back here when you miss it, and leaves once you get it right."
-            : filtered
-              ? "That combination of topics and filters has no available questions yet."
-              : `The ${subjectLabel} bank is ready for content, but no questions are currently published.`}
+            : filters.savedOnly
+              ? "Nothing here is marked for review yet. Use Mark for Review on a question while you practise, and it will be waiting behind this filter."
+              : filtered
+                ? "That combination of topics and filters has no available questions yet."
+                : `The ${subjectLabel} bank is ready for content, but no questions are currently published.`}
         </p>
         <Link href={catalogHref} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white hover:bg-brand-600">Change filters</Link>
       </div>

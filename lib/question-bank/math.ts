@@ -118,6 +118,10 @@ export function levelMatchesDifficultyFilter(
 export type MathBankCatalog = {
   totalAvailable: number;
   totalAttempted: number;
+  // Marked questions still visible to this student: saves are kept per email
+  // and never pruned, so a question that has since left the bank or sits
+  // outside a free plan's pool must not be counted here.
+  totalSaved: number;
   skills: MathSkillMetric[];
 };
 
@@ -199,6 +203,28 @@ export function difficultyFilterParam(difficulty: MathDifficultyFilter): string 
 
 export function parseCompletionFilter(value: string | undefined): MathCompletionFilter {
   return value === "unanswered" || value === "attempted" || value === "incorrect" ? value : "all";
+}
+
+// Handed to questionsMatchingSaved when the filter is off, so the saved-ids
+// query is skipped entirely rather than run and ignored.
+export const EMPTY_SAVED_IDS: ReadonlySet<string> = new Set();
+
+// Marked-for-review is its own dimension rather than another completion value:
+// a marked question may be unanswered, answered, or still wrong, so folding it
+// into that list would make two independent choices mutually exclusive.
+export function parseSavedFilter(value: string | undefined): boolean {
+  return value === "1";
+}
+
+// Applied before the completion filter and the session cut, so "marked" narrows
+// the pool the rest of the filters then work over.
+export function questionsMatchingSaved<T extends { id: string }>(
+  rows: readonly T[],
+  savedOnly: boolean,
+  savedIds: ReadonlySet<string>,
+): T[] {
+  if (!savedOnly) return [...rows];
+  return rows.filter((row) => savedIds.has(row.id));
 }
 
 export function parseSkillFilter(value: string | undefined): string[] {

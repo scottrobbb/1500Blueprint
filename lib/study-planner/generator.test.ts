@@ -498,6 +498,7 @@ function mathCatalog(skills: MathSkillMetric[]): MathBankCatalog {
   return {
     totalAvailable: skills.reduce((sum, skill) => sum + skill.available, 0),
     totalAttempted: skills.reduce((sum, skill) => sum + skill.attempted, 0),
+    totalSaved: 0,
     skills,
   };
 }
@@ -506,6 +507,7 @@ function readingCatalog(skills: ReadingWritingSkillMetric[]): ReadingWritingBank
   return {
     totalAvailable: skills.reduce((sum, skill) => sum + skill.available, 0),
     totalAttempted: skills.reduce((sum, skill) => sum + skill.attempted, 0),
+    totalSaved: 0,
     skills,
   };
 }

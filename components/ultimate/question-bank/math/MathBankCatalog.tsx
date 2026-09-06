@@ -52,6 +52,10 @@ export function SubjectBankCatalogView({
 }) {
   const [difficulty, setDifficulty] = useState<QuestionBankLevel[]>([]);
   const [completion, setCompletion] = useState<MathCompletionFilter>("all");
+  // Marked-for-review is a toggle rather than another Completion option: a
+  // marked question can be unanswered, answered, or still wrong, so the two
+  // choices have to compose instead of replacing one another.
+  const [savedOnly, setSavedOnly] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(() => new Set());
 
   const selectedAvailable = useMemo(
@@ -64,8 +68,8 @@ export function SubjectBankCatalogView({
   const totalAvailable = difficulty.length === 0
     ? catalog.totalAvailable
     : catalog.skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty).available, 0);
-  const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills]);
-  const allPracticeHref = buildPracticeHref(basePath, difficulty, completion, []);
+  const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills], savedOnly);
+  const allPracticeHref = buildPracticeHref(basePath, difficulty, completion, [], savedOnly);
 
   function toggleSkill(name: string) {
     setSelectedSkills((current) => {
@@ -135,6 +139,22 @@ export function SubjectBankCatalogView({
               ["incorrect", "Still incorrect"],
             ]}
           />
+          <button
+            type="button"
+            role="switch"
+            aria-checked={savedOnly}
+            onClick={() => setSavedOnly((current) => !current)}
+            disabled={catalog.totalSaved === 0}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-4 text-sm font-bold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:opacity-45 ${
+              savedOnly
+                ? "border-brand bg-ice text-brand-600"
+                : "border-navy/10 bg-white text-navy/55 hover:border-brand/30 hover:text-brand-600"
+            }`}
+          >
+            <BookmarkIcon filled={savedOnly} className="h-4 w-4" />
+            Marked for review
+            <span className="tabular-nums font-extrabold">{catalog.totalSaved}</span>
+          </button>
           {selectedSkills.size > 0 && (
             <button
               type="button"
@@ -153,7 +173,7 @@ export function SubjectBankCatalogView({
           <div>
             <h2 className="font-display text-xl font-extrabold text-navy">Practice all {subjectTitle} topics</h2>
             <p className="mt-1 text-sm leading-5 text-navy/50">
-              Start across all {skillCount} skills. Your active difficulty and completion filters still apply.
+              Start across all {skillCount} skills. Your active difficulty{savedOnly ? ", marked" : ""} and completion filters still apply.
             </p>
           </div>
           {catalog.totalAvailable > 0 ? (
@@ -365,11 +385,13 @@ function buildPracticeHref(
   difficulty: MathDifficultyFilter,
   completion: MathCompletionFilter,
   skills: string[],
+  savedOnly: boolean,
 ): string {
   const params = new URLSearchParams();
   const difficultyParam = difficultyFilterParam(difficulty);
   if (difficultyParam) params.set("difficulty", difficultyParam);
   if (completion !== "all") params.set("completion", completion);
+  if (savedOnly) params.set("saved", "1");
   if (skills.length > 0) params.set("skills", skills.join("|"));
   const query = params.toString();
   return `${basePath}/practice${query ? `?${query}` : ""}`;
@@ -394,6 +416,12 @@ function ArrowLeftIcon({ className }: IconProps) {
 
 function ArrowRightIcon({ className }: IconProps) {
   return <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+// The same mark the runner draws on a saved question, so the filter and the
+// thing it filters on read as one feature.
+function BookmarkIcon({ className, filled }: IconProps & { filled: boolean }) {
+  return <svg viewBox="0 0 24 24" className={className} fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M7 4h10v16l-5-3-5 3V4Z" strokeLinejoin="round" /></svg>;
 }
 
 function ChevronDownIcon({ className }: IconProps) {
