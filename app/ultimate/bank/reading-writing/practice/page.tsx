@@ -7,6 +7,7 @@ import {
   parseCompletionFilter,
   parseDifficultyFilter,
   parseQuestionLimit,
+  parseSavedFilter,
   parseSkillFilter,
   pinnedQuestionBankSession,
 } from "@/lib/question-bank/math";
@@ -34,6 +35,7 @@ export default async function UltimateReadingWritingPracticePage({ searchParams 
     skills: parseSkillFilter(readParam(params.skills)),
     difficulty: parseDifficultyFilter(readParam(params.difficulty)),
     completion: parseCompletionFilter(readParam(params.completion)),
+    savedOnly: parseSavedFilter(readParam(params.saved)),
   };
   const limit = parseQuestionLimit(readParam(params.limit));
   const fromPlanner = readParam(params.from) === "planner";

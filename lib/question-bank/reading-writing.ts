@@ -45,6 +45,7 @@ export type ReadingWritingSkillMetric = {
 export type ReadingWritingBankCatalog = {
   totalAvailable: number;
   totalAttempted: number;
+  totalSaved: number;
   skills: ReadingWritingSkillMetric[];
 };
 

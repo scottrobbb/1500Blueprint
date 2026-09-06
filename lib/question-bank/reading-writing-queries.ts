@@ -12,6 +12,7 @@ import {
   type ReadingWritingSkillMetric,
 } from "@/lib/question-bank/reading-writing";
 import {
+  EMPTY_SAVED_IDS,
   boundedQuestionBankSessionLimit,
   calculateAccuracy,
   canAccessQuestionBankLevel,
@@ -20,6 +21,7 @@ import {
   pinnedQuestionBankSession,
   levelMatchesDifficultyFilter,
   questionBankLevel,
+  questionsMatchingSaved,
   resumedQuestionBankSession,
   sortByOriginalOrder,
   type QuestionBankLevel,
@@ -28,6 +30,7 @@ import {
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
+import { listSavedQuestionIds } from "@/lib/question-bank/runner-state";
 import { isDifficulty } from "@/lib/sat/types";
 import { signCourseAssetReferences } from "@/lib/courses/assets.server";
 
@@ -89,9 +92,12 @@ export async function getReadingWritingBankCatalog(
     options.strictActivity,
   );
 
+  const savedIds = await listSavedQuestionIds(email);
+
   return {
     totalAvailable: questions.length,
     totalAttempted: questions.filter((question) => activity.attemptedIds.has(question.id)).length,
+    totalSaved: questions.filter((question) => savedIds.has(question.id)).length,
     skills: buildSkillMetrics(skills, questions, activity),
   };
 }
@@ -117,7 +123,11 @@ export async function getReadingWritingRunnerQuestions(
   const skillRows = rows.filter((row) => (
     selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill))
   ));
-  const difficultyRows = skillRows.filter((row) => matchesDifficultyFilter(row, filters.difficulty));
+  const difficultyRows = questionsMatchingSaved(
+    skillRows.filter((row) => matchesDifficultyFilter(row, filters.difficulty)),
+    filters.savedOnly,
+    filters.savedOnly ? await listSavedQuestionIds(email) : EMPTY_SAVED_IDS,
+  );
   const sessionLimit = boundedQuestionBankSessionLimit(limit);
   // Carried questions are matched against the skill pool rather than the
   // difficulty-filtered one: they are questions this student has already
