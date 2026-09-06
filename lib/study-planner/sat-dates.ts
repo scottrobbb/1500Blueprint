@@ -1,20 +1,15 @@
+// The confirmed SAT administrations, in order. August 2026 has been and gone;
+// nothing past May 2027 is listed because nothing past it is confirmed. When
+// the list runs out every caller falls back on its own: the planner opens its
+// custom-date field, study preferences default to today, and the pricing
+// countdown hides itself rather than counting down to a guess.
 export const SAT_WEEKEND_DATES = [
-  "2026-08-22",
   "2026-09-12",
   "2026-10-03",
   "2026-11-07",
   "2026-12-05",
   "2027-03-06",
   "2027-05-01",
-  "2027-06-05",
-  "2027-08-28",
-  "2027-09-18",
-  "2027-10-02",
-  "2027-11-06",
-  "2027-12-04",
-  "2028-03-04",
-  "2028-05-06",
-  "2028-06-03",
 ] as const;
 
 export function upcomingSatDates(today: string): string[] {
