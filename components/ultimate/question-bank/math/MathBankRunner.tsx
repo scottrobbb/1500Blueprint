@@ -27,7 +27,7 @@ import {
   promptHighlightKey,
 } from "@/lib/sat/highlights";
 
-type RunnerResult = MathAttemptResult & { response: string };
+type RunnerResult = MathAttemptResult & { response: string; durationSeconds: number };
 type ToolPanel = "calculator" | "reference" | "directions" | null;
 type BankSubject = "math" | "reading-writing";
 type BankRunnerQuestion = Omit<MathRunnerQuestion, "domain"> & { domain: string };
@@ -190,14 +190,19 @@ function ObjectiveBankRunner({
   const promptHighlightable = isHighlightableText(question?.prompt ?? "");
   const answer = question ? answers[question.id] ?? "" : "";
   const result = question ? results[question.id] : undefined;
+  // A revealed question is finished: the student is reading the explanation,
+  // not working on it, so the clock stops until they move on. A first miss is
+  // deliberately not this -- the answer is not revealed yet, another try is
+  // coming, and the time spent on it still belongs to the question.
+  const questionResolved = result?.revealed === true;
 
   // Restarting the interval on currentIndex keeps the first tick after a reset
   // a full second, rather than whatever was left of the previous one.
   useEffect(() => {
-    if (paused) return;
+    if (paused || questionResolved) return;
     const interval = window.setInterval(() => setElapsedSeconds((value) => value + 1), 1000);
     return () => window.clearInterval(interval);
-  }, [paused, currentIndex]);
+  }, [paused, questionResolved, currentIndex]);
 
   // Mount only. Every later question starts its clock in goTo, the single
   // caller of setCurrentIndex, so the reset lives in the event that moves the
@@ -283,11 +288,16 @@ function ObjectiveBankRunner({
     // The timer is per question, not per session, so it reads as pace on the
     // question in front of the student. Resetting the display alongside
     // enteredQuestionAt keeps it honest about the durationMs sent on submit.
-    setElapsedSeconds(0);
+    const nextIndex = Math.max(0, Math.min(index, orderedQuestions.length - 1));
+    const nextQuestion = orderedQuestions[nextIndex];
+    // Coming back to a question already answered this sitting shows the time
+    // it took, stopped, rather than a fresh clock counting the review.
+    const answered = nextQuestion ? results[nextQuestion.id] : undefined;
+    setElapsedSeconds(answered?.revealed ? answered.durationSeconds : 0);
     enteredQuestionAt.current = Date.now();
     setSubmitError(null);
     setSaveError(null);
-    setCurrentIndex(Math.max(0, Math.min(index, orderedQuestions.length - 1)));
+    setCurrentIndex(nextIndex);
     setNavigatorOpen(false);
     setFinished(false);
     setExplanationOpen(false);
@@ -310,6 +320,11 @@ function ObjectiveBankRunner({
     const clientToken = previousToken?.response === answer ? previousToken.token : createToken();
     attemptTokens.current[question.id] = { response: answer, token: clientToken };
 
+    // Read once and reused: the number sent to the server and the number the
+    // stopped clock settles on are then the same measurement.
+    const durationMs = Date.now() - enteredQuestionAt.current;
+    const durationSeconds = Math.max(0, Math.round(durationMs / 1000));
+
     try {
       const response = await fetch(`/api/question-bank/${subject}/attempt`, {
         method: "POST",
@@ -317,7 +332,7 @@ function ObjectiveBankRunner({
         body: JSON.stringify({
           questionId: question.id,
           response: answer,
-          durationMs: Date.now() - enteredQuestionAt.current,
+          durationMs,
           sessionId: sessionId.current,
           clientToken,
         }),
@@ -338,6 +353,7 @@ function ObjectiveBankRunner({
           explanation: revealed ? body.explanation ?? "A full solution is not available yet." : "",
           correctAnswer: revealed ? body.correctAnswer ?? "" : "",
           response: answer,
+          durationSeconds,
         },
       }));
       setAttempts((current) => ({
@@ -345,6 +361,9 @@ function ObjectiveBankRunner({
         [question.id]: nextQuestionBankAttemptState(current[question.id], correct, answer),
       }));
       setExplanationOpen(revealed);
+      // Settle on the measured time rather than wherever the tick count had
+      // got to -- a backgrounded tab throttles the interval, so the two drift.
+      if (revealed) setElapsedSeconds(durationSeconds);
       delete attemptTokens.current[question.id];
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "We could not check that answer.");
