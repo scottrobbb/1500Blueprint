@@ -120,7 +120,13 @@ function StepHeading({ block, description }: { block: LessonBlock; description?:
 function ResourceCard({ block }: { block: LessonBlock }) {
   const url = block.content.url;
   if (!url) return null;
-  const className = "group flex min-h-24 cursor-pointer items-center gap-4 rounded-2xl border border-brand/20 bg-[linear-gradient(110deg,#eef8ff,#f8fbff)] px-4 py-4 transition-colors hover:border-brand/45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:px-5";
+  // The gradient is built from palette tokens rather than fixed hex so the card
+  // follows the student's theme. It used to be a hardcoded near-white, which
+  // dark mode could not move -- while text-navy and text-brand-600 inside it
+  // did flip to their light values, leaving pale type on a white card. This is
+  // ordinary workspace furniture, not the exam replica or brand artwork, so it
+  // belongs in the theme rather than pinned out of it with data-theme="light".
+  const className = "group flex min-h-24 cursor-pointer items-center gap-4 rounded-2xl border border-brand/20 bg-[linear-gradient(110deg,var(--color-ice),var(--color-mist))] px-4 py-4 transition-colors hover:border-brand/45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand sm:px-5";
   const contents = <><span className="grid h-11 w-11 flex-none place-items-center rounded-xl bg-brand text-white"><ResourceIcon className="h-5 w-5" /></span><span className="min-w-0 flex-1"><span className="flex items-center gap-2">{block.content.step ? <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-brand-600">Step {block.content.step}</span> : null}{block.content.eyebrow ? <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-brand-600">{block.content.eyebrow}</span> : null}</span><strong className="mt-0.5 block font-display text-base font-extrabold text-navy">{block.content.title ?? "Open resource"}</strong>{block.content.description ? <span className="mt-1 block text-xs leading-5 text-navy/50 sm:text-sm">{block.content.description}</span> : null}<span className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-brand-700">{block.content.actionLabel ?? "Open resource"}<span aria-hidden="true" className="transition-transform group-hover:translate-x-0.5">→</span></span></span></>;
   if (url.startsWith("/")) return <Link href={url} className={className}>{contents}</Link>;
   return <a href={url} target="_blank" rel="noreferrer" className={className}>{contents}</a>;
