@@ -176,6 +176,24 @@ function ExplanationWorkspace({
   const [questionSaving, setQuestionSaving] = useState(false);
   const [questionError, setQuestionError] = useState<string | null>(null);
 
+  // The diagram is part of the question the student is looking at, and the
+  // queue has always carried it -- listExplanationQueue selects figure_url and
+  // signs it alongside every other asset reference. This panel was the one
+  // surface that fetched it and never drew it, so every geometry, graph, and
+  // table question reached an editor with the figure missing. It is not
+  // editable here (staff wording edits cover text only), so it renders the
+  // same way in both modes.
+  const figure = item.figureUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={item.figureUrl}
+      alt="Figure for this question"
+      width={1200}
+      height={800}
+      className="mb-5 h-auto max-h-80 max-w-full object-contain"
+    />
+  ) : null;
+
   function startEditingQuestion() {
     setPromptDraft(item.prompt);
     setPassageDraft(item.passage ?? "");
@@ -299,6 +317,7 @@ function ExplanationWorkspace({
                   <div className="mt-2 rounded-xl border border-navy/10 bg-haze/20 p-3"><QuestionContent text={passageDraft} pClassName="font-serif text-[15px] leading-7 text-[#111]" /></div>
                 </div>
               ) : null}
+              {figure}
               <div>
                 <label htmlFor="prompt-draft" className="text-xs font-extrabold text-navy/50">Prompt</label>
                 <textarea id="prompt-draft" value={promptDraft} onChange={(event) => setPromptDraft(event.target.value)} className="mt-1.5 min-h-[90px] w-full resize-y rounded-xl border border-navy/15 bg-haze/35 p-3 font-mono text-sm leading-6 text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/15" />
@@ -333,6 +352,7 @@ function ExplanationWorkspace({
           ) : (
             <>
               {item.passage ? <div className="mb-5 border-b border-navy/10 pb-5"><QuestionContent text={item.passage} pClassName="font-serif text-[16px] leading-7 text-[#111]" /></div> : null}
+              {figure}
               <QuestionContent text={item.prompt} pClassName="font-serif text-[17px] leading-7 text-[#111]" />
               {item.choices.length ? <ol className="mt-5 space-y-2">{item.choices.map((choice) => <li key={choice.id} className="flex gap-3 rounded-xl border border-[#b9bec8] px-3 py-2.5 font-serif text-[15px]"><span className="font-sans text-xs font-bold">{choice.id}</span><MathText>{choice.text}</MathText></li>)}</ol> : null}
               <div className="mt-5 rounded-xl bg-success-bg px-4 py-3 text-sm font-bold text-success-600">Correct answer: <MathText>{item.correctAnswer || "Not configured"}</MathText></div>
