@@ -19,12 +19,14 @@ export type MathDifficultyFilter = readonly QuestionBankLevel[];
 export type MathCompletionFilter = "all" | "unanswered" | "attempted" | "incorrect";
 export type MathAnswerType = "mc_single" | "grid_in";
 
-// Applies only when no skill is selected ("Start all topics") — an unfocused
-// session across the whole bank still needs a sane size. A skill-filtered
-// session (clicking one or more specific topics) should include everything
-// available for that topic, up to MAX_FILTERED_QUESTION_BANK_SESSION_QUESTIONS.
-export const MAX_QUESTION_BANK_SESSION_QUESTIONS = 30;
-export const MAX_FILTERED_QUESTION_BANK_SESSION_QUESTIONS = 500;
+// One ceiling for every session. "Start all topics" used to be capped at 30
+// separately, on the reasoning that an unfocused session needs a sane size --
+// but a student who picks that has asked for the whole bank, and the filters
+// they set are what narrows it. The cap only meant their difficulty and
+// completion choices were applied to 30 questions and the rest thrown away.
+// This remains a ceiling rather than no limit: the whole session is rendered
+// into the runner at once.
+export const MAX_QUESTION_BANK_SESSION_QUESTIONS = 500;
 
 export type MathChoice = {
   id: ChoiceId;
@@ -207,13 +209,14 @@ export function parseSkillFilter(value: string | undefined): string[] {
 export function parseQuestionLimit(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number(value);
-  return Number.isInteger(parsed) ? Math.max(5, Math.min(MAX_FILTERED_QUESTION_BANK_SESSION_QUESTIONS, parsed)) : null;
+  return Number.isInteger(parsed) ? Math.max(5, Math.min(MAX_QUESTION_BANK_SESSION_QUESTIONS, parsed)) : null;
 }
 
-export function boundedQuestionBankSessionLimit(value: number | null, hasSkillFilter: boolean): number {
-  const ceiling = hasSkillFilter ? MAX_FILTERED_QUESTION_BANK_SESSION_QUESTIONS : MAX_QUESTION_BANK_SESSION_QUESTIONS;
-  if (value === null) return ceiling;
-  return Math.max(1, Math.min(Math.floor(value), ceiling));
+// No explicit limit means "everything that matched", up to the ceiling. An
+// explicit one -- the study planner asks for exact set sizes -- is honoured.
+export function boundedQuestionBankSessionLimit(value: number | null): number {
+  if (value === null) return MAX_QUESTION_BANK_SESSION_QUESTIONS;
+  return Math.max(1, Math.min(Math.floor(value), MAX_QUESTION_BANK_SESSION_QUESTIONS));
 }
 
 export function prioritizeUnattemptedQuestions<T extends { id: string }>(

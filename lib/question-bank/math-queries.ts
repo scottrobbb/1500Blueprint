@@ -129,7 +129,7 @@ export async function getMathRunnerQuestions(
     selectedSkills.size === 0 || (row.skill && selectedSkills.has(row.skill))
   ));
   const difficultyRows = skillRows.filter((row) => matchesDifficultyFilter(row, filters.difficulty));
-  const sessionLimit = boundedQuestionBankSessionLimit(limit, selectedSkills.size > 0);
+  const sessionLimit = boundedQuestionBankSessionLimit(limit);
   // Carried questions are matched against the skill pool rather than the
   // difficulty-filtered one: they are questions this student has already
   // answered for the task, and dropping one because its difficulty sits
