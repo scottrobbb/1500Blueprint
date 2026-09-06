@@ -6,11 +6,14 @@ import { UpgradePrompt } from "@/components/account/UpgradePrompt";
 import type { PlanCode } from "@/lib/auth/plans";
 import {
   MATH_DOMAINS,
+  QUESTION_BANK_LEVELS,
+  difficultyFilterParam,
   skillMetricForDifficulty,
   type MathBankCatalog,
   type MathCompletionFilter,
   type MathDifficultyFilter,
   type MathSkillMetric,
+  type QuestionBankLevel,
 } from "@/lib/question-bank/math";
 
 export function MathBankCatalogView({ catalog, challengeLocked, currentPlan }: { catalog: MathBankCatalog; challengeLocked: boolean; currentPlan: PlanCode }) {
@@ -47,7 +50,7 @@ export function SubjectBankCatalogView({
   challengeLocked: boolean;
   currentPlan: PlanCode;
 }) {
-  const [difficulty, setDifficulty] = useState<MathDifficultyFilter>("all");
+  const [difficulty, setDifficulty] = useState<QuestionBankLevel[]>([]);
   const [completion, setCompletion] = useState<MathCompletionFilter>("all");
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(() => new Set());
 
@@ -58,7 +61,7 @@ export function SubjectBankCatalogView({
     ),
     [catalog.skills, selectedSkills, difficulty],
   );
-  const totalAvailable = difficulty === "all"
+  const totalAvailable = difficulty.length === 0
     ? catalog.totalAvailable
     : catalog.skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty).available, 0);
   const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills]);
@@ -104,17 +107,22 @@ export function SubjectBankCatalogView({
         ) : null}
 
         <section aria-label="Practice filters" className="mt-7 flex flex-wrap gap-3">
-          <FilterSelect
+          <FilterCheckboxGroup
             label="Difficulty"
-            value={difficulty}
-            onChange={(value) => setDifficulty(value as MathDifficultyFilter)}
+            emptyLabel="All difficulties"
+            selected={difficulty}
             options={[
-              ["all", "All difficulties"],
               ["easy", "Easy"],
               ["medium", "Medium"],
               ["hard", "Hard"],
               ["challenge", "Challenge"],
             ]}
+            onToggle={(level) => setDifficulty((current) => (
+              current.includes(level)
+                ? current.filter((value) => value !== level)
+                : QUESTION_BANK_LEVELS.filter((value) => value === level || current.includes(value))
+            ))}
+            onClear={() => setDifficulty([])}
           />
           <FilterSelect
             label="Completion"
@@ -274,6 +282,54 @@ function SkillRow({
   );
 }
 
+function FilterCheckboxGroup({
+  label,
+  emptyLabel,
+  selected,
+  options,
+  onToggle,
+  onClear,
+}: {
+  label: string;
+  emptyLabel: string;
+  selected: readonly QuestionBankLevel[];
+  options: [QuestionBankLevel, string][];
+  onToggle: (value: QuestionBankLevel) => void;
+  onClear: () => void;
+}) {
+  // Nothing ticked means every level, so the summary says so rather than
+  // reading as an empty selection that would return no questions.
+  const summary = selected.length === 0
+    ? emptyLabel
+    : options.filter(([value]) => selected.includes(value)).map(([, text]) => text).join(", ");
+
+  return (
+    <fieldset className="rounded-xl border border-navy/10 bg-white px-4 py-2.5 shadow-sm">
+      <legend className="sr-only">{label}</legend>
+      <p aria-hidden="true" className="text-[11px] font-semibold text-navy/45">{label}</p>
+      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+        {options.map(([value, text]) => (
+          <label key={value} className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-bold text-navy">
+            <input
+              type="checkbox"
+              checked={selected.includes(value)}
+              onChange={() => onToggle(value)}
+              className="h-4 w-4 rounded border-navy/25 accent-brand"
+            />
+            {text}
+          </label>
+        ))}
+        {selected.length > 0 ? (
+          <button type="button" onClick={onClear} className="cursor-pointer text-xs font-bold text-brand-600 hover:text-brand">
+            Clear
+          </button>
+        ) : null}
+      </div>
+      <p className="sr-only" aria-live="polite">{label}: {summary}</p>
+    </fieldset>
+  );
+}
+
 function FilterSelect({
   label,
   value,
@@ -309,7 +365,8 @@ function buildPracticeHref(
   skills: string[],
 ): string {
   const params = new URLSearchParams();
-  if (difficulty !== "all") params.set("difficulty", difficulty);
+  const difficultyParam = difficultyFilterParam(difficulty);
+  if (difficultyParam) params.set("difficulty", difficultyParam);
   if (completion !== "all") params.set("completion", completion);
   if (skills.length > 0) params.set("skills", skills.join("|"));
   const query = params.toString();
