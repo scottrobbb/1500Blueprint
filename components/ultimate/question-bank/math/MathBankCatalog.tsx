@@ -146,10 +146,12 @@ export function SubjectBankCatalogView({
           )}
         </section>
 
-        <section className="mt-5 overflow-hidden rounded-[18px] border border-brand/20 bg-[linear-gradient(115deg,#eaf7ff_0%,#f8fbff_62%,#fff7da_100%)] p-5 shadow-pop sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
+        {/* The gradient is fixed artwork, so the type on it is pinned to the light
+            palette. Without this, dark mode flips text-navy to near-white and the
+            heading and description all but vanish against it. */}
+        <section data-theme="light" className="mt-5 overflow-hidden rounded-[18px] border border-brand/20 bg-[linear-gradient(115deg,#eaf7ff_0%,#f8fbff_62%,#fff7da_100%)] p-5 shadow-pop sm:flex sm:items-center sm:justify-between sm:gap-6 sm:p-6">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-600">Complete bank</p>
-            <h2 className="mt-1 font-display text-xl font-extrabold text-navy">Practice all {subjectTitle} topics</h2>
+            <h2 className="font-display text-xl font-extrabold text-navy">Practice all {subjectTitle} topics</h2>
             <p className="mt-1 text-sm leading-5 text-navy/50">
               Start across all {skillCount} skills. Your active difficulty and completion filters still apply.
             </p>
