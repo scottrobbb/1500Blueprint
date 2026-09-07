@@ -2,9 +2,23 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { auditCourse, type CourseAuditIssue } from "@/lib/courses/audit";
 import { emptyCoursePractice } from "@/lib/courses/practice";
+import {
+  ADD_CONTENT_SECTION,
+  ASSET_INBOX_SECTION,
+  COURSE_SETTINGS_SECTION,
+  LESSON_CONTENT_SECTION,
+  LESSON_SETTINGS_SECTION,
+  MODULE_SETTINGS_SECTION,
+  blockSection,
+  isSectionOpen,
+  moduleSection,
+  setSectionOpen,
+  setSectionsOpen,
+  type EditorSectionState,
+} from "@/lib/courses/editor-sections";
 import type { Course, CourseInput, CourseLesson, CourseModule, LessonBlock, LessonBlockKind } from "@/lib/courses/types";
 import { CourseCover } from "@/components/ultimate/courses/CourseCover";
 import { SettingsIcon } from "@/components/shell/icons";
@@ -29,6 +43,10 @@ export function CourseEditor({ initial }: { initial: Course }) {
   const [course, setCourse] = useState<Course>(initial);
   const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(initial));
   const [selectedLessonId, setSelectedLessonId] = useState(initial.modules[0]?.lessons[0]?.id ?? null);
+  // Collapse state lives here rather than in the panels themselves, which is
+  // what lets a section stay collapsed while the author clicks between lessons
+  // and modules -- the workspace below is rebuilt on every such click.
+  const [sections, setSections] = useState<EditorSectionState>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ tone: "success" | "error"; text: string } | null>(null);
   const audit = useMemo(() => auditCourse(course), [course]);
@@ -40,6 +58,10 @@ export function CourseEditor({ initial }: { initial: Course }) {
     }
     return null;
   }, [course.modules, selectedLessonId]);
+
+  const toggleSection = useCallback((id: string, open: boolean) => {
+    setSections((current) => setSectionOpen(current, id, open));
+  }, []);
 
   useEffect(() => {
     function preventClose(event: BeforeUnloadEvent) { if (dirty) event.preventDefault(); }
@@ -120,10 +142,20 @@ export function CourseEditor({ initial }: { initial: Course }) {
 
   function focusIssue(issue: CourseAuditIssue) {
     setSelectedLessonId(issue.lessonId);
+    // The panels are driven by state now, so jumping to an issue opens the
+    // section the same way the author would rather than reaching past React to
+    // set `open` on the element -- which the next render would undo.
+    setSections((current) => setSectionsOpen(
+      current,
+      issue.blockId
+        ? [LESSON_CONTENT_SECTION, blockSection(issue.blockId)]
+        : [LESSON_SETTINGS_SECTION],
+      true,
+    ));
     window.setTimeout(() => {
-      const target = document.getElementById(issue.blockId ? `course-block-${issue.blockId}` : "lesson-settings");
-      if (target instanceof HTMLDetailsElement) target.open = true;
-      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      document
+        .getElementById(issue.blockId ? `course-block-${issue.blockId}` : "lesson-settings")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 80);
   }
 
@@ -141,10 +173,14 @@ export function CourseEditor({ initial }: { initial: Course }) {
         <MetricCard label="Missing assets" value={String(audit.missingAssets)} detail="Videos, files, or question sets" tone={audit.missingAssets === 0 ? "success" : "danger"} />
       </div>
 
-      <AssetInbox issues={audit.issues} onFocus={focusIssue} />
+      <AssetInbox issues={audit.issues} onFocus={focusIssue} open={isSectionOpen(sections, ASSET_INBOX_SECTION, audit.missingAssets > 0)} onToggle={toggleSection} />
 
-      <details className="mt-5 overflow-hidden rounded-2xl border border-navy/10 bg-white">
-        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3"><SettingsIcon className="h-5 w-5 text-brand-600" /><strong className="flex-1 text-sm text-navy">Course settings</strong><span className="text-xs font-semibold text-navy/35">Title, publishing, cover, and description</span></summary>
+      <details
+        open={isSectionOpen(sections, COURSE_SETTINGS_SECTION, false)}
+        onToggle={(event) => toggleSection(COURSE_SETTINGS_SECTION, event.currentTarget.open)}
+        className="group mt-5 overflow-hidden rounded-2xl border border-navy/10 bg-white"
+      >
+        <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3"><ChevronDownIcon className="h-4 w-4 flex-none text-navy/35 transition-transform group-open:rotate-180" /><SettingsIcon className="h-5 w-5 text-brand-600" /><strong className="flex-1 text-sm text-navy">Course settings</strong><span className="text-xs font-semibold text-navy/35">Title, publishing, cover, and description</span></summary>
         <div className="grid gap-4 border-t border-navy/10 bg-haze/40 p-4 sm:grid-cols-2 sm:p-5">
           <Field label="Course title"><input value={course.title} onChange={(event) => setCourse({ ...course, title: event.target.value })} className={inputClass} /></Field>
           <Field label="URL slug"><input value={course.slug} onChange={(event) => setCourse({ ...course, slug: cleanSlug(event.target.value) })} className={inputClass} /></Field>
@@ -162,9 +198,9 @@ export function CourseEditor({ initial }: { initial: Course }) {
       <section className="mt-6 overflow-hidden rounded-[20px] border border-navy/10 bg-white shadow-pop">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-navy/10 bg-haze/50 px-4 py-4 sm:px-5"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Curriculum builder</p><h3 className="mt-1 font-display text-xl font-extrabold text-navy">Modules, lessons, and content</h3></div><button type="button" onClick={addModule} className="min-h-11 cursor-pointer rounded-xl bg-navy px-4 text-sm font-extrabold text-white transition-colors hover:bg-navy/90">+ Add module</button></header>
         <div className="grid min-h-[640px] lg:grid-cols-[310px_minmax(0,1fr)]">
-          <CurriculumNavigator course={course} selectedLessonId={selectedLessonId} onSelect={setSelectedLessonId} onChange={setCourse} onAddLesson={addLesson} onRemoveModule={removeModule} />
+          <CurriculumNavigator course={course} selectedLessonId={selectedLessonId} onSelect={setSelectedLessonId} onChange={setCourse} onAddLesson={addLesson} onRemoveModule={removeModule} sections={sections} onToggleSection={toggleSection} />
           <main className="min-w-0 p-4 sm:p-6">
-            {selectedLocation ? <LessonWorkspace course={course} module={selectedLocation.module} moduleIndex={selectedLocation.moduleIndex} lesson={selectedLocation.lesson} lessonIndex={selectedLocation.lessonIndex} updateModule={updateModule} updateLesson={updateLesson} updateBlock={updateBlock} addBlock={addBlock} /> : <EmptyLesson onAdd={() => course.modules[0] ? addLesson(0) : addModule()} hasModule={course.modules.length > 0} />}
+            {selectedLocation ? <LessonWorkspace course={course} module={selectedLocation.module} moduleIndex={selectedLocation.moduleIndex} lesson={selectedLocation.lesson} lessonIndex={selectedLocation.lessonIndex} updateModule={updateModule} updateLesson={updateLesson} updateBlock={updateBlock} addBlock={addBlock} sections={sections} onToggleSection={toggleSection} onSetSections={setSections} /> : <EmptyLesson onAdd={() => course.modules[0] ? addLesson(0) : addModule()} hasModule={course.modules.length > 0} />}
           </main>
         </div>
       </section>
@@ -237,21 +273,105 @@ function CourseCoverEditor({ course, onChange }: { course: Course; onChange: Rea
   );
 }
 
-function CurriculumNavigator({ course, selectedLessonId, onSelect, onChange, onAddLesson, onRemoveModule }: { course: Course; selectedLessonId: string | null; onSelect: (id: string) => void; onChange: (course: Course) => void; onAddLesson: (moduleIndex: number) => void; onRemoveModule: (moduleIndex: number) => void }) {
-  return <aside className="border-b border-navy/10 bg-haze/35 p-3 lg:border-b-0 lg:border-r"><p className="px-2 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy/35">Course outline</p><div className="space-y-3">{course.modules.map((module, moduleIndex) => <details key={module.id} open className="overflow-hidden rounded-2xl border border-navy/10 bg-white"><summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 bg-navy px-3 py-2 text-white"><span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-white/10 text-[10px] font-extrabold">{moduleIndex + 1}</span><strong className="min-w-0 flex-1 truncate text-xs">{module.title}</strong><OrderButtons inverse onUp={(event) => { event.preventDefault(); onChange({ ...course, modules: move(course.modules, moduleIndex, -1) }); }} onDown={(event) => { event.preventDefault(); onChange({ ...course, modules: move(course.modules, moduleIndex, 1) }); }} /></summary><div className="space-y-1 p-2">{module.lessons.map((lesson, lessonIndex) => <button key={lesson.id} type="button" onClick={() => onSelect(lesson.id)} className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors ${lesson.id === selectedLessonId ? "bg-ice text-brand-700" : "text-navy/60 hover:bg-haze hover:text-navy"}`}><span className={`grid h-6 w-6 flex-none place-items-center rounded-lg text-[9px] font-extrabold ${lesson.status === "published" ? "bg-success-bg text-success-600" : "bg-flag-bg text-flag"}`}>{lessonIndex + 1}</span><span className="min-w-0 flex-1 truncate text-xs font-bold">{lesson.title}</span><span className="text-[9px] font-bold text-navy/30">{lesson.blocks.length}</span></button>)}<div className="grid grid-cols-[1fr_auto] gap-1"><button type="button" onClick={() => onAddLesson(moduleIndex)} className="min-h-10 cursor-pointer rounded-xl border border-dashed border-brand/25 text-xs font-extrabold text-brand-700 transition-colors hover:bg-ice">+ Add lesson</button><button type="button" aria-label={`Delete module ${module.title}`} onClick={() => onRemoveModule(moduleIndex)} className="min-h-10 cursor-pointer rounded-xl px-3 text-xs font-extrabold text-danger-600 transition-colors hover:bg-danger-bg">Delete</button></div></div></details>)}</div></aside>;
+function CurriculumNavigator({ course, selectedLessonId, onSelect, onChange, onAddLesson, onRemoveModule, sections, onToggleSection }: { course: Course; selectedLessonId: string | null; onSelect: (id: string) => void; onChange: (course: Course) => void; onAddLesson: (moduleIndex: number) => void; onRemoveModule: (moduleIndex: number) => void; sections: EditorSectionState; onToggleSection: (id: string, open: boolean) => void }) {
+  return <aside className="border-b border-navy/10 bg-haze/35 p-3 lg:border-b-0 lg:border-r"><p className="px-2 py-2 text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy/35">Course outline</p><div className="space-y-3">{course.modules.map((module, moduleIndex) => <details key={module.id} open={isSectionOpen(sections, moduleSection(module.id), true)} onToggle={(event) => onToggleSection(moduleSection(module.id), event.currentTarget.open)} className="group overflow-hidden rounded-2xl border border-navy/10 bg-white"><summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 bg-navy px-3 py-2 text-white"><ChevronDownIcon className="h-4 w-4 flex-none text-white/45 transition-transform group-open:rotate-180" /><span className="grid h-7 w-7 flex-none place-items-center rounded-lg bg-white/10 text-[10px] font-extrabold">{moduleIndex + 1}</span><strong className="min-w-0 flex-1 truncate text-xs">{module.title}</strong><OrderButtons inverse onUp={(event) => { event.preventDefault(); onChange({ ...course, modules: move(course.modules, moduleIndex, -1) }); }} onDown={(event) => { event.preventDefault(); onChange({ ...course, modules: move(course.modules, moduleIndex, 1) }); }} /></summary><div className="space-y-1 p-2">{module.lessons.map((lesson, lessonIndex) => <button key={lesson.id} type="button" onClick={() => onSelect(lesson.id)} className={`flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-colors ${lesson.id === selectedLessonId ? "bg-ice text-brand-700" : "text-navy/60 hover:bg-haze hover:text-navy"}`}><span className={`grid h-6 w-6 flex-none place-items-center rounded-lg text-[9px] font-extrabold ${lesson.status === "published" ? "bg-success-bg text-success-600" : "bg-flag-bg text-flag"}`}>{lessonIndex + 1}</span><span className="min-w-0 flex-1 truncate text-xs font-bold">{lesson.title}</span><span className="text-[9px] font-bold text-navy/30">{lesson.blocks.length}</span></button>)}<div className="grid grid-cols-[1fr_auto] gap-1"><button type="button" onClick={() => onAddLesson(moduleIndex)} className="min-h-10 cursor-pointer rounded-xl border border-dashed border-brand/25 text-xs font-extrabold text-brand-700 transition-colors hover:bg-ice">+ Add lesson</button><button type="button" aria-label={`Delete module ${module.title}`} onClick={() => onRemoveModule(moduleIndex)} className="min-h-10 cursor-pointer rounded-xl px-3 text-xs font-extrabold text-danger-600 transition-colors hover:bg-danger-bg">Delete</button></div></div></details>)}</div></aside>;
 }
 
-function LessonWorkspace({ course, module, moduleIndex, lesson, lessonIndex, updateModule, updateLesson, updateBlock, addBlock }: { course: Course; module: CourseModule; moduleIndex: number; lesson: CourseLesson; lessonIndex: number; updateModule: (moduleIndex: number, update: Partial<CourseModule>) => void; updateLesson: (moduleIndex: number, lessonIndex: number, update: Partial<CourseLesson>) => void; updateBlock: (moduleIndex: number, lessonIndex: number, blockIndex: number, update: Partial<LessonBlock>) => void; addBlock: (moduleIndex: number, lessonIndex: number, kind: LessonBlockKind) => void }) {
-  return <div><section className="rounded-2xl border border-navy/10 bg-haze/35 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-brand-600">Module settings</p><h4 className="mt-1 font-display text-lg font-extrabold text-navy">{module.title}</h4></div><select aria-label="Module publishing status" value={module.status} onChange={(event) => updateModule(moduleIndex, { status: event.target.value === "published" ? "published" : "draft" })} className="min-h-10 rounded-xl border border-navy/15 bg-white px-3 text-xs font-bold text-navy outline-none focus:border-brand"><option value="draft">Draft module</option><option value="published">Published module</option></select></div><div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Module title"><input value={module.title} onChange={(event) => updateModule(moduleIndex, { title: event.target.value })} className={inputClass} /></Field><Field label="Module slug"><input value={module.slug} onChange={(event) => updateModule(moduleIndex, { slug: cleanSlug(event.target.value) })} className={inputClass} /></Field><div className="sm:col-span-2"><Field label="Module description"><input value={module.description ?? ""} onChange={(event) => updateModule(moduleIndex, { description: event.target.value })} className={inputClass} /></Field></div></div></section>
-    <section id="lesson-settings" className="mt-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Lesson {lessonIndex + 1}</p><h3 className="mt-1 font-display text-2xl font-extrabold text-navy">{lesson.title}</h3></div><Link href={`/ultimate/courses/${course.slug}/${lesson.slug}`} target="_blank" className="inline-flex min-h-10 items-center rounded-xl border border-navy/10 px-3 text-xs font-bold text-navy/55 transition-colors hover:bg-haze hover:text-navy">Preview lesson ↗</Link></div><div className="mt-4 grid gap-3 sm:grid-cols-2"><Field label="Lesson title"><input value={lesson.title} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { title: event.target.value })} className={inputClass} /></Field><Field label="Lesson slug"><input value={lesson.slug} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { slug: cleanSlug(event.target.value) })} className={inputClass} /></Field><Field label="Estimated minutes"><input type="number" min="0" value={lesson.estimatedMinutes} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { estimatedMinutes: Number(event.target.value) || 0 })} className={inputClass} /></Field><Field label="Publish status"><select value={lesson.status} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { status: event.target.value === "published" ? "published" : "draft" })} className={inputClass}><option value="draft">Draft</option><option value="published">Published</option></select></Field><div className="sm:col-span-2"><Field label="Lesson summary"><textarea rows={2} value={lesson.summary ?? ""} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { summary: event.target.value })} className={inputClass} /></Field></div></div></section>
-    <div className="mb-3 mt-7 flex items-center justify-between"><div><h4 className="font-display text-lg font-extrabold text-navy">Lesson content</h4><p className="mt-1 text-xs text-navy/45">Students see these blocks in this exact order.</p></div><span className="rounded-full bg-haze px-3 py-1.5 text-xs font-bold text-navy/45">{lesson.blocks.length} blocks</span></div>
-    <div className="space-y-4">{lesson.blocks.map((block, blockIndex) => <BlockEditor key={block.id} block={block} defaultOpen={blockIndex === 0} onChange={(update) => updateBlock(moduleIndex, lessonIndex, blockIndex, update)} onMove={(direction) => updateLesson(moduleIndex, lessonIndex, { blocks: move(lesson.blocks, blockIndex, direction) })} onRemove={() => { if (window.confirm("Delete this content block?")) updateLesson(moduleIndex, lessonIndex, { blocks: lesson.blocks.filter((_, index) => index !== blockIndex) }); }} />)}</div>
-    <div className="mt-5 rounded-2xl border border-dashed border-brand/30 bg-ice/35 p-3"><p className="mb-3 px-1 text-[10px] font-extrabold uppercase tracking-[0.13em] text-brand-700">Add content</p><div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">{blockKinds.map(({ kind, label, description }) => <button key={kind} type="button" onClick={() => addBlock(moduleIndex, lessonIndex, kind)} className="min-h-20 cursor-pointer rounded-xl border border-navy/10 bg-white px-3 py-3 text-left transition-colors hover:border-brand/35 hover:bg-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><strong className="block text-xs text-navy">+ {label}</strong><span className="mt-1 block text-[10px] leading-4 text-navy/40">{description}</span></button>)}</div></div>
-    <div className="mt-5 flex justify-end border-t border-navy/10 pt-4"><button type="button" onClick={() => { if (window.confirm(`Delete “${lesson.title}”?`)) updateModule(moduleIndex, { lessons: module.lessons.filter((_, index) => index !== lessonIndex) }); }} className="min-h-10 cursor-pointer rounded-xl px-3 text-xs font-extrabold text-danger-600 transition-colors hover:bg-danger-bg">Delete lesson</button></div>
+function LessonWorkspace({ course, module, moduleIndex, lesson, lessonIndex, updateModule, updateLesson, updateBlock, addBlock, sections, onToggleSection, onSetSections }: { course: Course; module: CourseModule; moduleIndex: number; lesson: CourseLesson; lessonIndex: number; updateModule: (moduleIndex: number, update: Partial<CourseModule>) => void; updateLesson: (moduleIndex: number, lessonIndex: number, update: Partial<CourseLesson>) => void; updateBlock: (moduleIndex: number, lessonIndex: number, blockIndex: number, update: Partial<LessonBlock>) => void; addBlock: (moduleIndex: number, lessonIndex: number, kind: LessonBlockKind) => void; sections: EditorSectionState; onToggleSection: (id: string, open: boolean) => void; onSetSections: React.Dispatch<React.SetStateAction<EditorSectionState>> }) {
+  // Expand-all and collapse-all act on the blocks of the lesson in front of the
+  // author, which is what makes a long lesson workable: collapse everything,
+  // then open the one block being edited.
+  const blockIds = lesson.blocks.map((block) => blockSection(block.id));
+  const setAllBlocks = (open: boolean) => onSetSections((current) => setSectionsOpen(current, blockIds, open));
+
+  return <div>
+    <EditorPanel
+      id={MODULE_SETTINGS_SECTION}
+      open={isSectionOpen(sections, MODULE_SETTINGS_SECTION, true)}
+      onToggle={onToggleSection}
+      eyebrow="Module settings"
+      title={module.title}
+      className="rounded-2xl border border-navy/10 bg-haze/35"
+      summaryClassName="px-4 py-3"
+    >
+      <div className="px-4 pb-4">
+        <div className="flex flex-wrap items-center justify-end gap-3"><select aria-label="Module publishing status" value={module.status} onChange={(event) => updateModule(moduleIndex, { status: event.target.value === "published" ? "published" : "draft" })} className="min-h-10 rounded-xl border border-navy/15 bg-white px-3 text-xs font-bold text-navy outline-none focus:border-brand"><option value="draft">Draft module</option><option value="published">Published module</option></select></div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2"><Field label="Module title"><input value={module.title} onChange={(event) => updateModule(moduleIndex, { title: event.target.value })} className={inputClass} /></Field><Field label="Module slug"><input value={module.slug} onChange={(event) => updateModule(moduleIndex, { slug: cleanSlug(event.target.value) })} className={inputClass} /></Field><div className="sm:col-span-2"><Field label="Module description"><input value={module.description ?? ""} onChange={(event) => updateModule(moduleIndex, { description: event.target.value })} className={inputClass} /></Field></div></div>
+      </div>
+    </EditorPanel>
+
+    <EditorPanel
+      id={LESSON_SETTINGS_SECTION}
+      elementId="lesson-settings"
+      open={isSectionOpen(sections, LESSON_SETTINGS_SECTION, true)}
+      onToggle={onToggleSection}
+      eyebrow={`Lesson ${lessonIndex + 1}`}
+      title={lesson.title}
+      className="mt-5 scroll-mt-28 rounded-2xl border border-navy/10 bg-white"
+      summaryClassName="px-4 py-3"
+      action={<Link href={`/ultimate/courses/${course.slug}/${lesson.slug}`} target="_blank" onClick={(event) => event.stopPropagation()} className="inline-flex min-h-10 items-center rounded-xl border border-navy/10 px-3 text-xs font-bold text-navy/55 transition-colors hover:bg-haze hover:text-navy">Preview lesson ↗</Link>}
+    >
+      <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2"><Field label="Lesson title"><input value={lesson.title} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { title: event.target.value })} className={inputClass} /></Field><Field label="Lesson slug"><input value={lesson.slug} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { slug: cleanSlug(event.target.value) })} className={inputClass} /></Field><Field label="Estimated minutes"><input type="number" min="0" value={lesson.estimatedMinutes} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { estimatedMinutes: Number(event.target.value) || 0 })} className={inputClass} /></Field><Field label="Publish status"><select value={lesson.status} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { status: event.target.value === "published" ? "published" : "draft" })} className={inputClass}><option value="draft">Draft</option><option value="published">Published</option></select></Field><div className="sm:col-span-2"><Field label="Lesson summary"><textarea rows={2} value={lesson.summary ?? ""} onChange={(event) => updateLesson(moduleIndex, lessonIndex, { summary: event.target.value })} className={inputClass} /></Field></div></div>
+    </EditorPanel>
+
+    <EditorPanel
+      id={LESSON_CONTENT_SECTION}
+      open={isSectionOpen(sections, LESSON_CONTENT_SECTION, true)}
+      onToggle={onToggleSection}
+      title="Lesson content"
+      hint="Students see these blocks in this exact order."
+      className="mt-5 rounded-2xl border border-navy/10 bg-white"
+      summaryClassName="px-4 py-3"
+      action={<span className="rounded-full bg-haze px-3 py-1.5 text-xs font-bold text-navy/45">{lesson.blocks.length} blocks</span>}
+    >
+      <div className="px-4 pb-4">
+        {lesson.blocks.length > 1 ? <div className="mb-3 flex justify-end gap-2"><button type="button" onClick={() => setAllBlocks(true)} className="min-h-9 cursor-pointer rounded-lg border border-navy/10 px-3 text-[11px] font-extrabold text-navy/55 transition-colors hover:border-brand/30 hover:text-brand-700">Expand all</button><button type="button" onClick={() => setAllBlocks(false)} className="min-h-9 cursor-pointer rounded-lg border border-navy/10 px-3 text-[11px] font-extrabold text-navy/55 transition-colors hover:border-brand/30 hover:text-brand-700">Collapse all</button></div> : null}
+        <div className="space-y-4">{lesson.blocks.map((block, blockIndex) => <BlockEditor key={block.id} block={block} open={isSectionOpen(sections, blockSection(block.id), blockIndex === 0 || block.content.status === "unavailable")} onToggleOpen={(next) => onToggleSection(blockSection(block.id), next)} onChange={(update) => updateBlock(moduleIndex, lessonIndex, blockIndex, update)} onMove={(direction) => updateLesson(moduleIndex, lessonIndex, { blocks: move(lesson.blocks, blockIndex, direction) })} onRemove={() => { if (window.confirm("Delete this content block?")) updateLesson(moduleIndex, lessonIndex, { blocks: lesson.blocks.filter((_, index) => index !== blockIndex) }); }} />)}</div>
+        {lesson.blocks.length === 0 ? <p className="rounded-xl border border-dashed border-navy/15 px-4 py-6 text-center text-xs text-navy/40">No content yet. Add a block below.</p> : null}
+      </div>
+    </EditorPanel>
+
+    <EditorPanel
+      id={ADD_CONTENT_SECTION}
+      open={isSectionOpen(sections, ADD_CONTENT_SECTION, true)}
+      onToggle={onToggleSection}
+      title="Add content"
+      className="mt-5 rounded-2xl border border-dashed border-brand/30 bg-ice/35"
+      summaryClassName="px-4 py-3"
+    >
+      <div className="grid gap-2 px-4 pb-4 sm:grid-cols-2 xl:grid-cols-5">{blockKinds.map(({ kind, label, description }) => <button key={kind} type="button" onClick={() => addBlock(moduleIndex, lessonIndex, kind)} className="min-h-20 cursor-pointer rounded-xl border border-navy/10 bg-white px-3 py-3 text-left transition-colors hover:border-brand/35 hover:bg-ice focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><strong className="block text-xs text-navy">+ {label}</strong><span className="mt-1 block text-[10px] leading-4 text-navy/40">{description}</span></button>)}</div>
+    </EditorPanel>
+
+    <div className="mt-5 flex justify-end border-t border-navy/10 pt-4"><button type="button" onClick={() => { if (window.confirm(`Delete \u201c${lesson.title}\u201d?`)) updateModule(moduleIndex, { lessons: module.lessons.filter((_, index) => index !== lessonIndex) }); }} className="min-h-10 cursor-pointer rounded-xl px-3 text-xs font-extrabold text-danger-600 transition-colors hover:bg-danger-bg">Delete lesson</button></div>
   </div>;
 }
 
-function BlockEditor({ block, defaultOpen, onChange, onMove, onRemove }: { block: LessonBlock; defaultOpen: boolean; onChange: (update: Partial<LessonBlock>) => void; onMove: (direction: -1 | 1) => void; onRemove: () => void }) {
+// One collapsible panel. Every section of the workspace is one of these, so
+// they all collapse the same way and all remember the author's choice through
+// the same state.
+function EditorPanel({ id, elementId, open, onToggle, eyebrow, title, hint, action, className, summaryClassName, children }: { id: string; elementId?: string; open: boolean; onToggle: (id: string, open: boolean) => void; eyebrow?: string; title: string; hint?: string; action?: React.ReactNode; className?: string; summaryClassName?: string; children: React.ReactNode }) {
+  return (
+    <details
+      id={elementId}
+      open={open}
+      onToggle={(event) => onToggle(id, event.currentTarget.open)}
+      className={`group overflow-hidden ${className ?? ""}`}
+    >
+      <summary className={`flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-3 ${summaryClassName ?? ""}`}>
+        <ChevronDownIcon className="h-4 w-4 flex-none text-navy/35 transition-transform group-open:rotate-180" />
+        <span className="min-w-0 flex-1">
+          {eyebrow ? <span className="block text-[10px] font-extrabold uppercase tracking-[0.13em] text-brand-600">{eyebrow}</span> : null}
+          <strong className="block truncate font-display text-base font-extrabold text-navy">{title}</strong>
+          {hint ? <span className="mt-0.5 block text-xs text-navy/45">{hint}</span> : null}
+        </span>
+        {action}
+      </summary>
+      {children}
+    </details>
+  );
+}
+
+function BlockEditor({ block, open, onToggleOpen, onChange, onMove, onRemove }: { block: LessonBlock; open: boolean; onToggleOpen: (open: boolean) => void; onChange: (update: Partial<LessonBlock>) => void; onMove: (direction: -1 | 1) => void; onRemove: () => void }) {
   const content = block.content;
   const setContent = (update: Partial<LessonBlock["content"]>) => onChange({ content: { ...content, ...update } });
   function convert(kind: LessonBlockKind) {
@@ -260,7 +380,7 @@ function BlockEditor({ block, defaultOpen, onChange, onMove, onRemove }: { block
     onChange({ kind, content: next });
   }
   return (
-    <details id={`course-block-${block.id}`} open={defaultOpen || content.status === "unavailable"} className={`group scroll-mt-28 overflow-hidden rounded-2xl border bg-white ${content.status === "unavailable" ? "border-gold/45" : "border-navy/10"}`}>
+    <details id={`course-block-${block.id}`} open={open} onToggle={(event) => onToggleOpen(event.currentTarget.open)} className={`group scroll-mt-28 overflow-hidden rounded-2xl border bg-white ${content.status === "unavailable" ? "border-gold/45" : "border-navy/10"}`}>
       <summary className={`flex min-h-12 cursor-pointer list-none flex-wrap items-center gap-2 border-b px-3 py-2.5 sm:px-4 ${content.status === "unavailable" ? "border-gold/25 bg-flag-bg" : "border-navy/10 bg-haze/45"}`}>
         <ChevronDownIcon className="h-4 w-4 flex-none text-navy/35 transition-transform group-open:rotate-180" />
         <select aria-label="Content block type" value={block.kind} onClick={(event) => event.stopPropagation()} onChange={(event) => convert(event.target.value as LessonBlockKind)} className="min-h-9 cursor-pointer rounded-lg border border-navy/15 bg-white px-2.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-navy outline-none focus:border-brand">{blockKinds.map((item) => <option key={item.kind} value={item.kind}>{item.label}</option>)}</select>
@@ -288,9 +408,9 @@ function BlockFields({ block, setContent }: { block: LessonBlock; setContent: (u
 
 function MissingAssetResolver({ title, onConvert }: { title?: string; onConvert: (kind: LessonBlockKind) => void }) { return <div className="mb-4 rounded-2xl border border-gold/30 bg-flag-bg p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.13em] text-flag">Source needed</p><strong className="mt-1 block text-sm text-navy">{title || "This lesson step is missing its original asset."}</strong><p className="mt-1 text-xs leading-5 text-navy/50">Resolve it now by choosing what Scott should add. The missing flag disappears after content is created.</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => onConvert("video")} className="min-h-10 cursor-pointer rounded-xl border border-gold/30 bg-white px-3 text-xs font-extrabold text-navy hover:border-brand/35">Add video</button><button type="button" onClick={() => onConvert("file")} className="min-h-10 cursor-pointer rounded-xl border border-gold/30 bg-white px-3 text-xs font-extrabold text-navy hover:border-brand/35">Upload resource</button><button type="button" onClick={() => onConvert("practice")} className="min-h-10 cursor-pointer rounded-xl bg-navy px-3 text-xs font-extrabold text-white">Build practice</button></div></div>; }
 
-function AssetInbox({ issues, onFocus }: { issues: CourseAuditIssue[]; onFocus: (issue: CourseAuditIssue) => void }) {
+function AssetInbox({ issues, onFocus, open, onToggle }: { issues: CourseAuditIssue[]; onFocus: (issue: CourseAuditIssue) => void; open: boolean; onToggle: (id: string, open: boolean) => void }) {
   const blocking = issues.filter((issue) => issue.severity === "missing");
-  return <details open={blocking.length > 0} className={`mt-5 overflow-hidden rounded-2xl border ${blocking.length > 0 ? "border-gold/35 bg-flag-bg" : "border-success/20 bg-success-bg"}`}><summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 sm:px-5"><AuditIcon /><span className="min-w-0 flex-1"><strong className="block text-sm text-navy">Content health inbox</strong><span className="mt-0.5 block text-xs text-navy/45">{blocking.length > 0 ? `${blocking.length} missing asset${blocking.length === 1 ? "" : "s"} need Scott's attention` : "Everything required is connected"}</span></span><span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${blocking.length > 0 ? "bg-gold/15 text-flag" : "bg-white text-success-600"}`}>{issues.length}</span></summary>{issues.length > 0 ? <div className="max-h-[360px] overflow-y-auto border-t border-current/10 p-2 sm:p-3"><div className="space-y-2">{issues.map((issue) => <button key={issue.id} type="button" onClick={() => onFocus(issue)} className="flex min-h-14 w-full cursor-pointer items-start gap-3 rounded-xl border border-navy/10 bg-white px-3 py-3 text-left transition-colors hover:border-brand/30 hover:bg-ice/45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><span className={`mt-1 h-2.5 w-2.5 flex-none rounded-full ${issue.severity === "missing" ? "bg-gold" : "bg-brand"}`} /><span className="min-w-0 flex-1"><strong className="block text-xs text-navy">{issue.title}</strong><span className="mt-1 block text-[11px] leading-4 text-navy/45">{issue.detail}</span></span><span className="text-xs font-extrabold text-brand-700">Fix →</span></button>)}</div></div> : null}</details>;
+  return <details open={open} onToggle={(event) => onToggle(ASSET_INBOX_SECTION, event.currentTarget.open)} className={`mt-5 overflow-hidden rounded-2xl border ${blocking.length > 0 ? "border-gold/35 bg-flag-bg" : "border-success/20 bg-success-bg"}`}><summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 sm:px-5"><AuditIcon /><span className="min-w-0 flex-1"><strong className="block text-sm text-navy">Content health inbox</strong><span className="mt-0.5 block text-xs text-navy/45">{blocking.length > 0 ? `${blocking.length} missing asset${blocking.length === 1 ? "" : "s"} need Scott's attention` : "Everything required is connected"}</span></span><span className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${blocking.length > 0 ? "bg-gold/15 text-flag" : "bg-white text-success-600"}`}>{issues.length}</span></summary>{issues.length > 0 ? <div className="max-h-[360px] overflow-y-auto border-t border-current/10 p-2 sm:p-3"><div className="space-y-2">{issues.map((issue) => <button key={issue.id} type="button" onClick={() => onFocus(issue)} className="flex min-h-14 w-full cursor-pointer items-start gap-3 rounded-xl border border-navy/10 bg-white px-3 py-3 text-left transition-colors hover:border-brand/30 hover:bg-ice/45 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"><span className={`mt-1 h-2.5 w-2.5 flex-none rounded-full ${issue.severity === "missing" ? "bg-gold" : "bg-brand"}`} /><span className="min-w-0 flex-1"><strong className="block text-xs text-navy">{issue.title}</strong><span className="mt-1 block text-[11px] leading-4 text-navy/45">{issue.detail}</span></span><span className="text-xs font-extrabold text-brand-700">Fix →</span></button>)}</div></div> : null}</details>;
 }
 
 function MetricCard({ label, value, detail, tone = "default" }: { label: string; value: string; detail: string; tone?: "default" | "success" | "warning" | "danger" }) { const colors = tone === "success" ? "bg-success-bg text-success-600" : tone === "warning" ? "bg-flag-bg text-flag" : tone === "danger" ? "bg-danger-bg text-danger-600" : "bg-ice text-brand-700"; return <div className="rounded-2xl border border-navy/10 bg-white p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-navy/40">{label}</p><div className="mt-2 flex items-end justify-between gap-2"><strong className="font-display text-2xl font-extrabold text-navy">{value}</strong><span className={`h-2.5 w-2.5 rounded-full ${colors}`} /></div><p className={`mt-2 rounded-lg px-2.5 py-1.5 text-[10px] font-bold ${colors}`}>{detail}</p></div>; }
