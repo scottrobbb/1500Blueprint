@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   addHighlight,
+  highlightCovering,
   removeHighlight,
   setHighlightNote,
+  type Highlight,
   type HighlightsByQuestion,
 } from "./highlights";
 
@@ -52,4 +54,25 @@ test("the transitions never mutate the map they are given", () => {
   removeHighlight(before, "q1", 0, 5);
   setHighlightNote(before, "q1", "a", "note");
   assert.equal(JSON.stringify(before), snapshot);
+});
+
+// Selecting text with the highlighter on now paints it immediately, so the
+// component has to know whether a selection is new or lands on something the
+// student already highlighted -- the second case must not stack a duplicate.
+test("a selection inside an existing highlight resolves to that highlight", () => {
+  const existing: Highlight = { id: "a", start: 10, end: 40, color: "#fde68a" };
+  const highlights = [existing];
+
+  assert.equal(highlightCovering(highlights, 10, 40), existing, "exact range");
+  assert.equal(highlightCovering(highlights, 20, 30), existing, "range inside it");
+  assert.equal(highlightCovering(highlights, 10, 11), existing, "single character inside it");
+});
+
+test("a selection reaching outside every highlight is new", () => {
+  const highlights: Highlight[] = [{ id: "a", start: 10, end: 40, color: "#fde68a" }];
+
+  assert.equal(highlightCovering(highlights, 5, 40), null, "starts before it");
+  assert.equal(highlightCovering(highlights, 10, 45), null, "ends after it");
+  assert.equal(highlightCovering(highlights, 50, 60), null, "misses it entirely");
+  assert.equal(highlightCovering([], 10, 20), null, "nothing highlighted yet");
 });
