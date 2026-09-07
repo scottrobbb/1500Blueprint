@@ -5,8 +5,6 @@ import { AvailableCoursesSection, CurrentCourseSection, HomeDrillsPanel } from "
 import { HomeQuickLinks } from "@/components/ultimate/home/home-quick-links";
 import { HomeUpgradePrompts } from "@/components/ultimate/home/home-upgrade-prompts";
 import { LiveCallBanner } from "@/components/ultimate/home/live-call-banner";
-import { MaintenanceBanner } from "@/components/ultimate/home/maintenance-banner";
-import { loadMaintenanceNotice } from "@/lib/home/maintenance";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
@@ -28,13 +26,12 @@ export default async function UltimateHomePage({ searchParams }: UltimateHomePag
   const session = await getSession();
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
-  const [hub, courses, access, savedProgress, liveCall, showMaintenance, { billing }] = await Promise.all([
+  const [hub, courses, access, savedProgress, liveCall, { billing }] = await Promise.all([
     getHubState(session.email),
     listCoursesForStudent(session.email),
     getStudentAccess(session.email),
     getStudentProgress(session.email),
     getLiveWeeklyCall(),
-    loadMaintenanceNotice(),
     searchParams,
   ]);
 
@@ -49,8 +46,6 @@ export default async function UltimateHomePage({ searchParams }: UltimateHomePag
 
   return (
     <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
-      {showMaintenance ? <MaintenanceBanner /> : null}
-
       {showLiveBanner && liveCall ? <LiveCallBanner call={liveCall} /> : null}
 
       {billing === "success" ? (
