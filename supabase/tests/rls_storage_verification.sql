@@ -100,6 +100,7 @@ declare
     'record_password_login',
     'record_question_bank_attempt',
     'record_test_award',
+    'staff_explanation_eligible',
     'refund_ai_submission',
     'release_billing_checkout_intent',
     'release_retention_offer_acceptance',

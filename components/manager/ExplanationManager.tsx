@@ -29,8 +29,9 @@ async function uploadPastedImage(file: File): Promise<string | null> {
 }
 
 type SourceFilter = "all" | ExplanationQueueItem["targetType"];
-// Challenge is the fourth question-bank tier. Practice-test questions never
-// carry it, so filtering to Challenge is implicitly a question-bank view.
+// Challenge is the fourth question-bank tier, and only its Math half reaches
+// this queue (see staff_explanation_eligible). Practice-test questions never
+// carry the tier at all, so filtering to Challenge is a Math bank view.
 type DifficultyFilter = "all" | "easy" | "medium" | "hard" | "challenge";
 
 export function ExplanationManager({
