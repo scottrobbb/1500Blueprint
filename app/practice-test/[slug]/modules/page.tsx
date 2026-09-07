@@ -86,12 +86,20 @@ export default async function ModulesPage({
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {mods.map((m) => {
                 const t = tone(m);
+                const attempts = best[m.key];
                 return (
-                  <li key={m.key}>
+                  // The card is no longer one big link: a "score history" link
+                  // inside the "start" link would be an anchor nested in an
+                  // anchor. The border and hover move to the li so the two read
+                  // as one card.
+                  <li
+                    key={m.key}
+                    className="flex h-full flex-col overflow-hidden rounded-xl border border-navy/15 bg-white transition-colors hover:border-navy/30 focus-within:border-navy/30"
+                  >
                     <Link
                       href={`/practice-test/${slug}/module/${m.key}${workspaceQuery}`}
                       prefetch={false}
-                      className="group flex h-full flex-col rounded-xl border border-navy/15 bg-white p-4 transition-colors hover:border-navy/30"
+                      className="group flex flex-1 flex-col p-4"
                     >
                       <span
                         className={`inline-flex w-fit items-center rounded-md px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${t.chip}`}
@@ -102,9 +110,9 @@ export default async function ModulesPage({
                       <span className="mt-1 text-[13px] text-navy/55">
                         {m.questionCount} questions · {m.minutes} min
                       </span>
-                      {best[m.key] ? (
+                      {attempts ? (
                         <span className="mt-2 inline-flex w-fit items-center rounded-md bg-success-bg px-2 py-0.5 text-[11px] font-bold text-success-600">
-                          Best {best[m.key].correct}/{best[m.key].total}
+                          Best {attempts.correct}/{attempts.total}
                         </span>
                       ) : null}
                       <span className="mt-auto inline-flex items-center gap-1.5 pt-4 text-[13px] font-bold text-brand-600">
@@ -112,6 +120,15 @@ export default async function ModulesPage({
                         <ChevronRightIcon className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                       </span>
                     </Link>
+                    {attempts ? (
+                      <Link
+                        href={`/practice-test/${slug}/attempts?module=${encodeURIComponent(m.key)}${returnToUltimate ? "&workspace=ultimate" : ""}`}
+                        prefetch={false}
+                        className="border-t border-navy/12 px-4 py-2.5 text-[13px] font-semibold text-navy/60 transition-colors hover:bg-haze/60 hover:text-navy"
+                      >
+                        Score history ({attempts.count})
+                      </Link>
+                    ) : null}
                   </li>
                 );
               })}
