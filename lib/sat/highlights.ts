@@ -19,6 +19,20 @@ export function promptHighlightKey(questionId: string): string {
   return `${questionId}::prompt`;
 }
 
+// The highlight a fresh selection should act on, or null when the range is not
+// already covered and a new one has to be made.
+//
+// Selecting inside text that is already highlighted means "work on this one" --
+// change its colour, note it, remove it -- not "stack a second highlight over
+// it". Only a range that reaches outside every existing highlight is new.
+export function highlightCovering(
+  highlights: readonly Highlight[],
+  start: number,
+  end: number,
+): Highlight | null {
+  return highlights.find((item) => item.start <= start && item.end >= end) ?? null;
+}
+
 export function addHighlight(
   all: HighlightsByQuestion,
   questionId: string,

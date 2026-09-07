@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { parseUnderlineMarkup, unescapeDollarSigns } from "@/lib/sat/formattedText";
-import type { Highlight } from "@/lib/sat/highlights";
+import { highlightCovering, type Highlight } from "@/lib/sat/highlights";
 import { TrashIcon, UnderlineIcon, NoteIcon } from "./icons";
 
 // Re-exported so the many `from "./HighlightablePassage"` import sites keep
@@ -15,6 +15,12 @@ const COLORS = [
   { key: "#fbcfe8", label: "Pink highlight" },
 ];
 
+// Selecting text with the highlighter on paints it in this colour straight
+// away. Picking a colour from the toolbar is how you change it, not how you
+// apply it -- students were selecting text, seeing nothing happen, and
+// assuming the tool was broken.
+const DEFAULT_COLOR = COLORS[0].key;
+
 type Props = {
   text: string;
   highlights: Highlight[];
@@ -25,7 +31,7 @@ type Props = {
   className?: string;
 };
 
-type Menu = { x: number; y: number; start: number; end: number };
+type Menu = { x: number; y: number; start: number; end: number; id: string };
 type Editor = { id: string; start: number; end: number; x: number; y: number };
 
 function newId(): string {
@@ -95,7 +101,19 @@ export function HighlightablePassage({
     const hi = Math.max(start, end);
     if (hi - lo < 1) return;
     const rect = range.getBoundingClientRect();
-    setMenu({ x: rect.left + rect.width / 2, y: rect.top, start: lo, end: hi });
+
+    // Paint first, ask later. A selection that lands inside an existing
+    // highlight adopts it instead of stacking a duplicate on top, and the
+    // toolbar then works on that whole highlight rather than the few words
+    // inside it that happened to be dragged over -- recolouring part of a
+    // highlight would otherwise cut the rest of it away.
+    const existing = highlightCovering(highlights, lo, hi);
+    const id = existing?.id ?? newId();
+    const from = existing?.start ?? lo;
+    const to = existing?.end ?? hi;
+    if (!existing) onAdd({ id, start: from, end: to, color: DEFAULT_COLOR });
+
+    setMenu({ x: rect.left + rect.width / 2, y: rect.top, start: from, end: to, id });
   }
 
   function clearSelection() {
@@ -103,18 +121,19 @@ export function HighlightablePassage({
     setMenu(null);
   }
 
-  function addHighlight(color: string) {
+  function recolour(color: string) {
     if (!menu) return;
+    onRemove(menu.start, menu.end);
     onAdd({ id: newId(), start: menu.start, end: menu.end, color });
     clearSelection();
   }
 
+  // The highlight already exists by the time this runs, so the note attaches to
+  // it rather than creating a second one underneath.
   function addNote() {
     if (!menu) return;
-    const id = newId();
-    onAdd({ id, start: menu.start, end: menu.end, color: "#fde68a" });
-    setEditor({ id, start: menu.start, end: menu.end, x: menu.x, y: menu.y });
-    setDraft("");
+    setEditor({ id: menu.id, start: menu.start, end: menu.end, x: menu.x, y: menu.y });
+    setDraft(highlights.find((item) => item.id === menu.id)?.note ?? "");
     clearSelection();
   }
 
@@ -156,7 +175,7 @@ export function HighlightablePassage({
               key={c.key}
               type="button"
               aria-label={c.label}
-              onClick={() => addHighlight(c.key)}
+              onClick={() => recolour(c.key)}
               className="h-6 w-6 rounded-full border border-black/10 transition-transform hover:scale-110"
               style={{ backgroundColor: c.key }}
             />
@@ -164,7 +183,7 @@ export function HighlightablePassage({
           <button
             type="button"
             aria-label="Underline"
-            onClick={() => addHighlight("underline")}
+            onClick={() => recolour("underline")}
             className="flex h-7 w-7 items-center justify-center rounded-md text-exam-ink hover:bg-exam-line/30"
           >
             <UnderlineIcon className="h-5 w-5" />
