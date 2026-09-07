@@ -21,6 +21,13 @@ import {
 } from "@/lib/question-bank/math";
 import type { MathSessionFilters } from "@/lib/question-bank/math-queries";
 import {
+  pauseQuestionTimer,
+  questionTimerElapsedMs,
+  resumeQuestionTimer,
+  startQuestionTimer,
+  type QuestionTimer,
+} from "@/lib/question-bank/question-timer";
+import {
   addHighlight as addHighlightTo,
   removeHighlight as removeHighlightFrom,
   setHighlightNote as setNoteOn,
@@ -175,7 +182,10 @@ function ObjectiveBankRunner({
   const [explanationOpen, setExplanationOpen] = useState(false);
   const [eliminatorOn, setEliminatorOn] = useState(false);
   const [eliminated, setEliminated] = useState<Record<string, string[]>>({});
-  const enteredQuestionAt = useRef(0);
+  // One clock per question, paused with the practice. Both the number on
+  // screen and the duration sent with the attempt read from it, so they cannot
+  // disagree about how long a question took.
+  const questionTimer = useRef<QuestionTimer>(startQuestionTimer(0));
   const sessionId = useRef<string | null>(null);
   const attemptTokens = useRef<Record<string, { response: string; token: string }>>({});
   const question = orderedQuestions[currentIndex];
@@ -200,7 +210,14 @@ function ObjectiveBankRunner({
   // a full second, rather than whatever was left of the previous one.
   useEffect(() => {
     if (paused || questionResolved) return;
-    const interval = window.setInterval(() => setElapsedSeconds((value) => value + 1), 1000);
+    // Read from the clock rather than counting ticks: a backgrounded tab has
+    // its intervals throttled, and a tick count would fall behind the time the
+    // student actually spent.
+    const show = () => setElapsedSeconds(
+      Math.floor(questionTimerElapsedMs(questionTimer.current, Date.now()) / 1000),
+    );
+    show();
+    const interval = window.setInterval(show, 1000);
     return () => window.clearInterval(interval);
   }, [paused, questionResolved, currentIndex]);
 
@@ -208,7 +225,7 @@ function ObjectiveBankRunner({
   // caller of setCurrentIndex, so the reset lives in the event that moves the
   // student rather than in an effect reacting to it.
   useEffect(() => {
-    enteredQuestionAt.current = Date.now();
+    questionTimer.current = startQuestionTimer(Date.now());
   }, []);
 
   useEffect(() => {
@@ -286,21 +303,29 @@ function ObjectiveBankRunner({
 
   function goTo(index: number) {
     // The timer is per question, not per session, so it reads as pace on the
-    // question in front of the student. Resetting the display alongside
-    // enteredQuestionAt keeps it honest about the durationMs sent on submit.
+    // question in front of the student. Resetting the display alongside the
+    // clock keeps it honest about the durationMs sent on submit.
     const nextIndex = Math.max(0, Math.min(index, orderedQuestions.length - 1));
     const nextQuestion = orderedQuestions[nextIndex];
     // Coming back to a question already answered this sitting shows the time
     // it took, stopped, rather than a fresh clock counting the review.
     const answered = nextQuestion ? results[nextQuestion.id] : undefined;
     setElapsedSeconds(answered?.revealed ? answered.durationSeconds : 0);
-    enteredQuestionAt.current = Date.now();
+    questionTimer.current = startQuestionTimer(Date.now());
     setSubmitError(null);
     setSaveError(null);
     setCurrentIndex(nextIndex);
     setNavigatorOpen(false);
     setFinished(false);
     setExplanationOpen(false);
+  }
+
+  function setPracticePaused(next: boolean) {
+    const now = Date.now();
+    questionTimer.current = next
+      ? pauseQuestionTimer(questionTimer.current, now)
+      : resumeQuestionTimer(questionTimer.current, now);
+    setPaused(next);
   }
 
   function goNext() {
@@ -322,7 +347,7 @@ function ObjectiveBankRunner({
 
     // Read once and reused: the number sent to the server and the number the
     // stopped clock settles on are then the same measurement.
-    const durationMs = Date.now() - enteredQuestionAt.current;
+    const durationMs = questionTimerElapsedMs(questionTimer.current, Date.now());
     const durationSeconds = Math.max(0, Math.round(durationMs / 1000));
 
     try {
@@ -433,7 +458,7 @@ function ObjectiveBankRunner({
         highlightOn={highlightOn}
         canHighlight={passageHighlightable}
         toolPanel={toolPanel}
-        onTogglePause={() => setPaused((value) => !value)}
+        onTogglePause={() => setPracticePaused(!paused)}
         onToggleTimer={() => setTimerHidden((value) => !value)}
         onToggleHighlight={() => setHighlightOn((value) => !value)}
         onOpenTool={(tool) => setToolPanel((current) => current === tool ? null : tool)}
@@ -575,7 +600,7 @@ function ObjectiveBankRunner({
           onClose={() => setNavigatorOpen(false)}
         />
       )}
-      {paused && <PausedOverlay onResume={() => setPaused(false)} />}
+      {paused && <PausedOverlay onResume={() => setPracticePaused(false)} />}
       {toolPanel === "calculator" && <CalculatorPanel onClose={() => setToolPanel(null)} />}
       {toolPanel === "reference" && <ReferenceModal onClose={() => setToolPanel(null)} />}
       {toolPanel === "directions" && <DirectionsPanel subject={subject} onClose={() => setToolPanel(null)} />}
