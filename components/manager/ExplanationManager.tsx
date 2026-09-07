@@ -29,7 +29,9 @@ async function uploadPastedImage(file: File): Promise<string | null> {
 }
 
 type SourceFilter = "all" | ExplanationQueueItem["targetType"];
-type DifficultyFilter = "all" | "easy" | "medium" | "hard";
+// Challenge is the fourth question-bank tier. Practice-test questions never
+// carry it, so filtering to Challenge is implicitly a question-bank view.
+type DifficultyFilter = "all" | "easy" | "medium" | "hard" | "challenge";
 
 export function ExplanationManager({
   initialItems,
@@ -107,6 +109,7 @@ export function ExplanationManager({
               <option value="easy">Easy</option>
               <option value="medium">Medium</option>
               <option value="hard">Hard</option>
+              <option value="challenge">Challenge</option>
             </select>
           </div>
           <p className="mt-3 text-[11px] leading-5 text-navy/45">Only unanswered Easy, Medium, and Hard questions appear here. Challenge questions stay with Scott.</p>
