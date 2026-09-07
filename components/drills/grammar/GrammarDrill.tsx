@@ -16,6 +16,7 @@ import { GradingLoader } from "../shared/GradingLoader";
 import { ScoreBanner } from "../shared/ScoreBanner";
 import { CheckCircleIcon } from "../shared/icons";
 import { GrammarQuestionView } from "./GrammarQuestion";
+import { MathText } from "@/components/test/MathText";
 import { FlameIcon, ZapIcon } from "@/components/shell/icons";
 import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 
@@ -55,6 +56,9 @@ export function GrammarDrill({
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<ChoiceId | null>(null);
   const [feedback, setFeedback] = useState<ProcessFeedback | null>(null);
+  // Kept so the graded screen can show the explanation back: the feedback talks
+  // about what the student wrote, and by then the textarea is gone.
+  const [submittedText, setSubmittedText] = useState("");
   const [xpAwarded, setXpAwarded] = useState(0);
   const [streak, setStreak] = useState(initialStreak);
   const [masteryStreak, setMasteryStreak] = useState(initialMastery.streak);
@@ -74,6 +78,7 @@ export function GrammarDrill({
   // Grade the typed explanation against the real DB content + Scott's prompt,
   // then reveal feedback and pop the XP toast.
   async function submit(text: string) {
+    setSubmittedText(text);
     setError(null);
     setSaveWarning(null);
     setPhase("grading");
@@ -145,6 +150,7 @@ export function GrammarDrill({
     setFeedback(null);
     setError(null);
     setSaveWarning(null);
+    setSubmittedText("");
     setSelected(null);
     setMasteryEvent(null);
     setPhase("question");
@@ -228,6 +234,7 @@ export function GrammarDrill({
               {saveWarning}
             </div>
           ) : null}
+          <YourAnswerCard question={q} selected={selected} explanation={submittedText} />
           <AiFeedbackCard text={feedback.feedback} />
           <StepsBox perfect={perfect} steps={feedback.stepsMissed} />
           <CorrectAnswerCard q={q} />
@@ -311,6 +318,68 @@ function StreakNote({
             ? `Nice, ${streak}/${target} toward mastering this pattern. One more ${GRAMMAR_MASTERY_MIN_SCORE}+ to lock it in.`
             : `Scored below ${GRAMMAR_MASTERY_MIN_SCORE}, so your mastery streak reset to 0/${target}. Keep going.`}
       </span>
+    </div>
+  );
+}
+
+// What the student actually sent, shown above the feedback that talks about it.
+// Grading takes long enough that the wording is no longer on screen or in mind,
+// and until now the graded screen never said which choice they picked either --
+// only which one was right, which is not the same thing.
+function YourAnswerCard({
+  question,
+  selected,
+  explanation,
+}: {
+  question: GrammarQuestion;
+  selected: ChoiceId | null;
+  explanation: string;
+}) {
+  const choice = question.choices.find((c) => c.id === selected) ?? null;
+  const correct = choice !== null && choice.id === question.correct;
+  return (
+    <div className="overflow-hidden rounded-xl border border-navy/15 bg-white">
+      <div className="border-b border-navy/10 px-[18px] py-[11px]">
+        <h3 className="text-[13px] font-bold text-navy">Your answer</h3>
+      </div>
+      <div className="px-[18px] py-4">
+        {choice ? (
+          <div className="flex items-start gap-3">
+            <span
+              className={`flex h-7 w-7 flex-none items-center justify-center rounded-full border-[1.5px] font-display text-[13px] font-bold ${
+                correct
+                  ? "border-success/40 bg-success-bg text-success-600"
+                  : "border-danger/40 bg-danger-bg text-danger-600"
+              }`}
+            >
+              {choice.id}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-serif text-[14.5px] leading-[1.6] text-exam-ink">
+                <MathText>{choice.text}</MathText>
+              </p>
+              {/* Said in words, not only in colour, so the verdict still reads
+                  for anyone who cannot tell the two tints apart. */}
+              <p className={`mt-1 text-[12px] font-bold ${correct ? "text-success-600" : "text-danger-600"}`}>
+                {correct ? "Correct choice" : "Not the best completion"}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-navy/45">You submitted without picking a choice.</p>
+        )}
+
+        <div className="mt-4 border-t border-navy/10 pt-3.5">
+          <p className="text-[12px] font-semibold text-navy/50">What you wrote</p>
+          {explanation.trim() ? (
+            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-[1.65] text-navy/[0.78]">
+              {explanation}
+            </p>
+          ) : (
+            <p className="mt-1.5 text-sm text-navy/40">No explanation submitted.</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
