@@ -99,7 +99,7 @@ export async function getReadingWritingBankCatalog(
     totalAvailable: questions.length,
     totalAttempted: questions.filter((question) => activity.attemptedIds.has(question.id)).length,
     totalSaved: questions.filter((question) => savedIds.has(question.id)).length,
-    skills: buildSkillMetrics(skills, questions, activity),
+    skills: buildSkillMetrics(skills, questions, activity, savedIds),
   };
 }
 
@@ -325,6 +325,7 @@ function buildSkillMetrics(
   skills: ReadingSkillRow[],
   questions: ReadingQuestionRow[],
   activity: QuestionActivity,
+  savedIds: ReadonlySet<string>,
 ): ReadingWritingSkillMetric[] {
   const metrics = skills
     .filter((skill): skill is ReadingSkillRow & { domain: ReadingWritingDomain } => (
@@ -336,6 +337,8 @@ function buildSkillMetrics(
       sort: skill.sort,
       available: 0,
       attempted: 0,
+      saved: 0,
+      savedAttempted: 0,
       attempts: 0,
       correct: 0,
       accuracy: null,
@@ -350,6 +353,11 @@ function buildSkillMetrics(
     metric.available += 1;
     const attempted = activity.attemptedIds.has(question.id);
     if (attempted) metric.attempted += 1;
+    const saved = savedIds.has(question.id);
+    if (saved) {
+      metric.saved += 1;
+      if (attempted) metric.savedAttempted += 1;
+    }
     const questionActivity = activity.attemptsByQuestion.get(question.id);
     if (questionActivity) {
       metric.attempts += questionActivity.attempts;
@@ -361,6 +369,10 @@ function buildSkillMetrics(
       const bucket = metric.byLevel[level];
       bucket.available += 1;
       if (attempted) bucket.attempted += 1;
+      if (saved) {
+        bucket.saved += 1;
+        if (attempted) bucket.savedAttempted += 1;
+      }
       if (questionActivity) {
         bucket.attempts += questionActivity.attempts;
         bucket.correct += questionActivity.correct;

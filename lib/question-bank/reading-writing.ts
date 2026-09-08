@@ -36,6 +36,8 @@ export type ReadingWritingSkillMetric = {
   sort: number;
   available: number;
   attempted: number;
+  saved: number;
+  savedAttempted: number;
   attempts: number;
   correct: number;
   accuracy: number | null;

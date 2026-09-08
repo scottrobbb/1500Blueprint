@@ -36,6 +36,11 @@ export type MathChoice = {
 export type QuestionBankLevelBreakdown = Record<QuestionBankLevel, {
   available: number;
   attempted: number;
+  // Marked-for-review tallies, kept alongside the full ones so the catalog can
+  // show what the marked filter would actually hand the student instead of
+  // counting questions the session would leave out.
+  saved: number;
+  savedAttempted: number;
   // Raw tallies, kept so a combined selection can compute one exact accuracy
   // instead of averaging percentages that each mean something different.
   attempts: number;
@@ -49,6 +54,8 @@ export type MathSkillMetric = {
   sort: number;
   available: number;
   attempted: number;
+  saved: number;
+  savedAttempted: number;
   attempts: number;
   correct: number;
   accuracy: number | null;
@@ -59,10 +66,10 @@ export const QUESTION_BANK_LEVELS = ["easy", "medium", "hard", "challenge"] as c
 
 export function emptyLevelBreakdown(): QuestionBankLevelBreakdown {
   return {
-    easy: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
-    medium: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
-    hard: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
-    challenge: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+    easy: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+    medium: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+    hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+    challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
   };
 }
 
@@ -72,11 +79,27 @@ export function emptyLevelBreakdown(): QuestionBankLevelBreakdown {
 // their nominal difficulty bucket into their own "challenge" level, so
 // selecting "Hard" never double-counts them alongside selecting "Challenge".
 export function skillMetricForDifficulty(
-  metric: { available: number; attempted: number; accuracy: number | null; byLevel: QuestionBankLevelBreakdown },
+  metric: {
+    available: number;
+    attempted: number;
+    saved: number;
+    savedAttempted: number;
+    accuracy: number | null;
+    byLevel: QuestionBankLevelBreakdown;
+  },
   difficulty: MathDifficultyFilter,
+  // Marked-for-review narrows the pool the same way difficulty does, so the
+  // counts have to compose: "hard, marked" is the hard questions that are also
+  // marked, not all hard ones. Accuracy stays the skill's record over the
+  // difficulty selection -- marking a question says nothing about how it went.
+  savedOnly = false,
 ): { available: number; attempted: number; accuracy: number | null } {
   if (difficulty.length === 0) {
-    return { available: metric.available, attempted: metric.attempted, accuracy: metric.accuracy };
+    return {
+      available: savedOnly ? metric.saved : metric.available,
+      attempted: savedOnly ? metric.savedAttempted : metric.attempted,
+      accuracy: metric.accuracy,
+    };
   }
   // Levels are disjoint -- challenge is carved out of its nominal difficulty
   // bucket -- so combining them is a plain sum with nothing counted twice, and
@@ -89,8 +112,8 @@ export function skillMetricForDifficulty(
   let sawAccuracy = false;
   for (const level of new Set(difficulty)) {
     const bucket = metric.byLevel[level];
-    available += bucket.available;
-    attempted += bucket.attempted;
+    available += savedOnly ? bucket.saved : bucket.available;
+    attempted += savedOnly ? bucket.savedAttempted : bucket.attempted;
     attempts += bucket.attempts;
     correct += bucket.correct;
     if (bucket.accuracy !== null) sawAccuracy = true;
