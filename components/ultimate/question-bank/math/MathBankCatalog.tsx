@@ -12,6 +12,7 @@ import {
   type MathBankCatalog,
   type MathCompletionFilter,
   type MathDifficultyFilter,
+  type QuestionOrder,
   type MathSkillMetric,
   type QuestionBankLevel,
 } from "@/lib/question-bank/math";
@@ -55,6 +56,7 @@ export function SubjectBankCatalogView({
   // Marked-for-review is a toggle rather than another Completion option: a
   // marked question can be unanswered, answered, or still wrong, so the two
   // choices have to compose instead of replacing one another.
+  const [order, setOrder] = useState<QuestionOrder>("normal");
   const [savedOnly, setSavedOnly] = useState(false);
   const [selectedSkills, setSelectedSkills] = useState<Set<string>>(() => new Set());
 
@@ -68,8 +70,8 @@ export function SubjectBankCatalogView({
   const totalAvailable = difficulty.length === 0
     ? catalog.totalAvailable
     : catalog.skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty).available, 0);
-  const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills], savedOnly);
-  const allPracticeHref = buildPracticeHref(basePath, difficulty, completion, [], savedOnly);
+  const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills], savedOnly, order);
+  const allPracticeHref = buildPracticeHref(basePath, difficulty, completion, [], savedOnly, order);
 
   function toggleSkill(name: string) {
     setSelectedSkills((current) => {
@@ -137,6 +139,15 @@ export function SubjectBankCatalogView({
               ["unanswered", "Not attempted"],
               ["attempted", "Attempted"],
               ["incorrect", "Still incorrect"],
+            ]}
+          />
+          <FilterSelect
+            label="Question order"
+            value={order}
+            onChange={(value) => setOrder(value as QuestionOrder)}
+            options={[
+              ["normal", "Normal order"],
+              ["random", "Random order"],
             ]}
           />
           <button
@@ -386,6 +397,7 @@ function buildPracticeHref(
   completion: MathCompletionFilter,
   skills: string[],
   savedOnly: boolean,
+  order: QuestionOrder,
 ): string {
   const params = new URLSearchParams();
   const difficultyParam = difficultyFilterParam(difficulty);
@@ -393,6 +405,9 @@ function buildPracticeHref(
   if (completion !== "all") params.set("completion", completion);
   if (savedOnly) params.set("saved", "1");
   if (skills.length > 0) params.set("skills", skills.join("|"));
+  // No seed here: generating one during render would differ between the server
+  // pass and hydration. The practice page deals it and redirects once.
+  if (order === "random") params.set("order", "random");
   const query = params.toString();
   return `${basePath}/practice${query ? `?${query}` : ""}`;
 }

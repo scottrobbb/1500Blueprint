@@ -4,7 +4,10 @@ import { getSession } from "@/lib/auth/session";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import {
+  newOrderSeed,
   parseCompletionFilter,
+  parseOrderSeed,
+  parseQuestionOrder,
   parseDifficultyFilter,
   parseQuestionLimit,
   parseSavedFilter,
@@ -38,6 +41,15 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
     savedOnly: parseSavedFilter(readParam(params.saved)),
   };
   const limit = parseQuestionLimit(readParam(params.limit));
+  // A random session is dealt once and then kept: the seed rides in the URL so
+  // a refresh or a back button re-deals the same order instead of renumbering
+  // questions the student has already answered. Assigning it needs a round
+  // trip, but only on the first arrival -- afterwards the seed is already here.
+  const order = parseQuestionOrder(readParam(params.order));
+  const shuffleSeed = parseOrderSeed(readParam(params.seed));
+  if (order === "random" && shuffleSeed === null) {
+    redirect(`/ultimate/bank/math/practice?${withOrderSeed(params, newOrderSeed())}`);
+  }
   const fromPlanner = readParam(params.from) === "planner";
   const [access, allowance] = await Promise.all([
     getStudentAccess(session.email),
@@ -54,6 +66,7 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
     includeChallenge: access.entitlements.challengeQuestions,
     freeTierOnly: access.plan === "free",
     pin: plannerTask?.pin,
+    shuffleSeed: order === "random" ? shuffleSeed : null,
   });
   const questions = plannerTask?.pin.mode === "resume"
     ? pinnedQuestionBankSession(
@@ -79,4 +92,19 @@ export default async function UltimateMathPracticePage({ searchParams }: PagePro
 
 function readParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
+}
+
+// Every filter the student arrived with, plus the seed just dealt for them.
+function withOrderSeed(
+  params: Record<string, string | string[] | undefined>,
+  seed: number,
+): string {
+  const next = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (key === "seed") continue;
+    if (typeof value === "string") next.set(key, value);
+    else if (Array.isArray(value)) for (const entry of value) next.append(key, entry);
+  }
+  next.set("seed", String(seed));
+  return next.toString();
 }

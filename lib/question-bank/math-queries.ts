@@ -16,6 +16,7 @@ import {
   questionBankLevel,
   questionsMatchingSaved,
   resumedQuestionBankSession,
+  shuffleBySeed,
   sortByOriginalOrder,
   type MathAnswerType,
   type MathBankCatalog,
@@ -120,7 +121,7 @@ export async function getMathRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
   limit: number | null = null,
-  options: { includeChallenge?: boolean; freeTierOnly?: boolean; pin?: QuestionBankSessionPin } = {},
+  options: { includeChallenge?: boolean; freeTierOnly?: boolean; pin?: QuestionBankSessionPin; shuffleSeed?: number | null } = {},
 ): Promise<MathRunnerQuestion[]> {
   const rows = filterForPlan(await loadEligibleMathRows(), {
     includeChallenge: options.includeChallenge ?? true,
@@ -153,7 +154,9 @@ export async function getMathRunnerQuestions(
     : skillRows.filter((row) => carriedIds.has(row.id));
   // The session is restored to the corpus's original order so a question's
   // number in the panel never shifts with the filters (see sortByOriginalOrder).
-  return sortByOriginalOrder(
+  // A planner task keeps corpus order whatever the URL says: its questions are
+  // numbered against a set the student may already be partway through.
+  const session = sortByOriginalOrder(
     resumedQuestionBankSession(
       toMathRunnerQuestions(carriedRows),
       toMathRunnerQuestions(difficultyRows),
@@ -163,6 +166,9 @@ export async function getMathRunnerQuestions(
     ),
     orderIndex,
   );
+  return options.shuffleSeed != null && !options.pin
+    ? shuffleBySeed(session, options.shuffleSeed)
+    : session;
 }
 
 

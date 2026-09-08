@@ -23,6 +23,7 @@ import {
   questionBankLevel,
   questionsMatchingSaved,
   resumedQuestionBankSession,
+  shuffleBySeed,
   sortByOriginalOrder,
   type QuestionBankLevel,
   type QuestionBankSessionPin,
@@ -106,7 +107,7 @@ export async function getReadingWritingRunnerQuestions(
   email: string,
   filters: MathSessionFilters,
   limit: number | null = null,
-  options: { includeChallenge?: boolean; freeTierOnly?: boolean; pin?: QuestionBankSessionPin } = {},
+  options: { includeChallenge?: boolean; freeTierOnly?: boolean; pin?: QuestionBankSessionPin; shuffleSeed?: number | null } = {},
 ): Promise<ReadingWritingRunnerQuestion[]> {
   const rows = filterForPlan(await loadEligibleReadingRows(), {
     includeChallenge: options.includeChallenge ?? true,
@@ -139,7 +140,9 @@ export async function getReadingWritingRunnerQuestions(
     : skillRows.filter((row) => carriedIds.has(row.id));
   // The session is restored to the corpus's original order so a question's
   // number in the panel never shifts with the filters (see sortByOriginalOrder).
-  return sortByOriginalOrder(
+  // A planner task keeps corpus order whatever the URL says: its questions are
+  // numbered against a set the student may already be partway through.
+  const session = sortByOriginalOrder(
     resumedQuestionBankSession(
       toReadingWritingRunnerQuestions(carriedRows),
       toReadingWritingRunnerQuestions(difficultyRows),
@@ -149,6 +152,9 @@ export async function getReadingWritingRunnerQuestions(
     ),
     orderIndex,
   );
+  return options.shuffleSeed != null && !options.pin
+    ? shuffleBySeed(session, options.shuffleSeed)
+    : session;
 }
 
 
