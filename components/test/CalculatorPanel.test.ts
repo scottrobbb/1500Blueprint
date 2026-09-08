@@ -1,31 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { clampCalculatorPosition } from "./CalculatorPanel";
+import { clampCalculatorWidth } from "./CalculatorPanel";
 
-test("keeps the calculator inside a 375px viewport while dragging", () => {
-  assert.deepEqual(
-    clampCalculatorPosition({
-      x: 200,
-      y: -20,
-      panelWidth: 352,
-      panelHeight: 448,
-      viewportWidth: 375,
-      viewportHeight: 667,
-    }),
-    { x: 15, y: 8 },
-  );
+test("the dock never gets narrower than the calculator needs", () => {
+  assert.equal(clampCalculatorWidth(100, 1440), 320);
+  assert.equal(clampCalculatorWidth(420, 1440), 420);
 });
 
-test("pins a viewport-width expanded calculator to the gutter", () => {
-  assert.deepEqual(
-    clampCalculatorPosition({
-      x: 100,
-      y: 300,
-      panelWidth: 359,
-      panelHeight: 651,
-      viewportWidth: 375,
-      viewportHeight: 667,
-    }),
-    { x: 8, y: 8 },
-  );
+// The question keeps the larger share of the screen; a dock that could grow
+// past the halfway mark would put the stem back behind the calculator, which is
+// the whole reason it stopped floating.
+test("the dock never takes more than its share of the viewport", () => {
+  assert.equal(clampCalculatorWidth(2_000, 1440), 792);
+  assert.equal(clampCalculatorWidth(900, 1000), 550);
+});
+
+// On a narrow window the floor wins over the fraction, so the panel stays
+// usable rather than collapsing to a sliver.
+test("a narrow window still gets a usable calculator", () => {
+  assert.equal(clampCalculatorWidth(400, 500), 320);
+  assert.equal(clampCalculatorWidth(100, 320), 320);
 });

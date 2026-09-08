@@ -299,6 +299,21 @@ body {
   font-family: var(--font-dm-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+/* The Desmos calculator docks to the left instead of floating over the question
+   (see CalculatorPanel). The page is moved aside from here so that none of the
+   runners that mount it have to lay themselves out around it. Below md the
+   calculator covers the screen instead, because there is no room to sit beside
+   anything, so no padding is applied there. */
+body.calculator-docked {
+  padding-left: 0;
+}
+
+@media (min-width: 768px) {
+  body.calculator-docked {
+    padding-left: var(--calculator-dock, 0px);
+  }
+}
+
 /* Bluebook perforated dashed separator (header / footer / question strip). */
 .bb-perf {
   height: 2px;
