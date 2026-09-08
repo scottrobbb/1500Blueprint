@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ExplanationText } from "@/components/test/ExplanationText";
+import { BluebookSurface } from "@/components/theme/BluebookSurface";
 import { MathText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import {
@@ -301,6 +302,9 @@ function ExplanationWorkspace({
       </header>
 
       <div className="grid gap-6 p-5 sm:p-6 xl:grid-cols-2">
+        {/* What the student sees, so it is pinned light like the exam itself:
+            the hardcoded greys below are Bluebook's, not the app's palette. */}
+        <BluebookSurface>
         <div className="min-w-0 rounded-2xl border border-[#d8dce3] bg-white p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-navy/35">Student view</p>
@@ -363,6 +367,7 @@ function ExplanationWorkspace({
             </>
           )}
         </div>
+        </BluebookSurface>
 
         <div className="min-w-0">
           <label htmlFor="explanation" className="text-sm font-extrabold text-navy">Explanation</label>
@@ -377,7 +382,7 @@ function ExplanationWorkspace({
             </div>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-navy/[0.08]"><div className={`h-full rounded-full transition-[width] duration-200 ${minimumMet ? "bg-success" : "bg-brand"}`} style={{ width: `${Math.min(100, (wordCount / EXPLANATION_MIN_WORDS) * 100)}%` }} /></div>
           </div>
-          <div className="mt-4 rounded-2xl border border-brand/15 bg-ice/45 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Live preview</p><div className="mt-3 font-serif text-[16px] leading-7 text-[#222]">{explanation.trim() ? <ExplanationText text={explanation} /> : <span className="font-sans text-sm text-navy/35">The formatted explanation appears here.</span>}</div></div>
+          <div className="mt-4 rounded-2xl border border-brand/15 bg-ice/45 p-4"><p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-brand-600">Live preview</p><div className="mt-3 font-serif text-[16px] leading-7 text-ink">{explanation.trim() ? <ExplanationText text={explanation} /> : <span className="font-sans text-sm text-navy/35">The formatted explanation appears here.</span>}</div></div>
           {error ? <p role="alert" className="mt-3 rounded-xl bg-danger-bg px-3 py-2 text-sm font-semibold text-danger-600">{error}</p> : null}
           <div className="mt-4 flex justify-end"><button type="button" onClick={() => void save()} disabled={saving || !minimumMet} className="min-h-11 cursor-pointer rounded-xl bg-brand px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:cursor-not-allowed disabled:bg-navy/15 disabled:text-navy/35">{saving ? "Saving…" : "Save explanation"}</button></div>
         </div>
