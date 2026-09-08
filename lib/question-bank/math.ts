@@ -411,6 +411,47 @@ export function sortByOriginalOrder<T extends { id: string }>(
   return [...questions].sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
 }
 
+// Question order. "Normal" is the corpus order sortByOriginalOrder restores;
+// "random" shuffles the chosen set without changing which questions it holds.
+export type QuestionOrder = "normal" | "random";
+
+export function parseQuestionOrder(value: string | undefined): QuestionOrder {
+  return value === "random" ? "random" : "normal";
+}
+
+// A random session carries its seed in the URL. Without one, every re-render --
+// a refresh, a back button -- would deal a different order, and the numbered
+// slots in the panel would move out from under questions already answered.
+export function parseOrderSeed(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 0 && parsed <= MAX_ORDER_SEED ? parsed : null;
+}
+
+export const MAX_ORDER_SEED = 2 ** 31 - 1;
+
+export function newOrderSeed(): number {
+  return Math.floor(Math.random() * (MAX_ORDER_SEED + 1));
+}
+
+// Ranks each question by a hash of the seed and its id, so the order is random
+// to the student, identical on every render of the same seed, and independent
+// of which other questions the filters happened to select.
+function seededRank(seed: number, id: string): number {
+  let hash = seed >>> 0;
+  for (let index = 0; index < id.length; index += 1) {
+    hash = Math.imul(hash ^ id.charCodeAt(index), 2654435761);
+    hash = (hash << 13) | (hash >>> 19);
+  }
+  return hash >>> 0;
+}
+
+export function shuffleBySeed<T extends { id: string }>(questions: T[], seed: number): T[] {
+  // Ties break on id so the comparator is total: two questions that hash alike
+  // must not swap places between renders.
+  return [...questions].sort((a, b) => seededRank(seed, a.id) - seededRank(seed, b.id) || a.id.localeCompare(b.id));
+}
+
 export function normalizeMathResponse(value: string): string {
   return value.trim().replace(/\s+/g, "").replace(/^\+/, "");
 }
