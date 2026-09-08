@@ -20,10 +20,10 @@ export default async function ManagerPage() {
   const editorStats = stats.find((item) => item.email === session.email);
 
   return (
-    <main className="min-h-dvh bg-canvas text-ink">
-      {/* Fixed navy chrome, pinned the way the Ultimate rail is: white type is
-          burned onto it, so it must not invert with the palette. */}
-      <header data-theme="light" className="border-b border-white/10 bg-[#0c2348] px-4 py-4 text-white sm:px-7">
+    // The explanation queue previews Bluebook-styled question content, so this
+    // staff tool stays on the light palette alongside the exam replica.
+    <main data-theme="light" className="min-h-dvh bg-[#f3f6fa] text-ink">
+      <header className="border-b border-white/10 bg-[#0c2348] px-4 py-4 text-white sm:px-7">
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-4">
           <Logo className="[&>img]:h-8 [&>img]:w-8 [&_span]:text-white" />
           <div className="h-8 w-px bg-white/15" />
