@@ -6,6 +6,7 @@ import { AvailableCoursesSection, CurrentCourseSection, HomeDrillsPanel } from "
 import { HomeQuickLinks } from "@/components/ultimate/home/home-quick-links";
 import { HomeUpgradePrompts } from "@/components/ultimate/home/home-upgrade-prompts";
 import { LiveCallBanner } from "@/components/ultimate/home/live-call-banner";
+import { SurveyBanner } from "@/components/ultimate/home/survey-banner";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
@@ -50,6 +51,8 @@ export default async function UltimateHomePage({ searchParams }: UltimateHomePag
       {showLiveBanner && liveCall ? <LiveCallBanner call={liveCall} /> : null}
 
       <AcceleratorBanner />
+
+      <SurveyBanner />
 
       {billing === "success" ? (
         <div
