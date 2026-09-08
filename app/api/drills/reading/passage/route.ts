@@ -25,8 +25,48 @@ import { consumeRateLimit } from "@/lib/security/rate-limit";
 import { reportServerError } from "@/lib/observability/server";
 
 // Passage quality is the whole drill, so generation runs on a stronger model
-// than grading does. One call per attempt, ~350 output tokens.
+// than grading does. One call per attempt.
 const MODEL = process.env.READING_PASSAGE_MODEL ?? "claude-sonnet-5";
+
+// Sonnet 5 thinks by default, and thinking tokens come out of max_tokens before
+// a single character of the passage is written. The old 2048 ceiling was sized
+// for the JSON alone, so the reasoning ate the budget and the response was cut
+// off mid-object — every attempt failed to parse. The budget now covers both,
+// and effort is held low because writing one short passage does not need deep
+// deliberation.
+const MAX_TOKENS = 8192;
+const EFFORT = "low" as const;
+
+// Structured output: the model is constrained to this shape, so the response
+// cannot come back fenced, wrapped in prose, or with `body` as a bare string
+// instead of an array — the failure modes a hand-rolled JSON parse has to guess at.
+const PASSAGE_SCHEMA = {
+  type: "object",
+  properties: {
+    topic: { type: "string" },
+    body: { type: "array", items: { type: "string" } },
+    corePoints: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { label: { type: "string" }, text: { type: "string" } },
+        required: ["label", "text"],
+        additionalProperties: false,
+      },
+    },
+    depthPoints: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: { label: { type: "string" }, text: { type: "string" } },
+        required: ["label", "text"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["topic", "body", "corePoints", "depthPoints"],
+  additionalProperties: false,
+} as const;
 
 function collectText(content: Anthropic.Messages.ContentBlock[]): string {
   let text = "";
@@ -167,17 +207,26 @@ export async function POST() {
   const level = readingLevel(progress.level);
 
   let raw: string;
+  let stopReason: string;
   try {
     const anthropic = new Anthropic({ apiKey });
     const message = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 2048,
+      max_tokens: MAX_TOKENS,
+      output_config: {
+        effort: EFFORT,
+        format: { type: "json_schema", schema: PASSAGE_SCHEMA },
+      },
       system: readingPassageSystemPrompt(),
       messages: [
         { role: "user", content: buildReadingPassageUser(level.difficulty, avoidTopics) },
       ],
     });
     raw = collectText(message.content);
+    // A run that ends on max_tokens or a refusal returns a partial object, which
+    // reads downstream as unparseable JSON. Carrying the reason into the log is
+    // what separates "the model wrote something odd" from "we cut it off".
+    stopReason = message.stop_reason ?? "unknown";
   } catch (error) {
     reportServerError("drill.reading.generation_request_failed", generationFailure(error), {
       provider: "anthropic",
@@ -198,6 +247,7 @@ export async function POST() {
       route: "/api/drills/reading/passage",
       method: "POST",
       source: MODEL,
+      reason: `stop_reason=${stopReason} chars=${raw.length}`,
     });
     return NextResponse.json({ error: "Could not read the generated passage" }, { status: 502 });
   }
@@ -218,6 +268,7 @@ export async function POST() {
       route: "/api/drills/reading/passage",
       method: "POST",
       source: MODEL,
+      reason: `stop_reason=${stopReason} body=${body.length} core=${corePoints.length}`,
     });
     return NextResponse.json({ error: "Could not read the generated passage" }, { status: 502 });
   }
