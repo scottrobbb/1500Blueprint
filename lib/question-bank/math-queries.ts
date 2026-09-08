@@ -105,9 +105,8 @@ export async function getMathBankCatalog(
     questions.map((question) => question.id),
     options.strictActivity,
   );
-  const metrics = buildSkillMetrics(skills, questions, activity);
-
   const savedIds = await listSavedQuestionIds(email);
+  const metrics = buildSkillMetrics(skills, questions, activity, savedIds);
 
   return {
     totalAvailable: questions.length,
@@ -403,6 +402,7 @@ function buildSkillMetrics(
   skills: MathSkillRow[],
   questions: MathQuestionRow[],
   activity: QuestionActivity,
+  savedIds: ReadonlySet<string>,
 ): MathSkillMetric[] {
   const metrics = skills
     .filter((skill): skill is MathSkillRow & { domain: MathDomain } => isMathDomain(skill.domain))
@@ -412,6 +412,8 @@ function buildSkillMetrics(
       sort: skill.sort,
       available: 0,
       attempted: 0,
+      saved: 0,
+      savedAttempted: 0,
       attempts: 0,
       correct: 0,
       accuracy: null,
@@ -427,6 +429,11 @@ function buildSkillMetrics(
     metric.available += 1;
     const attempted = activity.attemptedIds.has(question.id);
     if (attempted) metric.attempted += 1;
+    const saved = savedIds.has(question.id);
+    if (saved) {
+      metric.saved += 1;
+      if (attempted) metric.savedAttempted += 1;
+    }
     const questionActivity = activity.attemptsByQuestion.get(question.id);
     if (questionActivity) {
       metric.attempts += questionActivity.attempts;
@@ -438,6 +445,10 @@ function buildSkillMetrics(
       const bucket = metric.byLevel[level];
       bucket.available += 1;
       if (attempted) bucket.attempted += 1;
+      if (saved) {
+        bucket.saved += 1;
+        if (attempted) bucket.savedAttempted += 1;
+      }
       if (questionActivity) {
         bucket.attempts += questionActivity.attempts;
         bucket.correct += questionActivity.correct;

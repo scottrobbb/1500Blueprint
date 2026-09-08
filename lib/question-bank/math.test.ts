@@ -208,12 +208,14 @@ test("a combined selection sums its levels and recomputes one accuracy", () => {
   const metric = {
     available: 100,
     attempted: 40,
+    saved: 0,
+    savedAttempted: 0,
     accuracy: 70,
     byLevel: {
-      easy: { available: 40, attempted: 20, attempts: 20, correct: 18, accuracy: 90 },
-      medium: { available: 30, attempted: 10, attempts: 10, correct: 7, accuracy: 70 },
-      hard: { available: 20, attempted: 6, attempts: 10, correct: 5, accuracy: 50 },
-      challenge: { available: 10, attempted: 4, attempts: 10, correct: 1, accuracy: 10 },
+      easy: { available: 40, attempted: 20, saved: 0, savedAttempted: 0, attempts: 20, correct: 18, accuracy: 90 },
+      medium: { available: 30, attempted: 10, saved: 0, savedAttempted: 0, attempts: 10, correct: 7, accuracy: 70 },
+      hard: { available: 20, attempted: 6, saved: 0, savedAttempted: 0, attempts: 10, correct: 5, accuracy: 50 },
+      challenge: { available: 10, attempted: 4, saved: 0, savedAttempted: 0, attempts: 10, correct: 1, accuracy: 10 },
     },
   };
 
@@ -232,14 +234,68 @@ test("a combined selection with no attempts reports no accuracy", () => {
   const metric = {
     available: 10,
     attempted: 0,
+    saved: 0,
+    savedAttempted: 0,
     accuracy: null,
     byLevel: {
-      easy: { available: 5, attempted: 0, attempts: 0, correct: 0, accuracy: null },
-      medium: { available: 5, attempted: 0, attempts: 0, correct: 0, accuracy: null },
-      hard: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
-      challenge: { available: 0, attempted: 0, attempts: 0, correct: 0, accuracy: null },
+      easy: { available: 5, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+      medium: { available: 5, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+      hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+      challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
     },
   };
 
   assert.equal(skillMetricForDifficulty(metric, ["easy", "medium"]).accuracy, null);
+});
+
+// The marked-for-review toggle narrows the pool the same way difficulty does,
+// so the catalog's counts have to compose the two rather than showing a total
+// the session would never hand back.
+test("marked-for-review counts compose with the difficulty filter", () => {
+  const metric = {
+    available: 100,
+    attempted: 40,
+    saved: 12,
+    savedAttempted: 5,
+    accuracy: 70,
+    byLevel: {
+      easy: { available: 40, attempted: 20, saved: 2, savedAttempted: 1, attempts: 20, correct: 18, accuracy: 90 },
+      medium: { available: 30, attempted: 10, saved: 3, savedAttempted: 1, attempts: 10, correct: 7, accuracy: 70 },
+      hard: { available: 20, attempted: 6, saved: 5, savedAttempted: 2, attempts: 10, correct: 5, accuracy: 50 },
+      challenge: { available: 10, attempted: 4, saved: 2, savedAttempted: 1, attempts: 10, correct: 1, accuracy: 10 },
+    },
+  };
+
+  // Off, nothing changes.
+  assert.deepEqual(skillMetricForDifficulty(metric, []), { available: 100, attempted: 40, accuracy: 70 });
+
+  // On with no difficulty chosen: the skill's marked tally, not its full one.
+  assert.deepEqual(skillMetricForDifficulty(metric, [], true), { available: 12, attempted: 5, accuracy: 70 });
+
+  // On with a difficulty chosen: marked *and* hard, not all hard and not all marked.
+  assert.deepEqual(skillMetricForDifficulty(metric, ["hard"], true), { available: 5, attempted: 2, accuracy: 50 });
+
+  // Combined levels still sum, and still only the marked ones.
+  const combined = skillMetricForDifficulty(metric, ["hard", "challenge"], true);
+  assert.equal(combined.available, 7);
+  assert.equal(combined.attempted, 3);
+});
+
+test("a skill with nothing marked reports no questions rather than its full count", () => {
+  const metric = {
+    available: 25,
+    attempted: 9,
+    saved: 0,
+    savedAttempted: 0,
+    accuracy: 60,
+    byLevel: {
+      easy: { available: 25, attempted: 9, saved: 0, savedAttempted: 0, attempts: 9, correct: 5, accuracy: 60 },
+      medium: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+      hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+      challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+    },
+  };
+  assert.equal(skillMetricForDifficulty(metric, [], true).available, 0);
+  assert.equal(skillMetricForDifficulty(metric, ["easy"], true).available, 0);
+  assert.equal(skillMetricForDifficulty(metric, [], false).available, 25);
 });

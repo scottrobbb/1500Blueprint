@@ -62,14 +62,17 @@ export function SubjectBankCatalogView({
 
   const selectedAvailable = useMemo(
     () => catalog.skills.reduce(
-      (total, skill) => total + (selectedSkills.has(skill.name) ? skillMetricForDifficulty(skill, difficulty).available : 0),
+      (total, skill) => total + (selectedSkills.has(skill.name) ? skillMetricForDifficulty(skill, difficulty, savedOnly).available : 0),
       0,
     ),
-    [catalog.skills, selectedSkills, difficulty],
+    [catalog.skills, selectedSkills, difficulty, savedOnly],
   );
-  const totalAvailable = difficulty.length === 0
+  // Marked narrows the pool exactly as difficulty does, so once either is on
+  // the count has to be summed from the skills rather than read off the
+  // catalog's unfiltered total.
+  const totalAvailable = difficulty.length === 0 && !savedOnly
     ? catalog.totalAvailable
-    : catalog.skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty).available, 0);
+    : catalog.skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty, savedOnly).available, 0);
   const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills], savedOnly, order);
   const allPracticeHref = buildPracticeHref(basePath, difficulty, completion, [], savedOnly, order);
 
@@ -187,7 +190,7 @@ export function SubjectBankCatalogView({
               Start across all {skillCount} skills. Your active difficulty{savedOnly ? ", marked" : ""} and completion filters still apply.
             </p>
           </div>
-          {catalog.totalAvailable > 0 ? (
+          {totalAvailable > 0 ? (
             <Link
               href={allPracticeHref}
               prefetch={false}
@@ -218,12 +221,13 @@ export function SubjectBankCatalogView({
                     {domain}
                   </h2>
                   <span className="text-xs font-semibold text-navy/35">
-                    {skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty).available, 0)} questions
+                    {skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty, savedOnly).available, 0)} questions
                   </span>
                 </div>
                 <ul className="space-y-2">
                   {skills.map((skill) => (
                     <SkillRow
+                      savedOnly={savedOnly}
                       key={skill.name}
                       skill={skill}
                       difficulty={difficulty}
@@ -263,15 +267,17 @@ export default SubjectBankCatalogView;
 function SkillRow({
   skill,
   difficulty,
+  savedOnly,
   checked,
   onToggle,
 }: {
   skill: BankSkillMetric;
   difficulty: MathDifficultyFilter;
+  savedOnly: boolean;
   checked: boolean;
   onToggle: () => void;
 }) {
-  const view = skillMetricForDifficulty(skill, difficulty);
+  const view = skillMetricForDifficulty(skill, difficulty, savedOnly);
   const progress = view.available > 0 ? Math.round((view.attempted / view.available) * 100) : 0;
 
   return (
@@ -286,7 +292,7 @@ function SkillRow({
             type="checkbox"
             checked={checked}
             onChange={onToggle}
-            disabled={skill.available === 0}
+            disabled={view.available === 0}
             className="mt-0.5 h-5 w-5 flex-none accent-brand"
           />
           <span>
@@ -294,7 +300,9 @@ function SkillRow({
             {skill.available === 0 ? (
               <span className="mt-1 block text-xs font-semibold text-navy/35">Content queued</span>
             ) : view.available === 0 ? (
-              <span className="mt-1 block text-xs font-semibold text-navy/35">No {difficulty} questions yet</span>
+              <span className="mt-1 block text-xs font-semibold text-navy/35">
+                {savedOnly ? "Nothing marked here" : `No ${difficulty} questions yet`}
+              </span>
             ) : null}
           </span>
         </span>
