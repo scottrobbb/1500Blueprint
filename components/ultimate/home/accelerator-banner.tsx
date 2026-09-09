@@ -1,4 +1,4 @@
-// Announcement for the Blueprint Accelerator reading course, shown to everyone.
+// Announcement for the Blueprint Accelerator advanced reading course, shown to everyone.
 //
 // Fixed brand artwork with white type burned on, like the live-call banner
 // beside it: data-theme="light" pins the tokens so the gradient and the type
@@ -10,8 +10,8 @@ export function AcceleratorBanner() {
   return (
     <div data-theme="light" className={bannerClassName}>
       <p className="text-sm font-bold">
-        Blueprint Accelerator, our new reading course, releases around September 20 for Blueprint
-        Max users.
+        Blueprint Accelerator, our new advanced reading course, releases around September 20 for
+        Blueprint Max users.
       </p>
     </div>
   );
