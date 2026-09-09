@@ -35,6 +35,16 @@ const blockKinds: { kind: LessonBlockKind; label: string; description: string }[
   { kind: "practice", label: "Practice", description: "Native MCQ or free-response runner" },
 ];
 
+// Lesson URLs carry no module segment, so a lesson slug has to be free across
+// the whole course. Counting within the module handed the first lesson of every
+// module the same "lesson-1", which rendered two outline rows with one href.
+function nextLessonSlug(course: Course): string {
+  const taken = new Set(course.modules.flatMap((module) => module.lessons.map((lesson) => lesson.slug)));
+  let n = taken.size + 1;
+  while (taken.has(`lesson-${n}`)) n += 1;
+  return `lesson-${n}`;
+}
+
 function cleanSlug(value: string): string { return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, ""); }
 function move<T>(items: T[], index: number, direction: -1 | 1): T[] { const target = index + direction; if (target < 0 || target >= items.length) return items; const next = [...items]; [next[index], next[target]] = [next[target], next[index]]; return next; }
 
@@ -86,7 +96,7 @@ export function CourseEditor({ initial }: { initial: Course }) {
   function addLesson(moduleIndex: number) {
     const courseModule = course.modules[moduleIndex];
     const id = crypto.randomUUID();
-    const lesson: CourseLesson = { id, slug: `lesson-${courseModule.lessons.length + 1}`, title: "New lesson", summary: null, position: courseModule.lessons.length + 1, estimatedMinutes: 10, status: "draft", completed: false, blocks: [] };
+    const lesson: CourseLesson = { id, slug: nextLessonSlug(course), title: "New lesson", summary: null, position: courseModule.lessons.length + 1, estimatedMinutes: 10, status: "draft", completed: false, blocks: [] };
     updateModule(moduleIndex, { lessons: [...courseModule.lessons, lesson] });
     setSelectedLessonId(id);
   }

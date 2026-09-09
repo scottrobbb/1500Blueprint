@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   findActiveCourse,
+  findDuplicateLessonSlug,
   findNextIncompleteLesson,
   getContinueCourseHref,
   getContinueCourseLabel,
@@ -101,4 +102,29 @@ test("label helpers avoid nested ternaries at call sites", () => {
   assert.equal(getHomeCourseCardLabel(true, 50), "Unlock");
   assert.equal(getHomeCourseCardLabel(false, 50), "Continue");
   assert.equal(getHomeCourseCardLabel(false, 0), "Start");
+});
+
+test("findDuplicateLessonSlug accepts a course whose lesson slugs are all distinct", () => {
+  assert.equal(findDuplicateLessonSlug(course().modules), null);
+  assert.equal(findDuplicateLessonSlug([]), null);
+});
+
+test("findDuplicateLessonSlug catches a slug reused across two modules", () => {
+  // What broke Reading 101: the editor numbered new lessons within their own
+  // module, so the first lesson of every module was handed "lesson-1". Both
+  // outline rows then pointed at /courses/reading-101/lesson-1.
+  const modules = [
+    { lessons: [{ slug: "lesson-1" }] },
+    { lessons: [{ slug: "lesson-1" }] },
+  ];
+  assert.equal(findDuplicateLessonSlug(modules), "lesson-1");
+});
+
+test("findDuplicateLessonSlug ignores blank slugs and trims before comparing", () => {
+  assert.equal(findDuplicateLessonSlug([{ lessons: [{ slug: "" }, { slug: null }] }]), null);
+  assert.equal(findDuplicateLessonSlug([{ lessons: [{ slug: "intro" }, { slug: " intro " }] }]), "intro");
+});
+
+test("findDuplicateLessonSlug tolerates a module with no lessons", () => {
+  assert.equal(findDuplicateLessonSlug([{}, { lessons: [{ slug: "intro" }] }]), null);
 });
