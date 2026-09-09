@@ -139,6 +139,8 @@ export const READING_GRADING_SYSTEM_PROMPT = [
   "Summaries are written fast and often dictated, so they arrive as run-on sentences with garbled words, repetition, and no punctuation. Read for what the student meant. Never lower a judgement for spelling, grammar, transcription noise, or disorganized writing.",
   "Ignore surface detail the points do not ask for. Do not reward or punish a student for remembering names of people, institutions, or places, or any other detail that is not part of the main idea and resolution.",
   "Separately, list any claim the summary makes that the passage does not support. Only list clear contradictions or invented facts, never a vague or compressed restatement.",
+  "A fabrication is an invention the point list does not already cover. Never list an error you have already charged by marking a point partial or missed. A misremembered figure belongs to the point that asks for it and is graded there, once — listing it again as a fabrication punishes one mistake twice.",
+  "Read an ambiguous phrase the way the passage supports. Dictated summaries compress and garble, so when one reading of a phrase matches the passage and another contradicts it, take the matching one. 'They can hire them for less money', beside a passage saying hiring costs fell, is that student recalling the lower hiring cost — not claiming workers were paid less.",
   "Write one direct sentence of verdict addressed to the student. Base it on the points you marked, and never fault the student for detail no point asked for.",
 ].join(" ");
 
