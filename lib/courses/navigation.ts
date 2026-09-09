@@ -1,5 +1,26 @@
 import type { Course, CourseLesson } from "./types";
 
+// A lesson URL is /courses/<course>/<lesson> — there is no module segment — so
+// the reader resolves a lesson slug across the whole course and takes the first
+// match. The lessons table only guarantees unique(module_id, slug), so two
+// modules can each hold a "lesson-1"; the outline then renders both rows with
+// the same href and the second is dead, linking to the page you are already on.
+// Course-wide uniqueness is the invariant the URL space actually requires.
+export function findDuplicateLessonSlug(
+  modules: { lessons?: { slug?: string | null }[] }[],
+): string | null {
+  const seen = new Set<string>();
+  for (const courseModule of modules) {
+    for (const lesson of Array.isArray(courseModule.lessons) ? courseModule.lessons : []) {
+      const slug = lesson.slug?.trim();
+      if (!slug) continue;
+      if (seen.has(slug)) return slug;
+      seen.add(slug);
+    }
+  }
+  return null;
+}
+
 export function findNextIncompleteLesson(course: Course): CourseLesson | undefined {
   return course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed);
 }

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getAdminSession } from "@/lib/auth/requireAdmin";
 import { deleteCourse, saveCourse } from "@/lib/courses/queries";
 import { auditCourse } from "@/lib/courses/audit";
+import { findDuplicateLessonSlug } from "@/lib/courses/navigation";
 import type { Course, CourseInput } from "@/lib/courses/types";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isPublicationStatus } from "@/lib/flags";
@@ -19,10 +20,21 @@ export async function PUT(request: NextRequest, context: Context) {
   if (JSON.stringify(input).length > 10_000_000) return NextResponse.json({ error: "course_too_large", detail: "This course is too large to save in one request." }, { status: 413 });
   const moduleSlugs = input.modules.map((courseModule) => courseModule.slug);
   if (new Set(moduleSlugs).size !== moduleSlugs.length) return NextResponse.json({ error: "duplicate_slug", detail: "Every module needs a unique URL slug." }, { status: 400 });
+  // A lesson URL is /courses/<course>/<lesson> — no module segment — so a lesson
+  // slug has to be unique across the whole course, not just inside its module.
+  // This used to be checked per module, matching the table's unique(module_id,
+  // slug), and two modules could each hold a "lesson-1". The outline then
+  // rendered both rows with the same href, and the second one was dead: it
+  // linked to the page the student was already on, so clicking it did nothing.
+  const duplicateLessonSlug = findDuplicateLessonSlug(input.modules);
+  if (duplicateLessonSlug) {
+    return NextResponse.json(
+      { error: "duplicate_slug", detail: `Two lessons in this course use the URL slug “${duplicateLessonSlug}”. Lesson slugs share one namespace per course, so give one of them a different slug.` },
+      { status: 400 },
+    );
+  }
   for (const courseModule of input.modules) {
     if (!courseModule.title?.trim() || !courseModule.slug?.trim() || !Array.isArray(courseModule.lessons) || !isPublicationStatus(courseModule.status)) return NextResponse.json({ error: "invalid_module", detail: "Every module needs a title, slug, lesson list, and publication status." }, { status: 400 });
-    const lessonSlugs = courseModule.lessons.map((lesson) => lesson.slug);
-    if (new Set(lessonSlugs).size !== lessonSlugs.length) return NextResponse.json({ error: "duplicate_slug", detail: `Every lesson inside “${courseModule.title}” needs a unique URL slug.` }, { status: 400 });
     for (const lesson of courseModule.lessons) {
       if (!lesson.title?.trim() || !lesson.slug?.trim() || !Array.isArray(lesson.blocks) || !isPublicationStatus(lesson.status)) return NextResponse.json({ error: "invalid_lesson", detail: "Every lesson needs a title, slug, content list, and publication status." }, { status: 400 });
       for (const block of lesson.blocks) {
