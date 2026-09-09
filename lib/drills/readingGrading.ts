@@ -122,14 +122,24 @@ export function buildReadingPassageUser(difficulty: ReadingDifficulty, avoidTopi
     .join("\n\n");
 }
 
+// The grader is handed the passage as well as the points, and the passage is
+// where the strictness used to come from: it is full of figures, so a model
+// reading it starts wanting figures back and marks a student down to 'partial'
+// for recalling an idea in plainer terms than the passage stated it. The points
+// are the standard; the passage only separates a supported claim from an
+// invented one.
 export const READING_GRADING_SYSTEM_PROMPT = [
   "You are grading a student's from-memory recall summary of an SAT reading passage they can no longer see.",
   "You are given the passage and two tiers of checkable points: CORE points (the main idea, the finding, and the time frame — what the passage is actually about) and DEPTH points (mechanism, consequences, significance — the supporting layer).",
-  "For each point decide whether the summary recalls it fully, partially, or not at all. Judge meaning, never wording: a correct paraphrase is full recall, and a student never has to reproduce the passage's phrasing, names, or exact numbers to earn a point unless the point itself is about that number.",
-  "Mark 'partial' when the summary gestures at the idea but leaves out the part that makes it specific — a claim without its direction, a change without its period, a finding without what it was about.",
+  "Grade the summary against the point texts, never against the passage. The passage is there only so you can tell a supported claim from an invented one. A point asks for what its text says and nothing else, and the passage never adds a requirement a point did not state.",
+  "For each point decide whether the summary recalls it fully, partially, or not at all. Judge meaning, never wording: a correct paraphrase is full recall.",
+  "Never require a figure. When a point carries a number, the student earns it by conveying the claim the number supports — 'a few of the males' earns 'about 8 percent of males', and 'it took much longer' earns 'delayed by over 70 percent'.",
+  "Full recall is the ordinary outcome for a student who understood the passage. If the summary states a point's idea in any words at all, mark it full. Do not withhold full recall because the student was vaguer than the passage, gave no number, or buried the idea inside a longer sentence.",
+  "Mark 'partial' only when a substantive part of the point is absent or wrong — a claim without its direction, a change without its period, a finding without what it was about. A summary that carries the whole idea less precisely than the point states it is full, not partial.",
+  "Summaries are written fast and often dictated, so they arrive as run-on sentences with garbled words, repetition, and no punctuation. Read for what the student meant. Never lower a judgement for spelling, grammar, transcription noise, or disorganized writing.",
   "Ignore surface detail the points do not ask for. Do not reward or punish a student for remembering names of people, institutions, or places, or any other detail that is not part of the main idea and resolution.",
   "Separately, list any claim the summary makes that the passage does not support. Only list clear contradictions or invented facts, never a vague or compressed restatement.",
-  "Write one direct sentence of verdict addressed to the student.",
+  "Write one direct sentence of verdict addressed to the student. Base it on the points you marked, and never fault the student for detail no point asked for.",
 ].join(" ");
 
 export function buildReadingGradeUser(
