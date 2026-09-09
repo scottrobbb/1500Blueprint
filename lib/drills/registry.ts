@@ -1,6 +1,7 @@
 import type { DrillSlug } from "./types";
 
-const TITLES: Record<DrillSlug, string> = {
+const TITLES: Record<DrillSlug | "dense-reading", string> = {
+  "dense-reading": "Dense Reading",
   grammar: "Grammar Drill",
   "targeted-math": "Targeted Math Practice",
   reading: "Reading Comprehension",

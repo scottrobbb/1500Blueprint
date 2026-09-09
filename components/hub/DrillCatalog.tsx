@@ -100,7 +100,7 @@ export function DrillCatalog({
   vocabStats: { words: number; mastered: number; bestStreak: number; flashcards: number };
   streak: number;
   isAdmin: boolean;
-  publication: Partial<Record<DrillSlug, QuestionStatus>>;
+  publication: Partial<Record<DrillSlug | "dense-reading", QuestionStatus>>;
   workspace?: "legacy" | "ultimate";
 }) {
   const grammarBarPct =
@@ -127,6 +127,7 @@ export function DrillCatalog({
   const locked = {
     grammar: publication.grammar !== "published",
     reading: publication.reading !== "published",
+    denseReading: publication["dense-reading"] !== "published",
     wordScan: publication["word-scan"] !== "published",
     targetedMath: publication["targeted-math"] !== "published",
     aiMath: publication["ai-math"] !== "published",
@@ -135,7 +136,7 @@ export function DrillCatalog({
   };
   const hasLockedDrills = Object.values(locked).some(Boolean);
   const hasVisibleDrills = isAdmin || Object.values(locked).some((value) => !value);
-  const showReadingWriting = isAdmin || !locked.grammar || !locked.reading || !locked.wordScan;
+  const showReadingWriting = isAdmin || !locked.grammar || !locked.reading || !locked.wordScan || !locked.denseReading;
   const showMath = isAdmin || !locked.targetedMath || !locked.aiMath;
   const showVocabulary = isAdmin || !locked.vocab || !locked.flashcards;
 
@@ -218,6 +219,18 @@ export function DrillCatalog({
               >
                 <Link href={href.reading} className={primaryAction}>Practice reading</Link>
                 <Link href={historyHref("reading")} className={secondaryAction}>View history</Link>
+              </PracticeCard>
+            ) : null}
+
+            {isAdmin || !locked.denseReading ? (
+              <PracticeCard
+                icon="reading"
+                title="Dense Reading"
+                description="Build a prediction and check every word across 11 reading questions. Choose guided steps or practice at your own pace."
+                adminPreview={isAdmin && locked.denseReading}
+              >
+                <Link href="/drills/dense-reading" prefetch={false} className={primaryAction}>Practice dense reading</Link>
+                <Link href="/drills/dense-reading#history" prefetch={false} className={secondaryAction}>View history</Link>
               </PracticeCard>
             ) : null}
 

@@ -11,6 +11,7 @@ test("only high-value content delivery pages receive account read limits", () =>
   assert.equal(protectedContentPolicy("/practice-test/test-1")?.surface, "practice-test");
   assert.equal(protectedContentPolicy("/practice-test/test-1/module/rw-1")?.surface, "practice-test");
   assert.equal(protectedContentPolicy("/drills/grammar")?.surface, "drill-session");
+  assert.equal(protectedContentPolicy("/drills/dense-reading/round-id")?.surface, "drill-session");
   assert.equal(protectedContentPolicy("/ultimate/courses/foundations/day-1")?.surface, "course-lesson");
   assert.equal(protectedContentPolicy("/ultimate/bank/math"), null);
   assert.equal(protectedContentPolicy("/ultimate/courses/foundations"), null);

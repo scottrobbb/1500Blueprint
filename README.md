@@ -96,6 +96,19 @@ STRIPE_LEGACY_MAX_PRODUCT_IDS=prod_existing_blueprint \
 write when a Blueprint account matches multiple Stripe customers, has multiple
 active subscriptions, or contains a subscription with no Core/Max mapping.
 
+## Dense Reading
+
+`/drills/dense-reading` offers guided and regular 11-question rounds drawn from
+the published Reading & Writing Question Bank. Guided mode includes confidence
+rounds, five-word passage segments, predictions, keyword flags, ordered choice
+analysis, and a final review. Regular mode allows answer edits until submission.
+
+Apply `supabase/migrations/20260909124147_dense_reading_sessions.sql` before
+releasing the routes. Sessions and answer snapshots stay behind the server-only
+database boundary. Completion grades against the saved key and atomically records
+the drill, XP, and results. Both modes use the existing drill plan allowance.
+The library includes resume, redo, history, explanations, and guided timing details.
+
 ## Weekly Calls and Google Calendar
 
 Weekly Calls are stored in Supabase and managed at `/ultimate/admin/calls`.

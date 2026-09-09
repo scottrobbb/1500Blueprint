@@ -52,6 +52,7 @@ export function levelProgress(xp: number): LevelProgress {
 /* -------------------------------- XP rules ------------------------------ */
 
 export const DRILL_XP: Record<string, number> = {
+  "dense-reading": 50,
   grammar: 50,
   reading: 40,
   "ai-math": 45,
