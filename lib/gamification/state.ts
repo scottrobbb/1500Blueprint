@@ -35,7 +35,7 @@ import {
   mondayIndex,
   weekStart,
 } from "./engine";
-import { parseAwardRpcRow } from "./award-contract";
+import { parseActivityAwardRpcRow, parseAwardRpcRow } from "./award-contract";
 
 const SEASON = "Season 4 · Spring Sprint";
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -341,6 +341,36 @@ export async function awardDrill(email: string, result: DrillResult): Promise<Aw
   }
   const parsed = parseAwardRpcRow(data);
   if (!parsed) throw new Error("The drill award transaction returned an invalid result");
+  return { xpAwarded: parsed.xp_awarded, newAchievements: parsed.new_achievement_ids };
+}
+
+// XP for work that is already recorded somewhere else — a Question Bank
+// question in question_bank_attempts, a practice module in module_attempts.
+// Unlike awardDrill/awardTest this writes no attempt row of its own; it only
+// applies the XP and achievements, so bank questions never inflate the daily
+// goal or the drill achievements. Idempotent on (reason, ref): the bank passes
+// the question id, so a question pays out once ever, and module practice passes
+// the completion's client token.
+export async function awardActivity(
+  email: string,
+  reason: "question_bank" | "module_practice",
+  ref: string,
+  amount: number,
+): Promise<AwardOutcome> {
+  const { data, error } = await supabaseAdmin()
+    .rpc("record_activity_award", {
+      p_email: email,
+      p_reason: reason,
+      p_ref: ref,
+      p_xp_amount: amount,
+      p_achievement_rules: achievementRules(),
+    })
+    .single();
+  if (error) {
+    throw new Error(`Could not record ${reason} award [${error.code}]: ${error.message}`);
+  }
+  const parsed = parseActivityAwardRpcRow(data);
+  if (!parsed) throw new Error("The activity award transaction returned an invalid result");
   return { xpAwarded: parsed.xp_awarded, newAchievements: parsed.new_achievement_ids };
 }
 

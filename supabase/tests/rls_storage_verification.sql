@@ -96,6 +96,7 @@ declare
     'increment_post_views',
     'mark_billing_checkout_session',
     'complete_dense_reading_session',
+    'record_activity_award',
     'record_drill_award',
     'record_login',
     'record_objective_drill_answer',

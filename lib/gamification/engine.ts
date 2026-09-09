@@ -80,6 +80,24 @@ export function drillXpFor(slug: string, score: number | null | undefined): numb
   return Math.round(base * (DRILL_FLOOR + (1 - DRILL_FLOOR) * q));
 }
 
+// One payout per question, the first time it is answered correctly — so XP
+// tracks ground covered rather than time spent. Re-solving a question already
+// banked earns nothing, which is what keeps the bank's 1,000-attempts-per-hour
+// ceiling from being a 1,000-payouts-per-hour ceiling.
+export const QUESTION_BANK_XP = 3;
+
+// One practice module sits between a drill and a full test: longer than any
+// drill rep, a fraction of a full sitting. Same shape as drill XP — a floor for
+// finishing it, the rest scaled by accuracy.
+export const MODULE_PRACTICE_XP = 80;
+export const MODULE_PRACTICE_FLOOR = 0.4;
+
+export function modulePracticeXp(correct: number, total: number): number {
+  if (!Number.isFinite(total) || total <= 0) return 0;
+  const q = Math.max(0, Math.min(1, correct / total));
+  return Math.round(MODULE_PRACTICE_XP * (MODULE_PRACTICE_FLOOR + (1 - MODULE_PRACTICE_FLOOR) * q));
+}
+
 export const TEST_COMPLETE_XP = 200;
 
 // Up to +300 scaled by the total SAT score (out of 1600).
