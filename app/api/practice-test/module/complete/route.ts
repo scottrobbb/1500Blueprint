@@ -13,6 +13,8 @@ import type { AnswerMap } from "@/lib/sat/types";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { canAccessPracticeTest } from "@/lib/auth/access-control";
 import { readIdempotencyToken } from "@/lib/idempotency";
+import { awardActivity } from "@/lib/gamification/state";
+import { modulePracticeXp } from "@/lib/gamification/engine";
 import { reportServerError } from "@/lib/observability/server";
 import { readJsonBody, RequestBodyTooLargeError } from "@/lib/security/request";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
@@ -94,7 +96,25 @@ export async function POST(req: NextRequest) {
       moduleSnapshot: { meta: found.meta, module: found.module },
       clientToken,
     });
-    return NextResponse.json({ attemptId: id, correct, total });
+    // The attempt is saved; XP is a side effect of it and must never turn a
+    // recorded module into a 500. Idempotent on the completion token, so a
+    // retried submit re-uses the award the first one wrote.
+    let xpAwarded = 0;
+    try {
+      ({ xpAwarded } = await awardActivity(
+        session.email,
+        "module_practice",
+        clientToken,
+        modulePracticeXp(correct, total),
+      ));
+    } catch (error) {
+      reportServerError("practice_test.module_xp_award.failed", error, {
+        provider: "supabase",
+        route: "/api/practice-test/module/complete",
+        method: "POST",
+      });
+    }
+    return NextResponse.json({ attemptId: id, correct, total, xpAwarded });
   } catch (e) {
     reportServerError("practice_test.module_completion_save.failed", e, {
       provider: "supabase",

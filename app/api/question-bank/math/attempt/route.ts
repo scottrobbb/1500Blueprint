@@ -17,6 +17,8 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { canAccessQuestionBankLevel, shouldRevealQuestionBankAnswer } from "@/lib/question-bank/math";
 import { readJsonBody } from "@/lib/security/request";
+import { awardActivity } from "@/lib/gamification/state";
+import { QUESTION_BANK_XP } from "@/lib/gamification/engine";
 import { reportServerError } from "@/lib/observability/server";
 import { checkRateLimit } from "@/lib/security/rate-limit";
 
@@ -148,9 +150,26 @@ export async function POST(request: Request) {
     graded,
     wrongAnswerCount(gradingQuestion.question.answerType),
   );
+  // XP rides on an answer that is already graded and recorded, so a failure
+  // here must not fail the request or change the grade. The award is
+  // idempotent on the question id: it pays out the first time this student
+  // gets this question right, and never again.
+  let xpAwarded = 0;
+  if (graded) {
+    try {
+      ({ xpAwarded } = await awardActivity(session.email, "question_bank", input.questionId, QUESTION_BANK_XP));
+    } catch (error) {
+      reportServerError("question_bank.math.xp_award_failed", error, {
+        provider: "supabase",
+        route: "/api/question-bank/math/attempt",
+        method: "POST",
+      });
+    }
+  }
   return NextResponse.json({
     correct: graded,
     revealed,
+    xpAwarded,
     ...(revealed
       ? {
         explanation: gradingQuestion.explanation,
