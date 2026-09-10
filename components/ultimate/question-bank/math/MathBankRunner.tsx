@@ -8,6 +8,7 @@ import { MathText, isHighlightableText } from "@/components/test/MathText";
 import { QuestionContent } from "@/components/test/QuestionContent";
 import { HighlightablePassage, type Highlight } from "@/components/test/HighlightablePassage";
 import { ReferenceModal } from "@/components/test/ReferenceModal";
+import { toggleToolPanel, type ToolPanel } from "@/lib/question-bank/tool-panels";
 import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
 import { normalizeGridInInput } from "@/lib/sat/gridIn";
 import {
@@ -35,7 +36,6 @@ import {
 } from "@/lib/sat/highlights";
 
 type RunnerResult = MathAttemptResult & { response: string; durationSeconds: number };
-type ToolPanel = "calculator" | "reference" | "directions" | null;
 type BankSubject = "math" | "reading-writing";
 type BankRunnerQuestion = Omit<MathRunnerQuestion, "domain"> & { domain: string };
 type BankRunnerProps = {
@@ -155,7 +155,7 @@ function ObjectiveBankRunner({
   const [marked, setMarked] = useState<Set<string>>(() => new Set(initialState.savedQuestionIds));
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [toolPanel, setToolPanel] = useState<ToolPanel>(null);
+  const [openTools, setOpenTools] = useState<ReadonlySet<ToolPanel>>(() => new Set());
   const [navigatorOpen, setNavigatorOpen] = useState(false);
   const [highlightOn, setHighlightOn] = useState(false);
   // The Highlight tool used to only recolour the browser's own selection, so a
@@ -254,7 +254,7 @@ function ObjectiveBankRunner({
   // unconditionally while a question is active.
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Enter" || finished || paused || navigatorOpen || toolPanel) return;
+      if (event.key !== "Enter" || finished || paused || navigatorOpen || openTools.size > 0) return;
       void checkAnswer();
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -457,11 +457,11 @@ function ObjectiveBankRunner({
         paused={paused}
         highlightOn={highlightOn}
         canHighlight={passageHighlightable}
-        toolPanel={toolPanel}
+        openTools={openTools}
         onTogglePause={() => setPracticePaused(!paused)}
         onToggleTimer={() => setTimerHidden((value) => !value)}
         onToggleHighlight={() => setHighlightOn((value) => !value)}
-        onOpenTool={(tool) => setToolPanel((current) => current === tool ? null : tool)}
+        onOpenTool={(tool) => setOpenTools((current) => toggleToolPanel(current, tool))}
       />
 
       {finished ? (
@@ -601,9 +601,9 @@ function ObjectiveBankRunner({
         />
       )}
       {paused && <PausedOverlay onResume={() => setPracticePaused(false)} />}
-      {toolPanel === "calculator" && <CalculatorPanel onClose={() => setToolPanel(null)} />}
-      {toolPanel === "reference" && <ReferenceModal onClose={() => setToolPanel(null)} />}
-      {toolPanel === "directions" && <DirectionsPanel subject={subject} onClose={() => setToolPanel(null)} />}
+      {openTools.has("calculator") && <CalculatorPanel onClose={() => setOpenTools((current) => toggleToolPanel(current, "calculator"))} />}
+      {openTools.has("reference") && <ReferenceModal onClose={() => setOpenTools((current) => toggleToolPanel(current, "reference"))} />}
+      {openTools.has("directions") && <DirectionsPanel subject={subject} onClose={() => setOpenTools((current) => toggleToolPanel(current, "directions"))} />}
     </div>
   );
 }
@@ -615,7 +615,7 @@ function RunnerHeader({
   paused,
   highlightOn,
   canHighlight,
-  toolPanel,
+  openTools,
   onTogglePause,
   onToggleTimer,
   onToggleHighlight,
@@ -627,11 +627,11 @@ function RunnerHeader({
   paused: boolean;
   highlightOn: boolean;
   canHighlight: boolean;
-  toolPanel: ToolPanel;
+  openTools: ReadonlySet<ToolPanel>;
   onTogglePause: () => void;
   onToggleTimer: () => void;
   onToggleHighlight: () => void;
-  onOpenTool: (tool: Exclude<ToolPanel, null>) => void;
+  onOpenTool: (tool: ToolPanel) => void;
 }) {
   const catalogHref = subject === "math" ? "/ultimate/bank/math" : "/ultimate/bank/reading-writing";
   const subjectLabel = subject === "math" ? "Math" : "Reading & Writing";
@@ -664,8 +664,8 @@ function RunnerHeader({
 
         <nav aria-label={`${subjectLabel} tools`} className="col-span-2 flex items-center justify-end gap-1 border-t border-[#ededed] pt-2 lg:col-span-1 lg:border-0 lg:pt-0">
           <ToolButton label="Highlight" active={highlightOn} onClick={onToggleHighlight} disabled={!canHighlight}><HighlightIcon className="h-5 w-5" /></ToolButton>
-          {subject === "math" && <ToolButton label="Calculator" active={toolPanel === "calculator"} onClick={() => onOpenTool("calculator")}><CalculatorIcon className="h-5 w-5" /></ToolButton>}
-          {subject === "math" && <ToolButton label="Reference" active={toolPanel === "reference"} onClick={() => onOpenTool("reference")}><ReferenceIcon className="h-5 w-5" /></ToolButton>}
+          {subject === "math" && <ToolButton label="Calculator" active={openTools.has("calculator")} onClick={() => onOpenTool("calculator")}><CalculatorIcon className="h-5 w-5" /></ToolButton>}
+          {subject === "math" && <ToolButton label="Reference" active={openTools.has("reference")} onClick={() => onOpenTool("reference")}><ReferenceIcon className="h-5 w-5" /></ToolButton>}
         </nav>
       </div>
     </header>
