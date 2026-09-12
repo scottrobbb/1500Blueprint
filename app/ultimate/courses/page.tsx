@@ -34,7 +34,7 @@ export default async function UltimateCoursesPage() {
 
   return (
     <div className="mx-auto w-full max-w-[1160px] px-4 py-7 sm:px-7 sm:py-10">
-      <PageHeader eyebrow="Learning" title="Courses" description="Learn Scott's SAT system in order, then practice each skill in the Question Bank." />
+      <PageHeader eyebrow="Learning" title="Courses" />
       {courses.length > 0 ? (
         <>
           <section className="mb-6 grid gap-3 sm:grid-cols-3">
