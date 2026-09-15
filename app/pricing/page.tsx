@@ -127,9 +127,9 @@ const faqItems = [
       "Yes. You can upgrade when you need more support or schedule a downgrade for your next renewal. Your practice history, scores, and course progress stay with your account.",
   },
   {
-    question: "What is covered by the refund policy?",
+    question: "Can I get a refund for my subscription?",
     answer:
-      "Your first purchase is covered by a 24-hour refund window. Contact support within that window if the plan is not the right fit.",
+      "Your first subscription purchase is eligible for a full refund within 24 hours of purchase. After that 24-hour window, the purchase is non-refundable.\n\nAll subscription renewals are final and non-refundable. To make sure a renewal doesn't catch you by surprise, we'll send you a reminder email before your subscription renews. You can cancel anytime before your renewal date to prevent the next charge.\n\nTo cancel, head to Settings → Subscription.",
   },
   {
     question: "Do I need a card to start?",
