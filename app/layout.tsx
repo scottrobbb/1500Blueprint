@@ -31,7 +31,7 @@ const notoSerif = Noto_Serif({
 const REWARDFUL_API_KEY = "baf21b";
 
 const SHARE_DESCRIPTION =
-  "Full-length adaptive digital SAT practice tests, a 1250+ question bank with Desmos explanations, targeted drills, and courses.";
+  "Full-length adaptive digital SAT practice tests, a 1650+ question bank with Desmos explanations, targeted drills, and courses.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(canonicalAppUrl()),
