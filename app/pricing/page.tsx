@@ -23,7 +23,7 @@ const TESTIMONIAL_REEL_URL = "https://vimeo.com/1221904969?share=copy&fl=sv&fe=c
 
 const heroChecklist = [
   "6 Realistic Full-Length Practice Tests",
-  "1250+ Question Bank Qs (with Desmos explanations)",
+  "1650+ Question Bank Qs (with Desmos explanations)",
   "Step-by-step math and reading courses",
   "Weekly group class with Scott",
   "On-Demand Video Library, updated weekly",
@@ -51,14 +51,14 @@ const freeFeatures: PlanFeature[] = [
 ];
 
 const coreFeatures: PlanFeature[] = [
-  { label: "1250+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
+  { label: "1650+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
   { label: "2 full-length adaptive digital SATs", icon: "file" },
   { label: "20 practice drills each day", icon: "bolt" },
   { label: "Everything in Free", icon: "check" },
 ];
 
 const maxFeatures: PlanFeature[] = [
-  { label: "1250+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
+  { label: "1650+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
   { label: "6 full-length adaptive digital SATs", icon: "file" },
   { label: "Unlimited daily drills", icon: "bolt" },
   { label: "Access to all courses, quizzes, and flashcards", icon: "book" },
