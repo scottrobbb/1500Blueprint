@@ -117,6 +117,11 @@ const faqItems = [
       "Start with Free if you want to explore the platform. Choose Core if you're serious about improving and want consistent practice with more questions, drills, and tests. Go with Max if you want everything—including all courses, practice tests, challenge questions, drills, and weekly live calls with Scott.",
   },
   {
+    question: "What makes Blueprint Max different from other SAT prep programs?",
+    answer:
+      "A lot of SAT prep is still built around outdated strategies from the paper SAT.\n\nBlueprint Max is built specifically for the modern Digital SAT, with a major focus on mastering Desmos and using it to solve questions faster, easier, and more consistently.\n\nYou also get structured courses, difficult practice tests, Challenge-level questions, and weekly live calls with me — the kind of ongoing coaching access that can easily cost $1,000+ through traditional SAT tutoring programs.\n\nBlueprint Max isn't just another question bank. It's a complete system built around how the SAT is actually taken today.",
+  },
+  {
     question: "How are Core and Max billed?",
     answer:
       "Core is available for $50/month, or $120 every 3 months — saving you $30 and bringing the effective price down to $40/month.\n\nMax is available for $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nBoth plans can be cancelled anytime, and you'll keep access through the end of your current billing period.",
