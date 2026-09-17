@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { parseUnderlineMarkup, unescapeDollarSigns } from "@/lib/sat/formattedText";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { highlightCovering, type Highlight } from "@/lib/sat/highlights";
+import { buildHighlightLayout, type HighlightLayout, type LayoutCell } from "./highlight-layout";
 import { TrashIcon, UnderlineIcon, NoteIcon } from "./icons";
+import { MathText } from "./MathText";
 
 // Re-exported so the many `from "./HighlightablePassage"` import sites keep
 // working; the type and its transitions live in lib/sat/highlights.
@@ -38,16 +39,24 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
+// Where a selection boundary falls in the highlightable text. Rendered math is
+// marked data-hl-skip and is not part of that text. A boundary that is not
+// inside a counted text node -- one resting on a table cell or row, which
+// dragging across a table produces, or one inside skipped math -- resolves to
+// the first counted character after it.
 function offsetWithin(container: HTMLElement, node: Node, offset: number): number {
+  const boundary = document.createRange();
+  boundary.setStart(node, offset);
   let total = 0;
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-  let n: Node | null = walker.nextNode();
-  while (n) {
-    if (n === node) return total + offset;
-    total += (n.textContent ?? "").length;
-    n = walker.nextNode();
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    if (n.parentElement?.closest("[data-hl-skip]")) continue;
+    const length = (n.textContent ?? "").length;
+    if (n === node) return total + Math.min(offset, length);
+    if (boundary.comparePoint(n, 0) >= 0) return total;
+    total += length;
   }
-  return total + offset;
+  return total;
 }
 
 export function HighlightablePassage({
@@ -161,7 +170,7 @@ export function HighlightablePassage({
         onMouseUp={handleSelection}
         className={`whitespace-pre-line font-serif text-[17px] leading-[1.7] text-exam-ink ${className ?? ""}`}
       >
-        {renderSegments(unescapeDollarSigns(text), highlights, openNote)}
+        {renderLayout(buildHighlightLayout(text), highlights, openNote)}
       </div>
 
       {menu && (
@@ -258,24 +267,16 @@ export function HighlightablePassage({
 
 // Render the passage as colored <mark> runs, inserting a clickable note marker
 // at the end of any highlight that carries note text. Marker elements hold no
-// text, so they don't shift selection offsets.
-function renderSegments(
-  sourceText: string,
+// text, so they don't shift selection offsets. Tables are laid out here too, so
+// their cells can be highlighted like the prose around them.
+function renderLayout(
+  layout: HighlightLayout,
   highlights: Highlight[],
   onOpenNote: (h: Highlight, x: number, y: number) => void,
 ) {
-  const formattedSegments = parseUnderlineMarkup(sourceText);
-  const text = formattedSegments.map((segment) => segment.text).join("");
+  const { text, authorUnderlined: authorUnderlineAt } = layout;
   const len = text.length;
   const colorAt = new Array<string | null>(len).fill(null);
-  const authorUnderlineAt = new Array<boolean>(len).fill(false);
-  let formattedOffset = 0;
-  for (const segment of formattedSegments) {
-    if (segment.underlined) {
-      authorUnderlineAt.fill(true, formattedOffset, formattedOffset + segment.text.length);
-    }
-    formattedOffset += segment.text.length;
-  }
   for (const h of highlights) {
     for (let i = Math.max(0, h.start); i < Math.min(len, h.end); i++) {
       colorAt[i] = h.color;
@@ -289,69 +290,123 @@ function renderSegments(
     }
   }
 
-  const nodes: React.ReactNode[] = [];
-  let buf = "";
-  let curColor: string | null = null;
-  let curAuthorUnderline = false;
   let key = 0;
 
-  const flush = () => {
-    if (!buf) return;
-    const underlined = curColor === "underline" || curAuthorUnderline;
-    if (curColor && curColor !== "underline") {
-      nodes.push(
-        <mark
-          key={key++}
-          style={{ backgroundColor: curColor }}
-          className={`rounded-[2px] text-exam-ink ${
-            underlined ? "underline decoration-2 underline-offset-2" : ""
-          }`}
-        >
-          {buf}
-        </mark>,
-      );
-    } else if (underlined) {
-      nodes.push(
-        <span key={key++} className="text-exam-ink underline decoration-2 underline-offset-2">
-          {buf}
-        </span>,
-      );
-    } else {
-      nodes.push(<span key={key++}>{buf}</span>);
+  // Draws text[from, to). A note marker belongs after the last character of its
+  // highlight, so one ending exactly where this range starts was already drawn
+  // at the end of the range before it.
+  const renderRange = (from: number, to: number) => {
+    const nodes: React.ReactNode[] = [];
+    let buf = "";
+    let curColor: string | null = null;
+    let curAuthorUnderline = false;
+
+    const flush = () => {
+      if (!buf) return;
+      const underlined = curColor === "underline" || curAuthorUnderline;
+      if (curColor && curColor !== "underline") {
+        nodes.push(
+          <mark
+            key={key++}
+            style={{ backgroundColor: curColor }}
+            className={`rounded-[2px] text-exam-ink ${
+              underlined ? "underline decoration-2 underline-offset-2" : ""
+            }`}
+          >
+            {buf}
+          </mark>,
+        );
+      } else if (underlined) {
+        nodes.push(
+          <span key={key++} className="text-exam-ink underline decoration-2 underline-offset-2">
+            {buf}
+          </span>,
+        );
+      } else {
+        nodes.push(<span key={key++}>{buf}</span>);
+      }
+      buf = "";
+    };
+
+    for (let i = from; i <= to; i++) {
+      const noted = i > from ? noteAtEnd.get(i) : undefined;
+      if (noted) {
+        flush();
+        nodes.push(
+          <button
+            key={key++}
+            type="button"
+            aria-label="View note"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => onOpenNote(noted, e.clientX, e.clientY)}
+            className="ml-0.5 inline-flex -translate-y-1 items-center align-middle text-exam-blue hover:text-exam-blue-600"
+          >
+            <NoteIcon className="h-3.5 w-3.5" />
+          </button>,
+        );
+        curColor = null;
+        curAuthorUnderline = false;
+      }
+      if (i === to) break;
+      const c = colorAt[i];
+      const authorUnderline = authorUnderlineAt[i];
+      if (c !== curColor || authorUnderline !== curAuthorUnderline) {
+        flush();
+        curColor = c;
+        curAuthorUnderline = authorUnderline;
+      }
+      buf += text[i];
     }
-    buf = "";
+    flush();
+
+    return nodes;
   };
 
-  for (let i = 0; i <= len; i++) {
-    const noted = noteAtEnd.get(i);
-    if (noted) {
-      flush();
-      nodes.push(
-        <button
-          key={key++}
-          type="button"
-          aria-label="View note"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => onOpenNote(noted, e.clientX, e.clientY)}
-          className="ml-0.5 inline-flex -translate-y-1 items-center align-middle text-exam-blue hover:text-exam-blue-600"
-        >
-          <NoteIcon className="h-3.5 w-3.5" />
-        </button>,
-      );
-      curColor = null;
-      curAuthorUnderline = false;
-    }
-    if (i === len) break;
-    const c = colorAt[i];
-    const authorUnderline = authorUnderlineAt[i];
-    if (c !== curColor || authorUnderline !== curAuthorUnderline) {
-      flush();
-      curColor = c;
-      curAuthorUnderline = authorUnderline;
-    }
-    buf += text[i];
-  }
-  flush();
+  // Math in a cell is drawn by KaTeX and marked so selection offsets skip it.
+  const renderCell = (cell: LayoutCell) =>
+    cell.kind === "text" ? (
+      renderRange(cell.start, cell.end)
+    ) : (
+      <span data-hl-skip>
+        <MathText>{cell.source}</MathText>
+      </span>
+    );
 
-  return nodes;
+  return layout.blocks.map((block, index) => {
+    if (block.kind === "text") {
+      return <Fragment key={index}>{renderRange(block.start, block.end)}</Fragment>;
+    }
+    // Same table QuestionContent draws, spaced like a paragraph break.
+    return (
+      <div key={index} className="my-5 max-w-full overflow-x-auto pb-1 first:mt-0 last:mb-0">
+        <table className="mx-auto w-max border-collapse font-serif text-[15px] text-exam-ink">
+          <thead>
+            <tr>
+              {block.head.map((cell, j) => (
+                <th key={j} className="border border-exam-border px-3 py-1.5 text-center font-semibold">
+                  {renderCell(cell)}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {block.body.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((cell, ci) => (
+                  <td
+                    key={ci}
+                    className={`border border-exam-border px-3 py-1.5 ${
+                      ci === 0 ? "font-semibold" : "text-center"
+                    }`}
+                  >
+                    {renderCell(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  });
 }

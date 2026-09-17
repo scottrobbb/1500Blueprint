@@ -1,6 +1,7 @@
 import katex from "katex";
 import { Fragment, type ReactNode } from "react";
 import { normalizeBulletMarkup, parseUnderlineMarkup, unescapeDollarSigns } from "@/lib/sat/formattedText";
+import { splitTableBlocks, TABLE_ROWSEP } from "@/lib/sat/table-markup";
 
 // Renders authored LaTeX and legacy plain-text SAT equations with KaTeX. The
 // legacy importer preserved many equations as `C = r·n` or `(x + 1)/2`; those
@@ -197,14 +198,39 @@ function superscriptValue(value: string): string {
 
 // Highlighting maps a DOM text offset back onto the source string, which only
 // holds while the rendered output is that string. KaTeX emits accessible MathML
-// beside its visual HTML, so any math makes the offsets point at the wrong
-// characters; importer tables rewrite the text outright. Both fall back to
-// ordinary rendering.
+// beside its visual HTML, so math in the prose makes the offsets point at the
+// wrong characters and falls back to ordinary rendering.
+//
+// Importer tables are fine: the highlighter lays them out itself and counts
+// only their cell text, and a cell holding math is drawn but left out of the
+// count (see highlight-layout). Row markers outside a table that parses mean
+// broken markup, which the highlighter would print literally.
 export function isHighlightableText(text: string): boolean {
-  if (!text.trim() || text.includes("@@ROW@@")) return false;
-  // Bullet markers are normalised to a character before rendering, so they are
-  // not math by the time either renderer sees them.
+  if (!text.trim()) return false;
+  return splitTableBlocks(text).every((block) => block.kind === "table" || rendersAsSource(block.source));
+}
+
+// Whether prose reaches the screen as its own characters. Bullet markers are
+// normalised to a character before rendering, so they are not math by the time
+// either renderer sees them.
+function rendersAsSource(text: string): boolean {
+  if (text.includes(TABLE_ROWSEP)) return false;
   return parseMathSegments(normalizeBulletMarkup(text)).every((segment) => segment.type === "text");
+}
+
+// Whether a table cell can be drawn as plain, highlightable text without
+// looking different from MathText's rendering of it. Stricter than prose: a
+// cell like "2x + 1" or "x^2" is typeset from plain text, and the highlighter
+// would print it raw. A bare number is typeset too but reads the same as text.
+export function cellRendersAsSource(cell: string): boolean {
+  if (!rendersAsSource(cell)) return false;
+  return parseUnderlineMarkup(cell).every(({ text }) => {
+    const plain = unescapeDollarSigns(text);
+    const normalized = normalizeLegacyMathText(plain);
+    if (normalized !== plain || normalized.includes("^")) return false;
+    if (/^[+−-]?\d+(?:\.\d+)?$/.test(normalized.trim())) return true;
+    return parseLegacyMathSegments(normalized).every((segment) => segment.type === "text");
+  });
 }
 
 export function MathText({ children }: { children: string }) {

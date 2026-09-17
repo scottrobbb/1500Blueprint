@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ReportQuestionButton } from "@/components/questions/ReportQuestionButton";
+import { splitTableBlocks } from "@/lib/sat/table-markup";
 import type { AnswerValue, ChoiceId, Question, Section } from "@/lib/sat/types";
 import { AnswerChoices } from "./AnswerChoices";
 import { GridIn } from "./GridIn";
@@ -146,11 +147,17 @@ export function QuestionScreen(props: Props) {
   } = props;
   const isRW = section.id === "rw";
   const hasPassage = Boolean(question.passage);
-  // Same test the prompt uses: a passage is only highlightable when its
-  // rendered output is its source string, which KaTeX's MathML and importer
-  // tables both break. A table-only check let a passage holding LaTeX reach
-  // HighlightablePassage, which renders it literally.
+  // Same test the prompt uses: a passage is only highlightable when its prose
+  // renders as its source string, which KaTeX's MathML breaks. A table-only
+  // check let a passage holding LaTeX reach HighlightablePassage, which renders
+  // it literally.
   const passageHighlightable = isHighlightableText(question.passage ?? "");
+  // Math passages otherwise keep MathText, which typesets plain-text equations
+  // the highlighter would print raw. A passage holding a table is the exception:
+  // the table is what students want to mark up, and the highlighter keeps any
+  // typeset cell looking the way MathText draws it.
+  const mathPassageHighlightable =
+    passageHighlightable && splitTableBlocks(question.passage ?? "").some((block) => block.kind === "table");
 
   const [isWide, setIsWide] = useState(true);
   const [leftPct, setLeftPct] = useState(50);
@@ -185,8 +192,8 @@ export function QuestionScreen(props: Props) {
     />
   );
 
-  // The prompt gets the same highlighting as the passage when it renders as
-  // plain text. Math or table markup keeps the ordinary MathText rendering.
+  // The prompt gets the same highlighting as the passage when its prose renders
+  // as plain text. Math keeps the ordinary MathText rendering.
   const prompt = isHighlightableText(question.prompt) ? (
     <HighlightablePassage
       text={question.prompt}
@@ -299,6 +306,18 @@ export function QuestionScreen(props: Props) {
                   onSetNote={onSetNote}
                 />
               )}
+            </div>
+          ) : mathPassageHighlightable ? (
+            <div className="mt-5">
+              <HighlightablePassage
+                text={question.passage ?? ""}
+                highlights={highlights}
+                enabled={highlightEnabled}
+                onAdd={onAddHighlight}
+                onRemove={onRemoveHighlight}
+                onSetNote={onSetNote}
+                className="!text-xl !leading-7"
+              />
             </div>
           ) : (
             <QuestionContent
