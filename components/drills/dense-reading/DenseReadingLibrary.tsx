@@ -17,6 +17,7 @@ export function DenseReadingLibrary({
   const router = useRouter();
   const [start, setStart] = useState<{
     repeatId?: string;
+    restart?: boolean;
     token: string;
   } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,6 +36,7 @@ export function DenseReadingLibrary({
           id: start.token,
           mode,
           repeatId: start.repeatId,
+          restart: start.restart,
         }),
       });
       const body = await response.json();
@@ -97,6 +99,30 @@ export function DenseReadingLibrary({
             </p>
           ) : null}
         </section>
+        {active ? (
+          <section className={`${surface} mt-4 p-5 sm:p-7`}>
+            <div className="flex flex-wrap items-start justify-between gap-5">
+              <div>
+                <h2 className="font-display text-xl font-semibold text-navy">
+                  Restart your round
+                </h2>
+                <p className="mt-2 text-sm text-navy/60">
+                  Start again with a new set of questions. Your progress on the
+                  round above is deleted.
+                </p>
+              </div>
+              <ReadingButton
+                secondary
+                disabled={unavailable}
+                onClick={() =>
+                  setStart({ restart: true, token: crypto.randomUUID() })
+                }
+              >
+                Restart round
+              </ReadingButton>
+            </div>
+          </section>
+        ) : null}
         <section id="history" className="mt-10" aria-label="Reading history">
           <h2 className="mb-4 font-display text-xl font-semibold text-navy">
             Your rounds
@@ -156,7 +182,7 @@ export function DenseReadingLibrary({
       </div>
       {start ? (
         <ReadingDialog
-          title="Choose how to practice"
+          title={start.restart ? "Restart your round" : "Choose how to practice"}
           onClose={() => {
             if (!busy) {
               setStart(null);
@@ -165,7 +191,9 @@ export function DenseReadingLibrary({
           }}
         >
           <p className="mb-5 text-sm leading-6 text-navy/65">
-            Your mode stays fixed for this round.
+            {start.restart
+              ? "Your round in progress and its answers are deleted. The new round gets a new set of questions, and your mode stays fixed for it."
+              : "Your mode stays fixed for this round."}
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             {(["guided", "regular"] as const).map((mode) => (
@@ -187,7 +215,13 @@ export function DenseReadingLibrary({
                   disabled={busy}
                   onClick={() => void begin(mode)}
                 >
-                  {busy ? "Starting…" : `Start ${mode}`}
+                  {busy
+                    ? start.restart
+                      ? "Restarting…"
+                      : "Starting…"
+                    : start.restart
+                      ? `Restart as ${mode}`
+                      : `Start ${mode}`}
                 </ReadingButton>
               </div>
             ))}

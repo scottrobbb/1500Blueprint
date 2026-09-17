@@ -2,9 +2,7 @@ import {
   parseUnderlineMarkup,
   unescapeDollarSigns,
 } from "@/lib/sat/formattedText";
-import type { ChoiceId } from "@/lib/sat/types";
 import {
-  CHOICES,
   type ReadingQuestion,
   type ReadingStep,
   type ReadingTopic,

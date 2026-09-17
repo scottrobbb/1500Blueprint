@@ -41,12 +41,14 @@ export async function POST(request: Request) {
       id?: unknown;
       mode?: unknown;
       repeatId?: unknown;
+      restart?: unknown;
     } | null;
     if (
       !value ||
       (value.mode !== "guided" && value.mode !== "regular") ||
       !uuid(value.id) ||
-      (value.repeatId !== undefined && !uuid(value.repeatId))
+      (value.repeatId !== undefined && !uuid(value.repeatId)) ||
+      (value.restart !== undefined && typeof value.restart !== "boolean")
     )
       return Response.json(
         { error: "Choose a practice mode." },
@@ -57,6 +59,7 @@ export async function POST(request: Request) {
       value.mode,
       value.id,
       value.repeatId as string | undefined,
+      value.restart === true,
     );
     return Response.json({ id });
   } catch (error) {

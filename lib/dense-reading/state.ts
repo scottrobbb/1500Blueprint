@@ -1,7 +1,6 @@
 import type { ChoiceId } from "@/lib/sat/types";
 import { segmentCount, wordCount } from "./method";
 import {
-  CHOICES,
   type ReadingMode,
   type ReadingProgress,
   type ReadingQuestion,
