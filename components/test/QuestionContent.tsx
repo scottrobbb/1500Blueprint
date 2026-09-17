@@ -1,23 +1,10 @@
+import { parseTableBlock } from "@/lib/sat/table-markup";
 import { MathText } from "./MathText";
-
-// Must match TABLE_ROWSEP in scripts/import/parse.ts.
-const ROWSEP = "@@ROW@@";
-
-function parseTable(block: string): string[][] | null {
-  const rows = block
-    .split(new RegExp(`${ROWSEP}|\\n`))
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (rows.length < 2 || !rows.every((l) => l.startsWith("|"))) return null;
-  return rows
-    .filter((l) => !/^\|(?:\s*:?-{2,}:?\s*\|)+$/.test(l)) // drop the |---| separator row
-    .map((l) => l.replace(/^\||\|$/g, "").split("|").map((c) => c.trim()));
-}
 
 /**
  * Renders question text block-by-block: a Markdown table (from the importer)
  * becomes a real <table>; every other block is a paragraph with caret-exponent
- * superscripts applied. Used for math stimuli (R&W passages stay highlightable).
+ * superscripts applied. Used wherever the text is not highlightable.
  */
 export function QuestionContent({ text, pClassName }: { text: string; pClassName?: string }) {
   const blocks = text
@@ -28,7 +15,7 @@ export function QuestionContent({ text, pClassName }: { text: string; pClassName
   return (
     <>
       {blocks.map((block, i) => {
-        const rows = parseTable(block);
+        const rows = parseTableBlock(block);
         if (!rows) {
           return (
             <p key={i} className={pClassName}>
