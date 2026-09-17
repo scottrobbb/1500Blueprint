@@ -5,7 +5,6 @@ import {
 import type { ChoiceId } from "@/lib/sat/types";
 import {
   CHOICES,
-  type Flag,
   type ReadingQuestion,
   type ReadingStep,
   type ReadingTopic,
@@ -105,7 +104,6 @@ export const STEP_LABELS: Record<ReadingStep, string> = {
   passage: "Read the passage",
   figure: "Review the figure",
   prediction: "Predict your answer",
-  flags: "Scan for flags",
   order: "Order the choices",
   crossout: "Enable cross-out mode",
   choice: "Check each word",
@@ -178,85 +176,9 @@ export function segmentCount(question: ReadingQuestion): number {
   return Math.max(1, Math.ceil(passageWords(question.passage).length / 5));
 }
 
-export function flagVocabulary(topic: ReadingTopic): {
-  red: string[];
-  green: string[];
-  name: string;
-} {
-  return topic === "structure" || topic === "function"
-    ? {
-        name: "CEASED",
-        red: [
-          "explain",
-          "explains",
-          "argue",
-          "argues",
-          "compare",
-          "compares",
-          "emphasize",
-          "emphasizes",
-          "summarize",
-          "summarizes",
-          "describe",
-          "describes",
-        ],
-        green: ["present", "presents"],
-      }
-    : {
-        name: "BAD MOLD",
-        red: [
-          "likely",
-          "most",
-          "both",
-          "other",
-          "after",
-          "despite",
-          "different",
-        ],
-        green: ["some", "may"],
-      };
-}
-
-export function choiceFlags(
-  question: ReadingQuestion,
-): Record<ChoiceId, { flag: Flag; words: string[]; repeated: string[] }> {
-  const vocabulary = flagVocabulary(question.topic);
-  const tokens = question.choices.map((choice) => ({
-    id: choice.id,
-    words: new Set(choice.text.toLowerCase().match(/[a-z]+/g) ?? []),
-  }));
-  const repeated = [...vocabulary.red, ...vocabulary.green].filter(
-    (word) => tokens.filter((choice) => choice.words.has(word)).length > 1,
-  );
-  return Object.fromEntries(
-    tokens.map(({ id, words }) => {
-      const red = vocabulary.red.filter(
-        (word) => words.has(word) && !repeated.includes(word),
-      );
-      const green = vocabulary.green.filter(
-        (word) => words.has(word) && !repeated.includes(word),
-      );
-      return [
-        id,
-        {
-          flag: red.length ? "red" : green.length ? "green" : "neutral",
-          words: [...red, ...green],
-          repeated: repeated.filter((word) => words.has(word)),
-        },
-      ];
-    }),
-  ) as Record<ChoiceId, { flag: Flag; words: string[]; repeated: string[] }>;
-}
-
-export function suggestedOrder(
-  question: ReadingQuestion,
-  scan: boolean,
-): ChoiceId[] {
-  const flags = choiceFlags(question);
-  const available = question.choices.filter(
-    (choice) => !scan || flags[choice.id].flag !== "red",
-  );
-  return (available.length ? available : question.choices)
+// Shortest choices first: the quickest claims to test against the passage.
+export function suggestedOrder(question: ReadingQuestion): ChoiceId[] {
+  return question.choices
     .slice()
     .sort(
       (a, b) =>

@@ -72,8 +72,11 @@ export function validateReadingState(
   )
     throw new Error("Invalid attempt order");
   const progress = value.progress.map((raw: unknown, i) => {
-    if (!record(raw) || !STEPS.includes(raw.step as never))
-      throw new Error("Invalid reading step");
+    if (!record(raw)) throw new Error("Invalid reading step");
+    // Sessions saved while the guided flow still had a flag scan resume at the
+    // step that followed it.
+    const step = raw.step === "flags" ? "order" : raw.step;
+    if (!STEPS.includes(step as never)) throw new Error("Invalid reading step");
     if (
       raw.round !== null &&
       raw.round !== 1 &&
@@ -90,13 +93,12 @@ export function validateReadingState(
     if (
       !Array.isArray(raw.highlights) ||
       raw.highlights.length > 200 ||
-      !record(raw.flags) ||
       !record(raw.stepMs) ||
       !record(raw.wordMs)
     )
       throw new Error("Invalid reading annotations");
     const p = initialProgress(mode);
-    p.step = raw.step as typeof p.step;
+    p.step = step as typeof p.step;
     p.round = raw.round;
     p.previewMs = Math.min(5000, milliseconds(raw.previewMs));
     p.segment = index(raw.segment, 10_000);
@@ -111,21 +113,10 @@ export function validateReadingState(
       throw new Error("A submitted answer is required");
     p.skipped = raw.skipped === true || previous?.progress[i].skipped === true;
     p.marked = raw.marked === true;
-    p.flagsChecked = raw.flagsChecked === true;
     p.deferred = raw.deferred === true;
-    for (const id of CHOICES) {
-      const flag = raw.flags[id];
-      if (
-        flag !== undefined &&
-        flag !== "red" &&
-        flag !== "green" &&
-        flag !== "neutral"
-      )
-        throw new Error("Invalid flag");
-      if (flag) p.flags[id] = flag;
+    for (const id of CHOICES)
       if (raw.wordMs[id] !== undefined)
         p.wordMs[id] = times(raw.wordMs[id], 5000);
-    }
     for (const step of STEPS)
       if (raw.stepMs[step] !== undefined)
         p.stepMs[step] = milliseconds(raw.stepMs[step]);

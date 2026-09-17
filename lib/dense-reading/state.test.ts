@@ -6,7 +6,6 @@ import {
   type ReadingAction,
 } from "./state";
 import {
-  choiceFlags,
   passageWords,
   readingTopic,
   suggestedOrder,
@@ -16,6 +15,7 @@ import {
   publicReadingQuestion,
   validateReadingState,
 } from "./validation";
+import type { ChoiceId } from "@/lib/sat/types";
 import type { ReadingKey, ReadingMode } from "./types";
 
 function question(id = "one"): ReadingKey {
@@ -54,7 +54,11 @@ function run(mode: ReadingMode = "guided", count = 1) {
     },
   };
 }
-function toChoices(r: ReturnType<typeof run>, round: 1 | 2 = 1) {
+function toChoices(
+  r: ReturnType<typeof run>,
+  round: 1 | 2 = 1,
+  order?: ChoiceId[],
+) {
   r.act({ type: "solve" });
   r.act({ type: "round", round });
   r.act({ type: "next" });
@@ -62,11 +66,7 @@ function toChoices(r: ReturnType<typeof run>, round: 1 | 2 = 1) {
   while (r.state.progress[0].step === "passage") r.act({ type: "next" });
   r.act({ type: "prediction", text: "Plants grew more slowly in shade." });
   r.act({ type: "next" });
-  if (round === 2) {
-    r.act({ type: "next" });
-    r.act({ type: "next" });
-  }
-  r.act({ type: "order", order: suggestedOrder(r.questions[0], round === 2) });
+  r.act({ type: "order", order: order ?? suggestedOrder(r.questions[0]) });
   r.act({ type: "next" });
   r.act({ type: "crossout" });
 }
@@ -138,21 +138,22 @@ test("skip survives revisiting and does not masquerade as an immediate solve", (
   assert.equal(r.state.progress[0].submitted, true);
 });
 
-test("uncertainty returns to deferred choices without discarding the prediction", () => {
+test("uncertainty sends the student back through the passage, keeping the prediction", () => {
   const r = run();
   toChoices(r, 2);
-  assert.deepEqual(r.state.progress[0].order, ["B", "C", "D"]);
+  // Every choice is ordered and checked, so there is nothing left to defer.
+  assert.deepEqual(r.state.progress[0].order, ["A", "B", "C", "D"]);
   finishChoices(r);
   r.act({ type: "uncertain" });
-  assert.equal(r.state.progress[0].step, "choice");
-  assert.equal(r.state.progress[0].order[r.state.progress[0].choiceIndex], "A");
-  assert.equal(r.state.progress[0].deferred, true);
+  assert.equal(r.state.progress[0].step, "topic");
+  assert.deepEqual(r.state.progress[0].order, []);
+  assert.equal(r.state.progress[0].eliminated.length, 0);
   assert.ok(r.state.progress[0].prediction);
 });
 
 test("timing follows real choice IDs after reordering and preserves subsecond durations", () => {
   const r = run();
-  toChoices(r, 2);
+  toChoices(r, 2, ["B", "A", "C", "D"]);
   r.act({ type: "time", ms: 225 });
   r.act({ type: "next" });
   r.act({ type: "time", ms: 450 });
@@ -175,21 +176,6 @@ test("empty and unanswered questions are graded as incorrect on final submission
   const r = run("regular");
   assert.equal(gradeReading(r.questions, r.state)[0].correct, false);
   assert.equal(gradeReading(r.questions, r.state)[0].answer, null);
-});
-
-test("flags use whole words, repeated-word exceptions, and red precedence", () => {
-  const q = question();
-  q.choices = [
-    { id: "A", text: "Most plants may grow." },
-    { id: "B", text: "Most flowers." },
-    { id: "C", text: "Other sources may help." },
-    { id: "D", text: "Smothering happens." },
-  ];
-  const flags = choiceFlags(q);
-  assert.equal(flags.A.flag, "neutral");
-  assert.equal(flags.C.flag, "red");
-  assert.equal(flags.D.flag, "neutral");
-  assert.ok(flags.A.repeated.includes("most"));
 });
 
 test("safe passage tokenization preserves authored underlines and highlight offsets", () => {
@@ -243,6 +229,28 @@ test("client questions contain no keys or explanations", () => {
   assert.equal("correct" in q, false);
   assert.equal("explanation" in q, false);
   assert.deepEqual(Object.keys(q.choices[0]).sort(), ["id", "text"]);
+});
+
+// Guided sessions saved before the flag scan was removed still hold its step
+// and its per-choice flags. They have to keep loading.
+test("a session saved during the old flag scan resumes at the ordering step", () => {
+  const r = run();
+  const saved = structuredClone(r.state) as unknown as {
+    progress: Record<string, unknown>[];
+  };
+  saved.progress[0] = {
+    ...saved.progress[0],
+    step: "flags",
+    flags: { A: "red", B: "neutral" },
+    flagsChecked: true,
+    stepMs: { flags: 4200, prediction: 1000 },
+  };
+  const state = validateReadingState(saved, r.questions, "guided");
+  assert.equal(state.progress[0].step, "order");
+  assert.equal(state.progress[0].prediction, r.state.progress[0].prediction);
+  assert.equal(state.progress[0].stepMs.prediction, 1000);
+  assert.ok(!("flags" in state.progress[0]));
+  assert.ok(!("flagsChecked" in state.progress[0]));
 });
 
 test("save validation rejects forged answers, positions, timings, and highlight payloads", () => {

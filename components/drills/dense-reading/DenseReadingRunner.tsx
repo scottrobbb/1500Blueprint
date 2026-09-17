@@ -43,7 +43,7 @@ export function DenseReadingRunner({
   const navigable = canNavigate(state, session.mode) && ready && !saving;
   const showChoices =
     !guided ||
-    ["flags", "order", "confidence", "select", "done"].includes(p.step) ||
+    ["order", "confidence", "select", "done"].includes(p.step) ||
     (p.step === "preview" && p.previewMs < 5000);
   async function exit() {
     if (exiting) return;
@@ -325,7 +325,7 @@ export function DenseReadingRunner({
             </p>
             <p>
               {guided
-                ? "Guided practice starts with a five-second preview. Choose a confidence pass, read the passage in five-word groups, write a prediction, and check choices word by word. The second and third passes add keyword flag scanning. You can revisit skipped questions, but submitted answers are locked."
+                ? "Guided practice starts with a five-second preview. Choose a confidence pass, read the passage in five-word groups, write a prediction, and check choices word by word. You can revisit skipped questions, but submitted answers are locked."
                 : "Regular practice lets you move freely between questions and revise answers before submitting the round."}
             </p>
             <p>
