@@ -8,6 +8,7 @@ import { MathText } from "@/components/test/MathText";
 import { CalculatorPanel } from "@/components/test/CalculatorPanel";
 import {
   formatReadingTime,
+  passLabel,
   STEP_LABELS,
   TOPICS,
 } from "@/lib/dense-reading/method";
@@ -309,7 +310,7 @@ export function ReadingResults({
                           "No prediction entered"}
                       </p>
                       <p className="mb-3 text-sm text-navy/65">
-                        Round {session.state.progress[item.i].round ?? "—"} ·{" "}
+                        {passLabel(session.state.progress[item.i].round)} ·{" "}
                         {session.state.progress[item.i].skipped
                           ? "Skipped initially"
                           : "Solved on first visit"}

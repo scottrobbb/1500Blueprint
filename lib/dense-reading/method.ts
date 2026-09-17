@@ -84,9 +84,22 @@ export const TOPICS: Record<
   },
 };
 
+// Students pick how confident they feel before working a question, and see
+// that choice as a pass over the question rather than a numbered round -- the
+// word "round" already means one whole drill session here.
+export const PASS_LABELS: Record<1 | 2 | 3, string> = {
+  1: "First pass",
+  2: "Second pass",
+  3: "Third pass",
+};
+
+export function passLabel(round: 1 | 2 | 3 | null): string {
+  return round ? PASS_LABELS[round] : "—";
+}
+
 export const STEP_LABELS: Record<ReadingStep, string> = {
   preview: "Preview the question",
-  round: "Choose your round",
+  round: "Choose your pass",
   question: "Read the question",
   topic: "Find the topic",
   passage: "Read the passage",
