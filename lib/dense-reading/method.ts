@@ -104,7 +104,6 @@ export const STEP_LABELS: Record<ReadingStep, string> = {
   passage: "Read the passage",
   figure: "Review the figure",
   prediction: "Predict your answer",
-  order: "Order the choices",
   crossout: "Enable cross-out mode",
   choice: "Check each word",
   confidence: "Check your reasoning",
@@ -174,18 +173,6 @@ export function wordCount(text: string): number {
 }
 export function segmentCount(question: ReadingQuestion): number {
   return Math.max(1, Math.ceil(passageWords(question.passage).length / 5));
-}
-
-// Shortest choices first: the quickest claims to test against the passage.
-export function suggestedOrder(question: ReadingQuestion): ChoiceId[] {
-  return question.choices
-    .slice()
-    .sort(
-      (a, b) =>
-        wordCount(a.text) - wordCount(b.text) ||
-        CHOICES.indexOf(a.id) - CHOICES.indexOf(b.id),
-    )
-    .map((choice) => choice.id);
 }
 
 export function formatReadingTime(ms: number): string {

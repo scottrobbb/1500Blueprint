@@ -4,7 +4,6 @@ import {
   PASS_LABELS,
   segmentCount,
   STEP_LABELS,
-  suggestedOrder,
   TOPICS,
   wordCount,
 } from "@/lib/dense-reading/method";
@@ -30,7 +29,6 @@ export function GuidedSteps({
   const dictation = useDictation(p.prediction, (text) =>
     dispatch({ type: "prediction", text }),
   );
-  const order = suggestedOrder(question);
   return (
     <section
       aria-label="Guided steps"
@@ -169,52 +167,6 @@ export function GuidedSteps({
             </ReadingButton>
           </>
         ) : null}
-        {p.step === "order" ? (
-          <>
-            <p>
-              Read shorter choices first, then test every claim against the
-              passage.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {order.map((id) => (
-                <ReadingButton
-                  secondary
-                  key={id}
-                  aria-pressed={p.order.includes(id)}
-                  onClick={() =>
-                    dispatch({
-                      type: "order",
-                      order: p.order.includes(id)
-                        ? p.order.filter((value) => value !== id)
-                        : [...p.order, id],
-                    })
-                  }
-                >
-                  {id} ·{" "}
-                  {wordCount(question.choices.find((c) => c.id === id)!.text)}{" "}
-                  words
-                  {p.order.includes(id) ? ` · ${p.order.indexOf(id) + 1}` : ""}
-                </ReadingButton>
-              ))}
-            </div>
-            <ReadingButton
-              secondary
-              onClick={() => dispatch({ type: "order", order })}
-              className="w-full"
-            >
-              Use suggested order: {order.join(" → ")}
-            </ReadingButton>
-            <ReadingButton
-              disabled={
-                p.order.length !== order.length ||
-                order.some((id) => !p.order.includes(id))
-              }
-              onClick={next}
-            >
-              Confirm order
-            </ReadingButton>
-          </>
-        ) : null}
         {p.step === "crossout" ? (
           <>
             <p>
@@ -274,9 +226,7 @@ export function GuidedSteps({
               onClick={() => dispatch({ type: "uncertain" })}
               className="w-full"
             >
-              {p.order.length < 4
-                ? "Review deferred choices"
-                : "Read the passage again"}
+              Read the passage again
             </ReadingButton>
           </>
         ) : null}
