@@ -2,9 +2,9 @@
 
 import { Fragment, useEffect, useRef, useState } from "react";
 import { highlightCovering, type Highlight } from "@/lib/sat/highlights";
-import { buildHighlightLayout, type HighlightLayout, type LayoutCell } from "./highlight-layout";
+import { buildHighlightLayout, type HighlightLayout, type LayoutRun } from "./highlight-layout";
 import { TrashIcon, UnderlineIcon, NoteIcon } from "./icons";
-import { MathText } from "./MathText";
+import { MathTokenView } from "./MathText";
 
 // Re-exported so the many `from "./HighlightablePassage"` import sites keep
 // working; the type and its transitions live in lib/sat/highlights.
@@ -39,7 +39,7 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
-// Where a selection boundary falls in the highlightable text. Rendered math is
+// Where a selection boundary falls in the highlightable text. Typeset math is
 // marked data-hl-skip and is not part of that text. A boundary that is not
 // inside a counted text node -- one resting on a table cell or row, which
 // dragging across a table produces, or one inside skipped math -- resolves to
@@ -362,19 +362,22 @@ function renderLayout(
     return nodes;
   };
 
-  // Math in a cell is drawn by KaTeX and marked so selection offsets skip it.
-  const renderCell = (cell: LayoutCell) =>
-    cell.kind === "text" ? (
-      renderRange(cell.start, cell.end)
-    ) : (
-      <span data-hl-skip>
-        <MathText>{cell.source}</MathText>
-      </span>
-    );
+  // Typeset pieces are drawn exactly as MathText draws them, and marked so
+  // selection offsets skip them.
+  const renderRuns = (runs: LayoutRun[]) =>
+    runs.map((run, index) => {
+      if (run.kind === "text") return <Fragment key={index}>{renderRange(run.start, run.end)}</Fragment>;
+      const token = <MathTokenView token={run.token} />;
+      return (
+        <span key={index} data-hl-skip>
+          {run.underlined ? <u className="decoration-[1.5px] underline-offset-2">{token}</u> : token}
+        </span>
+      );
+    });
 
   return layout.blocks.map((block, index) => {
     if (block.kind === "text") {
-      return <Fragment key={index}>{renderRange(block.start, block.end)}</Fragment>;
+      return <Fragment key={index}>{renderRuns(block.runs)}</Fragment>;
     }
     // Same table QuestionContent draws, spaced like a paragraph break.
     return (
@@ -384,7 +387,7 @@ function renderLayout(
             <tr>
               {block.head.map((cell, j) => (
                 <th key={j} className="border border-exam-border px-3 py-1.5 text-center font-semibold">
-                  {renderCell(cell)}
+                  {renderRuns(cell)}
                 </th>
               ))}
             </tr>
@@ -399,7 +402,7 @@ function renderLayout(
                       ci === 0 ? "font-semibold" : "text-center"
                     }`}
                   >
-                    {renderCell(cell)}
+                    {renderRuns(cell)}
                   </td>
                 ))}
               </tr>
