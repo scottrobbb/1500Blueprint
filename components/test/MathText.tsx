@@ -113,35 +113,36 @@ export function plainMathToLatex(value: string): string {
   return latex.trim();
 }
 
-function renderExponents(text: string): ReactNode[] {
-  const out: ReactNode[] = [];
+// One piece of what MathText draws for a run of text: characters shown as
+// themselves, or something it typesets. The highlighter lays question text out
+// from these same pieces, so the two cannot drift apart.
+export type MathToken =
+  | { type: "text"; value: string }
+  | { type: "katex"; value: string; display?: boolean }
+  | { type: "sup"; value: string };
+
+function exponentTokens(text: string): MathToken[] {
+  const out: MathToken[] = [];
   let last = 0;
-  let key = 0;
   EXPONENT_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
   while ((m = EXPONENT_RE.exec(text))) {
-    if (m.index > last) out.push(text.slice(last, m.index));
-    const inner = m[1].startsWith("(") ? m[1].slice(1, -1) : m[1];
-    out.push(<sup key={`sup-${key++}`}>{inner}</sup>);
+    if (m.index > last) out.push({ type: "text", value: text.slice(last, m.index) });
+    out.push({ type: "sup", value: m[1].startsWith("(") ? m[1].slice(1, -1) : m[1] });
     last = m.index + m[0].length;
   }
-  if (last < text.length) out.push(text.slice(last));
+  if (last < text.length) out.push({ type: "text", value: text.slice(last) });
   return out;
 }
 
-function renderPlain(text: string, key: string): ReactNode {
+function plainTokens(text: string): MathToken[] {
   const normalized = normalizeLegacyMathText(text);
   const segments = parseLegacyMathSegments(normalized);
   if (!segments.some((segment) => segment.type === "math")) {
-    if (!normalized.includes("^")) return <Fragment key={key}>{normalized}</Fragment>;
-    return <Fragment key={key}>{renderExponents(normalized)}</Fragment>;
+    return normalized.includes("^") ? exponentTokens(normalized) : [{ type: "text", value: normalized }];
   }
-  return (
-    <Fragment key={key}>
-      {segments.map((segment, index) => segment.type === "math"
-        ? <KatexSpan key={`${key}-legacy-math-${index}`} value={segment.value} />
-        : <Fragment key={`${key}-legacy-text-${index}`}>{renderExponents(segment.value)}</Fragment>)}
-    </Fragment>
+  return segments.flatMap((segment): MathToken[] =>
+    segment.type === "math" ? [{ type: "katex", value: segment.value }] : exponentTokens(segment.value),
   );
 }
 
@@ -149,14 +150,24 @@ export function normalizeLegacyMathText(text: string): string {
   return text.replace(/(?<![A-Za-z])sqrt\s*\(/gi, "√(");
 }
 
+// Tokens for one underline segment's text, which is what MathText renders
+// piece by piece.
+export function mathTokens(text: string): MathToken[] {
+  return parseMathSegments(text).flatMap((segment): MathToken[] =>
+    segment.type === "math"
+      ? [{ type: "katex", value: segment.value, ...(segment.display ? { display: true } : {}) }]
+      : plainTokens(segment.value),
+  );
+}
+
+export function MathTokenView({ token }: { token: MathToken }) {
+  if (token.type === "katex") return <KatexSpan value={token.value} display={token.display} />;
+  if (token.type === "sup") return <sup>{token.value}</sup>;
+  return <>{token.value}</>;
+}
+
 function renderMath(text: string, keyPrefix: string): ReactNode[] {
-  const segments = parseMathSegments(text);
-  return segments.map((segment, index) => {
-    if (segment.type === "math") {
-      return <KatexSpan key={`${keyPrefix}-math-${index}`} value={segment.value} display={segment.display} />;
-    }
-    return renderPlain(segment.value, `${keyPrefix}-plain-${index}`);
-  });
+  return mathTokens(text).map((token, index) => <MathTokenView key={`${keyPrefix}-${index}`} token={token} />);
 }
 
 function KatexSpan({ value, display = false }: { value: string; display?: boolean }) {
@@ -201,10 +212,11 @@ function superscriptValue(value: string): string {
 // beside its visual HTML, so math in the prose makes the offsets point at the
 // wrong characters and falls back to ordinary rendering.
 //
-// Importer tables are fine: the highlighter lays them out itself and counts
-// only their cell text, and a cell holding math is drawn but left out of the
-// count (see highlight-layout). Row markers outside a table that parses mean
-// broken markup, which the highlighter would print literally.
+// Importer tables are fine: the highlighter lays them out itself, typesetting
+// their contents and the prose around them the way MathText does and counting
+// only the characters drawn as text (see highlight-layout). Row markers outside
+// a table that parses mean broken markup, which the highlighter would print
+// literally.
 export function isHighlightableText(text: string): boolean {
   if (!text.trim()) return false;
   return splitTableBlocks(text).every((block) => block.kind === "table" || rendersAsSource(block.source));
@@ -216,21 +228,6 @@ export function isHighlightableText(text: string): boolean {
 function rendersAsSource(text: string): boolean {
   if (text.includes(TABLE_ROWSEP)) return false;
   return parseMathSegments(normalizeBulletMarkup(text)).every((segment) => segment.type === "text");
-}
-
-// Whether a table cell can be drawn as plain, highlightable text without
-// looking different from MathText's rendering of it. Stricter than prose: a
-// cell like "2x + 1" or "x^2" is typeset from plain text, and the highlighter
-// would print it raw. A bare number is typeset too but reads the same as text.
-export function cellRendersAsSource(cell: string): boolean {
-  if (!rendersAsSource(cell)) return false;
-  return parseUnderlineMarkup(cell).every(({ text }) => {
-    const plain = unescapeDollarSigns(text);
-    const normalized = normalizeLegacyMathText(plain);
-    if (normalized !== plain || normalized.includes("^")) return false;
-    if (/^[+−-]?\d+(?:\.\d+)?$/.test(normalized.trim())) return true;
-    return parseLegacyMathSegments(normalized).every((segment) => segment.type === "text");
-  });
 }
 
 export function MathText({ children }: { children: string }) {
