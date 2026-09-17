@@ -3,6 +3,7 @@ import { useDictation } from "../shared/useDictation";
 import {
   choiceFlags,
   flagVocabulary,
+  PASS_LABELS,
   segmentCount,
   STEP_LABELS,
   suggestedOrder,
@@ -45,7 +46,7 @@ export function GuidedSteps({
     >
       <p className="mb-2 text-xs font-medium text-brand-600">
         {method.title}
-        {p.round ? ` · Round ${p.round}` : ""}
+        {p.round ? ` · ${PASS_LABELS[p.round]}` : ""}
       </p>
       <h2
         aria-live="polite"
@@ -88,8 +89,8 @@ export function GuidedSteps({
         {p.step === "round" ? (
           <>
             <p>
-              Choose how confident you feel. Rounds 2 and 3 include a flag scan
-              before analyzing the answers.
+              Choose how confident you feel. The second and third passes
+              include a flag scan before analyzing the answers.
             </p>
             {([1, 2, 3] as const).map((round) => (
               <ReadingButton
@@ -98,7 +99,7 @@ export function GuidedSteps({
                 onClick={() => dispatch({ type: "round", round })}
                 className="w-full justify-start text-left"
               >
-                Round {round} ·{" "}
+                {PASS_LABELS[round]} ·{" "}
                 {round === 1
                   ? "Confident"
                   : round === 2

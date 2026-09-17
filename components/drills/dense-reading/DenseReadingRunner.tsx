@@ -325,7 +325,7 @@ export function DenseReadingRunner({
             </p>
             <p>
               {guided
-                ? "Guided practice starts with a five-second preview. Choose a confidence round, read the passage in five-word groups, write a prediction, and check choices word by word. Rounds 2 and 3 add keyword flag scanning. You can revisit skipped questions, but submitted answers are locked."
+                ? "Guided practice starts with a five-second preview. Choose a confidence pass, read the passage in five-word groups, write a prediction, and check choices word by word. The second and third passes add keyword flag scanning. You can revisit skipped questions, but submitted answers are locked."
                 : "Regular practice lets you move freely between questions and revise answers before submitting the round."}
             </p>
             <p>
