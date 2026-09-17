@@ -2,7 +2,6 @@ import type { ChoiceId } from "@/lib/sat/types";
 import { segmentCount, suggestedOrder, wordCount } from "./method";
 import {
   CHOICES,
-  type Flag,
   type ReadingMode,
   type ReadingProgress,
   type ReadingQuestion,
@@ -16,8 +15,6 @@ export function initialProgress(mode: ReadingMode): ReadingProgress {
     previewMs: 0,
     segment: 0,
     prediction: "",
-    flags: {},
-    flagsChecked: false,
     order: [],
     choiceIndex: 0,
     word: 0,
@@ -64,7 +61,6 @@ export type ReadingAction =
     }
   | { type: "round"; round: 1 | 2 | 3 }
   | { type: "prediction"; text: string }
-  | { type: "flag"; choice: ChoiceId; flag: Flag }
   | { type: "order"; order: ChoiceId[] }
   | { type: "decide"; keep: boolean }
   | { type: "answer"; choice: ChoiceId }
@@ -178,10 +174,6 @@ export function advanceReading(
     p.prediction = action.text.slice(0, 4000);
     return next;
   }
-  if (action.type === "flag" && p.step === "flags" && !p.flagsChecked) {
-    p.flags = { ...p.flags, [action.choice]: action.flag };
-    return next;
-  }
   if (action.type === "order" && p.step === "order") {
     p.order = [...new Set(action.order.filter((id) => CHOICES.includes(id)))];
     return next;
@@ -213,7 +205,6 @@ export function advanceReading(
       p.word = 0;
       p.deferred = false;
       p.eliminated = [];
-      p.flagsChecked = false;
     }
     return next;
   }
@@ -247,14 +238,10 @@ export function advanceReading(
       break;
     case "prediction":
       if (!p.prediction.trim()) return state;
-      p.step = p.round === 1 ? "order" : "flags";
-      break;
-    case "flags":
-      if (!p.flagsChecked) p.flagsChecked = true;
-      else p.step = "order";
+      p.step = "order";
       break;
     case "order": {
-      const required = suggestedOrder(question, p.round !== 1);
+      const required = suggestedOrder(question);
       if (
         p.order.length !== required.length ||
         required.some((id) => !p.order.includes(id))

@@ -1,8 +1,6 @@
 "use client";
 import { useDictation } from "../shared/useDictation";
 import {
-  choiceFlags,
-  flagVocabulary,
   PASS_LABELS,
   segmentCount,
   STEP_LABELS,
@@ -12,7 +10,6 @@ import {
 } from "@/lib/dense-reading/method";
 import type { ReadingAction } from "@/lib/dense-reading/state";
 import {
-  CHOICES,
   type ReadingProgress,
   type ReadingQuestion,
 } from "@/lib/dense-reading/types";
@@ -33,12 +30,7 @@ export function GuidedSteps({
   const dictation = useDictation(p.prediction, (text) =>
     dispatch({ type: "prediction", text }),
   );
-  const flags = choiceFlags(question);
-  const vocabulary = flagVocabulary(question.topic);
-  const order = suggestedOrder(question, p.round !== 1);
-  const mismatches = CHOICES.filter(
-    (id) => (p.flags[id] ?? "neutral") !== flags[id].flag,
-  );
+  const order = suggestedOrder(question);
   return (
     <section
       aria-label="Guided steps"
@@ -89,8 +81,8 @@ export function GuidedSteps({
         {p.step === "round" ? (
           <>
             <p>
-              Choose how confident you feel. The second and third passes
-              include a flag scan before analyzing the answers.
+              Choose how confident you feel. Your answer is recorded with your
+              results.
             </p>
             {([1, 2, 3] as const).map((round) => (
               <ReadingButton
@@ -177,70 +169,11 @@ export function GuidedSteps({
             </ReadingButton>
           </>
         ) : null}
-        {p.step === "flags" ? (
-          <>
-            <p>
-              Use the {vocabulary.name} scan to decide which choices to examine
-              first. Flags are clues, not proof that an answer is wrong.
-            </p>
-            <p>
-              <strong>Red:</strong> {vocabulary.red.join(", ")}
-              <br />
-              <strong>Green:</strong> {vocabulary.green.join(", ")}
-            </p>
-            <p>
-              A word repeated across choices is neutral. Red takes precedence
-              when both colors apply.
-            </p>
-            {question.choices.map((c) => (
-              <div key={c.id} className="rounded-lg border border-navy/12 p-3">
-                <p className="mb-2">
-                  <strong>{c.id}.</strong> {c.text}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {(["red", "green", "neutral"] as const).map((flag) => (
-                    <button
-                      key={flag}
-                      disabled={p.flagsChecked}
-                      aria-pressed={(p.flags[c.id] ?? "neutral") === flag}
-                      onClick={() =>
-                        dispatch({ type: "flag", choice: c.id, flag })
-                      }
-                      className={`min-h-11 rounded-lg border px-3 text-sm capitalize disabled:cursor-default ${(p.flags[c.id] ?? "neutral") === flag ? "border-brand bg-ice text-navy" : "border-navy/15 text-navy/70"}`}
-                    >
-                      {flag}
-                    </button>
-                  ))}
-                </div>
-                {p.flagsChecked ? (
-                  <p className="mt-2 text-xs text-navy/70">
-                    {flags[c.id].flag === "neutral"
-                      ? "Neutral"
-                      : `${flags[c.id].flag === "red" ? "Red" : "Green"}: ${flags[c.id].words.join(", ")}`}
-                    {flags[c.id].repeated.length
-                      ? `. Repeated across choices: ${flags[c.id].repeated.join(", ")}.`
-                      : ""}
-                  </p>
-                ) : null}
-              </div>
-            ))}
-            {p.flagsChecked ? (
-              <p role="status">
-                {mismatches.length
-                  ? `Check ${mismatches.join(", ")}. The next step uses the corrected flags above.`
-                  : "All flags identified correctly."}
-              </p>
-            ) : null}
-            <ReadingButton onClick={next}>
-              {p.flagsChecked ? "Continue" : "Check flags"}
-            </ReadingButton>
-          </>
-        ) : null}
         {p.step === "order" ? (
           <>
             <p>
               Read shorter choices first, then test every claim against the
-              passage. Red-flagged choices can be revisited later.
+              passage.
             </p>
             <div className="grid grid-cols-2 gap-2">
               {order.map((id) => (

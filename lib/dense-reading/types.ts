@@ -27,7 +27,6 @@ export type ReadingKey = ReadingQuestion & {
   correct: ChoiceId;
   explanation: string;
 };
-export type Flag = "red" | "green" | "neutral";
 export const STEPS = [
   "preview",
   "round",
@@ -36,7 +35,6 @@ export const STEPS = [
   "passage",
   "figure",
   "prediction",
-  "flags",
   "order",
   "crossout",
   "choice",
@@ -51,8 +49,6 @@ export type ReadingProgress = {
   previewMs: number;
   segment: number;
   prediction: string;
-  flags: Partial<Record<ChoiceId, Flag>>;
-  flagsChecked: boolean;
   order: ChoiceId[];
   choiceIndex: number;
   word: number;
