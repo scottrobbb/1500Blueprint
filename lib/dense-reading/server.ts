@@ -121,6 +121,7 @@ export async function createReadingSession(
   mode: ReadingMode,
   id: string,
   repeatId?: string,
+  restart = false,
 ): Promise<string> {
   const db = supabaseAdmin();
   const { data: active, error: activeError } = await db
@@ -133,7 +134,10 @@ export async function createReadingSession(
     throw new ReadingSessionError(
       "Dense Reading is unavailable. Please try again.",
     );
-  if (active) return active.id;
+  // A round in progress normally wins, and starting returns it untouched.
+  // Restarting replaces it, except when it is already the round being started,
+  // so a repeated request lands on that round instead of discarding it.
+  if (active && (!restart || active.id === id)) return active.id;
   const { data: retry } = await db
     .from("dense_reading_sessions")
     .select("id")
@@ -213,6 +217,21 @@ export async function createReadingSession(
       }),
     );
     questions = keyed;
+  }
+  // Discarding the old round comes last: a restart that cannot build its
+  // questions leaves the round in progress alone. Nothing is recorded for a
+  // round until it completes, so only its in-progress state is lost.
+  if (restart && active) {
+    const { error: discardError } = await db
+      .from("dense_reading_sessions")
+      .delete()
+      .eq("email", email)
+      .eq("id", active.id)
+      .eq("status", "active");
+    if (discardError)
+      throw new ReadingSessionError(
+        "Your round could not be restarted. Please try again.",
+      );
   }
   const { error } = await db.from("dense_reading_sessions").insert({
     id,
