@@ -1,5 +1,5 @@
 import type { ChoiceId } from "@/lib/sat/types";
-import { segmentCount, suggestedOrder, wordCount } from "./method";
+import { segmentCount, wordCount } from "./method";
 import {
   CHOICES,
   type ReadingMode,
@@ -61,7 +61,6 @@ export type ReadingAction =
     }
   | { type: "round"; round: 1 | 2 | 3 }
   | { type: "prediction"; text: string }
-  | { type: "order"; order: ChoiceId[] }
   | { type: "decide"; keep: boolean }
   | { type: "answer"; choice: ChoiceId }
   | { type: "eliminate"; choice: ChoiceId }
@@ -174,10 +173,6 @@ export function advanceReading(
     p.prediction = action.text.slice(0, 4000);
     return next;
   }
-  if (action.type === "order" && p.step === "order") {
-    p.order = [...new Set(action.order.filter((id) => CHOICES.includes(id)))];
-    return next;
-  }
   if (action.type === "answer" && p.step === "select") {
     p.answer = action.choice;
     p.eliminated = p.eliminated.filter((id) => id !== action.choice);
@@ -238,18 +233,10 @@ export function advanceReading(
       break;
     case "prediction":
       if (!p.prediction.trim()) return state;
-      p.step = "order";
-      break;
-    case "order": {
-      const required = suggestedOrder(question);
-      if (
-        p.order.length !== required.length ||
-        required.some((id) => !p.order.includes(id))
-      )
-        return state;
+      // Choices are checked in the order they are written.
+      p.order = question.choices.map((choice) => choice.id);
       p.step = state.crossOut ? "choice" : "crossout";
       break;
-    }
     case "choice": {
       const choice = question.choices.find(
         (choice) => choice.id === p.order[p.choiceIndex],

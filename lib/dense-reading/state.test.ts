@@ -8,14 +8,12 @@ import {
 import {
   passageWords,
   readingTopic,
-  suggestedOrder,
 } from "./method";
 import {
   gradeReading,
   publicReadingQuestion,
   validateReadingState,
 } from "./validation";
-import type { ChoiceId } from "@/lib/sat/types";
 import type { ReadingKey, ReadingMode } from "./types";
 
 function question(id = "one"): ReadingKey {
@@ -54,19 +52,13 @@ function run(mode: ReadingMode = "guided", count = 1) {
     },
   };
 }
-function toChoices(
-  r: ReturnType<typeof run>,
-  round: 1 | 2 = 1,
-  order?: ChoiceId[],
-) {
+function toChoices(r: ReturnType<typeof run>, round: 1 | 2 = 1) {
   r.act({ type: "solve" });
   r.act({ type: "round", round });
   r.act({ type: "next" });
   r.act({ type: "next" });
   while (r.state.progress[0].step === "passage") r.act({ type: "next" });
   r.act({ type: "prediction", text: "Plants grew more slowly in shade." });
-  r.act({ type: "next" });
-  r.act({ type: "order", order: order ?? suggestedOrder(r.questions[0]) });
   r.act({ type: "next" });
   r.act({ type: "crossout" });
 }
@@ -78,7 +70,7 @@ function finishChoices(r: ReturnType<typeof run>) {
   }
 }
 
-test("guided reading enforces prediction, ordering, and every word before a decision", () => {
+test("guided reading enforces the prediction and every word before a decision", () => {
   const r = run();
   r.act({ type: "solve" });
   r.act({ type: "round", round: 1 });
@@ -91,11 +83,9 @@ test("guided reading enforces prediction, ordering, and every word before a deci
   assert.equal(r.state.progress[0].step, "prediction");
   r.act({ type: "prediction", text: "Shade slows growth." });
   r.act({ type: "next" });
-  r.act({ type: "next" });
-  assert.equal(r.state.progress[0].step, "order");
-  r.act({ type: "order", order: ["A", "B", "C", "D"] });
-  r.act({ type: "next" });
   assert.equal(r.state.progress[0].step, "crossout");
+  // Choices are checked in the order they are written.
+  assert.deepEqual(r.state.progress[0].order, ["A", "B", "C", "D"]);
   r.act({ type: "crossout" });
   r.act({ type: "decide", keep: false });
   assert.equal(r.state.progress[0].choiceIndex, 0);
@@ -141,7 +131,7 @@ test("skip survives revisiting and does not masquerade as an immediate solve", (
 test("uncertainty sends the student back through the passage, keeping the prediction", () => {
   const r = run();
   toChoices(r, 2);
-  // Every choice is ordered and checked, so there is nothing left to defer.
+  // Every choice is checked, so there is nothing left to defer.
   assert.deepEqual(r.state.progress[0].order, ["A", "B", "C", "D"]);
   finishChoices(r);
   r.act({ type: "uncertain" });
@@ -151,14 +141,14 @@ test("uncertainty sends the student back through the passage, keeping the predic
   assert.ok(r.state.progress[0].prediction);
 });
 
-test("timing follows real choice IDs after reordering and preserves subsecond durations", () => {
+test("timing follows the checked choice and preserves subsecond durations", () => {
   const r = run();
-  toChoices(r, 2, ["B", "A", "C", "D"]);
+  toChoices(r, 2);
   r.act({ type: "time", ms: 225 });
   r.act({ type: "next" });
   r.act({ type: "time", ms: 450 });
-  assert.deepEqual(r.state.progress[0].wordMs.B, [225, 450]);
-  assert.equal(r.state.progress[0].wordMs.A, undefined);
+  assert.deepEqual(r.state.progress[0].wordMs.A, [225, 450]);
+  assert.equal(r.state.progress[0].wordMs.B, undefined);
   assert.equal(r.state.elapsedMs, 675);
 });
 
@@ -233,7 +223,7 @@ test("client questions contain no keys or explanations", () => {
 
 // Guided sessions saved before the flag scan was removed still hold its step
 // and its per-choice flags. They have to keep loading.
-test("a session saved during the old flag scan resumes at the ordering step", () => {
+test("a session saved on a step the flow no longer has resumes at cross-out", () => {
   const r = run();
   const saved = structuredClone(r.state) as unknown as {
     progress: Record<string, unknown>[];
@@ -246,11 +236,25 @@ test("a session saved during the old flag scan resumes at the ordering step", ()
     stepMs: { flags: 4200, prediction: 1000 },
   };
   const state = validateReadingState(saved, r.questions, "guided");
-  assert.equal(state.progress[0].step, "order");
+  assert.equal(state.progress[0].step, "crossout");
   assert.equal(state.progress[0].prediction, r.state.progress[0].prediction);
   assert.equal(state.progress[0].stepMs.prediction, 1000);
   assert.ok(!("flags" in state.progress[0]));
   assert.ok(!("flagsChecked" in state.progress[0]));
+});
+
+// A student part-way through ordering saved a partial order. The choice step
+// walks that list, so it has to come back complete.
+test("a session saved while ordering resumes with every choice to check", () => {
+  const r = run();
+  const saved = structuredClone(r.state) as unknown as {
+    progress: Record<string, unknown>[];
+  };
+  saved.progress[0] = { ...saved.progress[0], step: "order", order: ["B", "D"] };
+  const state = validateReadingState(saved, r.questions, "guided");
+  assert.equal(state.progress[0].step, "crossout");
+  assert.deepEqual(state.progress[0].order, ["A", "B", "C", "D"]);
+  assert.equal(state.progress[0].choiceIndex, 0);
 });
 
 test("save validation rejects forged answers, positions, timings, and highlight payloads", () => {

@@ -43,7 +43,7 @@ export function DenseReadingRunner({
   const navigable = canNavigate(state, session.mode) && ready && !saving;
   const showChoices =
     !guided ||
-    ["order", "confidence", "select", "done"].includes(p.step) ||
+    ["confidence", "select", "done"].includes(p.step) ||
     (p.step === "preview" && p.previewMs < 5000);
   async function exit() {
     if (exiting) return;

@@ -73,9 +73,9 @@ export function validateReadingState(
     throw new Error("Invalid attempt order");
   const progress = value.progress.map((raw: unknown, i) => {
     if (!record(raw)) throw new Error("Invalid reading step");
-    // Sessions saved while the guided flow still had a flag scan resume at the
-    // step that followed it.
-    const step = raw.step === "flags" ? "order" : raw.step;
+    // Sessions saved on a step the guided flow no longer has -- the flag scan,
+    // or ordering the choices -- resume at the step that followed it.
+    const step = raw.step === "flags" || raw.step === "order" ? "crossout" : raw.step;
     if (!STEPS.includes(step as never)) throw new Error("Invalid reading step");
     if (
       raw.round !== null &&
@@ -103,7 +103,14 @@ export function validateReadingState(
     p.previewMs = Math.min(5000, milliseconds(raw.previewMs));
     p.segment = index(raw.segment, 10_000);
     p.prediction = raw.prediction;
+    // A session saved while the student was still ordering holds a partial
+    // order, which would leave the choice step with choices it never shows.
     p.order = ids(raw.order);
+    if (
+      (step === "crossout" || step === "choice") &&
+      p.order.length !== questions[i].choices.length
+    )
+      p.order = questions[i].choices.map((choice) => choice.id);
     p.choiceIndex = index(raw.choiceIndex, Math.max(0, p.order.length - 1));
     p.word = index(raw.word, 5000);
     p.eliminated = ids(raw.eliminated);

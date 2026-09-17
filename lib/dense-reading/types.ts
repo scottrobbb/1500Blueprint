@@ -35,7 +35,6 @@ export const STEPS = [
   "passage",
   "figure",
   "prediction",
-  "order",
   "crossout",
   "choice",
   "confidence",
