@@ -12,7 +12,7 @@ import {
   signCourseAssetReferences,
 } from "@/lib/courses/assets.server";
 import { achievementRules, drillXpFor } from "@/lib/gamification/engine";
-import { readingTopic } from "./method";
+import { readingTopic, sortByReadingTopic } from "./method";
 import { initialReadingState } from "./state";
 import {
   gradeReading,
@@ -218,6 +218,8 @@ export async function createReadingSession(
     );
     questions = keyed;
   }
+  // Both a fresh set and a repeated one are worked in topic order.
+  questions = sortByReadingTopic(questions);
   // Discarding the old round comes last: a restart that cannot build its
   // questions leaves the round in progress alone. Nothing is recorded for a
   // round until it completes, so only its in-progress state is lost.

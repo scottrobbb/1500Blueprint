@@ -109,6 +109,43 @@ export const STEP_LABELS: Record<ReadingStep, string> = {
   done: "Answer saved",
 };
 
+// The order a round works through its topics. What the text says as a whole
+// comes first, then how two texts relate, then the evidence, and only then what
+// follows from it: an inference or an evidence question read before the main
+// idea asks a student to reason about a text they have not placed yet.
+// "Central Ideas and Details" is one skill, so details travel with the main
+// idea.
+const TOPIC_ORDER: ReadingTopic[] = [
+  "main-idea",
+  "structure",
+  "function",
+  "details",
+  "cross-text",
+  "evidence",
+  "graphs",
+  "inference",
+];
+
+export function readingTopicRank(topic: ReadingTopic): number {
+  const rank = TOPIC_ORDER.indexOf(topic);
+  return rank < 0 ? TOPIC_ORDER.length : rank;
+}
+
+// Puts a round's questions in that order, keeping the selected order within a
+// topic so the mix stays random.
+export function sortByReadingTopic<T extends { topic: ReadingTopic }>(
+  questions: readonly T[],
+): T[] {
+  return questions
+    .map((question, index) => ({ question, index }))
+    .sort(
+      (a, b) =>
+        readingTopicRank(a.question.topic) - readingTopicRank(b.question.topic) ||
+        a.index - b.index,
+    )
+    .map((entry) => entry.question);
+}
+
 export function readingTopic(
   prompt: string,
   skill: string,
