@@ -40,7 +40,9 @@ export function DenseReadingRunner({
   const p = state.progress[state.current];
   const question = session.questions[state.current];
   const answered = state.progress.filter((progress) => progress.answer).length;
-  const navigable = canNavigate(state, session.mode) && ready && !saving;
+  // An autosave runs in the background: it does not hold up moving between
+  // questions. Submitting is what waits for a save, and its dialog guards that.
+  const navigable = canNavigate(state, session.mode) && ready;
   const showChoices =
     !guided ||
     ["confidence", "select", "done"].includes(p.step) ||
@@ -160,7 +162,7 @@ export function DenseReadingRunner({
               ))}
             </div>
             <ReadingButton
-              disabled={saving || !ready}
+              disabled={!ready}
               onClick={() => setConfirmSubmit(true)}
             >
               Submit round

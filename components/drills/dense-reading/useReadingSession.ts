@@ -184,6 +184,10 @@ export function useReadingSession(
     };
   }, [dispatch, key, ready, save, session.status]);
 
+  // Every change is backed up in the browser straight away. The server save is
+  // left to the 15-second timer above: saving on each change put a request in
+  // flight almost continuously, and the controls that wait on a save were
+  // disabled more often than not.
   useEffect(() => {
     if (!ready || session.status === "completed" || !state.changes) return;
     try {
@@ -192,11 +196,7 @@ export function useReadingSession(
         JSON.stringify({ revision: revision.current, state: current.current }),
       );
     } catch {}
-    const timeout = setTimeout(() => {
-      void save();
-    }, 1200);
-    return () => clearTimeout(timeout);
-  }, [state.changes, key, ready, save, session.status]);
+  }, [state.changes, key, ready, session.status]);
 
   return { session, state, dispatch, save, saving, error, conflict, ready };
 }
