@@ -8,6 +8,7 @@ import {
 import {
   passageWords,
   readingTopic,
+  sortByReadingTopic,
 } from "./method";
 import {
   gradeReading,
@@ -166,6 +167,48 @@ test("empty and unanswered questions are graded as incorrect on final submission
   const r = run("regular");
   assert.equal(gradeReading(r.questions, r.state)[0].correct, false);
   assert.equal(gradeReading(r.questions, r.state)[0].answer, null);
+});
+
+// A round builds: what the text says as a whole, then how two texts relate,
+// then the evidence, then what follows from it. Reading an inference or an
+// evidence question first asks about a text the student has not placed yet.
+test("a round works through main idea and structure before evidence and inferences", () => {
+  const round = sortByReadingTopic([
+    { id: "a", topic: "inference" as const },
+    { id: "b", topic: "graphs" as const },
+    { id: "c", topic: "cross-text" as const },
+    { id: "d", topic: "function" as const },
+    { id: "e", topic: "evidence" as const },
+    { id: "f", topic: "structure" as const },
+    { id: "g", topic: "details" as const },
+    { id: "h", topic: "main-idea" as const },
+  ]);
+  assert.deepEqual(
+    round.map((question) => question.topic),
+    [
+      "main-idea",
+      "structure",
+      "function",
+      "details",
+      "cross-text",
+      "evidence",
+      "graphs",
+      "inference",
+    ],
+  );
+});
+
+test("questions sharing a topic keep the order they were selected in", () => {
+  const round = sortByReadingTopic([
+    { id: "first", topic: "inference" as const },
+    { id: "second", topic: "main-idea" as const },
+    { id: "third", topic: "inference" as const },
+    { id: "fourth", topic: "main-idea" as const },
+  ]);
+  assert.deepEqual(
+    round.map((question) => question.id),
+    ["second", "fourth", "first", "third"],
+  );
 });
 
 test("safe passage tokenization preserves authored underlines and highlight offsets", () => {
