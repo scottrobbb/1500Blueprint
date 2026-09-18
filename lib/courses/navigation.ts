@@ -66,3 +66,26 @@ export function getHomeCourseCardLabel(locked: boolean, progress: number): strin
   if (progress > 0) return "Continue";
   return "Start";
 }
+
+// The courses tab groups the curriculum into named sections. A course that no
+// section lists -- anything published since these groups were written -- used
+// to be dropped from the page entirely, so a newly published course never
+// appeared. Whatever is left over now gets a section of its own.
+export type CourseSectionDefinition = { title: string; slugs: readonly string[] };
+export type CourseSection = { title: string; courses: Course[] };
+
+export function groupCoursesIntoSections(
+  courses: Course[],
+  definitions: readonly CourseSectionDefinition[],
+  restTitle = "More courses",
+): CourseSection[] {
+  const grouped = definitions.map((section) => ({
+    title: section.title,
+    courses: courses.filter((course) => section.slugs.includes(course.slug)),
+  }));
+  const listed = new Set(definitions.flatMap((section) => [...section.slugs]));
+  const rest = courses.filter((course) => !listed.has(course.slug));
+  return [...grouped, { title: restTitle, courses: rest }].filter(
+    (section) => section.courses.length > 0,
+  );
+}

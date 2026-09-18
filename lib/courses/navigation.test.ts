@@ -8,6 +8,7 @@ import {
   getContinueCourseLabel,
   getCourseContinueHref,
   getHomeCourseCardLabel,
+  groupCoursesIntoSections,
   sumLessonProgress,
 } from "./navigation";
 import type { Course } from "./types";
@@ -127,4 +128,46 @@ test("findDuplicateLessonSlug ignores blank slugs and trims before comparing", (
 
 test("findDuplicateLessonSlug tolerates a module with no lessons", () => {
   assert.equal(findDuplicateLessonSlug([{}, { lessons: [{ slug: "intro" }] }]), null);
+});
+
+const SECTIONS = [
+  { title: "Blueprint courses", slugs: ["blueprint-foundations"] },
+  { title: "Free courses", slugs: ["desmos-101"] },
+] as const;
+
+// Regression: the courses tab only rendered slugs the sections named, so a
+// course published after those groups were written never appeared at all.
+test("a published course no section names still reaches the courses tab", () => {
+  const sections = groupCoursesIntoSections(
+    [
+      course({ id: "1", slug: "blueprint-foundations" }),
+      course({ id: "2", slug: "blueprint-accelerator" }),
+      course({ id: "3", slug: "desmos-101" }),
+    ],
+    SECTIONS,
+  );
+  assert.deepEqual(
+    sections.map((section) => [section.title, section.courses.map((entry) => entry.slug)]),
+    [
+      ["Blueprint courses", ["blueprint-foundations"]],
+      ["Free courses", ["desmos-101"]],
+      ["More courses", ["blueprint-accelerator"]],
+    ],
+  );
+});
+
+test("sections hold their listed order, and empty ones are dropped", () => {
+  const sections = groupCoursesIntoSections(
+    [course({ id: "1", slug: "desmos-101" })],
+    SECTIONS,
+  );
+  assert.deepEqual(sections.map((section) => section.title), ["Free courses"]);
+});
+
+test("every course listed by a section leaves no leftovers", () => {
+  const sections = groupCoursesIntoSections(
+    [course({ id: "1", slug: "blueprint-foundations" })],
+    SECTIONS,
+  );
+  assert.equal(sections.some((section) => section.title === "More courses"), false);
 });
