@@ -1,9 +1,14 @@
 import type { Player } from "@/lib/gamification";
 
 // Navy hero with diagonal light streaks and a giant ghosted "1500".
+//
+// The artwork is fixed, so data-theme="light" pins the tokens with it. Without
+// it the palette inverts in dark mode -- white becomes near-black -- and the
+// type disappeared into the navy gradient.
 export function PlayerBanner({ player }: { player: Player }) {
   return (
     <div
+      data-theme="light"
       className="relative overflow-hidden"
       style={{
         background:
