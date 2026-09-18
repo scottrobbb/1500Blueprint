@@ -55,12 +55,12 @@ export function DenseReadingRunner({
     return <ReadingResults session={session} history={history} />;
   return (
     <DrillShell
-      title="Dense Reading"
+      title="Hard Reading Guided Practice"
       onExit={() => void exit()}
       exitLabel={exiting ? "Saving…" : "Save & exit"}
       center={
         <span className="text-sm font-semibold tabular-nums text-navy">
-          {hideTimer ? "Dense Reading" : formatReadingTime(state.elapsedMs)}
+          {hideTimer ? "Hard Reading" : formatReadingTime(state.elapsedMs)}
         </span>
       }
       right={
@@ -314,7 +314,7 @@ export function DenseReadingRunner({
       ) : null}
       {directions ? (
         <ReadingDialog
-          title="Dense Reading directions"
+          title="Hard Reading Guided Practice directions"
           onClose={() => setDirections(false)}
         >
           <div className="space-y-3 text-sm leading-7 text-navy/70">

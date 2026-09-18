@@ -1,7 +1,7 @@
 import type { DrillSlug } from "./types";
 
 const TITLES: Record<DrillSlug | "dense-reading", string> = {
-  "dense-reading": "Dense Reading",
+  "dense-reading": "Hard Reading Guided Practice",
   grammar: "Grammar Drill",
   "targeted-math": "Targeted Math Practice",
   reading: "Reading Comprehension",

@@ -8,7 +8,7 @@ import {
 } from "@/lib/dense-reading/server";
 import { DenseReadingRunner } from "@/components/drills/dense-reading/DenseReadingRunner";
 
-export const metadata = { title: "Dense Reading | 1500 Blueprint" };
+export const metadata = { title: "Hard Reading Guided Practice | 1500 Blueprint" };
 export default async function ReadingRoundPage({
   params,
 }: {

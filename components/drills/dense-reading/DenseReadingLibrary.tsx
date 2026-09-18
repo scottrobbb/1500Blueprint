@@ -50,14 +50,14 @@ export function DenseReadingLibrary({
   }
   return (
     <DrillShell
-      title="Dense Reading"
+      title="Hard Reading Guided Practice"
       exitHref="/ultimate/drills"
       exitLabel="Drills"
     >
       <div className="mx-auto max-w-4xl">
         <header className="mb-8">
           <h1 className="font-display text-3xl font-bold tracking-tight text-navy">
-            Dense Reading
+            Hard Reading Guided Practice
           </h1>
           <p className="mt-3 max-w-2xl text-[15px] leading-7 text-navy/65">
             Work through 11 reading questions. Build a prediction, weigh every
@@ -95,7 +95,8 @@ export function DenseReadingLibrary({
           </div>
           {unavailable ? (
             <p role="alert" className="mt-4 text-sm text-danger-600">
-              Dense Reading is temporarily unavailable. Please try again later.
+              Hard Reading Guided Practice is temporarily unavailable. Please
+              try again later.
             </p>
           ) : null}
         </section>
