@@ -39,7 +39,8 @@ export default async function UltimateHomePage({ searchParams }: UltimateHomePag
   const availableCourses = courses.filter((course) => canAccessCourse(access, course.slug));
   const lessonTotals = sumLessonProgress(availableCourses);
   const progress = withLessonProgress(savedProgress, lessonTotals);
-  const activeCourse = findActiveCourse(availableCourses);
+  // Max includes every course, so its home card recommends one of those, never Desmos 101 or Reading & Writing 101.
+  const activeCourse = findActiveCourse(availableCourses, { hideFreeCourses: access.entitlements.allCourses });
   const nextLesson = activeCourse ? (findNextIncompleteLesson(activeCourse) ?? null) : null;
   const showLiveBanner = liveCall && access.entitlements.liveGroupClasses;
   const drillsLocked = access.entitlements.dailyDrillLimit === null;

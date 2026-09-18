@@ -1,3 +1,4 @@
+import { FREE_COURSE_SLUGS } from "@/lib/auth/plans";
 import type { Course, CourseLesson } from "./types";
 
 // A lesson URL is /courses/<course>/<lesson> — there is no module segment — so
@@ -43,8 +44,40 @@ export function sumLessonProgress(courses: Course[]): { completed: number; total
   );
 }
 
-export function findActiveCourse(courses: Course[]): Course | null {
-  return courses.find((course) => course.progress < 100) ?? courses[0] ?? null;
+const FOUNDATIONS_SLUG = "blueprint-foundations";
+const SUBTOPIC_COURSE_SLUGS = ["math-subtopic-course", "reading-writing-subtopic-course"];
+
+// The order the home page recommends a course in: Blueprint Foundations, then
+// the Blueprint courses that follow it (the Accelerator, and anything published
+// after it -- keyed off the slugs we do know, so a new course needs no change
+// here), then the subtopic courses, and last the free ones.
+function recommendationRank(slug: string): number {
+  if (slug === FOUNDATIONS_SLUG) return 0;
+  if (SUBTOPIC_COURSE_SLUGS.includes(slug)) return 2;
+  if (FREE_COURSE_SLUGS.includes(slug)) return 3;
+  return 1;
+}
+
+// The course the home page offers to continue. The first one still unfinished
+// in that order wins, so Foundations is the default and the Accelerator takes
+// over once Foundations is complete. Students with every course included are
+// never sent to a free course; it is not what they are paying to work through.
+export function findActiveCourse(
+  courses: Course[],
+  options: { hideFreeCourses?: boolean } = {},
+): Course | null {
+  const candidates = options.hideFreeCourses
+    ? courses.filter((course) => !FREE_COURSE_SLUGS.includes(course.slug))
+    : courses;
+  const ranked = candidates
+    .map((course, index) => ({ course, index }))
+    .sort(
+      (a, b) =>
+        recommendationRank(a.course.slug) - recommendationRank(b.course.slug) ||
+        a.index - b.index,
+    )
+    .map((entry) => entry.course);
+  return ranked.find((course) => course.progress < 100) ?? ranked[0] ?? null;
 }
 
 export function getContinueCourseHref(course: Course | null): string {

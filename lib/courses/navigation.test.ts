@@ -91,6 +91,50 @@ test("findActiveCourse prefers an in-progress course", () => {
   assert.equal(findActiveCourse([]), null);
 });
 
+// The home card is a recommendation, not just the first row the query returned:
+// Foundations comes first, the Accelerator takes over once it is done, and a
+// student who has paid for every course is never pointed at a free one.
+test("the home card recommends Foundations before anything else", () => {
+  const courses = [
+    course({ id: "desmos", slug: "desmos-101", progress: 0 }),
+    course({ id: "subtopic", slug: "math-subtopic-course", progress: 0 }),
+    course({ id: "foundations", slug: "blueprint-foundations", progress: 20 }),
+  ];
+  assert.equal(findActiveCourse(courses)?.id, "foundations");
+});
+
+test("the Accelerator follows Foundations once it is complete", () => {
+  const courses = [
+    course({ id: "desmos", slug: "desmos-101", progress: 0 }),
+    course({ id: "subtopic", slug: "math-subtopic-course", progress: 0 }),
+    course({ id: "foundations", slug: "blueprint-foundations", progress: 100 }),
+    course({ id: "accelerator", slug: "blueprint-accelerator", progress: 0 }),
+  ];
+  assert.equal(findActiveCourse(courses)?.id, "accelerator");
+  // And the subtopic courses once that is finished too.
+  const done = courses.map((entry) =>
+    entry.id === "accelerator" ? { ...entry, progress: 100 } : entry,
+  );
+  assert.equal(findActiveCourse(done)?.id, "subtopic");
+});
+
+test("a student with every course included is never sent to a free course", () => {
+  const courses = [
+    course({ id: "desmos", slug: "desmos-101", progress: 0 }),
+    course({ id: "foundations", slug: "blueprint-foundations", progress: 100 }),
+  ];
+  assert.equal(findActiveCourse(courses, { hideFreeCourses: true })?.id, "foundations");
+  assert.equal(
+    findActiveCourse([course({ id: "desmos", slug: "desmos-101" })], { hideFreeCourses: true }),
+    null,
+  );
+});
+
+test("a free plan still gets its free course recommended", () => {
+  const courses = [course({ id: "desmos", slug: "desmos-101", progress: 0 })];
+  assert.equal(findActiveCourse(courses)?.id, "desmos");
+});
+
 test("getContinueCourseHref falls back to the courses index", () => {
   assert.equal(getContinueCourseHref(null), "/ultimate/courses");
   assert.equal(getContinueCourseHref(course()), "/ultimate/courses/blueprint-foundations/lesson-1");
