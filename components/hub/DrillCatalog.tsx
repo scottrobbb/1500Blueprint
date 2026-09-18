@@ -225,11 +225,11 @@ export function DrillCatalog({
             {isAdmin || !locked.denseReading ? (
               <PracticeCard
                 icon="reading"
-                title="Dense Reading"
+                title="Hard Reading Guided Practice"
                 description="Build a prediction and check every word across 11 reading questions. Choose guided steps or practice at your own pace."
                 adminPreview={isAdmin && locked.denseReading}
               >
-                <Link href="/drills/dense-reading" prefetch={false} className={primaryAction}>Practice dense reading</Link>
+                <Link href="/drills/dense-reading" prefetch={false} className={primaryAction}>Practice hard reading</Link>
                 <Link href="/drills/dense-reading#history" prefetch={false} className={secondaryAction}>View history</Link>
               </PracticeCard>
             ) : null}

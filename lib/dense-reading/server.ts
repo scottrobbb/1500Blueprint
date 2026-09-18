@@ -62,7 +62,7 @@ export async function loadReadingRow(
     .maybeSingle<SessionRow>();
   if (error)
     throw new ReadingSessionError(
-      "Dense Reading could not be loaded. Please try again.",
+      "Hard Reading Guided Practice could not be loaded. Please try again.",
     );
   if (!data)
     throw new ReadingSessionError("This reading session was not found.", 404);
@@ -102,7 +102,7 @@ export async function listReadingHistory(
     .limit(50);
   if (error)
     throw new ReadingSessionError(
-      "Dense Reading history is unavailable. Please try again.",
+      "Hard Reading Guided Practice history is unavailable. Please try again.",
     );
   return (data ?? []).map((row) => ({
     id: row.id,
@@ -132,7 +132,7 @@ export async function createReadingSession(
     .maybeSingle<{ id: string }>();
   if (activeError)
     throw new ReadingSessionError(
-      "Dense Reading is unavailable. Please try again.",
+      "Hard Reading Guided Practice is unavailable. Please try again.",
     );
   // A round in progress normally wins, and starting returns it untouched.
   // Restarting replaces it, except when it is already the round being started,

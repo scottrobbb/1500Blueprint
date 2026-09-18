@@ -50,7 +50,7 @@ export function ReadingResults({
     session.state.progress.reduce((sum, p) => sum + (p.stepMs[step] ?? 0), 0);
   return (
     <DrillShell
-      title="Dense Reading results"
+      title="Hard Reading Guided Practice results"
       exitHref="/drills/dense-reading"
       exitLabel="Rounds"
       right={

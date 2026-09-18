@@ -5,7 +5,7 @@ import { listReadingHistory } from "@/lib/dense-reading/server";
 import { DenseReadingLibrary } from "@/components/drills/dense-reading/DenseReadingLibrary";
 import { reportServerError } from "@/lib/observability/server";
 
-export const metadata = { title: "Dense Reading | 1500 Blueprint" };
+export const metadata = { title: "Hard Reading Guided Practice | 1500 Blueprint" };
 export default async function DenseReadingPage() {
   if (!(await getSession()))
     redirect("/account/login?next=%2Fdrills%2Fdense-reading");
