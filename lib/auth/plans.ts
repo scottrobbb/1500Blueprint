@@ -163,6 +163,8 @@ const FREE_COURSE_ENTITLEMENTS: Record<string, keyof PlanEntitlements> = {
   "reading-101": "readingWriting101",
 };
 
+export const FREE_COURSE_SLUGS = Object.keys(FREE_COURSE_ENTITLEMENTS);
+
 export function hasCourseAccess(entitlements: PlanEntitlements, courseSlug: string): boolean {
   if (entitlements.allCourses) return true;
   const flag = FREE_COURSE_ENTITLEMENTS[courseSlug];
