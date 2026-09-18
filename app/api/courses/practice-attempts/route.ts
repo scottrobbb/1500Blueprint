@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { gradeCoursePractice, type CoursePracticeAnswer } from "@/lib/courses/practice";
 import { canAccessPublishedCourseLesson } from "@/lib/courses/queries";
+import { isAdminEmail } from "@/lib/auth/admin";
 import type { CoursePractice, LessonBlock } from "@/lib/courses/types";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { readJsonBody } from "@/lib/security/request";
@@ -78,7 +79,7 @@ async function loadAttemptStats(email: string, blockId: string): Promise<Attempt
 
 async function requireLessonAccess(email: string, lessonId: string) {
   try {
-    return await canAccessPublishedCourseLesson(email, lessonId);
+    return await canAccessPublishedCourseLesson(email, lessonId, isAdminEmail(email));
   } catch {
     return null;
   }

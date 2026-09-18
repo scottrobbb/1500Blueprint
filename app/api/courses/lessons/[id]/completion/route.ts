@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getSession } from "@/lib/auth/session";
 import { canAccessPublishedCourseLesson, setLessonComplete } from "@/lib/courses/queries";
 import { checkRateLimit } from "@/lib/security/rate-limit";
+import { isAdminEmail } from "@/lib/auth/admin";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -13,7 +14,7 @@ async function update(context: Context, complete: boolean) {
   if (!rate.allowed) return NextResponse.json({ error: "Too many progress requests", resetsAt: rate.resetsAt }, { status: 429 });
   const { id } = await context.params;
   try {
-    if (!(await canAccessPublishedCourseLesson(session.email, id))) {
+    if (!(await canAccessPublishedCourseLesson(session.email, id, isAdminEmail(session.email)))) {
       return NextResponse.json({ error: "lesson_not_found" }, { status: 404 });
     }
   } catch {
