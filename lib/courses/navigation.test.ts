@@ -131,13 +131,13 @@ test("findDuplicateLessonSlug tolerates a module with no lessons", () => {
 });
 
 const SECTIONS = [
-  { title: "Blueprint courses", slugs: ["blueprint-foundations"] },
+  { title: "Blueprint courses", slugs: ["blueprint-foundations"], catchAll: true },
   { title: "Free courses", slugs: ["desmos-101"] },
 ] as const;
 
 // Regression: the courses tab only rendered slugs the sections named, so a
 // course published after those groups were written never appeared at all.
-test("a published course no section names still reaches the courses tab", () => {
+test("a published course no section names joins the Blueprint section", () => {
   const sections = groupCoursesIntoSections(
     [
       course({ id: "1", slug: "blueprint-foundations" }),
@@ -149,9 +149,22 @@ test("a published course no section names still reaches the courses tab", () => 
   assert.deepEqual(
     sections.map((section) => [section.title, section.courses.map((entry) => entry.slug)]),
     [
-      ["Blueprint courses", ["blueprint-foundations"]],
+      ["Blueprint courses", ["blueprint-foundations", "blueprint-accelerator"]],
       ["Free courses", ["desmos-101"]],
-      ["More courses", ["blueprint-accelerator"]],
+    ],
+  );
+});
+
+test("with no catch-all section, leftovers get one of their own", () => {
+  const sections = groupCoursesIntoSections(
+    [course({ id: "1", slug: "desmos-101" }), course({ id: "2", slug: "new-course" })],
+    [{ title: "Free courses", slugs: ["desmos-101"] }],
+  );
+  assert.deepEqual(
+    sections.map((section) => [section.title, section.courses.map((entry) => entry.slug)]),
+    [
+      ["Free courses", ["desmos-101"]],
+      ["More courses", ["new-course"]],
     ],
   );
 });
@@ -169,5 +182,8 @@ test("every course listed by a section leaves no leftovers", () => {
     [course({ id: "1", slug: "blueprint-foundations" })],
     SECTIONS,
   );
-  assert.equal(sections.some((section) => section.title === "More courses"), false);
+  assert.deepEqual(
+    sections.map((section) => [section.title, section.courses.map((entry) => entry.slug)]),
+    [["Blueprint courses", ["blueprint-foundations"]]],
+  );
 });

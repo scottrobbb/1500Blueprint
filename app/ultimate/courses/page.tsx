@@ -14,7 +14,8 @@ export const metadata = { title: "Courses" };
 export const dynamic = "force-dynamic";
 
 const COURSE_SECTIONS = [
-  { title: "Blueprint courses", slugs: ["blueprint-foundations"] },
+  // Anything published that the sections below do not name is a Blueprint course.
+  { title: "Blueprint courses", slugs: ["blueprint-foundations"], catchAll: true },
   { title: "Subtopic courses", slugs: ["math-subtopic-course", "reading-writing-subtopic-course"] },
   { title: "Free courses", slugs: ["desmos-101", "reading-101"] },
 ] as const;
