@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { getCourseForStudent } from "@/lib/courses/queries";
 import { lessonDurationMinutes } from "@/lib/courses/durationOverrides";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
@@ -15,8 +16,10 @@ export default async function UltimateCoursePage({ params }: Props) {
   if (!session) notFound();
   const { courseSlug } = await params;
   const access = await getStudentAccess(session.email);
-  if (!canAccessCourse(access, courseSlug)) return <AccessGate title="Unlock the complete Blueprint curriculum" description="Advanced Math and Reading & Writing subtopic courses are included with Max." currentPlan={access.plan} />;
-  const course = await getCourseForStudent(courseSlug, session.email);
+  // Admins preview a course whatever its plan or publication status.
+  const isAdmin = isAdminEmail(session.email);
+  if (!isAdmin && !canAccessCourse(access, courseSlug)) return <AccessGate title="Unlock the complete Blueprint curriculum" description="Advanced Math and Reading & Writing subtopic courses are included with Max." currentPlan={access.plan} />;
+  const course = await getCourseForStudent(courseSlug, session.email, isAdmin);
   if (!course) notFound();
   const nextLesson = course.modules.flatMap((module) => module.lessons).find((lesson) => !lesson.completed) ?? course.modules[0]?.lessons[0];
 
@@ -42,6 +45,7 @@ export default async function UltimateCoursePage({ params }: Props) {
             <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-sky">{course.eyebrow ?? "1500 Blueprint course"}</p>
             <h1 className="mt-2 max-w-3xl font-display text-[34px] font-extrabold leading-tight tracking-[-0.04em] sm:text-[46px]">{course.title}</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">{course.description}</p>
+            {isAdmin && course.status !== "published" ? <p className="mt-3 text-sm font-bold text-gold">Draft course. Only admins can open it.</p> : null}
             <div className="mt-6 flex max-w-2xl items-center gap-4"><div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-gold" style={{ width: `${course.progress}%` }} /></div><span className="text-xs font-bold">{course.completedLessons}/{course.totalLessons} complete</span></div>
             {nextLesson ? <Link href={`/ultimate/courses/${course.slug}/${nextLesson.slug}`} prefetch={false} className="mt-6 inline-flex min-h-11 items-center rounded-xl bg-brand px-5 text-sm font-extrabold text-white shadow-[0_2px_0_#1879c4]">{course.progress > 0 ? "Continue learning" : "Start course"} →</Link> : null}
           </div>
@@ -59,7 +63,7 @@ export default async function UltimateCoursePage({ params }: Props) {
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="max-w-3xl">
                       <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-brand-600">{isFoundationsCourse ? `Week ${moduleIndex + 1}` : `Module ${moduleIndex + 1}`}</p>
-                      <h2 className="mt-1 font-display text-xl font-extrabold text-navy sm:text-2xl">{module.title}</h2>
+                      <h2 className="mt-1 font-display text-xl font-extrabold text-navy sm:text-2xl">{module.title}{isAdmin && module.status !== "published" ? <span className="ml-2 align-middle text-sm font-bold text-gold">Draft</span> : null}</h2>
                       {module.description ? <p className="mt-1.5 text-sm leading-6 text-navy/50">{module.description}</p> : null}
                     </div>
                     <span className="rounded-full border border-navy/10 bg-white px-3 py-1.5 text-xs font-bold text-navy/50">{completedDays}/{module.lessons.length} {isFoundationsCourse ? "day groups" : "lessons"}</span>
@@ -67,7 +71,7 @@ export default async function UltimateCoursePage({ params }: Props) {
                   <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-navy/[0.07]" aria-label={`${weekProgress}% of this week complete`}><div className="h-full rounded-full bg-brand transition-[width]" style={{ width: `${weekProgress}%` }} /></div>
                 </header>
                 <ol className="divide-y divide-navy/10">
-                  {module.lessons.map((lesson, lessonIndex) => <li key={lesson.id}><Link href={`/ultimate/courses/${course.slug}/${lesson.slug}`} prefetch={false} className="group flex min-h-[82px] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-ice/50 focus-visible:bg-ice/50 focus-visible:outline-none sm:px-6"><span className={`grid h-9 w-9 flex-none place-items-center rounded-xl text-xs font-extrabold ${lesson.completed ? "bg-success text-white" : "bg-navy/7 text-navy/45"}`}>{lesson.completed ? "✓" : lessonIndex + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-navy sm:text-[15px]">{lesson.title}</strong><span className="mt-1 line-clamp-2 block text-xs leading-5 text-navy/40">{lessonDurationMinutes(course.slug, lesson)} min{lesson.summary ? ` · ${lesson.summary}` : ""}</span></span><span className="text-brand transition-transform group-hover:translate-x-1">→</span></Link></li>)}
+                  {module.lessons.map((lesson, lessonIndex) => <li key={lesson.id}><Link href={`/ultimate/courses/${course.slug}/${lesson.slug}`} prefetch={false} className="group flex min-h-[82px] items-center gap-4 px-5 py-3.5 transition-colors hover:bg-ice/50 focus-visible:bg-ice/50 focus-visible:outline-none sm:px-6"><span className={`grid h-9 w-9 flex-none place-items-center rounded-xl text-xs font-extrabold ${lesson.completed ? "bg-success text-white" : "bg-navy/7 text-navy/45"}`}>{lesson.completed ? "✓" : lessonIndex + 1}</span><span className="min-w-0 flex-1"><strong className="block text-sm text-navy sm:text-[15px]">{lesson.title}{isAdmin && lesson.status !== "published" ? <span className="ml-2 text-xs font-bold text-gold">Draft</span> : null}</strong><span className="mt-1 line-clamp-2 block text-xs leading-5 text-navy/40">{lessonDurationMinutes(course.slug, lesson)} min{lesson.summary ? ` · ${lesson.summary}` : ""}</span></span><span className="text-brand transition-transform group-hover:translate-x-1">→</span></Link></li>)}
                 </ol>
               </section>
             );

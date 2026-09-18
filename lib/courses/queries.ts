@@ -116,10 +116,14 @@ export async function listCoursesForStudentStrict(email: string): Promise<Course
   return hydrateCourses(result.data ?? [], email, true, true);
 }
 
-export async function getCourseForStudent(slug: string, email: string): Promise<Course | null> {
-  const { data } = await supabaseAdmin().from("courses").select(COURSE_COLUMNS).eq("slug", slug).eq("status", "published").maybeSingle<CourseRow>();
+// Admins preview what they have not published yet: the course comes back
+// whatever its status, with its draft modules and lessons included.
+export async function getCourseForStudent(slug: string, email: string, isAdmin = false): Promise<Course | null> {
+  let query = supabaseAdmin().from("courses").select(COURSE_COLUMNS).eq("slug", slug);
+  if (!isAdmin) query = query.eq("status", "published");
+  const { data } = await query.maybeSingle<CourseRow>();
   if (!data) return null;
-  return (await hydrateCourses([data], email, true))[0] ?? null;
+  return (await hydrateCourses([data], email, !isAdmin))[0] ?? null;
 }
 
 export async function listCoursesForAdmin(email: string): Promise<Course[]> {
@@ -239,7 +243,10 @@ export async function setLessonComplete(email: string, lessonId: string, complet
   return !result.error;
 }
 
-export async function canAccessPublishedCourseLesson(email: string, lessonId: string): Promise<boolean> {
+// Marking a lesson complete and saving its practice both come through here. An
+// admin previewing a draft gets the same lesson a student will: the publication
+// and plan gates are theirs to skip, the lesson still has to exist.
+export async function canAccessPublishedCourseLesson(email: string, lessonId: string, isAdmin = false): Promise<boolean> {
   const db = supabaseAdmin();
   const lesson = await db
     .from("course_lessons")
@@ -247,7 +254,7 @@ export async function canAccessPublishedCourseLesson(email: string, lessonId: st
     .eq("id", lessonId)
     .maybeSingle<{ module_id: string; status: string }>();
   if (lesson.error) throw new Error(`Could not load course lesson [${lesson.error.code}]: ${lesson.error.message}`);
-  if (!lesson.data || lesson.data.status !== "published") return false;
+  if (!lesson.data || (!isAdmin && lesson.data.status !== "published")) return false;
 
   const courseModule = await db
     .from("course_modules")
@@ -255,7 +262,7 @@ export async function canAccessPublishedCourseLesson(email: string, lessonId: st
     .eq("id", lesson.data.module_id)
     .maybeSingle<{ course_id: string; status: string }>();
   if (courseModule.error) throw new Error(`Could not load course module [${courseModule.error.code}]: ${courseModule.error.message}`);
-  if (!courseModule.data || courseModule.data.status !== "published") return false;
+  if (!courseModule.data || (!isAdmin && courseModule.data.status !== "published")) return false;
 
   const [course, access] = await Promise.all([
     db
@@ -266,9 +273,10 @@ export async function canAccessPublishedCourseLesson(email: string, lessonId: st
     getStudentAccess(email),
   ]);
   if (course.error) throw new Error(`Could not load course [${course.error.code}]: ${course.error.message}`);
+  if (!course.data) return false;
+  if (isAdmin) return true;
   return Boolean(
     access.active
-    && course.data
     && course.data.status === "published"
     && canAccessCourse(access, course.data.slug),
   );
