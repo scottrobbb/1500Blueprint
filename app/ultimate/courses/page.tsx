@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ultimate/PageHeader";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
 import { listCoursesForStudent } from "@/lib/courses/queries";
+import { groupCoursesIntoSections } from "@/lib/courses/navigation";
 import type { Course } from "@/lib/courses/types";
 import { canAccessCourse, getStudentAccess, type StudentAccess } from "@/lib/auth/entitlements";
 import { LockedBadge, UpgradePrompt } from "@/components/account/UpgradePrompt";
@@ -26,10 +27,7 @@ export default async function UltimateCoursesPage() {
   const totalLessons = unlockedCourses.reduce((sum, course) => sum + course.totalLessons, 0);
   const completedLessons = unlockedCourses.reduce((sum, course) => sum + course.completedLessons, 0);
 
-  const sections = COURSE_SECTIONS.map((section) => ({
-    ...section,
-    courses: courses.filter((course) => (section.slugs as readonly string[]).includes(course.slug)),
-  })).filter((section) => section.courses.length > 0);
+  const sections = groupCoursesIntoSections(courses, COURSE_SECTIONS);
   const firstCourseId = sections[0]?.courses[0]?.id ?? null;
 
   return (
