@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRightIcon, TestsIcon } from "@/components/shell/icons";
 import { UpgradePrompt } from "@/components/account/UpgradePrompt";
+import { TestDifficultyWarning } from "@/components/test/TestDifficultyWarning";
 import { TestLibraryCard } from "@/components/test/TestLibraryCard";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getSession } from "@/lib/auth/session";
@@ -61,6 +62,8 @@ export default async function UltimateTestsPage() {
           ) : null}
         </div>
       </header>
+
+      <TestDifficultyWarning className="mb-6 rounded-2xl" />
 
       <section className="mb-8 grid gap-3 sm:grid-cols-3" aria-label="Test progress">
         <div className="flex flex-col rounded-2xl border border-navy/10 bg-white p-5 sm:p-6">
