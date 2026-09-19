@@ -97,6 +97,17 @@ export default async function PracticeTestsPage() {
       </div>
 
       <main className="mx-auto w-full max-w-[980px] px-6 pb-12 pt-7">
+        <div className="mb-5 flex items-start gap-3 rounded-xl bg-red-700 px-4 py-3.5 text-static-white sm:px-5">
+          <svg viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 flex-none" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M12 3 2 20h20L12 3z" strokeLinejoin="round" />
+            <path d="M12 10v4.5M12 17.2v.1" strokeLinecap="round" />
+          </svg>
+          <p className="text-[14px] leading-[1.55]">
+            <strong className="font-extrabold">Warning:</strong> My practice tests are substantially harder than the real
+            SAT and the Bluebook practice tests. If you get a low score, don&apos;t be discouraged. They&apos;re built to
+            overprepare you for the real SAT.
+          </p>
+        </div>
         {isAdmin && tests.some((test) => test.status === "draft") ? (
           <div className="mb-4 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2.5 text-[13px] font-semibold text-navy/70">
             Draft tests are shown for admin QA. Students only see tests marked Published in the admin editor.
