@@ -704,6 +704,8 @@ function QuestionStrip({ questionId, index, marked, saving, saveError, eliminato
           {saveError && <p role="alert" className="-mt-1 text-[11px] font-semibold text-[#dc2626]">{saveError}</p>}
         </div>
         <div className="flex items-center gap-1 text-[#777]">
+          {/* Site mark, so a screenshot of a question carries where it came from. */}
+          <span className="mr-2 hidden text-[13px] font-semibold text-[#8a8a8a] sm:inline">1500blueprint.com</span>
           <ReportQuestionButton compact questionId={questionId} targetType="question-bank" className="h-10 min-h-10 w-10 border-[#d7d7d7] px-0 text-[#666] hover:border-[#aaa] hover:bg-white" />
           <button type="button" onClick={onToggleEliminator} aria-pressed={eliminatorOn} aria-label="Toggle answer eliminator" title="Answer eliminator" className={`grid h-10 w-10 place-items-center rounded-[9px] ${eliminatorOn ? "bg-[#161616] text-white" : "bg-black text-white hover:bg-[#333]"}`}><EliminateIcon className="h-5 w-5" /></button>
         </div>
