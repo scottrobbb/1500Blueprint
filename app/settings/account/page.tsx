@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { DeleteAccountCard } from "@/components/settings/DeleteAccountCard";
 import { ProfileSettingsCard } from "@/components/settings/ProfileSettingsCard";
 import { SettingsPageHeading } from "@/components/settings/SettingsPageHeading";
 import { getSession } from "@/lib/auth/session";
@@ -45,6 +46,8 @@ export default async function AccountSettingsPage() {
         </section>
       )}
 
+      {/* Last on the page, after everything the account is made of. */}
+      <DeleteAccountCard plan={data.plan} />
     </>
   );
 }
