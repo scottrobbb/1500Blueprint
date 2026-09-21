@@ -137,9 +137,9 @@ const faqItems = [
       "Your first subscription purchase is eligible for a full refund within 24 hours of purchase. After that 24-hour window, the purchase is non-refundable.\n\nAll subscription renewals are final and non-refundable. To make sure a renewal doesn't catch you by surprise, we'll send you a reminder email before your subscription renews. You can cancel anytime before your renewal date to prevent the next charge.\n\nTo cancel, head to Settings → Subscription.",
   },
   {
-    question: "Do I need a card to start?",
+    question: "Does Blueprint Max cover both Math and Reading & Writing?",
     answer:
-      "No. The Free plan does not require a card. You only enter payment details when you choose Core or Max.",
+      "Yes. Blueprint Max covers both SAT Math and Reading & Writing.\n\nFor Math, you'll learn the core concepts you need for the SAT, along with a heavy focus on Desmos strategies, shortcuts, and efficient problem-solving methods. For Reading & Writing, Blueprint Max covers grammar, reading comprehension, vocabulary, transitions, rhetorical synthesis, inference, command of evidence, and more.\n\nYou'll also get access to targeted drills, practice questions, full-length practice tests, and structured courses designed to help you improve across the entire SAT — not just one section.",
   },
   {
     question: "What happens on the weekly Max calls?",
