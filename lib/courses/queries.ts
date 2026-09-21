@@ -1,6 +1,6 @@
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { supabaseAdmin } from "@/utils/supabase/admin";
-import type { SavedCoursePracticeAttempt } from "./practice";
+import { parseSavedAnswers, type SavedCoursePracticeAttempt } from "./practice";
 import type { Course, CourseInput, CourseLesson, CourseModule, CourseStatus, LessonBlock } from "./types";
 import { canonicalizeCourseAssetReferences, signCourseAssetReferences } from "./assets.server";
 
@@ -289,6 +289,7 @@ type CoursePracticeAttemptRow = {
   question_count: number;
   passed: boolean;
   completed_at: string;
+  answers: unknown;
 };
 
 export async function getLatestCoursePracticeAttempts(
@@ -300,7 +301,7 @@ export async function getLatestCoursePracticeAttempts(
     const db = supabaseAdmin();
     const [latest, count, best] = await Promise.all([
       db.from("course_practice_attempts")
-        .select("id,score,correct_count,question_count,passed,completed_at")
+        .select("id,score,correct_count,question_count,passed,completed_at,answers")
         .eq("email", email)
         .eq("block_id", blockId)
         .order("completed_at", { ascending: false })
@@ -331,5 +332,6 @@ export async function getLatestCoursePracticeAttempts(
     completedAt: entry[1].completed_at,
     attemptCount: entry[2],
     bestScore: entry[3],
+    answers: parseSavedAnswers(entry[1].answers),
   }] as const] : []));
 }
