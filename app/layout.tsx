@@ -41,7 +41,7 @@ const META_PIXEL_ID = "2807446912926264";
 const metaPixelEnabled = process.env.VERCEL_ENV === "production";
 
 const SHARE_DESCRIPTION =
-  "Full-length adaptive digital SAT practice tests, a 1650+ question bank with Desmos explanations, targeted drills, and courses.";
+  "Full-length adaptive digital SAT practice tests, a 2100+ question bank with Desmos explanations, targeted drills, and courses.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(canonicalAppUrl()),
