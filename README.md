@@ -166,8 +166,18 @@ needed.
 The browser's landing attribution is preserved in an HttpOnly cookie. The
 registration and authenticated checkout routes persist matching context for the
 later Stripe webhook. `fbc` retains the click timestamp; `event_time` is the
-conversion timestamp. The current site does not install a Meta browser pixel;
-`fbp` is included only if an existing valid browser cookie is available.
+conversion timestamp. The browser pixel below now sets `_fbp`, so it is included
+whenever a valid browser cookie is available.
+
+The Meta pixel itself is installed once, in the root layout, for dataset
+`2807446912926264` — the dataset the Zaps above feed. It fires `PageView` and
+nothing else: `CompleteRegistration` and `Purchase` stay server-side, so the
+browser can never double-count a conversion. `PageView` comes from
+`MetaPixelPageView`, not from the init snippet, because an App Router navigation
+does not reload the document; firing it in both places would count the first page
+twice. Only Vercel Production installs it, matching `conversionsEnabled()`, so
+local and preview traffic stays out of the dataset. Adding a browser event that
+the server also sends would need a shared event name and event ID.
 
 Map `event_time`, `event_id`, `event_source_url`, `email`, `first_name`,
 `last_name`, `external_id`, `client_ip_address`, `client_user_agent`, `fbc`, `fbp`,

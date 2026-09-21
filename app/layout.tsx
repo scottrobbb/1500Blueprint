@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Gabarito, DM_Sans, Noto_Serif } from "next/font/google";
 import { canonicalAppUrl } from "@/lib/auth/config";
+import { MetaPixelPageView } from "@/components/marketing/MetaPixelPageView";
 import { ThemeScript } from "@/components/theme/ThemeScript";
 import { DEFAULT_THEME } from "@/lib/theme/theme";
 import "./globals.css";
@@ -29,6 +30,15 @@ const notoSerif = Noto_Serif({
 // Rewardful's site key. Public by design -- it ships in the page so their
 // script can identify the account.
 const REWARDFUL_API_KEY = "baf21b";
+
+// Meta's dataset (pixel) id, the same dataset the server-side conversions in
+// lib/marketing reach through Zapier. Public by design, like the key above.
+const META_PIXEL_ID = "2807446912926264";
+
+// Only production feeds the dataset, matching conversionsEnabled() in
+// lib/marketing/delivery.ts: local runs and preview deployments would otherwise
+// report developer traffic as visits from students.
+const metaPixelEnabled = process.env.VERCEL_ENV === "production";
 
 const SHARE_DESCRIPTION =
   "Full-length adaptive digital SAT practice tests, a 1650+ question bank with Desmos explanations, targeted drills, and courses.";
@@ -85,6 +95,35 @@ export default function RootLayout({
           {`(function(w,r){w._rwq=r;w[r]=w[r]||function(){(w[r].q=w[r].q||[]).push(arguments)}})(window,'rewardful');`}
         </Script>
         <Script src="https://r.wdfl.co/rw.js" data-rewardful={REWARDFUL_API_KEY} />
+
+        {/* Meta pixel, installed once here rather than per page: next/script
+            keeps a single copy across every route, and a client-side navigation
+            from /pricing to the sign-up page would not re-run a per-page copy
+            anyway. The stub is beforeInteractive so fbq exists and queues calls
+            before hydration; fbevents.js then loads after, and drains it.
+            PageView is fired by MetaPixelPageView, never here, so the two can
+            never both count the first page. */}
+        {metaPixelEnabled && (
+          <>
+            <Script id="meta-pixel" strategy="beforeInteractive">
+              {`!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[]}(window,document);fbq('init','${META_PIXEL_ID}');`}
+            </Script>
+            <Script src="https://connect.facebook.net/en_US/fbevents.js" />
+            <MetaPixelPageView />
+            <noscript>
+              {/* Meta's no-JS fallback beacon: a 1x1 request, not an image to
+                  optimize, and next/image would not run without JS anyway. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                height="1"
+                width="1"
+                style={{ display: "none" }}
+                alt=""
+                src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`}
+              />
+            </noscript>
+          </>
+        )}
       </body>
     </html>
   );
