@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { gradeCoursePractice, isCheckboxChoiceCorrect, isCoursePracticeAnswerCorrect, isCoursePracticeQuestionComplete, normalizeCoursePracticeAnswer, parseCheckboxAnswer, serializeCheckboxAnswer } from "./practice";
+import { coursePracticeAnswerMap, gradeCoursePractice, isCheckboxChoiceCorrect, isCoursePracticeAnswerCorrect, isCoursePracticeQuestionComplete, normalizeCoursePracticeAnswer, parseCheckboxAnswer, parseSavedAnswers, serializeCheckboxAnswer } from "./practice";
 import type { CoursePractice } from "./types";
 
 const practice: CoursePractice = {
@@ -62,4 +62,19 @@ test("checkbox completeness requires at least two choices and at least one marke
   assert.equal(isCoursePracticeQuestionComplete({ ...checkboxQuestion, correctAnswer: "" }), false);
   assert.equal(isCoursePracticeQuestionComplete({ ...checkboxQuestion, choices: ["2"] }), false);
   assert.equal(isCoursePracticeQuestionComplete({ ...checkboxQuestion, correctAnswer: serializeCheckboxAnswer(["2", "not a choice"]) }), false);
+});
+
+test("saved answers parse back from jsonb, dropping anything not a question id and answer", () => {
+  assert.deepEqual(parseSavedAnswers([{ questionId: "mcq", answer: "4" }]), [{ questionId: "mcq", answer: "4" }]);
+  assert.deepEqual(parseSavedAnswers([{ questionId: "mcq", answer: 4 }, { questionId: 7, answer: "4" }, null, "mcq"]), []);
+  assert.deepEqual(parseSavedAnswers([]), []);
+  assert.deepEqual(parseSavedAnswers(null), []);
+  assert.deepEqual(parseSavedAnswers({ questionId: "mcq", answer: "4" }), []);
+});
+
+test("saved answers become a lookup the review can read a blank answer from", () => {
+  const map = coursePracticeAnswerMap([{ questionId: "mcq", answer: "4" }, { questionId: "free", answer: "" }]);
+  assert.equal(map.mcq, "4");
+  assert.equal(map.free, "");
+  assert.equal(map.missing, undefined);
 });

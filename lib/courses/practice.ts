@@ -22,7 +22,26 @@ export type SavedCoursePracticeAttempt = {
   completedAt: string;
   attemptCount: number;
   bestScore: number;
+  // What the student answered, so a finished practice can be reviewed without
+  // being retaken. An attempt saved before this was read back has none.
+  answers: CoursePracticeAnswer[];
 };
+
+// The stored column is jsonb, so it is shaped by whatever wrote the row rather
+// than by the type above. Anything that is not a question id with a string
+// answer is dropped instead of reaching the review as an undefined.
+export function parseSavedAnswers(value: unknown): CoursePracticeAnswer[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    if (!entry || typeof entry !== "object") return [];
+    const { questionId, answer } = entry as { questionId?: unknown; answer?: unknown };
+    return typeof questionId === "string" && typeof answer === "string" ? [{ questionId, answer }] : [];
+  });
+}
+
+export function coursePracticeAnswerMap(answers: CoursePracticeAnswer[]): Record<string, string> {
+  return Object.fromEntries(answers.map((answer) => [answer.questionId, answer.answer]));
+}
 
 export function normalizeCoursePracticeAnswer(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
