@@ -114,7 +114,7 @@ const faqItems = [
   {
     question: "Which plan should I choose?",
     answer:
-      "Start with Free if you want to explore the platform. Choose Core if you're serious about improving and want consistent practice with more questions, drills, and tests. Go with Max if you want everything—including all courses, practice tests, challenge questions, drills, and weekly live calls with Scott.",
+      "Start with Free if you just want to explore the platform. Core gives you more practice with additional questions, drills, and tests.\n\nBlueprint Max is the best choice if you're serious about maximizing your score. It unlocks the full platform, including all courses, practice tests, challenge questions, unlimited drills, and weekly live calls with Scott. If you want the complete Blueprint experience and the most structured path to a 1500+, choose Max.",
   },
   {
     question: "What makes Blueprint Max different from other SAT prep programs?",
