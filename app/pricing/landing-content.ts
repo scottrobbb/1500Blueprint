@@ -15,7 +15,7 @@ export const freeFeatures: PlanFeature[] = [
 ];
 
 export const coreFeatures: PlanFeature[] = [
-  { label: "1650+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
+  { label: "2100+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
   { label: "2 full-length adaptive digital SATs", icon: "file" },
   { label: "20 practice drills each day", icon: "bolt" },
   { label: "Everything in Free", icon: "check" },
@@ -25,7 +25,7 @@ export const coreFeatures: PlanFeature[] = [
 // points at tiers the reader cannot see, and everything it stood for is already
 // named above it.
 export const maxFeatures: PlanFeature[] = [
-  { label: "1650+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
+  { label: "2100+ Questions (with Desmos explanations + challenge questions)", icon: "grid" },
   { label: "6 full-length adaptive digital SATs", icon: "file" },
   { label: "Unlimited daily drills", icon: "bolt" },
   { label: "Access to all courses, quizzes, and flashcards", icon: "book" },
@@ -118,7 +118,7 @@ export const freePlanFootnote =
 
 export const maxHeroChecklist = [
   "6 Realistic Full-Length Practice Tests",
-  "1650+ Question Bank Qs (with Desmos explanations)",
+  "2100+ Question Bank Qs (with Desmos explanations)",
   "Step-by-step math and reading courses",
   "Weekly group class with Scott",
   "On-Demand Video Library, updated weekly",
@@ -130,7 +130,7 @@ export const maxFaq: readonly FaqItem[] = [
   {
     question: "What do I get with Max?",
     answer:
-      "Everything the Blueprint offers: every published full-length practice test, the full 1650+ Question Bank with Desmos explanations and Challenge Questions, unlimited daily drills, all courses, quizzes and flashcards, the Max Discord role, and weekly live group calls with Scott.",
+      "Everything the Blueprint offers: every published full-length practice test, the full 2100+ Question Bank with Desmos explanations and Challenge Questions, unlimited daily drills, all courses, quizzes and flashcards, the Max Discord role, and weekly live group calls with Scott.",
   },
   {
     question: "How is Max billed?",

@@ -88,7 +88,7 @@ export default function Image() {
               lineHeight: 1.35,
             }}
           >
-            6 full-length adaptive tests, a 1650+ question bank, and weekly classes with Scott.
+            6 full-length adaptive tests, a 2100+ question bank, and weekly classes with Scott.
           </div>
         </div>
 
