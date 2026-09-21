@@ -148,9 +148,9 @@ export const maxFaq: readonly FaqItem[] = [
       "Your first subscription purchase is eligible for a full refund within 24 hours of purchase. After that 24-hour window, the purchase is non-refundable.\n\nAll subscription renewals are final and non-refundable. To make sure a renewal doesn't catch you by surprise, we'll send you a reminder email before your subscription renews. You can cancel anytime before your renewal date to prevent the next charge.\n\nTo cancel, head to Settings → Subscription.",
   },
   {
-    question: "Will I lose progress if I cancel?",
+    question: "What happens if I cancel my subscription?",
     answer:
-      "No. Your account keeps its course progress, attempts, scores, and study history. Paid features change with your plan, but the work you completed stays attached to your account.",
+      "When you cancel, you'll keep access to your current plan through the end of your paid billing period. You won't be charged again after that. Your progress, scores, and study history will remain saved to your account if you decide to come back later.",
   },
   {
     question: "What payment methods do you accept?",
@@ -160,7 +160,7 @@ export const maxFaq: readonly FaqItem[] = [
   {
     question: "Can I share my account with someone else?",
     answer:
-      "No. Each Blueprint membership is licensed for one student only and may not be shared, transferred, or used by multiple people.\n\nWe may monitor for unusual login or usage patterns that indicate account sharing. If an account is found to be shared, access may be restricted or suspended, and repeated or intentional violations may result in the account being terminated without a refund.",
+      "No. Each Blueprint membership is for one student and can't be shared or transferred. Accounts found to be intentionally shared may be restricted or suspended.",
   },
   {
     question: "Are there any additional fees or charges?",

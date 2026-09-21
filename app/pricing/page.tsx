@@ -124,7 +124,7 @@ const faqItems = [
   {
     question: "How are Core and Max billed?",
     answer:
-      "Core is available for $50/month, or $120 every 3 months — saving you $30 and bringing the effective price down to $40/month.\n\nMax is available for $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nBoth plans can be cancelled anytime, and you'll keep access through the end of your current billing period.",
+      "Core is available for $50/month, or $120 every 3 months — saving you $30 and bringing the effective price down to $40/month.\n\nMax is available for $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nBoth plans can be cancelled anytime, and you'll keep access through the end of your current billing period.\n\nBoth options are paid upfront for the billing period you choose and automatically renew until canceled. There are no installment payments or additional subscription fees.",
   },
   {
     question: "Can I change plans later?",
@@ -147,9 +147,9 @@ const faqItems = [
       "Each week, Scott hosts a live SAT strategy and problem-solving session covering topics like Math, Reading & Writing, Desmos, vocabulary, test strategy, and recent SAT questions. Calls are focused on breaking down difficult concepts, working through challenging problems, and showing you how to approach the SAT more effectively.\n\nCan't make it live? Every call is recorded, and Max members get access to the full library of past sessions.",
   },
   {
-    question: "Will I lose progress if I cancel?",
+    question: "What happens if I cancel my subscription?",
     answer:
-      "No. Your account keeps its course progress, attempts, scores, and study history. Paid features change with your plan, but the work you completed stays attached to your account.",
+      "When you cancel, you'll keep access to your current plan through the end of your paid billing period. You won't be charged again after that. Your progress, scores, and study history will remain saved to your account if you decide to come back later.",
   },
   {
     question: "What's included in the Free plan?",
@@ -164,7 +164,7 @@ const faqItems = [
   {
     question: "Can I share my account with someone else?",
     answer:
-      "No. Each Blueprint membership is licensed for one student only and may not be shared, transferred, or used by multiple people.\n\nWe may monitor for unusual login or usage patterns that indicate account sharing. If an account is found to be shared, access may be restricted or suspended, and repeated or intentional violations may result in the account being terminated without a refund.",
+      "No. Each Blueprint membership is for one student and can't be shared or transferred. Accounts found to be intentionally shared may be restricted or suspended.",
   },
   {
     question: "Are there any additional fees or charges?",
