@@ -63,6 +63,7 @@ export const ERASED_TABLES: readonly OwnedTable[] = [
 // Kept, and why. Nothing here is written during a deletion; they survive by
 // pointing at the anonymized users row.
 export const RETAINED_TABLES: Readonly<Record<string, string>> = {
+  billing_week_passes: "One-time purchase and refund history, linked to the anonymized account.",
   student_subscriptions: "What was charged, and on which plan.",
   billing_checkout_intents: "The purchase trail behind a subscription.",
   billing_refunds: "Refunds already issued, for accounting.",

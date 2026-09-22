@@ -1231,3 +1231,7 @@
     margin-top: 44px;
   }
 }
+
+@media (max-width: 480px) {
+  .cadenceOption { padding: 8px 10px; font-size: 13px; gap: 4px; }
+}

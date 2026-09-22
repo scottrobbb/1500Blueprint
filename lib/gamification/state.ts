@@ -677,6 +677,7 @@ export type StudentRow = {
   grantPlan: PlanCode | null;
   grantSource: string | null;
   grantExpiresAt: string | null;
+  weekPassExpiresAt?: string | null;
   isComplimentary: boolean;
   accountStatus: "active" | "suspended" | "archived";
   isTestAccount: boolean;
@@ -773,7 +774,7 @@ type RosterSubscription = {
 export async function listStudents(): Promise<StudentRow[]> {
   const db = supabaseAdmin();
   const now = new Date().toISOString();
-  const [users, progress, testAttempts, grants, subscriptions] = await Promise.all([
+  const [users, progress, testAttempts, grants, subscriptions, weekPasses] = await Promise.all([
     loadRosterPages<RosterUser>("students", (from, to) => db
       .from("users")
       .select("id,email,name,plan,account_status,is_test_account,xp,streak_current,last_login_at,last_active_date,created_at,onboarded_at")
@@ -811,8 +812,17 @@ export async function listStudents(): Promise<StudentRow[]> {
       .order("id")
       .range(from, to)
       .returns<RosterSubscription[]>()),
+    loadRosterPages<{ user_id: string; stripe_checkout_session_id: string; expires_at: string }>("student week passes", (from, to) => db
+      .from("billing_week_passes")
+      .select("user_id,stripe_checkout_session_id,expires_at")
+      .eq("livemode", billingLivemode()).is("refunded_at", null)
+      .lte("starts_at", now).gt("expires_at", now)
+      .order("expires_at", { ascending: false }).order("stripe_checkout_session_id")
+      .range(from, to)),
   ]);
 
+  const passByUser = new Map<string, string>();
+  for (const pass of weekPasses) if (!passByUser.has(pass.user_id)) passByUser.set(pass.user_id, pass.expires_at);
   const grantByUser = new Map<string, RosterGrant>();
   for (const grant of grants) if (!grantByUser.has(grant.user_id)) grantByUser.set(grant.user_id, grant);
   const rosterCheckedAt = new Date();
@@ -884,10 +894,12 @@ export async function listStudents(): Promise<StudentRow[]> {
     const grantPlan = grant ? normalizePlanCode(grant.plan_code) : null;
     const subscriptionPlan = paidSubscription ? normalizePlanCode(paidSubscription.plan_code) : null;
     const legacyPlan = resolveStoredPlan(u.plan);
+    const weekPassExpiresAt = passByUser.get(u.id) ?? null;
     const plan = u.account_status === "active"
-      ? effectivePlan(grantPlan, subscriptionPlan, legacyPlan, latestSubscription !== null)
+      ? weekPassExpiresAt ? "max" : effectivePlan(grantPlan, subscriptionPlan, legacyPlan, latestSubscription !== null)
       : "free";
     const accessSource: AccessSource = u.account_status !== "active" ? "free"
+      : weekPassExpiresAt ? "one_time"
       : paidSubscription && plan === subscriptionPlan ? "subscription"
       : grant && plan === grantPlan ? "grant"
       : u.plan && plan === legacyPlan ? "legacy"
@@ -927,6 +939,7 @@ export async function listStudents(): Promise<StudentRow[]> {
       grantPlan,
       grantSource: grant?.source ?? null,
       grantExpiresAt: grant?.expires_at ?? null,
+      weekPassExpiresAt,
       isComplimentary,
       accountStatus: u.account_status,
       isTestAccount: u.is_test_account,

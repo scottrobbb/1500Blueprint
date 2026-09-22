@@ -1,5 +1,7 @@
 import "server-only";
 
+import { getActiveWeekPass } from "@/lib/billing/week-pass";
+
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import {
   accessForPlan,
@@ -45,7 +47,7 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
   }
 
   const now = new Date().toISOString();
-  const [{ data: grant, error: grantError }, { data: subscription, error: subscriptionError }] =
+  const [{ data: grant, error: grantError }, { data: subscription, error: subscriptionError }, weekPass] =
     await Promise.all([
       admin
         .from("access_grants")
@@ -64,6 +66,7 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
         .eq("livemode", billingLivemode())
         .order("updated_at", { ascending: false })
         .returns<SubscriptionRow[]>(),
+      getActiveWeekPass(account.id),
     ]);
 
   if (grantError) throw new Error(`failed to load access grant: ${grantError.message}`);
@@ -81,13 +84,14 @@ export async function getStudentAccess(email: string): Promise<StudentAccess> {
   const grantPlan = grant ? normalizePlanCode(grant.plan_code) : "free";
   const subscriptionPlan = activeSubscription ? normalizePlanCode(activeSubscription.plan_code) : "free";
   const legacyPlan = resolveStoredPlan(account.plan);
-  const plan = effectivePlan(
+  const basePlan = effectivePlan(
     grant ? grantPlan : null,
     activeSubscription ? subscriptionPlan : null,
     legacyPlan,
     (subscription ?? []).length > 0,
   );
-  const source = plan === subscriptionPlan && activeSubscription ? "subscription"
+  const plan = weekPass ? "max" : basePlan;
+  const source = weekPass && basePlan !== "max" ? "one_time" : plan === subscriptionPlan && activeSubscription ? "subscription"
     : plan === grantPlan && grant ? "grant"
     : plan === legacyPlan && account.plan && (subscription ?? []).length === 0 ? "legacy"
     : "free";

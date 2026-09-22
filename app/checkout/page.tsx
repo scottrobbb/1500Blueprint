@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth/session";
 import { billingCheckoutEnabled, isBillablePlan } from "@/lib/billing/config";
-import { isBillingCadence } from "@/lib/billing/offers";
+import { isCheckoutTerm } from "@/lib/billing/offers";
 import { billingReturnPath } from "@/lib/billing/return-path";
 import { CheckoutRedirect } from "./CheckoutRedirect";
 
@@ -30,7 +30,8 @@ export default async function CheckoutPage({
   // server-side in the checkout route from this code, never from the URL, so a
   // hand-edited parameter cannot select an arbitrary price.
   if (!isBillablePlan(plan)) redirect("/pricing?billing=invalid");
-  const cadence = isBillingCadence(requestedCadence) ? requestedCadence : "monthly";
+  const cadence = isCheckoutTerm(requestedCadence) ? requestedCadence : "monthly";
+  if (cadence === "one_week" && plan !== "max") redirect("/pricing?billing=invalid");
   if (!billingCheckoutEnabled()) redirect("/pricing?billing=unavailable");
 
   // The proxy already gates this path; this is the same check at the route, in

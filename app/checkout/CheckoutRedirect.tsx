@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ReferralField } from "@/components/marketing/ReferralField";
-import type { BillingCadence } from "@/lib/billing/offers";
+import type { CheckoutTerm } from "@/lib/billing/offers";
 import type { BillablePlan } from "@/lib/billing/config";
 
 // Checkout is created by a POST so it keeps the same-origin check and the
@@ -15,7 +15,7 @@ export function CheckoutRedirect({
   returnTo,
 }: {
   plan: BillablePlan;
-  cadence: BillingCadence;
+  cadence: CheckoutTerm;
   checkoutToken: string;
   returnTo: string;
 }) {

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import type { BillingAccount } from "@/lib/billing/accounts";
 import type { BillablePlan } from "@/lib/billing/config";
 import { isBillablePlan } from "@/lib/billing/config";
-import type { BillingCadence } from "@/lib/billing/offers";
-import { isBillingCadence } from "@/lib/billing/offers";
+import type { BillingCadence, CheckoutTerm } from "@/lib/billing/offers";
+import { isCheckoutTerm } from "@/lib/billing/offers";
 import type { CheckoutIntentClaim } from "@/lib/billing/workflow";
 import type { CheckoutCancelResult } from "@/lib/billing/checkout-intents";
 import { checkoutRequestToken, stripeCheckoutIdempotencyKey } from "@/lib/billing/workflow";
@@ -14,12 +14,14 @@ import { isSameOriginRequest, readUrlEncodedForm, RequestBodyTooLargeError } fro
 const MAX_FORM_BYTES = 16 * 1024;
 
 type CheckoutCreateParams = {
-  mode: "subscription";
+  mode: "subscription" | "payment";
   customer: string;
   client_reference_id: string;
   line_items: { price: string; quantity: number }[];
   metadata: Record<string, string>;
-  subscription_data: { metadata: Record<string, string> };
+  subscription_data?: { metadata: Record<string, string> };
+  payment_intent_data?: { metadata: Record<string, string> };
+  adaptive_pricing?: { enabled: false };
   success_url: string;
   cancel_url: string;
   expires_at: number;
@@ -39,6 +41,8 @@ export type BillingSubscriptionState = {
 export type CheckoutHandlerDeps = {
   baseUrl: (requestUrl: string) => string;
   billingEnabled: () => boolean;
+  weekPassEnabled: () => boolean;
+  hasActiveWeekPass: (userId: string) => Promise<boolean>;
   livemode: () => boolean;
   now: () => number;
   getSession: () => Promise<{ email: string } | null>;
@@ -48,12 +52,12 @@ export type CheckoutHandlerDeps = {
   hasUntrackedBilling: (account: BillingAccount, hasTrackedSubscriptions: boolean) => Promise<boolean>;
   changePlan: (userId: string, plan: BillablePlan, cadence: BillingCadence) => Promise<{ kind: "unchanged" | "upgrade" | "downgrade" | "pending-change-canceled" }>;
   createPortal: (customerId: string, returnUrl: string) => Promise<{ url: string }>;
-  claimIntent: (input: { userId: string; livemode: boolean; plan: BillablePlan; cadence: BillingCadence; requestToken: string }) => Promise<CheckoutIntentClaim>;
+  claimIntent: (input: { userId: string; livemode: boolean; plan: BillablePlan; cadence: CheckoutTerm; requestToken: string }) => Promise<CheckoutIntentClaim>;
   releaseIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<boolean>;
   cancelIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<CheckoutCancelResult>;
   ensureCustomer: (account: BillingAccount) => Promise<string>;
   attachReferral: (customerId: string, referral: string | null) => Promise<void>;
-  resolvePrice: (plan: BillablePlan, cadence: BillingCadence) => Promise<string>;
+  resolvePrice: (plan: BillablePlan, cadence: CheckoutTerm) => Promise<string>;
   createCheckout: (params: CheckoutCreateParams, idempotencyKey: string) => Promise<{ id: string; url: string | null }>;
   storeCheckout: (input: { userId: string; livemode: boolean; reservationId: string; sessionId: string; sessionUrl: string }) => Promise<void>;
   reportError: (event: string, error: unknown, context: Record<string, unknown>) => void;
@@ -92,10 +96,13 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
       // visitor, and never a reason to refuse a purchase.
       const referral = rewardfulReferral(formData.get("referral"));
       if (!isBillablePlan(plan)) return redirect(baseUrl, returnPath, "invalid");
-      if (!isBillingCadence(cadenceValue)) {
+      if (!isCheckoutTerm(cadenceValue)) {
         return redirect(baseUrl, returnPath, "invalid");
       }
       const cadence = cadenceValue;
+      const oneWeek = cadence === "one_week";
+      if (oneWeek && plan !== "max") return redirect(baseUrl, returnPath, "invalid");
+      if (oneWeek && !deps.weekPassEnabled()) return redirect(baseUrl, returnPath, "unavailable");
       const session = await deps.getSession();
       if (!session) {
         // Resume checkout after authenticating instead of returning to the
@@ -123,7 +130,13 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
       ) {
         return redirect(baseUrl, returnPath, "legacy");
       }
-      if (existingCustomer) {
+      if (oneWeek && existingCustomer) {
+        return redirectToPath(baseUrl, "/settings/subscription?billing=existing-subscription");
+      }
+      if (oneWeek && await deps.hasActiveWeekPass(account.id)) {
+        return redirectToPath(baseUrl, "/settings/subscription?billing=active-pass");
+      }
+      if (existingCustomer && cadence !== "one_week") {
         const result = await deps.changePlan(account.id, plan, cadence);
         if (result.kind !== "unchanged") {
           const state = result.kind === "upgrade"
@@ -210,16 +223,16 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         checkout_reservation_id: intent.reservationId,
       };
       const checkout = await deps.createCheckout({
-        mode: "subscription",
+        mode: oneWeek ? "payment" : "subscription",
         customer: customerId,
         client_reference_id: account.id,
         line_items: [{ price: priceId, quantity: 1 }],
         metadata,
-        subscription_data: { metadata },
+        ...(oneWeek ? { payment_intent_data: { metadata }, adaptive_pricing: { enabled: false as const } } : { subscription_data: { metadata } }),
         success_url: `${baseUrl}/api/billing/confirm?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/api/billing/checkout/cancel?reservation_id=${encodeURIComponent(intent.reservationId)}&return_to=${encodeURIComponent(returnPath)}`,
         expires_at: expiresAt,
-        allow_promotion_codes: true,
+        allow_promotion_codes: !oneWeek,
       }, idempotencyKey);
 
       if (!checkout.url) throw new Error("Stripe Checkout did not return a redirect URL");

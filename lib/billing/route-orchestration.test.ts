@@ -54,6 +54,8 @@ function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHan
   return {
     baseUrl: () => APP_URL,
     billingEnabled: () => true,
+    weekPassEnabled: () => true,
+    hasActiveWeekPass: async () => false,
     livemode: () => false,
     now: () => NOW,
     getSession: async () => ({ email: ACCOUNT.email }),
@@ -894,6 +896,7 @@ function confirmDeps(overrides: Partial<ConfirmHandlerDeps> = {}): ConfirmHandle
     retrieveCheckout: async () => validCheckout(),
     retrieveSubscription: async () => ({ id: "sub_123" }),
     syncSubscription: async () => undefined,
+    fulfillWeekPass: async () => undefined,
     markCheckout: async () => true,
     reportError: () => undefined,
     ...overrides,
@@ -910,6 +913,7 @@ test("confirm verifies Checkout identity before syncing and marking the reservat
     syncSubscription: async (subscription, accountId) => {
       order.push(`sync:${(subscription as { id: string }).id}:${accountId}`);
     },
+    fulfillWeekPass: async () => undefined,
     markCheckout: async (sessionId, status, reservationId) => {
       order.push(`mark:${sessionId}:${status}:${reservationId}`);
       return true;
@@ -933,6 +937,7 @@ test("confirm refuses a Checkout customer owned by another account", async () =>
       subscriptionCalls += 1;
       return {};
     },
+    fulfillWeekPass: async () => undefined,
     markCheckout: async () => {
       markCalls += 1;
       return true;
@@ -1087,4 +1092,77 @@ test("webhook rejects a mode mismatch before claiming the event", async () => {
   assert.equal(response.status, 400);
   assert.equal(claims, 0);
   assert.deepEqual(events, ["billing.webhook.mode_mismatch"]);
+});
+
+test("one-week Max creates a one-time checkout and never creates subscription data", async () => {
+  const calls: Parameters<CheckoutHandlerDeps["createCheckout"]>[0][] = [];
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    resolvePrice: async (plan, term) => {
+      assert.equal(plan, "max");
+      assert.equal(term, "one_week");
+      return "price_max_week";
+    },
+    createCheckout: async (params) => {
+      calls.push(params);
+      return { id: "cs_week", url: "https://checkout.stripe.com/c/pay/cs_week" };
+    },
+  }));
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max", cadence: "one_week", checkoutToken: RESERVATION_ID,
+  }));
+  assert.equal(response.status, 303);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].mode, "payment");
+  assert.equal(calls[0].subscription_data, undefined);
+  assert.equal(calls[0].allow_promotion_codes, false);
+  assert.equal(calls[0].payment_intent_data?.metadata.billing_cadence, "one_week");
+  assert.deepEqual(calls[0].line_items, [{ price: "price_max_week", quantity: 1 }]);
+});
+
+test("one-week checkout rejects Core, disabled pricing, active passes and existing subscriptions", async () => {
+  for (const scenario of [
+    { plan: "core", deps: {}, destination: "/pricing?billing=invalid" },
+    { plan: "max", deps: { weekPassEnabled: () => false }, destination: "/pricing?billing=unavailable" },
+    { plan: "max", deps: { hasActiveWeekPass: async () => true }, destination: "/settings/subscription?billing=active-pass" },
+    { plan: "max", deps: { findSubscriptionState: async () => ({ activeCustomerId: "cus_123", trackedCustomerId: "cus_123", hasTrackedSubscriptions: true }) }, destination: "/settings/subscription?billing=existing-subscription" },
+  ]) {
+    const handler = createCheckoutPostHandler(checkoutDeps({
+      ...scenario.deps,
+      createCheckout: async () => { assert.fail("must not charge"); },
+      changePlan: async () => { assert.fail("must not change a subscription"); },
+    }));
+    const response = await handler(formRequest("/api/billing/checkout", {
+      plan: scenario.plan, cadence: "one_week", checkoutToken: RESERVATION_ID,
+    }));
+    assert.equal(response.headers.get("location"), `${APP_URL}${scenario.destination}`);
+  }
+});
+
+test("anonymous one-week purchases preserve the Max pass through authentication", async () => {
+  const handler = createCheckoutPostHandler(checkoutDeps({ getSession: async () => null }));
+  const response = await handler(formRequest("/api/billing/checkout", { plan: "max", cadence: "one_week" }));
+  const destination = new URL(response.headers.get("location")!);
+  assert.match(destination.searchParams.get("next")!, /plan=max&cadence=one_week/);
+});
+
+test("one-time confirmation fulfills access without retrieving a subscription", async () => {
+  const order: string[] = [];
+  const handler = createConfirmGetHandler(confirmDeps({
+    retrieveCheckout: async () => validCheckout({ mode: "payment", payment_status: "paid", subscription: null }),
+    retrieveSubscription: async () => { assert.fail("one-time purchases have no subscription"); },
+    fulfillWeekPass: async (id) => { order.push(`fulfill:${id}`); },
+    markCheckout: async () => { order.push("mark"); return true; },
+  }));
+  const response = await handler(new Request(`${APP_URL}/api/billing/confirm?session_id=cs_test_123456789`));
+  assert.deepEqual(order, ["fulfill:cs_test_123456789", "mark"]);
+  assert.equal(response.headers.get("location"), `${APP_URL}/ultimate?billing=success`);
+});
+
+test("a delayed one-time payment does not grant access before it is paid", async () => {
+  const handler = createConfirmGetHandler(confirmDeps({
+    retrieveCheckout: async () => validCheckout({ mode: "payment", payment_status: "unpaid", subscription: null }),
+    fulfillWeekPass: async () => { assert.fail("unpaid checkouts cannot grant Max"); },
+  }));
+  const response = await handler(new Request(`${APP_URL}/api/billing/confirm?session_id=cs_test_123456789`));
+  assert.match(response.headers.get("location")!, /billing=pending/);
 });

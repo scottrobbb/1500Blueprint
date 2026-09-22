@@ -105,3 +105,7 @@ export function billingBaseUrl(requestUrl: string): string {
   if (process.env.NODE_ENV === "production") return productionAppUrl(requestUrl);
   return new URL(requestUrl).origin;
 }
+
+export function weekPassCheckoutEnabled(): boolean {
+  return billingCheckoutEnabled() && Boolean(process.env.STRIPE_MAX_WEEK_PRICE_ID?.trim());
+}

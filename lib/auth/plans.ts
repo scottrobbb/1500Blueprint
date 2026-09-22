@@ -1,5 +1,5 @@
 export type PlanCode = "free" | "core" | "max";
-export type AccessSource = "free" | "legacy" | "subscription" | "grant";
+export type AccessSource = "free" | "legacy" | "subscription" | "grant" | "one_time";
 
 export type PlanEntitlements = {
   questionBankLimit: number | "unlimited";

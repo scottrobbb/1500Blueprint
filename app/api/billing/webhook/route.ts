@@ -1,3 +1,4 @@
+import { fulfillWeekPass, revokeRefundedWeekPass } from "@/lib/billing/week-pass";
 import type Stripe from "stripe";
 import { notifyPurchase } from "@/lib/marketing/purchases";
 import { billingLivemode } from "@/lib/billing/config";
@@ -40,9 +41,17 @@ export const POST = createWebhookPostHandler({
 
 async function processEvent(event: Stripe.Event): Promise<void> {
   switch (event.type) {
+    case "checkout.session.async_payment_succeeded":
     case "checkout.session.completed": {
       const checkout = event.data.object;
       if (checkout.metadata?.platform !== "1500_blueprint") return;
+      if (checkout.mode === "payment") {
+        if (checkout.metadata.billing_cadence !== "one_week") return;
+        if (checkout.payment_status !== "paid") return;
+        await fulfillWeekPass(checkout.id);
+        await markCheckoutSession(checkout.id, "completed", checkoutReservationId(checkout.metadata.checkout_reservation_id));
+        return;
+      }
       const subscriptionId = stripeId(checkout.subscription);
       const customerId = stripeId(checkout.customer);
       const userId = checkout.client_reference_id || checkout.metadata?.user_id || null;
@@ -58,6 +67,7 @@ async function processEvent(event: Stripe.Event): Promise<void> {
       );
       return;
     }
+    case "checkout.session.async_payment_failed":
     case "checkout.session.expired": {
       const checkout = event.data.object;
       if (checkout.metadata?.platform !== "1500_blueprint") return;
@@ -88,6 +98,7 @@ async function processEvent(event: Stripe.Event): Promise<void> {
       await syncStripeRefund(event.data.object);
       return;
     case "charge.refunded":
+      await revokeRefundedWeekPass(event.data.object);
       for (const refund of event.data.object.refunds?.data ?? []) await syncStripeRefund(refund);
       return;
     case "subscription_schedule.created":

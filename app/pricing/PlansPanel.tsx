@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import type { PlanCode } from "@/lib/auth/plans";
-import type { BillingCadence } from "@/lib/billing/offers";
+import type { BillingCadence, CheckoutTerm } from "@/lib/billing/offers";
 import { ReferralField } from "@/components/marketing/ReferralField";
 import { FeatureGlyph, type FeatureIcon } from "./FeatureGlyph";
 import styles from "./pricing.module.css";
@@ -31,6 +31,7 @@ export function PlansPanel({
   maxFeatures,
   currentPlan,
   billingEnabled,
+  weekPassEnabled,
   initialCadence,
   checkoutTokens,
   visiblePlans = ALL_PLANS,
@@ -40,27 +41,38 @@ export function PlansPanel({
   maxFeatures: PlanFeature[];
   currentPlan: PlanCode | null;
   billingEnabled: boolean;
-  initialCadence: BillingCadence;
+  weekPassEnabled: boolean;
+  initialCadence: CheckoutTerm;
   checkoutTokens: Record<"core" | "max", string>;
   // Single-tier landing pages render a subset. Defaults to every plan, so the
   // pricing page keeps its three cards without passing anything.
   visiblePlans?: readonly PlanCode[];
 }) {
-  const [cadence, setCadence] = useState<BillingCadence>(initialCadence);
+  const [cadence, setCadence] = useState<CheckoutTerm>(initialCadence);
   // Backing out of Stripe, or any billing failure, returns here rather than to
   // the full plan comparison -- a single-tier landing page should not hand the
   // reader the other tiers on the way back.
   const returnTo = usePathname();
-  const shows = (plan: PlanCode) => visiblePlans.includes(plan);
+  const oneWeek = cadence === "one_week";
+  const shows = (plan: PlanCode) => visiblePlans.includes(plan) && (!oneWeek || plan === "max");
   // The billing term only changes a paid price, so it has nothing to switch on
   // a page showing Free alone.
   const showCadence = shows("core") || shows("max");
-  const singleTier = visiblePlans.length === 1;
+  const singleTier = oneWeek || visiblePlans.length === 1;
 
   return (
     <>
       {showCadence ? (
-      <div className={styles.cadenceToggle} role="radiogroup" aria-label="Billing term">
+      <div className={styles.cadenceToggle} role="radiogroup" aria-label="Access duration">
+        {visiblePlans.includes("max") ? <button
+          type="button"
+          role="radio"
+          aria-checked={oneWeek}
+          className={oneWeek ? `${styles.cadenceOption} ${styles.cadenceActive}` : styles.cadenceOption}
+          onClick={() => setCadence("one_week")}
+        >
+          1 week
+        </button> : null}
         <button
           type="button"
           role="radio"
@@ -110,10 +122,10 @@ export function PlansPanel({
         <PriceCard
           tier="max"
           name="Max"
-          features={maxFeatures}
-          cta="Choose Max"
+          features={oneWeek ? maxFeatures.filter((feature) => feature.label !== "Everything in Core") : maxFeatures}
+          cta={oneWeek ? "Get 1 week of Max" : "Choose Max"}
           currentPlan={currentPlan}
-          billingEnabled={billingEnabled}
+          billingEnabled={oneWeek ? weekPassEnabled : billingEnabled}
           cadence={cadence}
           checkoutToken={checkoutTokens.max}
           returnTo={returnTo}
@@ -143,15 +155,16 @@ function PriceCard({
   cta: string;
   currentPlan: PlanCode | null;
   billingEnabled?: boolean;
-  cadence?: BillingCadence;
+  cadence?: CheckoutTerm;
   checkoutToken?: string;
   returnTo?: string;
 }) {
   const paid = tier !== "free";
   const plan = tier === "core" ? "core" : tier === "max" ? "max" : "free";
-  const current = currentPlan === plan;
+  const oneWeek = cadence === "one_week";
+  const current = !oneWeek && currentPlan === plan;
   const requiresAccount = paid && currentPlan === null;
-  const priceInfo = tier === "core" || tier === "max" ? CADENCE_PRICE[tier][cadence ?? "monthly"] : { perMonth: "0", billed: null };
+  const priceInfo = oneWeek ? { perMonth: "39", billed: "One-time payment for 7 days" } : tier === "core" || tier === "max" ? CADENCE_PRICE[tier][cadence ?? "monthly"] : { perMonth: "0", billed: null };
 
   return (
     <article id={`plan-${tier}`} className={`${styles.priceCard} ${styles[tier]}`}>
@@ -163,10 +176,11 @@ function PriceCard({
       </div>
 
       <div className={styles.priceRow}>
-        <span>$</span><strong>{priceInfo.perMonth}</strong><em>/month</em>
+        <span>$</span><strong>{priceInfo.perMonth}</strong><em>{oneWeek ? "once" : "/month"}</em>
       </div>
       {paid ? <p className={styles.billingDetail}>{priceInfo.billed ?? "Billed monthly"}</p> : null}
 
+      {oneWeek ? <p className={styles.planDescription}>No subscription. No automatic renewal. You won’t be charged again.</p> : null}
       {description ? <p className={styles.planDescription}>{description}</p> : null}
       <div className={styles.cardRule} />
       <p className={styles.includesLabel}>Includes</p>
@@ -188,7 +202,7 @@ function PriceCard({
                 <input type="hidden" name="plan" value={plan} />
                 <input type="hidden" name="cadence" value={cadence ?? "monthly"} />
                 <input type="hidden" name="checkoutToken" value={checkoutToken} />
-                <input type="hidden" name="returnTo" value={returnTo ?? ""} />
+                <input type="hidden" name="returnTo" value={oneWeek ? `${returnTo ?? "/pricing"}?plan=max&cadence=one_week#plans` : returnTo ?? ""} />
                 <button type="submit" className={styles.primaryAction}>
                   {current ? "Manage plan" : cta} <ArrowIcon />
                 </button>

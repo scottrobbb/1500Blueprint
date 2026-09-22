@@ -135,7 +135,7 @@ export const maxFaq: readonly FaqItem[] = [
   {
     question: "How is Max billed?",
     answer:
-      "Max is $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nYou can cancel anytime and keep access through the end of your current billing period.",
+      "Max is $39 for one week as a one-time payment with no automatic renewal, $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nYou can cancel anytime and keep access through the end of your current billing period.",
   },
   {
     question: "What happens on the weekly Max calls?",
@@ -170,4 +170,4 @@ export const maxFaq: readonly FaqItem[] = [
 ];
 
 export const maxPlanFootnote =
-  "Max is billed monthly or every three months. It can be cancelled anytime, and your first purchase has a 24-hour refund window.";
+  "The one-week Max pass is $39 once and ends after 7 days. Monthly and three-month subscriptions renew until canceled. Your first purchase has a 24-hour refund window.";

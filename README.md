@@ -96,6 +96,29 @@ STRIPE_LEGACY_MAX_PRODUCT_IDS=prod_existing_blueprint \
 write when a Blueprint account matches multiple Stripe customers, has multiple
 active subscriptions, or contains a subscription with no Core/Max mapping.
 
+## One-week Max pass
+
+The pricing selector offers seven days of Max for $39 USD, paid once through
+Stripe Checkout in `payment` mode. It creates no subscription and does not renew.
+Existing subscribers keep their subscription and are directed to settings;
+students with an active pass cannot purchase another until it expires.
+
+Apply `supabase/migrations/20260922211015_one_week_max_pass.sql` before deploying.
+Create an active $39 USD **one-time** Price on the Max product and configure
+`STRIPE_MAX_WEEK_PRICE_ID` separately for each Stripe mode. The existing billing
+configuration is still required. Without this Price setting, weekly checkout
+stays disabled. Discount codes and adaptive currency pricing are disabled for
+this offer so checkout collects exactly $39 USD.
+
+The webhook endpoint must receive `checkout.session.completed`,
+`checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`,
+and `charge.refunded`. Fulfillment verifies payment, account ownership, mode,
+amount, currency, and Price. The first successful fulfillment starts 168 hours
+of access; retries preserve that expiry. Full refunds issued in Stripe revoke
+the pass. The existing in-app admin refund action remains subscription-specific.
+Passes are stored separately from subscriptions and complimentary grants; settings
+and the student roster show their expiry. Expiration needs no scheduled job.
+
 ## Dense Reading
 
 `/drills/dense-reading` offers guided and regular 11-question rounds drawn from

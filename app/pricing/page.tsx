@@ -5,8 +5,8 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
-import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
-import { billingCheckoutEnabled } from "@/lib/billing/config";
+import { isCheckoutTerm, type CheckoutTerm } from "@/lib/billing/offers";
+import { billingCheckoutEnabled, weekPassCheckoutEnabled } from "@/lib/billing/config";
 import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { EnrollButton } from "./EnrollButton";
 import { ExamCountdown } from "./ExamCountdown";
@@ -124,7 +124,7 @@ const faqItems = [
   {
     question: "How are Core and Max billed?",
     answer:
-      "Core is available for $50/month, or $120 every 3 months — saving you $30 and bringing the effective price down to $40/month.\n\nMax is available for $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nBoth plans can be cancelled anytime, and you'll keep access through the end of your current billing period.\n\nBoth options are paid upfront for the billing period you choose and automatically renew until canceled. There are no installment payments or additional subscription fees.",
+      "Core is available for $50/month, or $120 every 3 months — saving you $30 and bringing the effective price down to $40/month.\n\nMax is available for $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nBoth plans can be cancelled anytime, and you'll keep access through the end of your current billing period.\n\nBoth options are paid upfront for the billing period you choose and automatically renew until canceled. The $39 one-week Max pass is a one-time payment with no subscription or automatic renewal. There are no installment payments or additional subscription fees.",
   },
   {
     question: "Can I change plans later?",
@@ -182,7 +182,7 @@ export default async function PricingPage({
   const access = session ? await getStudentAccess(session.email) : null;
   const { billing, plan, cadence } = await searchParams;
   const billingEnabled = billingCheckoutEnabled();
-  const initialCadence: BillingCadence = (plan === "core" || plan === "max") && isBillingCadence(cadence)
+  const initialCadence: CheckoutTerm = (plan === "core" || plan === "max") && isCheckoutTerm(cadence)
     ? cadence
     : "monthly";
   const checkoutTokens = { core: randomUUID(), max: randomUUID() };
@@ -242,13 +242,14 @@ export default async function PricingPage({
           maxFeatures={maxFeatures}
           currentPlan={access?.plan ?? null}
           billingEnabled={billingEnabled}
+          weekPassEnabled={weekPassCheckoutEnabled()}
           initialCadence={initialCadence}
           checkoutTokens={checkoutTokens}
         />
 
         <p className={styles.planFootnote}>
-          Core and Max are billed monthly or every three months.
-          Both can be cancelled anytime, and your first purchase has a 24-hour refund window.
+          The one-week Max pass is $39 once and ends after 7 days. Monthly and three-month plans renew until canceled.
+          Subscriptions can be canceled anytime. Your first purchase has a 24-hour refund window.
         </p>
       </section>
 
@@ -454,6 +455,7 @@ function SectionHeading({
 
 function BillingNotice({ state }: { state: string }) {
   const messages: Record<string, string> = {
+    pending: "Your payment is processing. Your seven days of Max access will start once payment is confirmed.",
     cancelled: "Checkout was cancelled. Nothing was charged.",
     account: "This account cannot start a subscription.",
     invalid: "Choose Core or Max to continue.",

@@ -9,6 +9,7 @@ export type ConfirmCheckout = {
   metadata: Record<string, string> | null;
   mode: string | null;
   status: string | null;
+  payment_status?: string;
   customer: StripeId;
   subscription: StripeId;
 };
@@ -20,6 +21,7 @@ export type ConfirmHandlerDeps = {
   retrieveCheckout: (checkoutId: string) => Promise<ConfirmCheckout>;
   retrieveSubscription: (subscriptionId: string) => Promise<unknown>;
   syncSubscription: (subscription: unknown, accountId: string) => Promise<void>;
+  fulfillWeekPass: (checkoutId: string) => Promise<void>;
   markCheckout: (sessionId: string, status: "completed", reservationId: string | null) => Promise<boolean>;
   reportError: (event: string, error: unknown, context: Record<string, unknown>) => void;
 };
@@ -40,13 +42,21 @@ export function createConfirmGetHandler(deps: ConfirmHandlerDeps) {
         checkout.client_reference_id !== account.id
         || checkout.metadata?.platform !== "1500_blueprint"
         || checkout.metadata?.user_id !== account.id
-        || checkout.mode !== "subscription"
+        || (checkout.mode !== "subscription" && checkout.mode !== "payment")
         || checkout.status !== "complete"
         || stripeId(checkout.customer) !== account.stripeCustomerId
       ) {
         return NextResponse.redirect(`${baseUrl}/pricing?billing=error`, 303);
       }
 
+      if (checkout.mode === "payment") {
+        if (checkout.payment_status === "unpaid") {
+          return NextResponse.redirect(`${baseUrl}/pricing?billing=pending&plan=max&cadence=one_week`, 303);
+        }
+        await deps.fulfillWeekPass(checkout.id);
+        await deps.markCheckout(checkout.id, "completed", checkoutReservationId(checkout.metadata?.checkout_reservation_id));
+        return NextResponse.redirect(`${baseUrl}/ultimate?billing=success`, 303);
+      }
       const subscriptionId = stripeId(checkout.subscription);
       if (!subscriptionId) return NextResponse.redirect(`${baseUrl}/pricing?billing=error`, 303);
       const subscription = await deps.retrieveSubscription(subscriptionId);
