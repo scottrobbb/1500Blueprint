@@ -249,7 +249,7 @@ export default async function PricingPage({
 
         <p className={styles.planFootnote}>
           The one-week Max pass is $39 once and ends after 7 days. Monthly and three-month plans renew until canceled.
-          Subscriptions can be canceled anytime. Your first purchase has a 24-hour refund window.
+          Subscriptions can be canceled anytime. Your first purchase has a 24-hour refund window, and renewals are non-refundable.
         </p>
       </section>
 
