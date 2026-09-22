@@ -5,8 +5,8 @@ import { Logo } from "@/components/Logo";
 import type { PlanCode } from "@/lib/auth/plans";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
-import { isBillingCadence, type BillingCadence } from "@/lib/billing/offers";
-import { billingCheckoutEnabled } from "@/lib/billing/config";
+import { isCheckoutTerm, type CheckoutTerm } from "@/lib/billing/offers";
+import { billingCheckoutEnabled, weekPassCheckoutEnabled } from "@/lib/billing/config";
 import { vimeoEmbedUrl } from "@/lib/calls/vimeo";
 import { EnrollButton } from "./EnrollButton";
 import { ExamCountdown } from "./ExamCountdown";
@@ -56,7 +56,7 @@ export async function PricingLanding({
   const access = session ? await getStudentAccess(session.email) : null;
   const { billing, plan, cadence } = searchParams;
   const billingEnabled = billingCheckoutEnabled();
-  const initialCadence: BillingCadence = (plan === "core" || plan === "max") && isBillingCadence(cadence)
+  const initialCadence: CheckoutTerm = (plan === "core" || plan === "max") && isCheckoutTerm(cadence)
     ? cadence
     : "monthly";
   const checkoutTokens = { core: randomUUID(), max: randomUUID() };
@@ -132,6 +132,7 @@ export async function PricingLanding({
             maxFeatures={visiblePlans.includes("max") ? maxFeatures : []}
             currentPlan={access?.plan ?? null}
             billingEnabled={billingEnabled}
+          weekPassEnabled={weekPassCheckoutEnabled()}
             initialCadence={initialCadence}
             checkoutTokens={checkoutTokens}
             visiblePlans={visiblePlans}
@@ -320,6 +321,7 @@ function SectionHeading({
 
 function BillingNotice({ state }: { state: string }) {
   const messages: Record<string, string> = {
+    pending: "Your payment is processing. Your seven days of Max access will start once payment is confirmed.",
     cancelled: "Checkout was cancelled. Nothing was charged.",
     account: "This account cannot start a subscription.",
     invalid: "Choose a plan to continue.",

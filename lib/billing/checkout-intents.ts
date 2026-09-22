@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { BillablePlan } from "./config";
-import type { BillingCadence } from "./offers";
+import type { CheckoutTerm } from "./offers";
 import {
   parseCheckoutIntentClaim,
   stripeCheckoutIdempotencyKey,
@@ -14,7 +14,7 @@ export async function claimCheckoutIntent(input: {
   userId: string;
   livemode: boolean;
   plan: BillablePlan;
-  cadence: BillingCadence;
+  cadence: CheckoutTerm;
   requestToken: string;
 }): Promise<CheckoutIntentClaim> {
   const { data, error } = await supabaseAdmin()

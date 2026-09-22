@@ -14,12 +14,18 @@ export function SubscriptionSettingsView({
   planView: SettingsPlanView;
   billingState?: string;
 }) {
-  const { access, account, grant, subscription } = data;
+  const { access, account, grant, subscription, weekPass } = data;
   const cancellationAt = subscription?.cancellationScheduledAt ?? null;
   const billingDate = cancellationAt ?? subscription?.currentPeriodEnd ?? null;
 
   return (
     <div className="space-y-12">
+      {billingState === "existing-subscription" || billingState === "active-pass" ? (
+        <p role="status" className="rounded-xl bg-haze px-4 py-3 text-sm font-semibold text-navy">
+          {billingState === "active-pass" ? "Your one-week Max access is already active. Nothing was charged."
+            : "You already have a subscription. The one-week option does not replace or cancel it. Nothing was charged."}
+        </p>
+      ) : null}
       {billingState === "error" ? (
         <div role="alert" className="rounded-xl border border-danger/15 bg-danger-bg px-4 py-3 text-sm font-semibold text-danger-600">
           Stripe billing could not be opened. Please try again or contact support.
@@ -42,9 +48,10 @@ export function SubscriptionSettingsView({
             <PlanDetail label="Access" value={accessSourceLabel(data)} />
             <PlanDetail
               label="Billing"
-              value={data.subscriptionUnavailable ? "Temporarily unavailable" : subscription ? "Managed through Stripe" : "Not billed"}
+              value={data.subscriptionUnavailable ? "Temporarily unavailable" : subscription ? "Managed through Stripe" : weekPass ? "$39 paid once · No automatic renewal" : "Not billed"}
               warning={data.subscriptionUnavailable}
             />
+            {weekPass ? <PlanDetail label="One-week access ends" value={formatDate(weekPass.expires_at)} /> : null}
             {subscription ? (
               <PlanDetail
                 label="Plan status"
@@ -175,6 +182,7 @@ function SectionHeading({ id, title }: { id: string; title: string }) {
 
 function accessSourceLabel(data: SubscriptionSettingsData): string {
   if (data.access.isTestAccount) return "Test account";
+  if (data.access.source === "one_time") return "One-week Max pass";
   if (data.access.source === "grant") return "Complimentary access";
   if (data.access.source === "legacy") return "Legacy membership";
   if (data.access.source === "subscription") return "Personal subscription";

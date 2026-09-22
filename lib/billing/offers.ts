@@ -2,6 +2,14 @@ import type { BillablePlan } from "./config";
 
 export type BillingCadence = "monthly" | "three_month";
 
+export type CheckoutTerm = BillingCadence | "one_week";
+export const WEEK_PASS_AMOUNT = 3_900;
+export const WEEK_PASS_DAYS = 7;
+
+export function isCheckoutTerm(value: unknown): value is CheckoutTerm {
+  return value === "one_week" || isBillingCadence(value);
+}
+
 export type BillingOffer = {
   plan: BillablePlan;
   cadence: BillingCadence;

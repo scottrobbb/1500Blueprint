@@ -366,6 +366,7 @@ function AccessDetails({
   onChangeAccess: () => void;
 }) {
   const source = student.isComplimentary ? "Complimentary access"
+    : student.accessSource === "one_time" ? `One-week Max pass${student.weekPassExpiresAt ? ` · ends ${fmtDate(student.weekPassExpiresAt)}` : ""}`
     : student.accessSource === "subscription" ? "Stripe subscription"
     : student.accessSource === "grant" ? `${student.grantSource ?? "Admin"} grant`
     : student.accessSource === "legacy" ? "Legacy account plan"

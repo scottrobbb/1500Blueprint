@@ -1,9 +1,10 @@
+import { getActiveWeekPass } from "@/lib/billing/week-pass";
 import type Stripe from "stripe";
 import { conversionContext } from "@/lib/marketing/context";
 import { conversionsEnabled, saveConversionContext } from "@/lib/marketing/delivery";
 import { attachReferralToCustomer, findBillingAccount, ensureStripeCustomer, hasUntrackedStripeBilling } from "@/lib/billing/accounts";
 import { changeBillingPlan } from "@/lib/billing/changes";
-import { billingBaseUrl, billingCheckoutEnabled, billingLivemode } from "@/lib/billing/config";
+import { billingBaseUrl, billingCheckoutEnabled, weekPassCheckoutEnabled, billingLivemode } from "@/lib/billing/config";
 import { resolveBillingPriceId } from "@/lib/billing/prices";
 import { openBillingPortal } from "@/lib/billing/portal-configuration";
 import { billingStripe } from "@/lib/billing/stripe";
@@ -18,6 +19,8 @@ import { PAID_ACCESS_STATUSES } from "@/lib/billing/policy";
 export const POST = createCheckoutPostHandler({
   baseUrl: billingBaseUrl,
   billingEnabled: billingCheckoutEnabled,
+  weekPassEnabled: weekPassCheckoutEnabled,
+  hasActiveWeekPass: async (id) => Boolean(await getActiveWeekPass(id)),
   livemode: billingLivemode,
   now: Date.now,
   getSession,

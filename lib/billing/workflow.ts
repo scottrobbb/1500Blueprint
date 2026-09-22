@@ -1,8 +1,8 @@
 import { readIdempotencyToken } from "@/lib/idempotency";
 import type { BillablePlan } from "./config";
 import { isBillablePlan } from "./config";
-import type { BillingCadence } from "./offers";
-import { isBillingCadence } from "./offers";
+import type { CheckoutTerm } from "./offers";
+import { isCheckoutTerm } from "./offers";
 
 export const WEBHOOK_PROCESSING_LEASE_MS = 5 * 60 * 1_000;
 
@@ -28,7 +28,7 @@ export type CheckoutIntentClaim = {
   // route tells an abandoned reservation for a different plan apart from a
   // genuine same-plan double-submit still in flight.
   planCode: BillablePlan;
-  billingCadence: BillingCadence;
+  billingCadence: CheckoutTerm;
 };
 
 export type LegacyImportAudit = {
@@ -73,7 +73,7 @@ export function parseCheckoutIntentClaim(value: unknown): CheckoutIntentClaim | 
     || typeof row.checkout_expires_at !== "string"
     || !Number.isFinite(Date.parse(row.checkout_expires_at))
     || !isBillablePlan(row.plan_code)
-    || !isBillingCadence(row.billing_cadence)
+    || !isCheckoutTerm(row.billing_cadence)
   ) {
     return null;
   }

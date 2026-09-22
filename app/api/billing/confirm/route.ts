@@ -1,3 +1,4 @@
+import { fulfillWeekPass } from "@/lib/billing/week-pass";
 import type Stripe from "stripe";
 import { findBillingAccount } from "@/lib/billing/accounts";
 import { billingBaseUrl } from "@/lib/billing/config";
@@ -18,6 +19,7 @@ export const GET = createConfirmGetHandler({
     subscription as Stripe.Subscription,
     accountId,
   ),
+  fulfillWeekPass,
   markCheckout: markCheckoutSession,
   reportError: reportServerError,
 });

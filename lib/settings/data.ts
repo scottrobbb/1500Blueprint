@@ -1,3 +1,4 @@
+import { getActiveWeekPass, type WeekPass } from "@/lib/billing/week-pass";
 import "server-only";
 
 import {
@@ -50,6 +51,7 @@ export type SettingsAccessGrant = {
 
 export type SubscriptionSettingsData = {
   access: StudentAccess;
+  weekPass?: WeekPass | null;
   account: SettingsAccount | null;
   subscription: SettingsBillingSubscription | null;
   grant: SettingsAccessGrant | null;
@@ -290,6 +292,7 @@ export async function getSubscriptionSettings(
     getSettingsAccount(email),
   ]);
 
+  const weekPass = account ? await getActiveWeekPass(account.id) : null;
   const subscriptionPromise = account
     ? getSettingsBillingSubscription(account.id)
     : Promise.resolve(null);
@@ -318,6 +321,7 @@ export async function getSubscriptionSettings(
   return {
     access,
     account,
+    weekPass,
     subscription:
       subscription.status === "fulfilled" ? subscription.value : null,
     grant: grant.status === "fulfilled" ? grant.value : null,

@@ -22,6 +22,7 @@ declare
     'billing_checkout_intents',
     'billing_refunds',
     'billing_webhook_events',
+    'billing_week_passes',
     'call_recording_lessons',
     'call_recording_months',
     'choices',
