@@ -11,6 +11,7 @@ import { getStudentAccess } from "@/lib/auth/entitlements";
 import { testIndexIsAccessible } from "@/lib/auth/access-control";
 import { getTestProgress } from "@/lib/gamification/state";
 import { listTests } from "@/lib/sat/loadTest";
+import { listAllModuleAttempts } from "@/lib/sat/moduleAttempts";
 import { listResumableTestSlugs } from "@/lib/sat/testSession";
 
 export const metadata = { title: "Full-Length Tests" };
@@ -20,11 +21,14 @@ export default async function UltimateTestsPage() {
   if (!session || !isUltimatePreviewEmail(session.email)) notFound();
 
   const isAdmin = isAdminEmail(session.email);
-  const [tests, progress, access] = await Promise.all([
+  const [tests, progress, access, moduleAttempts] = await Promise.all([
     listTests({ includeDraft: isAdmin }),
     getTestProgress(session.email),
     getStudentAccess(session.email),
+    listAllModuleAttempts(session.email).catch(() => []),
   ]);
+  // Module-only students still need a way into their history.
+  const historyCount = progress.testsDone + moduleAttempts.length;
   const resumableSlugs = await listResumableTestSlugs(session.email, tests.map((test) => test.slug));
   const availableCount = tests.filter((test, index) =>
     (isAdmin || testIndexIsAccessible(test.slug, index, access.entitlements.fullTestLimit))
@@ -50,9 +54,9 @@ export default async function UltimateTestsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {progress.testsDone > 0 ? (
+          {historyCount > 0 ? (
             <Link href="/ultimate/tests/completed" className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-navy/15 bg-white px-4 text-sm font-bold text-navy transition-colors hover:border-navy/30">
-              Score history <span className="text-navy/35">{progress.testsDone}</span>
+              Score history <span className="text-navy/35">{historyCount}</span>
             </Link>
           ) : null}
           {launchTest ? (

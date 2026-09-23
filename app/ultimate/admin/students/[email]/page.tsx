@@ -8,6 +8,7 @@ import { listCoursesForStudentStrict } from "@/lib/courses/queries";
 import { getHubState, listAllTestAttempts, listStudents } from "@/lib/gamification/state";
 import { getQuestionBankDashboard } from "@/lib/question-bank/queries";
 import { listTests } from "@/lib/sat/loadTest";
+import { listAllModuleAttempts } from "@/lib/sat/moduleAttempts";
 
 export const metadata = { title: "Student" };
 
@@ -30,12 +31,13 @@ export default async function UltimateAdminStudentPage({
   const student = students.find((row) => row.email.toLowerCase() === email);
   if (!student) notFound();
 
-  const [progress, attempts, tests, courses, access] = await Promise.all([
+  const [progress, attempts, tests, courses, access, moduleAttempts] = await Promise.all([
     getHubState(student.email).catch(() => null),
     listAllTestAttempts(student.email),
     listTests({ includeDraft: true }),
     listCoursesForStudentStrict(student.email).catch(() => null),
     getStudentAccess(student.email).catch(() => null),
+    listAllModuleAttempts(student.email).catch(() => null),
   ]);
   const testTitles = Object.fromEntries(tests.map((test) => [test.slug, test.title]));
   // The same free-tier scoping the student's own Question Bank page applies, so
@@ -55,6 +57,7 @@ export default async function UltimateAdminStudentPage({
         progress={progress}
         attempts={attempts}
         testTitles={testTitles}
+        moduleAttempts={moduleAttempts}
         courses={courseProgress}
         questionBank={questionBank}
       />
