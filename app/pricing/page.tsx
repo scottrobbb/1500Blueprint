@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Logo } from "@/components/Logo";
+import { isAdminEmail } from "@/lib/auth/admin";
 import { getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isCheckoutTerm, type CheckoutTerm } from "@/lib/billing/offers";
@@ -181,6 +183,20 @@ export default async function PricingPage({
   const session = await getSession();
   const access = session ? await getStudentAccess(session.email) : null;
   const { billing, plan, cadence } = await searchParams;
+  // A signed-in Max student has nothing to buy here ("/" lands on this page),
+  // so send them straight into the app. Week-pass holders stay, since they may
+  // want a subscription; billing returns stay to show their status message;
+  // admins stay so the page can still be reviewed.
+  if (
+    session
+    && access?.active
+    && access.plan === "max"
+    && access.source !== "one_time"
+    && !billing
+    && !isAdminEmail(session.email)
+  ) {
+    redirect("/ultimate");
+  }
   const billingEnabled = billingCheckoutEnabled();
   const initialCadence: CheckoutTerm = (plan === "core" || plan === "max") && isCheckoutTerm(cadence)
     ? cadence
