@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Course } from "@/lib/courses/types";
 import type { QuestionBankDashboard, QuestionBankSection } from "@/lib/question-bank/dashboard";
+import type { ModuleAttemptRecord } from "@/lib/sat/moduleAttempts";
 import type {
   CompletedTestAttempt,
   HubState,
@@ -77,6 +78,7 @@ export function StudentDetail({
   progress,
   attempts,
   testTitles,
+  moduleAttempts,
   courses,
   questionBank,
 }: {
@@ -84,6 +86,7 @@ export function StudentDetail({
   progress: HubState | null;
   attempts: CompletedTestAttempt[];
   testTitles: Record<string, string>;
+  moduleAttempts: ModuleAttemptRecord[] | null;
   courses: { course: Course; locked: boolean }[] | null;
   questionBank: QuestionBankDashboard | null;
 }) {
@@ -251,6 +254,12 @@ export function StudentDetail({
           </p>
         )}
       </Section>
+
+      <ModulePracticeSection
+        email={student.email}
+        attempts={moduleAttempts}
+        testTitles={testTitles}
+      />
     </div>
   );
 }
@@ -410,6 +419,68 @@ function QuestionBankSection({ dashboard }: { dashboard: QuestionBankDashboard |
         </div>
       ) : (
         <EmptyNote>This student has not answered any Question Bank questions.</EmptyNote>
+      )}
+    </Section>
+  );
+}
+
+function ModulePracticeSection({
+  email,
+  attempts,
+  testTitles,
+}: {
+  email: string;
+  attempts: ModuleAttemptRecord[] | null;
+  testTitles: Record<string, string>;
+}) {
+  if (!attempts) {
+    return (
+      <Section title="Single-module practice">
+        <EmptyNote>Module practice could not be loaded for this student.</EmptyNote>
+      </Section>
+    );
+  }
+
+  return (
+    <Section title="Single-module practice">
+      {attempts.length ? (
+        <div className="overflow-x-auto rounded-card border border-navy/15 bg-white">
+          <table className="w-full min-w-[560px] text-sm">
+            <thead>
+              <tr className="border-b border-navy/10 bg-mist text-left">
+                <th className="px-4 py-3 font-semibold text-navy/70">Module</th>
+                <th className="px-4 py-3 font-semibold text-navy/70">Taken</th>
+                <th className="px-4 py-3 font-semibold text-navy/70">Score</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {attempts.map((attempt) => (
+                <tr key={attempt.id} className="border-b border-navy/8 last:border-b-0 hover:bg-brand/5">
+                  <td className="px-4 py-3">
+                    <div className="font-semibold text-ink">{attempt.label}</div>
+                    <div className="text-xs text-navy/45">{testTitles[attempt.testSlug] ?? attempt.testSlug}</div>
+                  </td>
+                  <td className="px-4 py-3 text-navy/70">{formatDate(attempt.createdAt)}</td>
+                  <td className="px-4 py-3 tabular-nums">
+                    <span className="font-semibold text-ink">{attempt.correct} / {attempt.total}</span>
+                    <span className="ml-2 text-navy/50">{percentOf(attempt.correct, attempt.total)}%</span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link
+                      href={`/ultimate/admin/students/${encodeURIComponent(email)}/modules/${attempt.id}`}
+                      className="font-semibold text-brand-600 hover:underline"
+                    >
+                      View review
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <EmptyNote>This student has not practiced a single module.</EmptyNote>
       )}
     </Section>
   );

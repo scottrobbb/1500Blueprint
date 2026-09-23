@@ -117,6 +117,39 @@ export async function listModuleAttempts(
   }));
 }
 
+export type ModuleAttemptRecord = ModuleAttemptSummary & { testSlug: string };
+
+// Every single-module attempt across all tests, newest first — the history the
+// completed-tests pages and the admin student view list.
+export async function listAllModuleAttempts(email: string): Promise<ModuleAttemptRecord[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("module_attempts")
+    .select("id,test_slug,module_key,label,correct,total,created_at")
+    .eq("email", email)
+    .order("created_at", { ascending: false })
+    .returns<
+      {
+        id: string;
+        test_slug: string;
+        module_key: string;
+        label: string;
+        correct: number;
+        total: number;
+        created_at: string;
+      }[]
+    >();
+  if (error) throw new Error(`Could not load module attempts [${error.code}]: ${error.message}`);
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    testSlug: r.test_slug,
+    moduleKey: r.module_key,
+    label: r.label,
+    correct: r.correct,
+    total: r.total,
+    createdAt: r.created_at,
+  }));
+}
+
 export async function getModuleAttempt(
   email: string,
   attemptId: string,

@@ -40,8 +40,10 @@ export function ModuleResults({
   savedHref,
   attemptDate,
   backHref,
+  backLabel = "Back to attempts",
   modulesHref,
   testsHref = "/practice-test",
+  readOnly = false,
   saveStatus,
   saveError,
   onRetrySave,
@@ -56,8 +58,11 @@ export function ModuleResults({
   savedHref?: string;
   attemptDate?: string;
   backHref?: string;
+  backLabel?: string;
   modulesHref?: string;
   testsHref?: string;
+  // An admin reviewing a student's attempt: only the way back, no practice links.
+  readOnly?: boolean;
   saveStatus?: "idle" | "saving" | "saved" | "error";
   saveError?: string | null;
   onRetrySave?: () => void;
@@ -81,8 +86,11 @@ export function ModuleResults({
         <div className="mx-auto flex max-w-4xl flex-col gap-6 px-6 py-10">
           <div className="flex items-center justify-between">
             <Logo className="text-white [&_.text-navy]:text-white" />
-            <Link href={testsHref} className="text-sm text-white/70 hover:text-white">
-              Practice tests
+            <Link
+              href={readOnly && backHref ? backHref : testsHref}
+              className="text-sm text-white/70 hover:text-white"
+            >
+              {readOnly && backHref ? backLabel : "Practice tests"}
             </Link>
           </div>
           <div className="flex flex-col items-center text-center">
@@ -222,21 +230,25 @@ export function ModuleResults({
               href={backHref}
               className="rounded-full bg-brand px-6 py-2.5 text-sm font-semibold text-white hover:bg-brand-600"
             >
-              Back to attempts
+              {backLabel}
             </Link>
           )}
-          <Link
-            href={modulesHref ?? `/practice-test/${slug}/modules`}
-            className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"
-          >
-            Other modules
-          </Link>
-          <Link
-            href={testsHref}
-            className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"
-          >
-            Back to tests
-          </Link>
+          {readOnly ? null : (
+            <>
+              <Link
+                href={modulesHref ?? `/practice-test/${slug}/modules`}
+                className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"
+              >
+                Other modules
+              </Link>
+              <Link
+                href={testsHref}
+                className="rounded-full border border-ink/20 px-6 py-2.5 text-sm font-semibold text-ink hover:bg-ice"
+              >
+                Back to tests
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </main>
