@@ -1,10 +1,4 @@
-// Meta ad attribution captured on the /free landing page.
-//
-// The parameters arrive on the landing URL but are only needed much later, at
-// the moment a Free registration completes, so the proxy parks them in a
-// cookie. The cookie is written on every /free landing, parameters or not:
-// "this visitor came through /free" is itself the gate on whether a completed
-// registration counts as a Free-landing conversion.
+// Landing attribution survives navigation until registration or checkout.
 
 export const FREE_ATTRIBUTION_COOKIE = "bp_free_attr";
 export const FREE_ATTRIBUTION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days, in seconds
@@ -14,19 +8,40 @@ export const FREE_ATTRIBUTION_MAX_AGE = 60 * 60 * 24 * 30; // 30 days, in second
 // Meta is a wrong id, which is worse than none.
 const MAX_FBCLID_LENGTH = 255;
 const MAX_UTM_MEDIUM_LENGTH = 64;
+const MAX_UTM_LENGTH = 256;
 const MAX_FBC_LENGTH = 300;
 const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 // fb.<subdomain index>.<click time in ms>.<fbclid>, the format Meta's own
 // pixel writes into the _fbc cookie.
 const FBC_PREFIX = /^fb\.1\.(\d{1,20})\.(.*)$/;
 
-export type FreeAttribution = {
+export const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
+export type UtmAttribution = Record<(typeof UTM_KEYS)[number], string | null>;
+export const EMPTY_UTMS: UtmAttribution = {
+  utm_source: null, utm_medium: null, utm_campaign: null, utm_content: null, utm_term: null,
+};
+
+export type FreeAttribution = UtmAttribution & {
   fbclid: string | null;
   // Meta's _fbc value, built from the click id and the time it landed. Derived,
   // never supplied by the URL, and always consistent with fbclid.
   fbc: string | null;
-  utm_medium: string | null;
 };
+
+export function hasAttributionParams(params: URLSearchParams): boolean {
+  return params.has("fbclid") || UTM_KEYS.some((key) => params.has(key));
+}
+
+export function readUtmParams(params: URLSearchParams): UtmAttribution {
+  const attribution = { ...EMPTY_UTMS };
+  for (const key of UTM_KEYS) {
+    const value = cleanValue(params.get(key), key === "utm_medium" ? MAX_UTM_MEDIUM_LENGTH : MAX_UTM_LENGTH);
+    // Bound the encoded contribution of each UTM so a Unicode-heavy ad label
+    // cannot push the combined attribution cookie beyond browser limits.
+    attribution[key] = value && new URLSearchParams({ v: value }).toString().length <= 402 ? value : null;
+  }
+  return attribution;
+}
 
 export function formatFbc(clickTimeMs: number, fbclid: string): string {
   return `fb.1.${clickTimeMs}.${fbclid}`;
@@ -38,9 +53,9 @@ export function formatFbc(clickTimeMs: number, fbclid: string): string {
 export function readAttributionParams(params: URLSearchParams, nowMs: number): FreeAttribution {
   const fbclid = cleanValue(params.get("fbclid"), MAX_FBCLID_LENGTH);
   return {
+    ...readUtmParams(params),
     fbclid,
     fbc: fbclid ? formatFbc(nowMs, fbclid) : null,
-    utm_medium: cleanValue(params.get("utm_medium"), MAX_UTM_MEDIUM_LENGTH),
   };
 }
 
@@ -52,9 +67,9 @@ export function parseAttributionCookie(value: string | null | undefined): FreeAt
   const params = new URLSearchParams(value);
   const fbclid = cleanValue(params.get("fbclid"), MAX_FBCLID_LENGTH);
   return {
+    ...readUtmParams(params),
     fbclid,
     fbc: readFbc(params.get("fbc"), fbclid),
-    utm_medium: cleanValue(params.get("utm_medium"), MAX_UTM_MEDIUM_LENGTH),
   };
 }
 
@@ -64,7 +79,7 @@ export function serializeAttribution(attribution: FreeAttribution): string {
   const params = new URLSearchParams({ src: "free" });
   if (attribution.fbclid) params.set("fbclid", attribution.fbclid);
   if (attribution.fbc) params.set("fbc", attribution.fbc);
-  if (attribution.utm_medium) params.set("utm_medium", attribution.utm_medium);
+  for (const key of UTM_KEYS) if (attribution[key]) params.set(key, attribution[key]);
   return params.toString();
 }
 
@@ -91,17 +106,18 @@ export function mergeAttribution(
   if (!existing) return { attribution: incoming, changed: true };
 
   const attribution: FreeAttribution = {
+    ...EMPTY_UTMS,
     fbclid: incoming.fbclid ?? existing.fbclid,
     fbc: incoming.fbclid
       ? incoming.fbc
       // A stored click with no usable fbc -- one captured before fbc existed,
       // or a tampered cookie value -- is stamped now rather than left behind.
       : existing.fbc ?? (existing.fbclid ? formatFbc(nowMs, existing.fbclid) : null),
-    utm_medium: incoming.utm_medium ?? existing.utm_medium,
   };
+  for (const key of UTM_KEYS) attribution[key] = incoming[key] ?? existing[key];
   const changed = attribution.fbclid !== existing.fbclid
     || attribution.fbc !== existing.fbc
-    || attribution.utm_medium !== existing.utm_medium;
+    || UTM_KEYS.some((key) => attribution[key] !== existing[key]);
   return { attribution, changed };
 }
 

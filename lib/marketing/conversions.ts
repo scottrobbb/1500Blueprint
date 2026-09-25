@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
+import type { UtmAttribution } from "./attribution";
 
-export type ConversionContext = {
+export type ConversionContext = UtmAttribution & {
   fbclid: string | null;
   fbc: string | null;
   fbp: string | null;
-  utm_medium: string | null;
   landing_page: string | null;
   event_source_url: string;
   client_ip_address: string | null;

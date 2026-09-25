@@ -188,7 +188,12 @@ needed.
 
 The browser's landing attribution is preserved in an HttpOnly cookie. The
 registration and authenticated checkout routes persist matching context for the
-later Stripe webhook. `fbc` retains the click timestamp; `event_time` is the
+later Stripe webhook. Both webhook payloads include `utm_source`, `utm_medium`,
+`utm_campaign`, `utm_content`, and `utm_term`. These are captured when present on
+the landing URL, including a direct checkout link that redirects through login.
+An untagged return visit preserves previously captured values. Parameters never
+captured from the visitor remain null; old events are not rewritten or backfilled.
+`fbc` retains the click timestamp; `event_time` is the
 conversion timestamp. The browser pixel below now sets `_fbp`, so it is included
 whenever a valid browser cookie is available.
 
@@ -205,8 +210,9 @@ the server also sends would need a shared event name and event ID.
 Map `event_time`, `event_id`, `event_source_url`, `email`, `first_name`,
 `last_name`, `external_id`, `client_ip_address`, `client_user_agent`, `fbc`, `fbp`,
 `value`, and `content_name` from the hook into the corresponding Meta fields.
-Set Action Source to Website and Currency to USD. Put `utm_medium` and
-`conversion_kind` in Additional Data. Zapier hashes customer matching fields.
+Set Action Source to Website and purchase Currency to USD. Registration does not
+need the IP address or value mapped. Put all five `utm_*` fields in Additional
+Data. Zapier hashes customer matching fields.
 Never map the raw `fbclid` into Meta's `fbc` field. If a browser conversion pixel
 is added later, it must share this exact event name and event ID.
 
@@ -217,6 +223,12 @@ not prove Meta accepted the downstream action. Check Zap history for downstream
 errors and Meta responses, and enable Zapier Autoreplay when available. Events
 that remain unsent for six days expire for manual review. No payload or hook
 credential is written to application logs.
+
+The worker handles at most ten queued events per invocation. Turning a Zap on
+after an outage can therefore produce runs every five minutes with older event
+timestamps until the backlog clears. A successful delivery keeps its original
+event ID and time and is never reclaimed by the worker. Zapier's saved editor
+sample and a manually replayed run are separate from this website retry queue.
 
 ## Explanation editors
 

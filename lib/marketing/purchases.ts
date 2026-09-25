@@ -1,4 +1,5 @@
 import "server-only";
+import { EMPTY_UTMS } from "./attribution";
 import type Stripe from "stripe";
 import { canonicalAppUrl } from "@/lib/auth/config";
 import { billingStripe } from "@/lib/billing/stripe";
@@ -21,6 +22,7 @@ export async function notifyPurchase(invoice: Stripe.Invoice, subscriptionId: st
   if (!account.data || account.data.is_test_account) return;
   const context = await loadConversionContext(account.data.email);
   const fallback: ConversionContext = {
+    ...EMPTY_UTMS,
     fbclid: null, fbc: null, fbp: null, utm_medium: null, landing_page: null,
     event_source_url: `${canonicalAppUrl()}/checkout`, client_ip_address: null, client_user_agent: null,
   };

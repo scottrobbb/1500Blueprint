@@ -7,6 +7,7 @@ import {
   FREE_ATTRIBUTION_COOKIE,
   FREE_ATTRIBUTION_MAX_AGE,
   mergeAttribution,
+  hasAttributionParams,
   parseAttributionCookie,
   readAttributionParams,
   serializeAttribution,
@@ -43,8 +44,10 @@ function isFreeLanding(pathname: string): boolean {
 // through. Nothing about the page changes -- no markup, no client JavaScript,
 // and the cookie is HttpOnly, so it stays out of the document entirely.
 function withFreeAttribution(request: NextRequest, response: NextResponse): NextResponse {
+  // A form POST on the landing URL is not another ad click.
+  if (request.method !== "GET") return response;
   const landing = isFreeLanding(request.nextUrl.pathname);
-  const hasAttribution = request.nextUrl.searchParams.has("fbclid") || request.nextUrl.searchParams.has("utm_medium");
+  const hasAttribution = hasAttributionParams(request.nextUrl.searchParams);
   if (!landing && !hasAttribution) return response;
   if (request.nextUrl.pathname.startsWith("/api/") || request.nextUrl.pathname.startsWith("/account/confirm")) return response;
 
@@ -135,7 +138,7 @@ export async function proxy(request: NextRequest) {
       loginUrl.pathname = "/login";
       loginUrl.search = "";
     }
-    return redirectWithCookies(loginUrl, passwordResponse);
+    return withFreeAttribution(request, redirectWithCookies(loginUrl, passwordResponse));
   }
 
   const isAdmin = isAdminEmail(email);
@@ -176,7 +179,7 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return passwordResponse ?? NextResponse.next();
+  return withFreeAttribution(request, passwordResponse ?? NextResponse.next());
 }
 
 function redirectWithCookies(url: URL, source: NextResponse | null): NextResponse {

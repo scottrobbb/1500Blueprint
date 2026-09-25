@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   formatFbc,
+  EMPTY_UTMS,
   mergeAttribution,
   parseAttributionCookie,
   readAttributionParams,
@@ -22,7 +23,7 @@ test("landing parameters are read and trimmed", () => {
     {
       fbclid: "abc123",
       fbc: `fb.1.${CLICK_MS}.abc123`,
-      utm_medium: "paid_social",
+      ...EMPTY_UTMS, utm_medium: "paid_social",
     },
   );
 });
@@ -35,12 +36,12 @@ test("absent, empty, and oversized parameters read as null", () => {
   assert.deepEqual(readAttributionParams(params(""), CLICK_MS), {
     fbclid: null,
     fbc: null,
-    utm_medium: null,
+    ...EMPTY_UTMS, utm_medium: null,
   });
   assert.deepEqual(readAttributionParams(params("fbclid=&utm_medium=%20%20"), CLICK_MS), {
     fbclid: null,
     fbc: null,
-    utm_medium: null,
+    ...EMPTY_UTMS, utm_medium: null,
   });
 
   // Dropped, not truncated: a shortened click id is a wrong click id.
@@ -53,7 +54,7 @@ test("a later visit with no parameters preserves the stored attribution", () => 
   const stored: FreeAttribution = {
     fbclid: "click-1",
     fbc: `fb.1.${CLICK_MS}.click-1`,
-    utm_medium: "paid_social",
+    ...EMPTY_UTMS, utm_medium: "paid_social",
   };
   const merged = mergeAttribution(stored, readAttributionParams(params(""), LATER_MS), LATER_MS);
 
@@ -65,7 +66,7 @@ test("a later visit with no parameters preserves the stored attribution", () => 
 
 test("a fresh attributed click replaces an older one, fbc included", () => {
   const merged = mergeAttribution(
-    { fbclid: "click-1", fbc: `fb.1.${CLICK_MS}.click-1`, utm_medium: "paid_social" },
+    { fbclid: "click-1", fbc: `fb.1.${CLICK_MS}.click-1`, ...EMPTY_UTMS, utm_medium: "paid_social" },
     readAttributionParams(params("fbclid=click-2&utm_medium=email"), LATER_MS),
     LATER_MS,
   );
@@ -73,14 +74,14 @@ test("a fresh attributed click replaces an older one, fbc included", () => {
   assert.deepEqual(merged.attribution, {
     fbclid: "click-2",
     fbc: `fb.1.${LATER_MS}.click-2`,
-    utm_medium: "email",
+    ...EMPTY_UTMS, utm_medium: "email",
   });
   assert.equal(merged.changed, true);
 });
 
 test("a partial visit overwrites only the parameter it carries", () => {
   const merged = mergeAttribution(
-    { fbclid: "click-1", fbc: `fb.1.${CLICK_MS}.click-1`, utm_medium: "paid_social" },
+    { fbclid: "click-1", fbc: `fb.1.${CLICK_MS}.click-1`, ...EMPTY_UTMS, utm_medium: "paid_social" },
     readAttributionParams(params("utm_medium=email"), LATER_MS),
     LATER_MS,
   );
@@ -90,14 +91,14 @@ test("a partial visit overwrites only the parameter it carries", () => {
   assert.deepEqual(merged.attribution, {
     fbclid: "click-1",
     fbc: `fb.1.${CLICK_MS}.click-1`,
-    utm_medium: "email",
+    ...EMPTY_UTMS, utm_medium: "email",
   });
   assert.equal(merged.changed, true);
 });
 
 test("a stored click with no usable fbc is stamped on the next visit", () => {
   const merged = mergeAttribution(
-    { fbclid: "click-1", fbc: null, utm_medium: null },
+    { fbclid: "click-1", fbc: null, ...EMPTY_UTMS, utm_medium: null },
     readAttributionParams(params(""), LATER_MS),
     LATER_MS,
   );
@@ -109,7 +110,7 @@ test("a stored click with no usable fbc is stamped on the next visit", () => {
 test("a first visit always writes, so a parameterless landing is still recorded", () => {
   const merged = mergeAttribution(null, readAttributionParams(params(""), CLICK_MS), CLICK_MS);
 
-  assert.deepEqual(merged.attribution, { fbclid: null, fbc: null, utm_medium: null });
+  assert.deepEqual(merged.attribution, { fbclid: null, fbc: null, ...EMPTY_UTMS, utm_medium: null });
   assert.equal(merged.changed, true);
   // Non-empty, so the cookie survives the round trip and marks the arrival.
   assert.equal(serializeAttribution(merged.attribution), "src=free");
@@ -119,7 +120,7 @@ test("attribution round-trips through the cookie value", () => {
   const attribution: FreeAttribution = {
     fbclid: "IwAR0_a-b",
     fbc: `fb.1.${CLICK_MS}.IwAR0_a-b`,
-    utm_medium: "paid social",
+    ...EMPTY_UTMS, utm_medium: "paid social",
   };
   const cookie = serializeAttribution(attribution);
 
