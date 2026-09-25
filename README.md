@@ -46,7 +46,7 @@ Auth redirect settings before testing registration.
 
 ## Stripe billing
 
-Core is $50 monthly or $120 every three months. Max is $80 monthly or $210
+Core is $50 monthly or $120 every three months. Max is $80 monthly or $179
 every three months. Checkout stays closed unless billing is explicitly launched
 with a complete mode, webhook, key, and Price configuration.
 

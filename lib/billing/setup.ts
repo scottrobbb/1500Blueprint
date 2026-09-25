@@ -33,9 +33,9 @@ const plans = [
       },
       {
         cadence: "three_month",
-        amount: 21_000,
+        amount: 17_900,
         intervalCount: 3,
-        lookupKey: "blueprint_max_three_month_21000",
+        lookupKey: "blueprint_max_three_month_17900",
       },
     ],
   },

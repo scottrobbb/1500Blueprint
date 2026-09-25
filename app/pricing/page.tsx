@@ -126,7 +126,7 @@ const faqItems = [
   {
     question: "How are Core and Max billed?",
     answer:
-      "Core is available for $50/month, or $120 every 3 months — saving you $30 and bringing the effective price down to $40/month.\n\nMax is available for $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nBoth plans can be cancelled anytime, and you'll keep access through the end of your current billing period.\n\nBoth options are paid upfront for the billing period you choose and automatically renew until canceled. The $39 one-week Max pass is a one-time payment with no subscription or automatic renewal. There are no installment payments or additional subscription fees.",
+      "Core is available for $50/month, or $120 every 3 months — saving you $30 and bringing the effective price down to $40/month.\n\nMax is available for $80/month, or $179 every 3 months — saving you $61 and bringing the effective price down to about $59.67/month.\n\nBoth plans can be cancelled anytime, and you'll keep access through the end of your current billing period.\n\nBoth options are paid upfront for the billing period you choose and automatically renew until canceled. The $39 one-week Max pass is a one-time payment with no subscription or automatic renewal. There are no installment payments or additional subscription fees.",
   },
   {
     question: "Can I change plans later?",

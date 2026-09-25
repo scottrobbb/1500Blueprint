@@ -60,7 +60,7 @@ test("Stripe setup creates Core but reuses the existing Blueprint product for Ma
   assert.deepEqual(createdPrices, [
     { product: coreProduct.id, amount: 5_000, intervalCount: 1 },
     { product: coreProduct.id, amount: 12_000, intervalCount: 3 },
-    { product: maxProduct.id, amount: 21_000, intervalCount: 3 },
+    { product: maxProduct.id, amount: 17_900, intervalCount: 3 },
   ]);
 });
 

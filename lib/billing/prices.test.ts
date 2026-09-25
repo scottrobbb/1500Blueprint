@@ -12,12 +12,18 @@ test("runtime billing accepts only the explicitly configured matching Price", as
     const priceId = await resolveBillingPriceIdWithDeps("max", "three_month", {
       retrievePrice: async (id) => {
         retrieved = id;
-        return stripePrice(id, 21_000, 3);
+        return stripePrice(id, 17_900, 3);
       },
     });
     assert.equal(retrieved, "price_max_three_month");
     assert.equal(priceId, "price_max_three_month");
 
+    await assert.rejects(
+      resolveBillingPriceIdWithDeps("max", "three_month", {
+        retrievePrice: async (id) => stripePrice(id, 21_000, 3),
+      }),
+      /does not match the Blueprint offer/,
+    );
     await assert.rejects(
       resolveBillingPriceIdWithDeps("max", "three_month", {
         retrievePrice: async (id) => stripePrice(id, 8_000, 1),

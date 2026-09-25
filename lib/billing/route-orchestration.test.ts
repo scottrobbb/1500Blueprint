@@ -85,6 +85,7 @@ function checkoutDeps(overrides: Partial<CheckoutHandlerDeps> = {}): CheckoutHan
       url: "https://checkout.stripe.com/c/pay/cs_test_123456789",
     }),
     storeCheckout: async () => undefined,
+    isCurrentOffer: async () => true,
     releaseIntent: async () => true,
     cancelIntent: async () => "cancelled",
     reportError: () => undefined,
@@ -1165,4 +1166,48 @@ test("a delayed one-time payment does not grant access before it is paid", async
   }));
   const response = await handler(new Request(`${APP_URL}/api/billing/confirm?session_id=cs_test_123456789`));
   assert.match(response.headers.get("location")!, /billing=pending/);
+});
+
+test("a saved checkout at an older price is replaced with the current offer", async () => {
+  let claims = 0;
+  let expired = 0;
+  const created: Parameters<CheckoutHandlerDeps["createCheckout"]>[0][] = [];
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async () => ({
+      decision: ++claims === 1 ? "ready" : "claimed",
+      reservationId: RESERVATION_ID,
+      checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
+      checkoutUrl: "https://checkout.stripe.com/c/pay/cs_old_210",
+      planCode: "max", billingCadence: "three_month",
+    }),
+    isCurrentOffer: async () => false,
+    cancelIntent: async () => { expired++; return "cancelled"; },
+    resolvePrice: async () => "price_max_179",
+    createCheckout: async (params) => { created.push(params); return { id: "cs_new", url: "https://checkout.stripe.com/c/pay/cs_new_179" }; },
+  }));
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max", cadence: "three_month", checkoutToken: RESERVATION_ID,
+  }));
+  assert.equal(expired, 1);
+  assert.equal(claims, 2);
+  assert.equal(created[0].line_items[0].price, "price_max_179");
+  assert.equal(response.headers.get("location"), "https://checkout.stripe.com/c/pay/cs_new_179");
+});
+
+test("a price change cannot create a second checkout if the previous one just completed", async () => {
+  const handler = createCheckoutPostHandler(checkoutDeps({
+    claimIntent: async () => ({
+      decision: "ready", reservationId: RESERVATION_ID,
+      checkoutExpiresAt: new Date(NOW + 60 * 60 * 1000).toISOString(),
+      checkoutUrl: "https://checkout.stripe.com/c/pay/cs_old_210",
+      planCode: "max", billingCadence: "three_month",
+    }),
+    isCurrentOffer: async () => false,
+    cancelIntent: async () => "completed",
+    createCheckout: async () => { assert.fail("must not start another purchase"); },
+  }));
+  const response = await handler(formRequest("/api/billing/checkout", {
+    plan: "max", cadence: "three_month", checkoutToken: RESERVATION_ID,
+  }));
+  assert.equal(response.headers.get("location"), `${APP_URL}/pricing?billing=managed`);
 });
