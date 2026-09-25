@@ -8,7 +8,7 @@ import { billingBaseUrl, billingCheckoutEnabled, weekPassCheckoutEnabled, billin
 import { resolveBillingPriceId } from "@/lib/billing/prices";
 import { openBillingPortal } from "@/lib/billing/portal-configuration";
 import { billingStripe } from "@/lib/billing/stripe";
-import { cancelCheckoutIntent, claimCheckoutIntent, releaseCheckoutIntent, storeCheckoutSession } from "@/lib/billing/checkout-intents";
+import { cancelCheckoutIntent, checkoutIntentMatchesCurrentOffer, claimCheckoutIntent, releaseCheckoutIntent, storeCheckoutSession } from "@/lib/billing/checkout-intents";
 import { getSession } from "@/lib/auth/session";
 import { reportServerError } from "@/lib/observability/server";
 import { consumeRateLimit } from "@/lib/security/rate-limit";
@@ -38,6 +38,7 @@ export const POST = createCheckoutPostHandler({
   changePlan: changeBillingPlan,
   createPortal: openBillingPortal,
   claimIntent: claimCheckoutIntent,
+  isCurrentOffer: checkoutIntentMatchesCurrentOffer,
   releaseIntent: releaseCheckoutIntent,
   cancelIntent: cancelCheckoutIntent,
   ensureCustomer: ensureStripeCustomer,

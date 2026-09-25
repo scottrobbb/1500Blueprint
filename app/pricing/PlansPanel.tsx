@@ -19,7 +19,7 @@ const CADENCE_PRICE: Record<"core" | "max", Record<BillingCadence, { perMonth: s
   },
   max: {
     monthly: { perMonth: "80", billed: null },
-    three_month: { perMonth: "70", billed: "Billed $210 every 3 months" },
+    three_month: { perMonth: "59.67", billed: "Billed $179 every 3 months" },
   },
 };
 
@@ -89,7 +89,7 @@ export function PlansPanel({
           className={cadence === "three_month" ? `${styles.cadenceOption} ${styles.cadenceActive}` : styles.cadenceOption}
           onClick={() => setCadence("three_month")}
         >
-          3 months <em>Save $30</em>
+          3 months <em title="Savings on Max compared with paying monthly">Save $61</em>
         </button>
       </div>
       ) : null}

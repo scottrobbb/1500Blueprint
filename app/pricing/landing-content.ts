@@ -135,7 +135,7 @@ export const maxFaq: readonly FaqItem[] = [
   {
     question: "How is Max billed?",
     answer:
-      "Max is $39 for one week as a one-time payment with no automatic renewal, $80/month, or $210 every 3 months — saving you $30 and bringing the effective price down to $70/month.\n\nYou can cancel anytime and keep access through the end of your current billing period.",
+      "Max is $39 for one week as a one-time payment with no automatic renewal, $80/month, or $179 every 3 months — saving you $61 and bringing the effective price down to about $59.67/month.\n\nYou can cancel anytime and keep access through the end of your current billing period.",
   },
   {
     question: "What happens on the weekly Max calls?",

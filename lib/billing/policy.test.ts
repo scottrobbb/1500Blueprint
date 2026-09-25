@@ -226,7 +226,7 @@ test("Core and Max offers use the requested one- and three-month prices", () => 
   assert.equal(billingOffer("core", "three_month").amount, 12_000);
   assert.equal(billingOffer("core", "three_month").intervalCount, 3);
   assert.equal(billingOffer("max", "monthly").amount, 8_000);
-  assert.equal(billingOffer("max", "three_month").amount, 21_000);
+  assert.equal(billingOffer("max", "three_month").amount, 17_900);
   assert.equal(billingOffer("max", "three_month").intervalCount, 3);
   assert.equal(billingCadenceForInterval("month", 1), "monthly");
   assert.equal(billingCadenceForInterval("month", 3), "three_month");

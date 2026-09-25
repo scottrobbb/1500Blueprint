@@ -9,6 +9,7 @@ import {
 } from "./workflow";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { billingStripe } from "./stripe";
+import { resolveBillingPriceId } from "./prices";
 
 export async function claimCheckoutIntent(input: {
   userId: string;
@@ -176,4 +177,22 @@ export async function cancelCheckoutIntentWithDeps(
     throw new Error("Stripe Checkout reservation was not released after cancellation");
   }
   return status === "open" ? "cancelled" : "expired";
+}
+
+export async function checkoutIntentMatchesCurrentOffer(input: {
+  userId: string;
+  livemode: boolean;
+  reservationId: string;
+  plan: BillablePlan;
+  cadence: CheckoutTerm;
+}): Promise<boolean> {
+  const priceId = await resolveBillingPriceId(input.plan, input.cadence);
+  const { data, error } = await supabaseAdmin().from("billing_checkout_intents")
+    .select("stripe_checkout_session_id")
+    .eq("user_id", input.userId).eq("livemode", input.livemode)
+    .eq("reservation_id", input.reservationId).maybeSingle<{ stripe_checkout_session_id: string | null }>();
+  if (error) throw new Error(`Could not check the saved Checkout price: ${error.message}`);
+  if (!data?.stripe_checkout_session_id) return false;
+  const items = await billingStripe().checkout.sessions.listLineItems(data.stripe_checkout_session_id, { limit: 2 });
+  return !items.has_more && items.data.length === 1 && items.data[0].quantity === 1 && items.data[0].price?.id === priceId;
 }

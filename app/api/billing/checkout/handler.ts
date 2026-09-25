@@ -53,6 +53,7 @@ export type CheckoutHandlerDeps = {
   changePlan: (userId: string, plan: BillablePlan, cadence: BillingCadence) => Promise<{ kind: "unchanged" | "upgrade" | "downgrade" | "pending-change-canceled" }>;
   createPortal: (customerId: string, returnUrl: string) => Promise<{ url: string }>;
   claimIntent: (input: { userId: string; livemode: boolean; plan: BillablePlan; cadence: CheckoutTerm; requestToken: string }) => Promise<CheckoutIntentClaim>;
+  isCurrentOffer: (input: { userId: string; livemode: boolean; reservationId: string; plan: BillablePlan; cadence: CheckoutTerm }) => Promise<boolean>;
   releaseIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<boolean>;
   cancelIntent: (input: { userId: string; livemode: boolean; reservationId: string }) => Promise<CheckoutCancelResult>;
   ensureCustomer: (account: BillingAccount) => Promise<string>;
@@ -189,7 +190,16 @@ export function createCheckoutPostHandler(deps: CheckoutHandlerDeps) {
         intent = await deps.claimIntent({ userId: account.id, livemode, plan, cadence, requestToken });
       }
       if (intent.decision === "ready" && intent.checkoutUrl) {
-        return NextResponse.redirect(intent.checkoutUrl, 303);
+        const reservation = { userId: account.id, livemode, reservationId: intent.reservationId };
+        // A price change must also apply when a student resumes an older checkout.
+        if (await deps.isCurrentOffer({ ...reservation, plan, cadence })) {
+          return NextResponse.redirect(intent.checkoutUrl, 303);
+        }
+        const cancelled = await deps.cancelIntent(reservation);
+        if (cancelled === "completed") return redirect(baseUrl, returnPath, "managed");
+        if (cancelled === "missing") return redirect(baseUrl, returnPath, "error");
+        intent = await deps.claimIntent({ userId: account.id, livemode, plan, cadence, requestToken });
+        if (intent.decision !== "claimed") return redirect(baseUrl, returnPath, "checkout-active");
       }
       if (intent.decision === "busy") return redirect(baseUrl, returnPath, "checkout-active");
       claimedReservation = { userId: account.id, livemode, reservationId: intent.reservationId };
