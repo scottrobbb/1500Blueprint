@@ -4,6 +4,7 @@
 
 import { supabaseAdmin } from "@/utils/supabase/admin";
 import { isMissingModuleSnapshotColumnError } from "@/lib/progress/database";
+import { canonicalizeCourseAssetReferences, signCourseAssetReferences } from "@/lib/courses/assets.server";
 import { parseModuleAttemptSnapshot, type ModuleAttemptSnapshot } from "./testSnapshot";
 import type { AnswerMap } from "./types";
 
@@ -64,7 +65,9 @@ export async function saveModuleAttempt(
     .from("module_attempts")
     .insert({
       ...attemptRow,
-      module_snapshot: input.moduleSnapshot ?? null,
+      // Signed image URLs expire in 4 hours; store the stable form and re-sign
+      // on read.
+      module_snapshot: input.moduleSnapshot ? canonicalizeCourseAssetReferences(input.moduleSnapshot) : null,
     })
     .select("id")
     .maybeSingle<{ id: string }>();
@@ -197,7 +200,7 @@ export async function getModuleAttempt(
     total: data.total,
     answers: data.answers ?? {},
     perQuestionTime: data.per_question_time ?? {},
-    moduleSnapshot: parseModuleAttemptSnapshot(data.module_snapshot),
+    moduleSnapshot: await signCourseAssetReferences(parseModuleAttemptSnapshot(data.module_snapshot)),
     createdAt: data.created_at,
   };
 }

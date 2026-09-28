@@ -23,6 +23,7 @@ import { scheduledCancellationAt, subscriptionGrantsAccess } from "@/lib/billing
 import { isComplimentaryAccount } from "@/lib/auth/complimentary";
 import type { AnswerMap, ModuleVariant, PracticeTest, SectionId } from "@/lib/sat/types";
 import { parsePracticeTestSnapshot } from "@/lib/sat/testSnapshot";
+import { canonicalizeCourseAssetReferences, signCourseAssetReferences } from "@/lib/courses/assets.server";
 import { isMissingTestSnapshotColumnError } from "@/lib/progress/database";
 import { summarizeTestScores } from "@/lib/progress/summary";
 import {
@@ -407,7 +408,9 @@ export async function awardTest(email: string, input: TestResultInput): Promise<
       p_answers: input.answers ?? null,
       p_routed: input.routed ?? null,
       p_per_question_time: input.perQuestionTime ?? null,
-      p_test_snapshot: input.testSnapshot ?? null,
+      // The test arrives with 4-hour signed image URLs; store the stable form
+      // so the snapshot is re-signed on every read instead of going stale.
+      p_test_snapshot: input.testSnapshot ? canonicalizeCourseAssetReferences(input.testSnapshot) : null,
       p_test_title: input.testSnapshot?.title ?? null,
       p_client_token: input.clientToken,
       p_achievement_rules: achievementRules(),
@@ -624,7 +627,9 @@ export async function getTestAttempt(
     answers: data.answers ?? {},
     routed: data.routed ?? {},
     perQuestionTime: data.per_question_time ?? {},
-    testSnapshot: parsePracticeTestSnapshot(data.test_snapshot),
+    // Also repairs snapshots saved before canonicalizing, whose signed image
+    // URLs expired four hours after the attempt.
+    testSnapshot: await signCourseAssetReferences(parsePracticeTestSnapshot(data.test_snapshot)),
     createdAt: data.completed_at ?? data.created_at,
   };
 }
