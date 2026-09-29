@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { Gabarito, DM_Sans, Noto_Serif } from "next/font/google";
 import { canonicalAppUrl } from "@/lib/auth/config";
+import { ActivityTracker } from "@/components/activity/ActivityTracker";
 import { MetaPixelPageView } from "@/components/marketing/MetaPixelPageView";
 import { ThemeScript } from "@/components/theme/ThemeScript";
 import { DEFAULT_THEME } from "@/lib/theme/theme";
@@ -87,6 +88,9 @@ export default function RootLayout({
       </head>
       <body className="min-h-full">
         {children}
+        {/* Here rather than in each shell so time in the full-screen test and
+            module runners counts too; it only runs on student pages. */}
+        <ActivityTracker />
         {/* Affiliate tracking. The queue has to exist before rw.js runs, which
             beforeInteractive guarantees regardless of the order here: it is
             injected into the initial HTML, while rw.js loads afterInteractive.
