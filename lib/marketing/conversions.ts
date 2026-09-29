@@ -6,6 +6,7 @@ export type ConversionContext = UtmAttribution & {
   fbc: string | null;
   fbp: string | null;
   landing_page: string | null;
+  landing_url: string | null;
   event_source_url: string;
   client_ip_address: string | null;
   client_user_agent: string | null;
@@ -31,6 +32,7 @@ export function registrationPayload(email: string, name: string, context: Conver
   const identity = customerIdentity(email, name);
   return {
     ...context, ...identity,
+    landing_url: context.landing_url || null,
     event_name: "CompleteRegistration",
     event_id: `registration:${identity.external_id}`,
     event_time: Math.floor(now.getTime() / 1000),

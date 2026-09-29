@@ -193,6 +193,20 @@ later Stripe webhook. Both webhook payloads include `utm_source`, `utm_medium`,
 the landing URL, including a direct checkout link that redirects through login.
 An untagged return visit preserves previously captured values. Parameters never
 captured from the visitor remain null; old events are not rewritten or backfilled.
+Both webhook payloads also include `landing_url`: the captured entry URL with
+its query string, including custom campaign parameters that are not named `utm_*`.
+An untagged signup or checkout navigation retains this URL; a new tagged ad
+arrival replaces it. `landing_page` remains the path, and `event_source_url`
+remains the page where the conversion happened. No Zap trigger URL change is
+needed to receive the new field.
+
+The landing URL uses a separate compressed HttpOnly cookie with the same 30-day
+lifetime. Auth callbacks/reset pages, credentials in query parameters, and
+server-only navigation markers are excluded. URLs over the storage limits
+(16 KiB decoded or 3,500 cookie characters) are omitted rather than truncated.
+HTTP requests do not include URL fragments. Previously completed events cannot
+recover a landing URL that was never saved.
+
 `fbc` retains the click timestamp; `event_time` is the
 conversion timestamp. The browser pixel below now sets `_fbp`, so it is included
 whenever a valid browser cookie is available.

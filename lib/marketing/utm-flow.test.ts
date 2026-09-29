@@ -18,7 +18,7 @@ test("all five UTM fields survive landing, cookie, return visit, registration an
   assert.ok(stored);
   const revisited = mergeAttribution(stored, readAttributionParams(new URLSearchParams(), now.getTime() + 1000), now.getTime() + 1000);
   const context: ConversionContext = {
-    ...revisited.attribution, fbp: null, landing_page: "/free",
+    ...revisited.attribution, fbp: null, landing_page: "/free", landing_url: null,
     event_source_url: "https://1500blueprint.com/account/sign-up", client_ip_address: null, client_user_agent: "test",
   };
   const signup = registrationPayload("student@example.com", "Student", context, now);

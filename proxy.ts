@@ -15,6 +15,7 @@ import {
 import { updateSession as updatePasswordSession } from "@/utils/supabase/proxy";
 import { sessionSecret } from "@/lib/auth/session-secret";
 import { enforceProtectedContentRead } from "@/lib/security/protected-content";
+import { LANDING_URL_COOKIE, landingUrlCookieUpdate } from "@/lib/marketing/landing-url";
 
 // Paths reachable without a session. /opengraph-image is the share card: it has
 // no file extension, so the matcher below does not exclude it the way it
@@ -46,6 +47,16 @@ function isFreeLanding(pathname: string): boolean {
 function withFreeAttribution(request: NextRequest, response: NextResponse): NextResponse {
   // A form POST on the landing URL is not another ad click.
   if (request.method !== "GET") return response;
+  const landingUrlCookie = landingUrlCookieUpdate(request.nextUrl.href, request.method, request.cookies.get(LANDING_URL_COOKIE)?.value);
+  if (landingUrlCookie !== null) {
+    response.cookies.set(LANDING_URL_COOKIE, landingUrlCookie, {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: request.nextUrl.protocol === "https:",
+      path: "/",
+      maxAge: FREE_ATTRIBUTION_MAX_AGE,
+    });
+  }
   const landing = isFreeLanding(request.nextUrl.pathname);
   const hasAttribution = hasAttributionParams(request.nextUrl.searchParams);
   if (!landing && !hasAttribution) return response;

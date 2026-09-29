@@ -23,7 +23,7 @@ export async function notifyPurchase(invoice: Stripe.Invoice, subscriptionId: st
   const context = await loadConversionContext(account.data.email);
   const fallback: ConversionContext = {
     ...EMPTY_UTMS,
-    fbclid: null, fbc: null, fbp: null, utm_medium: null, landing_page: null,
+    fbclid: null, fbc: null, fbp: null, utm_medium: null, landing_page: null, landing_url: null,
     event_source_url: `${canonicalAppUrl()}/checkout`, client_ip_address: null, client_user_agent: null,
   };
   // invoice.paid also fires for invoices manually marked paid. InvoicePayment

@@ -8,7 +8,7 @@ const now = new Date("2026-09-05T00:00:00Z");
 const context: ConversionContext = {
   ...EMPTY_UTMS,
   fbclid: "click", fbc: "fb.1.1788500000000.click", fbp: null, utm_medium: "paid_social",
-  landing_page: "/free", event_source_url: "https://1500blueprint.com/account/sign-up",
+  landing_page: "/free", landing_url: null, event_source_url: "https://1500blueprint.com/account/sign-up",
   client_ip_address: null, client_user_agent: "test-browser",
 };
 const invoice: PaidInvoice = {
