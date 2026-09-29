@@ -253,6 +253,15 @@ streaks, daily goals, the daily drill limit, and the weekly leaderboard. Apply
 `supabase/migrations/20260928220000_eastern_day_boundary.sql` so the award
 functions advance streaks on the same day boundary the app displays.
 
+## Time on site
+
+Student pages report active time (visible and in use within the last five
+minutes) to `/api/activity`, stored per Eastern day and shown on the admin
+student page. Apply
+`supabase/migrations/20260929180000_student_daily_activity.sql` before
+deploying; until then reports are dropped quietly and the admin view shows
+activity counts only.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

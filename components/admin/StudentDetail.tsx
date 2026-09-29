@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ActivityHistory } from "@/lib/activity/dailyActivity";
 import type { Course } from "@/lib/courses/types";
 import type { QuestionBankDashboard, QuestionBankSection } from "@/lib/question-bank/dashboard";
 import type { ModuleAttemptRecord } from "@/lib/sat/moduleAttempts";
@@ -79,6 +80,7 @@ export function StudentDetail({
   attempts,
   testTitles,
   moduleAttempts,
+  activity,
   courses,
   questionBank,
 }: {
@@ -87,6 +89,7 @@ export function StudentDetail({
   attempts: CompletedTestAttempt[];
   testTitles: Record<string, string>;
   moduleAttempts: ModuleAttemptRecord[] | null;
+  activity: ActivityHistory | null;
   courses: { course: Course; locked: boolean }[] | null;
   questionBank: QuestionBankDashboard | null;
 }) {
@@ -163,6 +166,8 @@ export function StudentDetail({
           </p>
         )}
       </Section>
+
+      <TimeOnSiteSection activity={activity} />
 
       <Section title="Drills">
         {drills.length ? (
@@ -481,6 +486,131 @@ function ModulePracticeSection({
         </div>
       ) : (
         <EmptyNote>This student has not practiced a single module.</EmptyNote>
+      )}
+    </Section>
+  );
+}
+
+const EASTERN = "America/New_York";
+
+function formatDuration(seconds: number): string {
+  if (seconds <= 0) return "—";
+  if (seconds < 60) return "<1m";
+  const minutes = Math.round(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  return hours ? `${hours}h ${minutes % 60}m` : `${minutes}m`;
+}
+
+// Keys are Eastern calendar days; format them as dates without shifting zones.
+function formatDay(key: string, withWeekday = false): string {
+  return new Date(`${key}T12:00:00Z`).toLocaleDateString("en-US", {
+    weekday: withWeekday ? "short" : undefined,
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function formatClock(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: EASTERN });
+}
+
+function TimeOnSiteSection({ activity }: { activity: ActivityHistory | null }) {
+  if (!activity) {
+    return (
+      <Section title="Time on site">
+        <EmptyNote>Activity could not be loaded for this student.</EmptyNote>
+      </Section>
+    );
+  }
+
+  const { days, trackingAvailable, trackingSince } = activity;
+  const sum = (list: typeof days) => list.reduce((total, day) => total + day.activeSeconds, 0);
+  const lastSeven = days.slice(-7);
+  const today = days.at(-1);
+  const activeDays = days.filter((day) => day.activeSeconds > 0 || day.questions + day.tests + day.lessons > 0);
+  const maxSeconds = Math.max(...days.map((day) => day.activeSeconds), 60);
+  const newestFirst = [...activeDays].reverse();
+
+  return (
+    <Section title="Time on site">
+      <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Today" value={formatDuration(today?.activeSeconds ?? 0)} />
+        <Stat label="Last 7 days" value={formatDuration(sum(lastSeven))} />
+        <Stat label="Last 30 days" value={formatDuration(sum(days))} />
+        <Stat label="Days active" value={`${activeDays.length} / ${days.length}`} hint="Last 30 days" />
+      </div>
+
+      {!trackingAvailable ? (
+        <p className="mb-3 text-xs text-navy/55">
+          Time tracking is not set up yet, so only activity counts are shown.
+        </p>
+      ) : trackingSince && trackingSince > days[0].day ? (
+        <p className="mb-3 text-xs text-navy/55">
+          Time is tracked from {formatDay(trackingSince)}. Earlier days show activity counts only.
+        </p>
+      ) : null}
+
+      <div className="rounded-card border border-navy/15 bg-white p-4">
+        <div className="text-xs text-navy/50">Active minutes per day, Eastern time</div>
+        <div className="mt-3 flex h-32 items-end gap-[2px] border-b border-navy/15" role="img" aria-label="Active minutes per day for the last 30 days">
+          {days.map((day) => {
+            const height = day.activeSeconds > 0 ? Math.max(4, (day.activeSeconds / maxSeconds) * 100) : 0;
+            const label = `${formatDay(day.day, true)}: ${formatDuration(day.activeSeconds)}`;
+            return (
+              <div key={day.day} title={label} className="group relative flex h-full flex-1 items-end">
+                <div
+                  className="w-full rounded-t-[4px] bg-brand transition-opacity group-hover:opacity-80"
+                  style={{ height: `${height}%` }}
+                />
+                <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-semibold text-white group-hover:block">
+                  {label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="mt-1.5 flex justify-between text-[11px] text-navy/45">
+          <span>{formatDay(days[0].day)}</span>
+          <span>{formatDay(days[Math.floor(days.length / 2)].day)}</span>
+          <span>Today</span>
+        </div>
+      </div>
+
+      {newestFirst.length ? (
+        <div className="mt-3 overflow-x-auto rounded-card border border-navy/15 bg-white">
+          <table className="w-full min-w-[640px] text-sm">
+            <thead>
+              <tr className="border-b border-navy/10 bg-mist text-left">
+                <th className="px-4 py-3 font-semibold text-navy/70">Day</th>
+                <th className="px-4 py-3 font-semibold text-navy/70">Time on site</th>
+                <th className="px-4 py-3 font-semibold text-navy/70">Active between</th>
+                <th className="px-4 py-3 font-semibold text-navy/70">Questions</th>
+                <th className="px-4 py-3 font-semibold text-navy/70">Tests &amp; modules</th>
+                <th className="px-4 py-3 font-semibold text-navy/70">Lessons</th>
+              </tr>
+            </thead>
+            <tbody>
+              {newestFirst.map((day) => (
+                <tr key={day.day} className="border-b border-navy/8 last:border-b-0">
+                  <td className="px-4 py-3 font-semibold text-ink">{formatDay(day.day, true)}</td>
+                  <td className="px-4 py-3 tabular-nums text-ink">{formatDuration(day.activeSeconds)}</td>
+                  <td className="px-4 py-3 tabular-nums text-navy/70">
+                    {day.firstSeenAt ? `${formatClock(day.firstSeenAt)} – ${formatClock(day.lastSeenAt)}` : "—"}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums text-navy/70">{day.questions || "—"}</td>
+                  <td className="px-4 py-3 tabular-nums text-navy/70">{day.tests || "—"}</td>
+                  <td className="px-4 py-3 tabular-nums text-navy/70">{day.lessons || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="mt-3">
+          <EmptyNote>No activity in the last 30 days.</EmptyNote>
+        </div>
       )}
     </Section>
   );
