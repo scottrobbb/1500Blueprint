@@ -142,7 +142,7 @@ function ObjectiveBankRunner({
   const [attempts, setAttempts] = useState<Record<string, QuestionBankAttemptState>>(
     () => readStoredAttempts(attemptsKey),
   );
-  const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers(attempts));
+  const [answers, setAnswers] = useState<Record<string, string>>(() => initialAnswers(attempts, orderedQuestions));
   const [results, setResults] = useState<Record<string, RunnerResult>>({});
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -307,6 +307,21 @@ function ObjectiveBankRunner({
     // clock keeps it honest about the durationMs sent on submit.
     const nextIndex = Math.max(0, Math.min(index, orderedQuestions.length - 1));
     const nextQuestion = orderedQuestions[nextIndex];
+    // A typed answer that was never confirmed right -- a wrong one awaiting a
+    // retry, or one never checked -- does not wait in the box for the student's
+    // return. The retry starts from an empty field, like a fresh question.
+    const leaving = orderedQuestions[currentIndex];
+    if (leaving && leaving.id !== nextQuestion?.id && leaving.answerType !== "mc_single") {
+      const leavingResult = results[leaving.id];
+      if (!leavingResult?.correct && !leavingResult?.revealed) {
+        setAnswers((current) => {
+          if (!(leaving.id in current)) return current;
+          const rest = { ...current };
+          delete rest[leaving.id];
+          return rest;
+        });
+      }
+    }
     // Coming back to a question already answered this sitting shows the time
     // it took, stopped, rather than a fresh clock counting the review.
     const answered = nextQuestion ? results[nextQuestion.id] : undefined;
@@ -987,9 +1002,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function initialAnswers(attempts: Record<string, QuestionBankAttemptState>): Record<string, string> {
+function initialAnswers(
+  attempts: Record<string, QuestionBankAttemptState>,
+  questions: BankRunnerQuestion[],
+): Record<string, string> {
+  const gridIn = new Set(questions.filter((question) => question.answerType !== "mc_single").map((question) => question.id));
+  // A wrong fill-in answer is not restored: it would sit in the box with no
+  // sign it was wrong. Multiple choice restores it, where it shows crossed out.
   return Object.fromEntries(
-    Object.entries(attempts).map(([questionId, attempt]) => [questionId, attempt.response]),
+    Object.entries(attempts)
+      .filter(([questionId, attempt]) => attempt.correct || !gridIn.has(questionId))
+      .map(([questionId, attempt]) => [questionId, attempt.response]),
   );
 }
 
