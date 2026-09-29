@@ -246,6 +246,13 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Daily streaks and the Eastern day
+
+A student's day runs midnight to midnight Eastern (`America/New_York`) for
+streaks, daily goals, the daily drill limit, and the weekly leaderboard. Apply
+`supabase/migrations/20260928220000_eastern_day_boundary.sql` so the award
+functions advance streaks on the same day boundary the app displays.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
