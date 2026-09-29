@@ -108,27 +108,78 @@ export function testBonusXp(totalScore: number): number {
 
 /* --------------------------------- Dates -------------------------------- */
 
-// All day math is UTC and keyed as YYYY-MM-DD.
+// A student's "day" runs midnight to midnight Eastern, keyed as YYYY-MM-DD.
+// It was UTC, which rolled the day over at 8pm Eastern and put Monday-evening
+// work on Tuesday. The award RPCs use the same zone for streaks.
+export const APP_TIME_ZONE = "America/New_York";
+
+const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: APP_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 export function dateKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  return dayKeyFormatter.format(d);
 }
 
+// Pure calendar arithmetic on a key; no time zone involved.
 export function shiftKey(key: string, deltaDays: number): string {
   const d = new Date(key + "T00:00:00Z");
   d.setUTCDate(d.getUTCDate() + deltaDays);
-  return dateKey(d);
+  return d.toISOString().slice(0, 10);
+}
+
+// Whole days from key a to key b.
+export function daysBetween(a: string, b: string): number {
+  return Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86_400_000);
 }
 
 // Monday-based weekday index: Mon=0 ... Sun=6.
 export function mondayIndex(d: Date): number {
-  return (d.getUTCDay() + 6) % 7;
+  return (new Date(dateKey(d) + "T00:00:00Z").getUTCDay() + 6) % 7;
 }
 
-// UTC midnight of the Monday that starts d's week.
+// The instant Eastern midnight begins on the day `key`.
+export function dayStart(key: string): Date {
+  const guess = Date.parse(key + "T00:00:00Z");
+  // Eastern is behind UTC, so midnight there is guess + offset. Re-read the
+  // offset at the result in case the day starts on the other side of a DST
+  // change (US changes happen at 2am, never at midnight).
+  let instant = guess + zoneOffsetMs(new Date(guess));
+  instant = guess + zoneOffsetMs(new Date(instant));
+  return new Date(instant);
+}
+
+// Eastern midnight of the Monday that starts d's week.
 export function weekStart(d: Date): Date {
-  const w = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  w.setUTCDate(w.getUTCDate() - mondayIndex(d));
-  return w;
+  return dayStart(shiftKey(dateKey(d), -mondayIndex(d)));
+}
+
+// How far UTC is ahead of Eastern at instant d, in ms (4h or 5h).
+function zoneOffsetMs(d: Date): number {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: APP_TIME_ZONE,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }).formatToParts(d).map((part) => [part.type, part.value]),
+  );
+  const asUtc = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second),
+  );
+  return d.getTime() - d.getMilliseconds() - asUtc;
 }
 
 /* -------------------------------- Streaks ------------------------------- */

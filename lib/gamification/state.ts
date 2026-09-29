@@ -31,6 +31,8 @@ import {
   ACHIEVEMENT_CATEGORIES,
   achievementRules,
   dateKey,
+  dayStart,
+  daysBetween,
   drillXpFor,
   levelProgress,
   mondayIndex,
@@ -173,7 +175,7 @@ export async function getHomeState(email: string): Promise<HomeState> {
       .from("drill_attempts")
       .select("id", { count: "exact", head: true })
       .eq("email", email)
-      .gte("created_at", `${today}T00:00:00Z`),
+      .gte("created_at", dayStart(today).toISOString()),
   ]);
   const xp = user?.xp ?? 0;
   const progress = levelProgress(xp);
@@ -214,7 +216,8 @@ export async function getHubState(email: string): Promise<HubState> {
   // Per-day XP + goal completion for the current week (Mon..Sun). A day is "done"
   // (keeps the flame) when its drill count hits the goal or a test was finished.
   const dailyTarget = user?.daily_goal_target ?? 5;
-  const dayIndex = (iso: string) => Math.floor((Date.parse(iso) - weekStartDate.getTime()) / 86_400_000);
+  const weekStartKey = dateKey(weekStartDate);
+  const dayIndex = (iso: string) => daysBetween(weekStartKey, dateKey(new Date(iso)));
   const perDayXp = Array<number>(7).fill(0);
   const perDayDrills = Array<number>(7).fill(0);
   const perDayTests = Array<number>(7).fill(0);
@@ -248,7 +251,7 @@ export async function getHubState(email: string): Promise<HubState> {
     .from("drill_attempts")
     .select("id", { count: "exact", head: true })
     .eq("email", email)
-    .gte("created_at", `${today}T00:00:00Z`);
+    .gte("created_at", dayStart(today).toISOString());
 
   // Weekly leaderboard.
   const { data: lbData } = await db.rpc("weekly_leaderboard", { p_since: weekStartIso });
