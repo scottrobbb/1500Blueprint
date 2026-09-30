@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { FlameIcon } from "@/components/shell/icons";
 import { ProgressOverview } from "@/components/history/ProgressOverview";
-import { AcceleratorBanner } from "@/components/ultimate/home/accelerator-banner";
 import { AvailableCoursesSection, CurrentCourseSection, HomeDrillsPanel } from "@/components/ultimate/home/home-sections";
 import { HomeQuickLinks } from "@/components/ultimate/home/home-quick-links";
 import { HomeUpgradePrompts } from "@/components/ultimate/home/home-upgrade-prompts";
 import { LiveCallBanner } from "@/components/ultimate/home/live-call-banner";
+import { SurveyBanner } from "@/components/ultimate/home/survey-banner";
 import { canAccessCourse, getStudentAccess } from "@/lib/auth/entitlements";
 import { getSession } from "@/lib/auth/session";
 import { isUltimatePreviewEmail } from "@/lib/auth/ultimate";
@@ -50,7 +50,7 @@ export default async function UltimateHomePage({ searchParams }: UltimateHomePag
     <div className="mx-auto w-full max-w-[1240px] px-4 py-7 sm:px-7 sm:py-9">
       {showLiveBanner && liveCall ? <LiveCallBanner call={liveCall} /> : null}
 
-      <AcceleratorBanner />
+      <SurveyBanner />
 
       {billing === "success" ? (
         <div
