@@ -17,6 +17,7 @@ import {
   prioritizeUnattemptedQuestions,
   questionBankLevel,
   selectQuestionBankSession,
+  matchingQuestionCount,
   skillMetricForDifficulty,
   shouldRevealQuestionBankAnswer,
   sortByOriginalOrder,
@@ -212,10 +213,10 @@ test("a combined selection sums its levels and recomputes one accuracy", () => {
     savedAttempted: 0,
     accuracy: 70,
     byLevel: {
-      easy: { available: 40, attempted: 20, saved: 0, savedAttempted: 0, attempts: 20, correct: 18, accuracy: 90 },
-      medium: { available: 30, attempted: 10, saved: 0, savedAttempted: 0, attempts: 10, correct: 7, accuracy: 70 },
-      hard: { available: 20, attempted: 6, saved: 0, savedAttempted: 0, attempts: 10, correct: 5, accuracy: 50 },
-      challenge: { available: 10, attempted: 4, saved: 0, savedAttempted: 0, attempts: 10, correct: 1, accuracy: 10 },
+      easy: { available: 40, attempted: 20, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 20, correct: 18, accuracy: 90 },
+      medium: { available: 30, attempted: 10, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 10, correct: 7, accuracy: 70 },
+      hard: { available: 20, attempted: 6, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 10, correct: 5, accuracy: 50 },
+      challenge: { available: 10, attempted: 4, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 10, correct: 1, accuracy: 10 },
     },
   };
 
@@ -238,10 +239,10 @@ test("a combined selection with no attempts reports no accuracy", () => {
     savedAttempted: 0,
     accuracy: null,
     byLevel: {
-      easy: { available: 5, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
-      medium: { available: 5, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
-      hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
-      challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+      easy: { available: 5, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
+      medium: { available: 5, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
+      hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
+      challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
     },
   };
 
@@ -259,10 +260,10 @@ test("marked-for-review counts compose with the difficulty filter", () => {
     savedAttempted: 5,
     accuracy: 70,
     byLevel: {
-      easy: { available: 40, attempted: 20, saved: 2, savedAttempted: 1, attempts: 20, correct: 18, accuracy: 90 },
-      medium: { available: 30, attempted: 10, saved: 3, savedAttempted: 1, attempts: 10, correct: 7, accuracy: 70 },
-      hard: { available: 20, attempted: 6, saved: 5, savedAttempted: 2, attempts: 10, correct: 5, accuracy: 50 },
-      challenge: { available: 10, attempted: 4, saved: 2, savedAttempted: 1, attempts: 10, correct: 1, accuracy: 10 },
+      easy: { available: 40, attempted: 20, saved: 2, savedAttempted: 1, incorrect: 0, savedIncorrect: 0, attempts: 20, correct: 18, accuracy: 90 },
+      medium: { available: 30, attempted: 10, saved: 3, savedAttempted: 1, incorrect: 0, savedIncorrect: 0, attempts: 10, correct: 7, accuracy: 70 },
+      hard: { available: 20, attempted: 6, saved: 5, savedAttempted: 2, incorrect: 0, savedIncorrect: 0, attempts: 10, correct: 5, accuracy: 50 },
+      challenge: { available: 10, attempted: 4, saved: 2, savedAttempted: 1, incorrect: 0, savedIncorrect: 0, attempts: 10, correct: 1, accuracy: 10 },
     },
   };
 
@@ -289,13 +290,35 @@ test("a skill with nothing marked reports no questions rather than its full coun
     savedAttempted: 0,
     accuracy: 60,
     byLevel: {
-      easy: { available: 25, attempted: 9, saved: 0, savedAttempted: 0, attempts: 9, correct: 5, accuracy: 60 },
-      medium: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
-      hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
-      challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+      easy: { available: 25, attempted: 9, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 9, correct: 5, accuracy: 60 },
+      medium: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
+      hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
+      challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
     },
   };
   assert.equal(skillMetricForDifficulty(metric, [], true).available, 0);
   assert.equal(skillMetricForDifficulty(metric, ["easy"], true).available, 0);
   assert.equal(skillMetricForDifficulty(metric, [], false).available, 25);
+});
+
+test("the catalog count follows the completion filter", () => {
+  const level = (available: number, attempted: number, incorrect: number) => ({
+    available, attempted, saved: 0, savedAttempted: 0, incorrect, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null,
+  });
+  const metric = {
+    available: 30,
+    attempted: 12,
+    saved: 4,
+    savedAttempted: 3,
+    incorrect: 5,
+    savedIncorrect: 2,
+    byLevel: { easy: level(10, 6, 1), medium: level(10, 4, 2), hard: level(10, 2, 2), challenge: level(0, 0, 0) },
+  };
+  assert.equal(matchingQuestionCount(metric, [], false, "all"), 30);
+  assert.equal(matchingQuestionCount(metric, [], false, "unanswered"), 18);
+  assert.equal(matchingQuestionCount(metric, [], false, "attempted"), 12);
+  assert.equal(matchingQuestionCount(metric, [], false, "incorrect"), 5);
+  assert.equal(matchingQuestionCount(metric, ["easy", "hard"], false, "unanswered"), 12);
+  assert.equal(matchingQuestionCount(metric, [], true, "unanswered"), 1);
+  assert.equal(matchingQuestionCount(metric, [], true, "incorrect"), 2);
 });

@@ -41,6 +41,9 @@ export type QuestionBankLevelBreakdown = Record<QuestionBankLevel, {
   // counting questions the session would leave out.
   saved: number;
   savedAttempted: number;
+  // Attempted and never answered correctly -- the "Still incorrect" filter.
+  incorrect: number;
+  savedIncorrect: number;
   // Raw tallies, kept so a combined selection can compute one exact accuracy
   // instead of averaging percentages that each mean something different.
   attempts: number;
@@ -56,6 +59,8 @@ export type MathSkillMetric = {
   attempted: number;
   saved: number;
   savedAttempted: number;
+  incorrect: number;
+  savedIncorrect: number;
   attempts: number;
   correct: number;
   accuracy: number | null;
@@ -66,10 +71,10 @@ export const QUESTION_BANK_LEVELS = ["easy", "medium", "hard", "challenge"] as c
 
 export function emptyLevelBreakdown(): QuestionBankLevelBreakdown {
   return {
-    easy: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
-    medium: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
-    hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
-    challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, attempts: 0, correct: 0, accuracy: null },
+    easy: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
+    medium: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
+    hard: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
+    challenge: { available: 0, attempted: 0, saved: 0, savedAttempted: 0, incorrect: 0, savedIncorrect: 0, attempts: 0, correct: 0, accuracy: null },
   };
 }
 
@@ -123,6 +128,39 @@ export function skillMetricForDifficulty(
     attempted,
     accuracy: sawAccuracy && attempts > 0 ? calculateAccuracy(correct, attempts) : null,
   };
+}
+
+// How many of a skill's questions a session would actually hand the student
+// under the catalog's filters: difficulty and marked narrow the pool, and the
+// completion choice picks which part of it. Uses the same rules as
+// questionsMatchingCompletion, so the count matches the session.
+export function matchingQuestionCount(
+  metric: {
+    available: number;
+    attempted: number;
+    saved: number;
+    savedAttempted: number;
+    incorrect?: number;
+    savedIncorrect?: number;
+    byLevel: QuestionBankLevelBreakdown;
+  },
+  difficulty: MathDifficultyFilter,
+  savedOnly: boolean,
+  completion: MathCompletionFilter,
+): number {
+  const buckets = difficulty.length === 0 ? [metric] : [...new Set(difficulty)].map((level) => metric.byLevel[level]);
+  let available = 0;
+  let attempted = 0;
+  let incorrect = 0;
+  for (const bucket of buckets) {
+    available += savedOnly ? bucket.saved : bucket.available;
+    attempted += savedOnly ? bucket.savedAttempted : bucket.attempted;
+    incorrect += (savedOnly ? bucket.savedIncorrect : bucket.incorrect) ?? 0;
+  }
+  if (completion === "unanswered") return Math.max(0, available - attempted);
+  if (completion === "attempted") return attempted;
+  if (completion === "incorrect") return incorrect;
+  return available;
 }
 
 export function isQuestionBankLevel(value: string): value is QuestionBankLevel {
