@@ -14,7 +14,9 @@ import {
 } from "./mastery";
 import {
   calculateReadingProgress,
+  READING_LEVEL_DOWN,
   READING_PASS_SCORE,
+  type ReadingLedgerEntry,
   type ReadingProgressState,
 } from "./readingProgress";
 import type {
@@ -219,16 +221,40 @@ export async function loadGrammarMastery(email: string): Promise<GrammarMasteryS
 
 // Reading progression is rebuilt from the same append-only attempt ledger so
 // consecutive passes, failures, and level-ups survive navigation and reloads.
+// Level-downs the student chose are merged in at the moment they happened.
 export async function loadReadingProgress(email: string): Promise<ReadingProgressState> {
-  const { data, error } = await supabaseAdmin()
-    .from("drill_attempts")
-    .select("score,created_at")
-    .eq("email", email)
-    .eq("drill_slug", "reading")
-    .order("created_at", { ascending: true })
-    .returns<{ score: number | null; created_at: string }[]>();
-  if (error) throw progressDatabaseError("Could not load reading progress", error);
-  return calculateReadingProgress((data ?? []).map((row) => row.score));
+  const db = supabaseAdmin();
+  const [attempts, drops] = await Promise.all([
+    db
+      .from("drill_attempts")
+      .select("score,created_at")
+      .eq("email", email)
+      .eq("drill_slug", "reading")
+      .order("created_at", { ascending: true })
+      .returns<{ score: number | null; created_at: string }[]>(),
+    db
+      .from("reading_level_drops")
+      .select("created_at")
+      .eq("email", email)
+      .order("created_at", { ascending: true })
+      .returns<{ created_at: string }[]>(),
+  ]);
+  if (attempts.error) throw progressDatabaseError("Could not load reading progress", attempts.error);
+  // Before the level-drop migration is applied the table does not exist;
+  // the drill keeps working with no drops rather than failing to load.
+  const ledger: { at: string; entry: ReadingLedgerEntry }[] = [
+    ...(attempts.data ?? []).map((row) => ({ at: row.created_at, entry: row.score })),
+    ...(drops.error ? [] : drops.data ?? []).map((row): { at: string; entry: ReadingLedgerEntry } => ({ at: row.created_at, entry: READING_LEVEL_DOWN })),
+  ];
+  ledger.sort((a, b) => Date.parse(a.at) - Date.parse(b.at));
+  return calculateReadingProgress(ledger.map((item) => item.entry));
+}
+
+export async function recordReadingLevelDrop(email: string, clientToken: string): Promise<void> {
+  const { error } = await supabaseAdmin()
+    .from("reading_level_drops")
+    .upsert({ email, client_token: clientToken }, { onConflict: "email,client_token", ignoreDuplicates: true });
+  if (error) throw progressDatabaseError("Could not record reading level drop", error);
 }
 
 // Filter + order a drill's published questions for one student:

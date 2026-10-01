@@ -61,6 +61,7 @@ declare
     'question_content_edit_log',
     'questions',
     'reading_generated_passages',
+    'reading_level_drops',
     'sat_skills',
     'staff_roles',
     'student_daily_activity',

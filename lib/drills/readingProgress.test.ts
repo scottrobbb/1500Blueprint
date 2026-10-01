@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { calculateReadingProgress } from "./readingProgress";
+import { calculateReadingProgress, READING_LEVEL_DOWN } from "./readingProgress";
 import { READING_MAX_LEVEL, READING_STREAK_TARGET, readingLevel } from "./readingLevels";
 
 const pass = (level: number) => readingLevel(level).passScore;
@@ -75,4 +75,23 @@ test("level 8 is the ceiling: a streak there stops at the target", () => {
 
   assert.equal(progress.level, READING_MAX_LEVEL);
   assert.equal(progress.streak, READING_STREAK_TARGET);
+});
+
+test("a level-down drops one level and resets the streak", () => {
+  // Three passes reach level 2, one more pass starts a streak, then a drop.
+  const progress = calculateReadingProgress([90, 90, 90, 90, READING_LEVEL_DOWN]);
+  assert.equal(progress.level, 1);
+  assert.equal(progress.streak, 0);
+});
+
+test("scores after a level-down are judged at the lower level", () => {
+  const progress = calculateReadingProgress([90, 90, 90, READING_LEVEL_DOWN, 90, 90, 90]);
+  assert.equal(progress.level, 2);
+  assert.equal(progress.streak, 0);
+});
+
+test("a level-down never goes below level 1", () => {
+  const progress = calculateReadingProgress([READING_LEVEL_DOWN, READING_LEVEL_DOWN, 90]);
+  assert.equal(progress.level, 1);
+  assert.equal(progress.streak, 1);
 });

@@ -8,6 +8,10 @@ import {
 
 export { READING_MAX_LEVEL, READING_PASS_SCORE, READING_STREAK_TARGET };
 
+// A student's chosen step down one level, replayed in order with the scores.
+export const READING_LEVEL_DOWN = "level-down" as const;
+export type ReadingLedgerEntry = number | null | typeof READING_LEVEL_DOWN;
+
 export type ReadingProgressState = {
   level: number;
   streak: number;
@@ -23,12 +27,18 @@ export type ReadingProgressState = {
 // current streak. Each score is judged against the pass mark of the level they
 // were on at the time, so the ladder is reconstructed exactly from the ledger.
 // Level 8 is the ceiling: a streak there stays pinned at the target instead of
-// advancing.
-export function calculateReadingProgress(scores: Array<number | null>): ReadingProgressState {
+// advancing. A level-down marker drops one level (never below 1) and resets
+// the streak, so later scores are judged at the lower level.
+export function calculateReadingProgress(entries: ReadingLedgerEntry[]): ReadingProgressState {
   let level = 1;
   let streak = 0;
 
-  for (const score of scores) {
+  for (const score of entries) {
+    if (score === READING_LEVEL_DOWN) {
+      level = Math.max(1, level - 1);
+      streak = 0;
+      continue;
+    }
     if ((score ?? 0) < readingLevel(level).passScore) {
       streak = 0;
       continue;

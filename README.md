@@ -276,6 +276,13 @@ student page. Apply
 deploying; until then reports are dropped quietly and the admin view shows
 activity counts only.
 
+## Reading drill level-down
+
+Students can move down one level in the Reading Comprehension Drill after
+confirming twice. Apply
+`supabase/migrations/20260930160000_reading_level_drops.sql` before deploying;
+until then the option returns an error and levels are unaffected.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
