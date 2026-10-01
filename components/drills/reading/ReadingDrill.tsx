@@ -7,7 +7,7 @@ import { DigitalTimer, StreakDots } from "../shared/Hud";
 import { ExplainInput } from "../shared/ExplainInput";
 import { GradingLoader } from "../shared/GradingLoader";
 import { ScoreBanner } from "../shared/ScoreBanner";
-import { chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
+import { btnBase, chip, label, primaryBtn, secondaryBtn, surface } from "../shared/ui";
 import { MissedPoints, ReadingCard, RecallHeading } from "./ReadingPieces";
 import { READING_DIFFICULTY_LABEL } from "@/lib/drills/readingLevels";
 import type { ReadingProgressState } from "@/lib/drills/readingProgress";
@@ -410,6 +410,10 @@ function SummaryRecap({ summary }: { summary: string }) {
   );
 }
 
+// Red in both themes: the danger tokens are re-stepped for dark mode, where
+// white text on a solid red fill would lose its contrast.
+const dangerBtn = `${btnBase} border-2 border-danger bg-danger-bg font-bold text-danger hover:brightness-95`;
+
 // Moving down a level asks twice -- once to explain what changes, once to
 // confirm -- so a stray click can never cost a student their level.
 function LevelDownControl({
@@ -455,7 +459,7 @@ function LevelDownControl({
       <button
         type="button"
         onClick={() => setStep("first")}
-        className="ml-auto text-xs font-semibold text-navy/45 underline-offset-2 hover:text-navy hover:underline"
+        className={`ml-auto ${dangerBtn} px-3 py-1.5 text-xs`}
       >
         Move down a level
       </button>
@@ -479,7 +483,7 @@ function LevelDownControl({
             Continue
           </button>
         ) : (
-          <button type="button" onClick={() => void confirm()} disabled={pending} className={primaryBtn}>
+          <button type="button" onClick={() => void confirm()} disabled={pending} className={dangerBtn}>
             {pending ? "Moving down..." : `Yes, move me to level ${target}`}
           </button>
         )}
