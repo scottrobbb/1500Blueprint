@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { SESSION_COOKIE, isDevBypass, magicLinkCallbackUrl } from "@/lib/auth/config";
 import { isAdminEmail } from "@/lib/auth/admin";
 import { getMembership } from "@/lib/auth/stripe";
+import { appAccessLogin } from "@/lib/auth/login-eligibility";
 import { createLoginToken } from "@/lib/auth/tokens";
 import { sendMagicLink } from "@/lib/auth/email";
 import { signSession, sessionCookieOptions } from "@/lib/auth/session";
@@ -90,11 +91,14 @@ export async function POST(request: Request) {
     // Administrators still receive a login path without needing a paid Stripe
     // subscription, but must prove mailbox possession. A shared static key must
     // never mint an immediate production admin session.
-    const membership = isAdminEmail(email)
+    let membership: { active: boolean; plan: string | null } = isAdminEmail(email)
       ? { active: true, plan: "admin" }
       : complimentary
       ? { active: true, plan: COMPLIMENTARY_ACCESS_PLAN }
       : await getMembership(email);
+    // Paid access that is not a Stripe subscription: one-week passes and
+    // access grants.
+    if (!membership.active) membership = await appAccessLogin(email);
     if (membership.active) {
       const raw = await createLoginToken(email, membership.plan);
       const url = magicLinkCallbackUrl(raw, new URL(request.url).origin);
