@@ -32,6 +32,7 @@ export const ERASED_TABLES: readonly OwnedTable[] = [
   { table: "course_lesson_completions", column: "email" },
   { table: "dense_reading_sessions", column: "email" },
   { table: "student_daily_activity", column: "email" },
+  { table: "reading_level_drops", column: "email" },
   { table: "reading_generated_passages", column: "email" },
   // Planner rows cascade from the profile, but naming them keeps the erasure
   // true even if a plan is ever created without one.

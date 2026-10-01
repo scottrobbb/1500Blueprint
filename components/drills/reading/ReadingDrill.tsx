@@ -214,6 +214,16 @@ export function ReadingDrill({
               ? `You're at the max level. Get ${progress.streakTarget} in a row to master it.`
               : `Your current streak is ${progress.streak}. Get ${progress.streakTarget} in a row to advance to level ${progress.level + 1}.`}
           </span>
+          {progress.level > 1 && (phase === "read" || phase === "recall" || phase === "error") ? (
+            <LevelDownControl
+              level={progress.level}
+              streakTarget={progress.streakTarget}
+              onLowered={(next) => {
+                setProgress(next);
+                generate();
+              }}
+            />
+          ) : null}
         </div>
       ) : null}
 
@@ -396,6 +406,87 @@ function SummaryRecap({ summary }: { summary: string }) {
       ) : (
         <p className="px-4 py-3.5 text-sm text-navy/40">No summary submitted.</p>
       )}
+    </div>
+  );
+}
+
+// Moving down a level asks twice -- once to explain what changes, once to
+// confirm -- so a stray click can never cost a student their level.
+function LevelDownControl({
+  level,
+  streakTarget,
+  onLowered,
+}: {
+  level: number;
+  streakTarget: number;
+  onLowered: (progress: ReadingProgressState) => void;
+}) {
+  const [step, setStep] = useState<"idle" | "first" | "second">("idle");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [token] = useState(() => crypto.randomUUID());
+  const target = level - 1;
+
+  function cancel() {
+    setStep("idle");
+    setError("");
+  }
+
+  async function confirm() {
+    setPending(true);
+    setError("");
+    try {
+      const res = await fetch("/api/drills/reading/level-down", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ clientToken: token }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { progress?: ReadingProgressState; error?: string };
+      if (!res.ok || !data.progress) throw new Error(data.error ?? "We couldn't change your level. Try again in a moment.");
+      onLowered(data.progress);
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "We couldn't change your level. Try again in a moment.");
+      setPending(false);
+    }
+  }
+
+  if (step === "idle") {
+    return (
+      <button
+        type="button"
+        onClick={() => setStep("first")}
+        className="ml-auto text-xs font-semibold text-navy/45 underline-offset-2 hover:text-navy hover:underline"
+      >
+        Move down a level
+      </button>
+    );
+  }
+
+  return (
+    <div role="alertdialog" aria-live="polite" className="mt-1.5 w-full rounded-lg border border-navy/12 bg-haze/60 px-3 py-2.5 text-sm text-navy/75">
+      {step === "first" ? (
+        <p>
+          Move down to level {target}? Your current streak resets, and this passage is replaced with a
+          level {target} passage. You will need {streakTarget} passes in a row to get back to level {level}.
+        </p>
+      ) : (
+        <p className="font-semibold text-ink">Are you sure? You will go from level {level} to level {target}.</p>
+      )}
+      {error ? <p role="alert" className="mt-1.5 text-xs font-semibold text-danger-600">{error}</p> : null}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {step === "first" ? (
+          <button type="button" onClick={() => setStep("second")} className={secondaryBtn}>
+            Continue
+          </button>
+        ) : (
+          <button type="button" onClick={() => void confirm()} disabled={pending} className={primaryBtn}>
+            {pending ? "Moving down..." : `Yes, move me to level ${target}`}
+          </button>
+        )}
+        <button type="button" onClick={cancel} disabled={pending} className={secondaryBtn}>
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
