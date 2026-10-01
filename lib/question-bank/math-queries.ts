@@ -414,6 +414,8 @@ function buildSkillMetrics(
       attempted: 0,
       saved: 0,
       savedAttempted: 0,
+      incorrect: 0,
+      savedIncorrect: 0,
       attempts: 0,
       correct: 0,
       accuracy: null,
@@ -430,11 +432,15 @@ function buildSkillMetrics(
     const attempted = activity.attemptedIds.has(question.id);
     if (attempted) metric.attempted += 1;
     const saved = savedIds.has(question.id);
+    const questionActivity = activity.attemptsByQuestion.get(question.id);
+    // Same rule as incorrectQuestionIds, which the session filters with.
+    const incorrect = questionActivity !== undefined && questionActivity.attempts > 0 && questionActivity.correct === 0;
+    if (incorrect) metric.incorrect += 1;
     if (saved) {
       metric.saved += 1;
       if (attempted) metric.savedAttempted += 1;
+      if (incorrect) metric.savedIncorrect += 1;
     }
-    const questionActivity = activity.attemptsByQuestion.get(question.id);
     if (questionActivity) {
       metric.attempts += questionActivity.attempts;
       metric.correct += questionActivity.correct;
@@ -445,9 +451,11 @@ function buildSkillMetrics(
       const bucket = metric.byLevel[level];
       bucket.available += 1;
       if (attempted) bucket.attempted += 1;
+      if (incorrect) bucket.incorrect += 1;
       if (saved) {
         bucket.saved += 1;
         if (attempted) bucket.savedAttempted += 1;
+        if (incorrect) bucket.savedIncorrect += 1;
       }
       if (questionActivity) {
         bucket.attempts += questionActivity.attempts;

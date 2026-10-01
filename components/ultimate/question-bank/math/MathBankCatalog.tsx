@@ -8,6 +8,7 @@ import {
   MATH_DOMAINS,
   QUESTION_BANK_LEVELS,
   difficultyFilterParam,
+  matchingQuestionCount,
   skillMetricForDifficulty,
   type MathBankCatalog,
   type MathCompletionFilter,
@@ -62,17 +63,17 @@ export function SubjectBankCatalogView({
 
   const selectedAvailable = useMemo(
     () => catalog.skills.reduce(
-      (total, skill) => total + (selectedSkills.has(skill.name) ? skillMetricForDifficulty(skill, difficulty, savedOnly).available : 0),
+      (total, skill) => total + (selectedSkills.has(skill.name) ? matchingQuestionCount(skill, difficulty, savedOnly, completion) : 0),
       0,
     ),
-    [catalog.skills, selectedSkills, difficulty, savedOnly],
+    [catalog.skills, selectedSkills, difficulty, savedOnly, completion],
   );
-  // Marked narrows the pool exactly as difficulty does, so once either is on
+  // Difficulty, marked, and completion all narrow the pool, so once any is on
   // the count has to be summed from the skills rather than read off the
   // catalog's unfiltered total.
-  const totalAvailable = difficulty.length === 0 && !savedOnly
+  const totalAvailable = difficulty.length === 0 && !savedOnly && completion === "all"
     ? catalog.totalAvailable
-    : catalog.skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty, savedOnly).available, 0);
+    : catalog.skills.reduce((total, skill) => total + matchingQuestionCount(skill, difficulty, savedOnly, completion), 0);
   const practiceHref = buildPracticeHref(basePath, difficulty, completion, [...selectedSkills], savedOnly, order);
   const allPracticeHref = buildPracticeHref(basePath, difficulty, completion, [], savedOnly, order);
 
@@ -221,13 +222,14 @@ export function SubjectBankCatalogView({
                     {domain}
                   </h2>
                   <span className="text-xs font-semibold text-navy/35">
-                    {skills.reduce((total, skill) => total + skillMetricForDifficulty(skill, difficulty, savedOnly).available, 0)} questions
+                    {skills.reduce((total, skill) => total + matchingQuestionCount(skill, difficulty, savedOnly, completion), 0)} questions
                   </span>
                 </div>
                 <ul className="space-y-2">
                   {skills.map((skill) => (
                     <SkillRow
                       savedOnly={savedOnly}
+                      completion={completion}
                       key={skill.name}
                       skill={skill}
                       difficulty={difficulty}
@@ -268,16 +270,19 @@ function SkillRow({
   skill,
   difficulty,
   savedOnly,
+  completion,
   checked,
   onToggle,
 }: {
   skill: BankSkillMetric;
   difficulty: MathDifficultyFilter;
   savedOnly: boolean;
+  completion: MathCompletionFilter;
   checked: boolean;
   onToggle: () => void;
 }) {
   const view = skillMetricForDifficulty(skill, difficulty, savedOnly);
+  const matching = matchingQuestionCount(skill, difficulty, savedOnly, completion);
   const progress = view.available > 0 ? Math.round((view.attempted / view.available) * 100) : 0;
 
   return (
@@ -292,7 +297,7 @@ function SkillRow({
             type="checkbox"
             checked={checked}
             onChange={onToggle}
-            disabled={view.available === 0}
+            disabled={matching === 0}
             className="mt-0.5 h-5 w-5 flex-none accent-brand"
           />
           <span>

@@ -38,6 +38,8 @@ export type ReadingWritingSkillMetric = {
   attempted: number;
   saved: number;
   savedAttempted: number;
+  incorrect: number;
+  savedIncorrect: number;
   attempts: number;
   correct: number;
   accuracy: number | null;
