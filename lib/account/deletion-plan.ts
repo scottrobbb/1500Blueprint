@@ -39,11 +39,11 @@ export const ERASED_TABLES: readonly OwnedTable[] = [
   { table: "study_planner_plans", column: "email" },
   { table: "study_planner_profiles", column: "email" },
   // Flashcard cards cascade from their set.
-  { table: "flashcard_sets", column: "email" },
+  { table: "flashcard_sets", column: "owner_email" },
   // Community presence.
   { table: "community_likes", column: "email" },
   { table: "community_comments", column: "author_email" },
-  { table: "community_posts", column: "email" },
+  { table: "community_posts", column: "author_email" },
   { table: "community_notifications", column: "recipient_email" },
   { table: "community_notifications", column: "actor_email" },
   // Progress, rewards, and usage counters.
