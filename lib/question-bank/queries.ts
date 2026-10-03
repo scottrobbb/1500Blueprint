@@ -9,12 +9,20 @@ import {
   type QuestionBankSection,
 } from "@/lib/question-bank/dashboard";
 import { isQuestionBankRuntimeReady } from "@/lib/question-bank/eligibility";
+import { dateKey, dayStart } from "@/lib/gamification/engine";
 import { supabaseAdmin } from "@/utils/supabase/admin";
 
 export async function getQuestionBankDashboard(
   email: string,
   options: { freeTierOnly?: boolean } = {},
 ): Promise<QuestionBankDashboard> {
+  const [dashboard, today] = await Promise.all([loadDashboard(email, options), loadTodayCounts(email)]);
+  dashboard.summary.todayCorrect = today.correct;
+  dashboard.summary.todayWrong = today.wrong;
+  return dashboard;
+}
+
+async function loadDashboard(email: string, options: { freeTierOnly?: boolean }): Promise<QuestionBankDashboard> {
   const { data, error } = await supabaseAdmin().rpc("get_question_bank_dashboard", {
     p_email: email,
     p_free_tier_only: options.freeTierOnly ?? false,
@@ -26,6 +34,18 @@ export async function getQuestionBankDashboard(
   }
 
   return normalizeQuestionBankDashboard(data);
+}
+
+async function loadTodayCounts(email: string): Promise<{ correct: number; wrong: number }> {
+  const { data, error } = await supabaseAdmin()
+    .from("question_bank_attempts")
+    .select("correct")
+    .eq("email", email)
+    .gte("attempted_at", dayStart(dateKey(new Date())).toISOString())
+    .returns<{ correct: boolean }[]>();
+  if (error) throw new Error(`Could not load today's Question Bank answers: ${error.message}`);
+  const correct = (data ?? []).filter((attempt) => attempt.correct).length;
+  return { correct, wrong: (data ?? []).length - correct };
 }
 
 type InventoryQuestion = {

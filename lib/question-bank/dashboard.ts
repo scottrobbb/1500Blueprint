@@ -10,6 +10,9 @@ export type QuestionBankSummary = {
   accuracy: number;
   saved: number;
   streak: number;
+  // Answers since midnight Eastern, the day the rest of the site counts in.
+  todayCorrect: number;
+  todayWrong: number;
 };
 
 export type QuestionBankSubject = {
@@ -67,7 +70,7 @@ const DIFFICULTIES: QuestionBankDifficulty[] = ["easy", "medium", "hard", "chall
 
 export function emptyQuestionBankDashboard(now = new Date()): QuestionBankDashboard {
   return {
-    summary: { attempted: 0, correct: 0, accuracy: 0, saved: 0, streak: 0 },
+    summary: { attempted: 0, correct: 0, accuracy: 0, saved: 0, streak: 0, todayCorrect: 0, todayWrong: 0 },
     subjects: SECTIONS.map((section) => ({
       section,
       available: 0,
@@ -127,6 +130,8 @@ export function normalizeQuestionBankDashboard(value: unknown): QuestionBankDash
       accuracy: percentage(summary.accuracy),
       saved: numberValue(summary.saved),
       streak: numberValue(summary.streak),
+      todayCorrect: numberValue(summary.todayCorrect),
+      todayWrong: numberValue(summary.todayWrong),
     },
     subjects: SECTIONS.map(
       (section) => subjects.find((subject) => subject.section === section)
