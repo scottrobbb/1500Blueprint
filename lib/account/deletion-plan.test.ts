@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { anonymizedEmail, ERASED_TABLES, isAnonymizedEmail, RETAINED_TABLES } from "./deletion-plan";
 
@@ -59,4 +60,20 @@ test("every table the app queries is either erased, retained, or not a student's
     (table) => !erased.has(table) && !(table in RETAINED_TABLES) && !notOwned.has(table) && !cascaded.has(table),
   );
   assert.deepEqual(unclassified, [], `classify these in deletion-plan.ts: ${unclassified.join(", ")}`);
+});
+
+// A wrong column name is not a missing table: the delete fails, the erasure
+// stops partway, and every student who presses the button sees an error.
+test("every erased column exists on its table in the SQL schema", () => {
+  const sql = execFileSync("git", ["ls-files", "supabase/*.sql", "supabase/migrations/*.sql"], { encoding: "utf8" })
+    .split("\n")
+    .filter(Boolean)
+    .map((file) => readFileSync(file, "utf8"))
+    .join("\n");
+  for (const { table, column } of ERASED_TABLES) {
+    const created = new RegExp(`create table (?:if not exists )?(?:public\\.)?${table}\\s*\\(([\\s\\S]*?)\\n\\);`, "i").exec(sql);
+    assert.ok(created, `${table} has no create table in supabase/`);
+    const added = new RegExp(`alter table (?:if exists )?(?:public\\.)?${table}\\b[^;]*add column (?:if not exists )?${column}\\b`, "i").test(sql);
+    assert.ok(new RegExp(`^\\s*${column}\\s`, "m").test(created[1]) || added, `${table} has no ${column} column`);
+  }
 });
