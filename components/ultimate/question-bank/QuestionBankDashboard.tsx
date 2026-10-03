@@ -41,7 +41,7 @@ const DOMAINS: Record<QuestionBankSection, string[]> = {
 };
 
 const SAMPLE_DASHBOARD: QuestionBankDashboard = {
-  summary: { attempted: 428, correct: 327, accuracy: 76, saved: 21, streak: 8 },
+  summary: { attempted: 428, correct: 327, accuracy: 76, saved: 21, streak: 8, todayCorrect: 14, todayWrong: 4 },
   subjects: [
     { section: "rw", available: 478, solved: 183, attempts: 207, correct: 166, accuracy: 80 },
     { section: "math", available: 796, solved: 196, attempts: 221, correct: 161, accuracy: 73 },
@@ -246,6 +246,7 @@ function SubjectCard({ subject, challengeLocked }: { subject: QuestionBankSubjec
 }
 
 function SummaryStrip({ dashboard }: { dashboard: QuestionBankDashboard }) {
+  const { todayCorrect, todayWrong } = dashboard.summary;
   const items = [
     { label: "Questions attempted", value: dashboard.summary.attempted.toLocaleString() },
     { label: "Current accuracy", value: dashboard.summary.attempted > 0 ? `${dashboard.summary.accuracy}%` : "-" },
@@ -254,7 +255,17 @@ function SummaryStrip({ dashboard }: { dashboard: QuestionBankDashboard }) {
   ];
 
   return (
-    <div className="grid grid-cols-2 overflow-hidden rounded-[18px] border border-navy/10 bg-white xl:grid-cols-4">
+    <div className="grid grid-cols-2 overflow-hidden rounded-[18px] border border-navy/10 bg-white xl:grid-cols-5">
+      <div className="col-span-2 min-h-[108px] p-5 xl:col-span-1">
+        <p className="text-xs font-semibold text-navy/45">Today</p>
+        <strong className="mt-2 block font-display text-[28px] font-extrabold tracking-[-0.035em] text-ink">
+          {(todayCorrect + todayWrong).toLocaleString()}
+        </strong>
+        <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-navy/55">
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-success" />{todayCorrect.toLocaleString()} correct</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-danger" />{todayWrong.toLocaleString()} incorrect</span>
+        </p>
+      </div>
       {items.map(({ label, value }, index) => (
         <div key={label} className={`min-h-[108px] border-navy/10 p-5 ${summaryCellBorder(index)}`}>
           <p className="text-xs font-semibold text-navy/45">{label}</p>
@@ -452,10 +463,10 @@ function accuracyColor(accuracy: number): string {
   return "text-danger-600";
 }
 
+// Today spans the first row on small screens, so every cell after it starts
+// a new row there and sits beside the one before it on wide screens.
 function summaryCellBorder(index: number): string {
-  if (index === 0) return "";
-  if (index === 1) return "border-l";
-  if (index === 2) return "border-t xl:border-l xl:border-t-0";
+  if (index % 2 === 0) return "border-t xl:border-l xl:border-t-0";
   return "border-l border-t xl:border-t-0";
 }
 
